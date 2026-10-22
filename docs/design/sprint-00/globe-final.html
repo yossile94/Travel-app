@@ -678,19 +678,26 @@ function buildSelMask(feature) {
 const TEX_VERSIONS = ['2.31.0'];
 const texUrl = (v, f) => 'https://cdn.jsdelivr.net/npm/three-globe' + (v ? '@' + v : '') + '/example/img/' + f;
 const WORLD_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json';
-const texLoader = new THREE.TextureLoader(); texLoader.setCrossOrigin('anonymous');
 let texVersion;
 
-function loadTex(file, versions) {
-  return new Promise((resolve, reject) => {
-    let i = 0;
-    const next = () => {
-      if (i >= versions.length) { reject(new Error(file)); return; }
-      const v = versions[i++];
-      texLoader.load(texUrl(v, file), (t) => resolve({ tex: prep(t), v }), undefined, next);
-    };
-    next();
-  });
+// Images are fetched and decoded with createImageBitmap instead of an <img>: embedded
+// viewers (like the app's side panel) may block cross-site images while allowing fetch.
+async function loadTex(file, versions) {
+  let lastError = null;
+  for (const v of versions) {
+    try {
+      const res = await fetch(texUrl(v, file), { mode: 'cors' });
+      if (!res.ok) throw new Error(file + ': HTTP ' + res.status);
+      const bitmap = await createImageBitmap(await res.blob(), { imageOrientation: 'flipY' });
+      const t = new THREE.Texture(bitmap);
+      t.flipY = false;               // already flipped while decoding (ImageBitmap ignores flipY)
+      t.needsUpdate = true;
+      return { tex: prep(t), v };
+    } catch (e) {
+      lastError = new Error(file + ': ' + (e && e.message ? e.message : e));
+    }
+  }
+  throw lastError || new Error(file);
 }
 function prep(t) { t.colorSpace = THREE.NoColorSpace; t.anisotropy = maxAniso; return t; }
 function waterIsDark(img) {           // the mask should be white = water; detect an inverted file instead of trusting it
@@ -708,14 +715,16 @@ function showLoading() {
   loader.innerHTML = '<div class="spinner" aria-hidden="true"></div><p>טוענים את כדור הארץ…</p>';
   loader.hidden = false;
 }
-function showError(kind) {
+function showError(kind, detail) {
   const offline = !navigator.onLine;
   loader.className = 'loader error';
   let msg = offline
     ? '<p><strong>אין חיבור לאינטרנט.</strong><br>הגלובוס ייטען לבד כשהחיבור יחזור.</p>'
     : '<p><strong>לא הצלחנו לטעון את כדור הארץ.</strong><br>בדקו את החיבור ונסו שוב.</p>';
   if (kind === 'webgl') msg = '<p><strong>הדפדפן לא תומך ב-WebGL.</strong><br>פתחו את ההדמיה ב-Chrome, Safari או Edge עדכניים.</p>';
-  loader.innerHTML = msg + (kind === 'webgl' ? '' : '<button type="button" class="btn-scene" id="retry">ניסיון חוזר</button>');
+  // Prototype only: show the technical reason so a failed load can be diagnosed from a screenshot.
+  const tech = detail ? '<p dir="ltr" style="font-size:12px;line-height:16px;opacity:.75;word-break:break-all">' + String(detail).replace(/[<>&]/g, '') + '</p>' : '';
+  loader.innerHTML = msg + tech + (kind === 'webgl' ? '' : '<button type="button" class="btn-scene" id="retry">ניסיון חוזר</button>');
   loader.hidden = false;
   const r = $('#retry'); if (r) { r.addEventListener('click', load); r.focus(); }
 }
@@ -732,7 +741,7 @@ async function load() {
   try {
     const [day, topo] = await Promise.all([
       loadTex('earth-blue-marble.jpg', TEX_VERSIONS),
-      fetch(WORLD_URL).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      fetch(WORLD_URL).then((r) => { if (!r.ok) throw new Error('world-atlas: HTTP ' + r.status); return r.json(); })
     ]);
     texVersion = day.v; setTexSource();
     U.uDay.value = day.tex;
@@ -744,7 +753,7 @@ async function load() {
     loadTex('earth-water.png', vs).then((r) => { U.uWaterInv.value = waterIsDark(r.tex.image) ? 1 : 0; U.uWater.value = r.tex; U.uHasWater.value = 1; }).catch(() => {});
     loadTex('earth-topology.png', vs).then((r) => { U.uTopo.value = r.tex; U.uTopoTexel.value.set(1 / r.tex.image.width, 1 / r.tex.image.height); U.uHasTopo.value = 1; }).catch(() => {});
   } catch (e) {
-    showError();
+    showError(undefined, e && e.message ? e.message : e);
   } finally { loading = false; }
 }
 
