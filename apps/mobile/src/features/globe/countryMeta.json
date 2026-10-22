@@ -1,0 +1,1927 @@
+{
+  "ABW": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "AWG",
+      "nameHe": "פלורין של ארובה",
+      "symbol": "AWG"
+    }
+  },
+  "AFG": {
+    "timeZone": "Asia/Kabul",
+    "currency": {
+      "code": "AFN",
+      "nameHe": "אפגני אפגני",
+      "symbol": "؋"
+    }
+  },
+  "AGO": {
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "AOA",
+      "nameHe": "קואנזה אנגולי",
+      "symbol": "Kz"
+    }
+  },
+  "AIA": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "ALB": {
+    "timeZone": "Europe/Tirane",
+    "currency": {
+      "code": "ALL",
+      "nameHe": "לק אלבני",
+      "symbol": "ALL"
+    }
+  },
+  "ALD": {
+    "timeZone": "Europe/Helsinki",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "AND": {
+    "timeZone": "Europe/Andorra",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "ARE": {
+    "timeZone": "Asia/Dubai",
+    "currency": {
+      "code": "AED",
+      "nameHe": "דירהם של איחוד הנסיכויות הערביות",
+      "symbol": "AED"
+    }
+  },
+  "ARG": {
+    "timeZone": "America/Argentina/Buenos_Aires",
+    "currency": {
+      "code": "ARS",
+      "nameHe": "פסו ארגנטינאי",
+      "symbol": "$"
+    }
+  },
+  "ARM": {
+    "timeZone": "Asia/Yerevan",
+    "currency": {
+      "code": "AMD",
+      "nameHe": "דראם ארמני",
+      "symbol": "֏"
+    }
+  },
+  "ASM": {
+    "timeZone": "Pacific/Pago_Pago",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "ATA": {},
+  "ATC": {},
+  "ATF": {
+    "timeZone": "Indian/Kerguelen",
+    "city": "קרגלן",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "ATG": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "AUS": {
+    "timeZone": "Australia/Sydney",
+    "city": "קנברה",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "AUT": {
+    "timeZone": "Europe/Vienna",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "AZE": {
+    "timeZone": "Asia/Baku",
+    "currency": {
+      "code": "AZN",
+      "nameHe": "מאנאט אזרבייג׳ני",
+      "symbol": "₼"
+    }
+  },
+  "BDI": {
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "BIF",
+      "nameHe": "פרנק בורונדי",
+      "symbol": "BIF"
+    }
+  },
+  "BEL": {
+    "timeZone": "Europe/Brussels",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "BEN": {
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "BFA": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "BGD": {
+    "timeZone": "Asia/Dhaka",
+    "currency": {
+      "code": "BDT",
+      "nameHe": "טאקה בנגלדשי",
+      "symbol": "৳"
+    }
+  },
+  "BGR": {
+    "timeZone": "Europe/Sofia",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "BHR": {
+    "timeZone": "Asia/Qatar",
+    "currency": {
+      "code": "BHD",
+      "nameHe": "דינר בחרייני",
+      "symbol": "BHD"
+    }
+  },
+  "BHS": {
+    "timeZone": "America/Toronto",
+    "currency": {
+      "code": "BSD",
+      "nameHe": "דולר בהאמי",
+      "symbol": "$"
+    }
+  },
+  "BIH": {
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "BAM",
+      "nameHe": "מארק סחיר של בוסניה והרצגובינה",
+      "symbol": "KM"
+    }
+  },
+  "BLM": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "BLR": {
+    "timeZone": "Europe/Minsk",
+    "currency": {
+      "code": "BYN",
+      "nameHe": "רובל בלרוסי",
+      "symbol": "BYN"
+    }
+  },
+  "BLZ": {
+    "timeZone": "America/Belize",
+    "currency": {
+      "code": "BZD",
+      "nameHe": "דולר בליזי",
+      "symbol": "$"
+    }
+  },
+  "BMU": {
+    "timeZone": "Atlantic/Bermuda",
+    "currency": {
+      "code": "BMD",
+      "nameHe": "דולר ברמודה",
+      "symbol": "$"
+    }
+  },
+  "BOL": {
+    "timeZone": "America/La_Paz",
+    "currency": {
+      "code": "BOB",
+      "nameHe": "בוליביאנו",
+      "symbol": "Bs"
+    }
+  },
+  "BRA": {
+    "timeZone": "America/Sao_Paulo",
+    "city": "ברזיליה",
+    "currency": {
+      "code": "BRL",
+      "nameHe": "ריאל ברזילאי",
+      "symbol": "R$"
+    }
+  },
+  "BRB": {
+    "timeZone": "America/Barbados",
+    "currency": {
+      "code": "BBD",
+      "nameHe": "דולר ברבדיאני",
+      "symbol": "$"
+    }
+  },
+  "BRI": {
+    "timeZone": "America/Sao_Paulo",
+    "currency": {
+      "code": "BRL",
+      "nameHe": "ריאל ברזילאי",
+      "symbol": "R$"
+    }
+  },
+  "BRN": {
+    "timeZone": "Asia/Kuching",
+    "currency": {
+      "code": "BND",
+      "nameHe": "דולר ברוניי",
+      "symbol": "$"
+    }
+  },
+  "BTN": {
+    "timeZone": "Asia/Thimphu",
+    "currency": {
+      "code": "BTN",
+      "nameHe": "נגולטרום בהוטני",
+      "symbol": "BTN"
+    }
+  },
+  "BWA": {
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "BWP",
+      "nameHe": "פולה בוטסואני",
+      "symbol": "P"
+    }
+  },
+  "CAF": {
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "CAN": {
+    "timeZone": "America/Toronto",
+    "city": "אוטווה",
+    "currency": {
+      "code": "CAD",
+      "nameHe": "דולר קנדי",
+      "symbol": "$"
+    }
+  },
+  "CHE": {
+    "timeZone": "Europe/Zurich",
+    "currency": {
+      "code": "CHF",
+      "nameHe": "פרנק שוויצרי",
+      "symbol": "CHF"
+    }
+  },
+  "CHL": {
+    "timeZone": "America/Santiago",
+    "city": "סנטיאגו",
+    "currency": {
+      "code": "CLP",
+      "nameHe": "פסו צ׳ילאני",
+      "symbol": "$"
+    }
+  },
+  "CHN": {
+    "timeZone": "Asia/Shanghai",
+    "city": "בייג'ינג",
+    "currency": {
+      "code": "CNY",
+      "nameHe": "יואן סיני",
+      "symbol": "¥"
+    }
+  },
+  "CIV": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "CLP": {},
+  "CMR": {
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "COD": {
+    "timeZone": "Africa/Kinshasa",
+    "city": "קינשסה",
+    "currency": {
+      "code": "CDF",
+      "nameHe": "פרנק קונגולזי",
+      "symbol": "CDF"
+    }
+  },
+  "COG": {
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "COK": {
+    "timeZone": "Pacific/Rarotonga",
+    "currency": {
+      "code": "NZD",
+      "nameHe": "דולר ניו זילנדי",
+      "symbol": "$"
+    }
+  },
+  "COL": {
+    "timeZone": "America/Bogota",
+    "currency": {
+      "code": "COP",
+      "nameHe": "פסו קולומביאני",
+      "symbol": "$"
+    }
+  },
+  "COM": {
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "KMF",
+      "nameHe": "פרנק קומורואי",
+      "symbol": "CF"
+    }
+  },
+  "CPV": {
+    "timeZone": "Atlantic/Cape_Verde",
+    "currency": {
+      "code": "CVE",
+      "nameHe": "אסקודו כף ורדה",
+      "symbol": "CVE"
+    }
+  },
+  "CRI": {
+    "timeZone": "America/Costa_Rica",
+    "currency": {
+      "code": "CRC",
+      "nameHe": "קולון קוסטה־ריקני",
+      "symbol": "₡"
+    }
+  },
+  "CSI": {},
+  "CUB": {
+    "timeZone": "America/Havana",
+    "currency": {
+      "code": "CUP",
+      "nameHe": "פסו קובני",
+      "symbol": "$"
+    }
+  },
+  "CUW": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCG",
+      "nameHe": "גילדר של הקריביים",
+      "symbol": "Cg."
+    }
+  },
+  "CYM": {
+    "timeZone": "America/Panama",
+    "currency": {
+      "code": "KYD",
+      "nameHe": "דולר קיימני",
+      "symbol": "$"
+    }
+  },
+  "CYP": {
+    "timeZone": "Asia/Famagusta",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "CZE": {
+    "timeZone": "Europe/Prague",
+    "currency": {
+      "code": "CZK",
+      "nameHe": "קורונה צ׳כית",
+      "symbol": "Kč"
+    }
+  },
+  "DEU": {
+    "timeZone": "Europe/Berlin",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "DJI": {
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "DJF",
+      "nameHe": "פרנק ג׳יבוטי",
+      "symbol": "DJF"
+    }
+  },
+  "DMA": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "DNK": {
+    "timeZone": "Europe/Berlin",
+    "currency": {
+      "code": "DKK",
+      "nameHe": "כתר דני",
+      "symbol": "kr"
+    }
+  },
+  "DOM": {
+    "timeZone": "America/Santo_Domingo",
+    "currency": {
+      "code": "DOP",
+      "nameHe": "פסו דומיניקני",
+      "symbol": "$"
+    }
+  },
+  "DZA": {
+    "timeZone": "Africa/Algiers",
+    "currency": {
+      "code": "DZD",
+      "nameHe": "דינר אלג׳ירי",
+      "symbol": "DZD"
+    }
+  },
+  "ECU": {
+    "timeZone": "America/Guayaquil",
+    "city": "קיטו",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "EGY": {
+    "timeZone": "Africa/Cairo",
+    "currency": {
+      "code": "EGP",
+      "nameHe": "לירה מצרית",
+      "symbol": "E£"
+    }
+  },
+  "ERI": {
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "ERN",
+      "nameHe": "נאקפה אריתראי",
+      "symbol": "ERN"
+    }
+  },
+  "ESP": {
+    "timeZone": "Europe/Madrid",
+    "city": "מדריד",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "EST": {
+    "timeZone": "Europe/Tallinn",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "ETH": {
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "ETB",
+      "nameHe": "ביר אתיופי",
+      "symbol": "ETB"
+    }
+  },
+  "FIN": {
+    "timeZone": "Europe/Helsinki",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "FJI": {
+    "timeZone": "Pacific/Fiji",
+    "currency": {
+      "code": "FJD",
+      "nameHe": "דולר פיג׳י",
+      "symbol": "$"
+    }
+  },
+  "FLK": {
+    "timeZone": "Atlantic/Stanley",
+    "currency": {
+      "code": "FKP",
+      "nameHe": "לירה של איי פוקלנד",
+      "symbol": "£"
+    }
+  },
+  "FRA": {
+    "timeZone": "Europe/Paris",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "FRO": {
+    "timeZone": "Atlantic/Faroe",
+    "currency": {
+      "code": "DKK",
+      "nameHe": "כתר דני",
+      "symbol": "kr"
+    }
+  },
+  "FSM": {
+    "timeZone": "Pacific/Pohnpei",
+    "city": "פליקיר",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "GAB": {
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "GBR": {
+    "timeZone": "Europe/London",
+    "currency": {
+      "code": "GBP",
+      "nameHe": "לירה שטרלינג",
+      "symbol": "£"
+    }
+  },
+  "GEO": {
+    "timeZone": "Asia/Tbilisi",
+    "currency": {
+      "code": "GEL",
+      "nameHe": "לארי גאורגי",
+      "symbol": "₾"
+    }
+  },
+  "GGY": {
+    "timeZone": "Europe/London",
+    "currency": {
+      "code": "GBP",
+      "nameHe": "לירה שטרלינג",
+      "symbol": "£"
+    }
+  },
+  "GHA": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "GHS",
+      "nameHe": "סדי גאני",
+      "symbol": "GH₵"
+    }
+  },
+  "GIB": {
+    "timeZone": "Europe/Gibraltar",
+    "currency": {
+      "code": "GIP",
+      "nameHe": "פאונד גיברלטר",
+      "symbol": "£"
+    }
+  },
+  "GIN": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "GNF",
+      "nameHe": "פרנק גינאי",
+      "symbol": "FG"
+    }
+  },
+  "GMB": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "GMD",
+      "nameHe": "דלסי גמבי",
+      "symbol": "GMD"
+    }
+  },
+  "GNB": {
+    "timeZone": "Africa/Bissau",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "GNQ": {
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "GRC": {
+    "timeZone": "Europe/Athens",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "GRD": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "GRL": {
+    "timeZone": "America/Nuuk",
+    "city": "נואוק",
+    "currency": {
+      "code": "DKK",
+      "nameHe": "כתר דני",
+      "symbol": "kr"
+    }
+  },
+  "GTM": {
+    "timeZone": "America/Guatemala",
+    "currency": {
+      "code": "GTQ",
+      "nameHe": "קצאל גואטמלי",
+      "symbol": "Q"
+    }
+  },
+  "GUM": {
+    "timeZone": "Pacific/Guam",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "GUY": {
+    "timeZone": "America/Guyana",
+    "currency": {
+      "code": "GYD",
+      "nameHe": "דולר גיאני",
+      "symbol": "$"
+    }
+  },
+  "HKG": {
+    "timeZone": "Asia/Hong_Kong",
+    "currency": {
+      "code": "HKD",
+      "nameHe": "דולר הונג קונגי",
+      "symbol": "$"
+    }
+  },
+  "HMD": {},
+  "HND": {
+    "timeZone": "America/Tegucigalpa",
+    "currency": {
+      "code": "HNL",
+      "nameHe": "למפירה הונדורי",
+      "symbol": "L"
+    }
+  },
+  "HRV": {
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "HTI": {
+    "timeZone": "America/Port-au-Prince",
+    "currency": {
+      "code": "HTG",
+      "nameHe": "גורד האיטי",
+      "symbol": "HTG"
+    }
+  },
+  "HUN": {
+    "timeZone": "Europe/Budapest",
+    "currency": {
+      "code": "HUF",
+      "nameHe": "פורינט הונגרי",
+      "symbol": "Ft"
+    }
+  },
+  "IDN": {
+    "timeZone": "Asia/Jakarta",
+    "city": "ג'קרטה",
+    "currency": {
+      "code": "IDR",
+      "nameHe": "רופיה אינדונזית",
+      "symbol": "Rp"
+    }
+  },
+  "IMN": {
+    "timeZone": "Europe/London",
+    "currency": {
+      "code": "GBP",
+      "nameHe": "לירה שטרלינג",
+      "symbol": "£"
+    }
+  },
+  "IND": {
+    "timeZone": "Asia/Kolkata",
+    "currency": {
+      "code": "INR",
+      "nameHe": "רופי הודי",
+      "symbol": "₹"
+    }
+  },
+  "IOA": {
+    "timeZone": "Indian/Christmas",
+    "city": "אי חג המולד",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "IOT": {
+    "timeZone": "Indian/Chagos",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "IRL": {
+    "timeZone": "Europe/Dublin",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "IRN": {
+    "timeZone": "Asia/Tehran",
+    "currency": {
+      "code": "IRR",
+      "nameHe": "ריאל איראני",
+      "symbol": "IRR"
+    }
+  },
+  "IRQ": {
+    "timeZone": "Asia/Baghdad",
+    "currency": {
+      "code": "IQD",
+      "nameHe": "דינר עיראקי",
+      "symbol": "IQD"
+    }
+  },
+  "ISL": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "ISK",
+      "nameHe": "כתר איסלנדי",
+      "symbol": "kr"
+    }
+  },
+  "ISR": {
+    "timeZone": "Asia/Jerusalem",
+    "currency": {
+      "code": "ILS",
+      "nameHe": "שקל חדש",
+      "symbol": "₪"
+    }
+  },
+  "ITA": {
+    "timeZone": "Europe/Rome",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "JAM": {
+    "timeZone": "America/Jamaica",
+    "currency": {
+      "code": "JMD",
+      "nameHe": "דולר ג׳מייקני",
+      "symbol": "$"
+    }
+  },
+  "JEY": {
+    "timeZone": "Europe/London",
+    "currency": {
+      "code": "GBP",
+      "nameHe": "לירה שטרלינג",
+      "symbol": "£"
+    }
+  },
+  "JOR": {
+    "timeZone": "Asia/Amman",
+    "currency": {
+      "code": "JOD",
+      "nameHe": "דינר ירדני",
+      "symbol": "JOD"
+    }
+  },
+  "JPN": {
+    "timeZone": "Asia/Tokyo",
+    "currency": {
+      "code": "JPY",
+      "nameHe": "ין יפני",
+      "symbol": "¥"
+    }
+  },
+  "KAZ": {
+    "timeZone": "Asia/Almaty",
+    "currency": {
+      "code": "KZT",
+      "nameHe": "טנגה קזחסטני",
+      "symbol": "₸"
+    }
+  },
+  "KEN": {
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "KES",
+      "nameHe": "שילינג קנייתי",
+      "symbol": "KES"
+    }
+  },
+  "KGZ": {
+    "timeZone": "Asia/Bishkek",
+    "currency": {
+      "code": "KGS",
+      "nameHe": "סום קירגיזי",
+      "symbol": "⃀"
+    }
+  },
+  "KHM": {
+    "timeZone": "Asia/Bangkok",
+    "currency": {
+      "code": "KHR",
+      "nameHe": "ריל קמבודי",
+      "symbol": "៛"
+    }
+  },
+  "KIR": {
+    "timeZone": "Pacific/Tarawa",
+    "city": "טאראווה",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "KNA": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "KOR": {
+    "timeZone": "Asia/Seoul",
+    "currency": {
+      "code": "KRW",
+      "nameHe": "וון דרום קוריאני",
+      "symbol": "₩"
+    }
+  },
+  "KOS": {
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "KWT": {
+    "timeZone": "Asia/Riyadh",
+    "currency": {
+      "code": "KWD",
+      "nameHe": "דינר כוויתי",
+      "symbol": "KWD"
+    }
+  },
+  "LAO": {
+    "timeZone": "Asia/Bangkok",
+    "currency": {
+      "code": "LAK",
+      "nameHe": "קיפ לאי",
+      "symbol": "₭"
+    }
+  },
+  "LBN": {
+    "timeZone": "Asia/Beirut",
+    "currency": {
+      "code": "LBP",
+      "nameHe": "לירה לבנונית",
+      "symbol": "L£"
+    }
+  },
+  "LBR": {
+    "timeZone": "Africa/Monrovia",
+    "currency": {
+      "code": "LRD",
+      "nameHe": "דולר ליברי",
+      "symbol": "$"
+    }
+  },
+  "LBY": {
+    "timeZone": "Africa/Tripoli",
+    "currency": {
+      "code": "LYD",
+      "nameHe": "דינר לובי",
+      "symbol": "LYD"
+    }
+  },
+  "LCA": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "LIE": {
+    "timeZone": "Europe/Zurich",
+    "currency": {
+      "code": "CHF",
+      "nameHe": "פרנק שוויצרי",
+      "symbol": "CHF"
+    }
+  },
+  "LKA": {
+    "timeZone": "Asia/Colombo",
+    "currency": {
+      "code": "LKR",
+      "nameHe": "רופי סרי לנקי",
+      "symbol": "Rs"
+    }
+  },
+  "LSO": {
+    "timeZone": "Africa/Johannesburg",
+    "currency": {
+      "code": "LSL",
+      "nameHe": "לוטי לסותי",
+      "symbol": "LSL"
+    }
+  },
+  "LTU": {
+    "timeZone": "Europe/Vilnius",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "LUX": {
+    "timeZone": "Europe/Brussels",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "LVA": {
+    "timeZone": "Europe/Riga",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "MAC": {
+    "timeZone": "Asia/Macau",
+    "currency": {
+      "code": "MOP",
+      "nameHe": "פטקה של מקאו",
+      "symbol": "MOP"
+    }
+  },
+  "MAF": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "MAR": {
+    "timeZone": "Africa/Casablanca",
+    "currency": {
+      "code": "MAD",
+      "nameHe": "דירהם מרוקאי",
+      "symbol": "MAD"
+    }
+  },
+  "MCO": {
+    "timeZone": "Europe/Paris",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "MDA": {
+    "timeZone": "Europe/Chisinau",
+    "currency": {
+      "code": "MDL",
+      "nameHe": "לאו מולדובני",
+      "symbol": "MDL"
+    }
+  },
+  "MDG": {
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "MGA",
+      "nameHe": "אריארי מלגשי",
+      "symbol": "Ar"
+    }
+  },
+  "MDV": {
+    "timeZone": "Indian/Maldives",
+    "currency": {
+      "code": "MVR",
+      "nameHe": "רופיה מלדיבית",
+      "symbol": "MVR"
+    }
+  },
+  "MEX": {
+    "timeZone": "America/Mexico_City",
+    "city": "מקסיקו סיטי",
+    "currency": {
+      "code": "MXN",
+      "nameHe": "פסו מקסיקני",
+      "symbol": "$"
+    }
+  },
+  "MHL": {
+    "timeZone": "Pacific/Kwajalein",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "MKD": {
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "MKD",
+      "nameHe": "דינר מקדוני",
+      "symbol": "MKD"
+    }
+  },
+  "MLI": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "MLT": {
+    "timeZone": "Europe/Malta",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "MMR": {
+    "timeZone": "Asia/Yangon",
+    "currency": {
+      "code": "MMK",
+      "nameHe": "קיאט מיאנמרי",
+      "symbol": "K"
+    }
+  },
+  "MNE": {
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "MNG": {
+    "timeZone": "Asia/Ulaanbaatar",
+    "city": "אולן בטור",
+    "currency": {
+      "code": "MNT",
+      "nameHe": "טוגרוג מונגולי",
+      "symbol": "₮"
+    }
+  },
+  "MNP": {
+    "timeZone": "Pacific/Guam",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "MOZ": {
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "MZN",
+      "nameHe": "מטיקל מוזמביני",
+      "symbol": "MZN"
+    }
+  },
+  "MRT": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "MRU",
+      "nameHe": "אואוגויה מאוריטני",
+      "symbol": "MRU"
+    }
+  },
+  "MSR": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "MUS": {
+    "timeZone": "Indian/Mauritius",
+    "currency": {
+      "code": "MUR",
+      "nameHe": "רופי מאוריציני",
+      "symbol": "Rs"
+    }
+  },
+  "MWI": {
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "MWK",
+      "nameHe": "קואצ׳ה מלאווי",
+      "symbol": "MWK"
+    }
+  },
+  "MYS": {
+    "timeZone": "Asia/Kuching",
+    "currency": {
+      "code": "MYR",
+      "nameHe": "רינגיט מלזי",
+      "symbol": "RM"
+    }
+  },
+  "NAM": {
+    "timeZone": "Africa/Windhoek",
+    "currency": {
+      "code": "NAD",
+      "nameHe": "דולר נמיבי",
+      "symbol": "$"
+    }
+  },
+  "NCL": {
+    "timeZone": "Pacific/Noumea",
+    "currency": {
+      "code": "XPF",
+      "nameHe": "פרנק פולינזיה הצרפתית",
+      "symbol": "CFPF"
+    }
+  },
+  "NER": {
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "NFK": {
+    "timeZone": "Pacific/Norfolk",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "NGA": {
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "NGN",
+      "nameHe": "נאירה ניגרי",
+      "symbol": "₦"
+    }
+  },
+  "NIC": {
+    "timeZone": "America/Managua",
+    "currency": {
+      "code": "NIO",
+      "nameHe": "קורדובה ניקרגואה",
+      "symbol": "C$"
+    }
+  },
+  "NIU": {
+    "timeZone": "Pacific/Niue",
+    "currency": {
+      "code": "NZD",
+      "nameHe": "דולר ניו זילנדי",
+      "symbol": "$"
+    }
+  },
+  "NLD": {
+    "timeZone": "Europe/Brussels",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "NOR": {
+    "timeZone": "Europe/Berlin",
+    "currency": {
+      "code": "NOK",
+      "nameHe": "כתר נורווגי",
+      "symbol": "kr"
+    }
+  },
+  "NPL": {
+    "timeZone": "Asia/Kathmandu",
+    "currency": {
+      "code": "NPR",
+      "nameHe": "רופי נפאלי",
+      "symbol": "Rs"
+    }
+  },
+  "NRU": {
+    "timeZone": "Pacific/Nauru",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "NZL": {
+    "timeZone": "Pacific/Auckland",
+    "city": "ולינגטון",
+    "currency": {
+      "code": "NZD",
+      "nameHe": "דולר ניו זילנדי",
+      "symbol": "$"
+    }
+  },
+  "OMN": {
+    "timeZone": "Asia/Dubai",
+    "currency": {
+      "code": "OMR",
+      "nameHe": "ריאל עומאני",
+      "symbol": "OMR"
+    }
+  },
+  "PAK": {
+    "timeZone": "Asia/Karachi",
+    "currency": {
+      "code": "PKR",
+      "nameHe": "רופי פקיסטני",
+      "symbol": "Rs"
+    }
+  },
+  "PAN": {
+    "timeZone": "America/Panama",
+    "currency": {
+      "code": "PAB",
+      "nameHe": "בלבואה פנמי",
+      "symbol": "PAB"
+    }
+  },
+  "PCN": {
+    "timeZone": "Pacific/Pitcairn",
+    "currency": {
+      "code": "NZD",
+      "nameHe": "דולר ניו זילנדי",
+      "symbol": "$"
+    }
+  },
+  "PER": {
+    "timeZone": "America/Lima",
+    "currency": {
+      "code": "PEN",
+      "nameHe": "סול פרואני",
+      "symbol": "PEN"
+    }
+  },
+  "PHL": {
+    "timeZone": "Asia/Manila",
+    "currency": {
+      "code": "PHP",
+      "nameHe": "פסו פיליפיני",
+      "symbol": "₱"
+    }
+  },
+  "PLW": {
+    "timeZone": "Pacific/Palau",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "PNG": {
+    "timeZone": "Pacific/Port_Moresby",
+    "city": "פורט מורסבי",
+    "currency": {
+      "code": "PGK",
+      "nameHe": "קינה של פפואה גינאה החדשה",
+      "symbol": "PGK"
+    }
+  },
+  "POL": {
+    "timeZone": "Europe/Warsaw",
+    "currency": {
+      "code": "PLN",
+      "nameHe": "זלוטי פולני",
+      "symbol": "zł"
+    }
+  },
+  "PRI": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "PRK": {
+    "timeZone": "Asia/Pyongyang",
+    "currency": {
+      "code": "KPW",
+      "nameHe": "וון צפון קוריאני",
+      "symbol": "₩"
+    }
+  },
+  "PRT": {
+    "timeZone": "Europe/Lisbon",
+    "city": "ליסבון",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "PRY": {
+    "timeZone": "America/Asuncion",
+    "currency": {
+      "code": "PYG",
+      "nameHe": "גוארני פרגוואי",
+      "symbol": "₲"
+    }
+  },
+  "PYF": {
+    "timeZone": "Pacific/Tahiti",
+    "city": "פאפטה",
+    "currency": {
+      "code": "XPF",
+      "nameHe": "פרנק פולינזיה הצרפתית",
+      "symbol": "CFPF"
+    }
+  },
+  "QAT": {
+    "timeZone": "Asia/Qatar",
+    "currency": {
+      "code": "QAR",
+      "nameHe": "ריאל קטארי",
+      "symbol": "QAR"
+    }
+  },
+  "ROU": {
+    "timeZone": "Europe/Bucharest",
+    "currency": {
+      "code": "RON",
+      "nameHe": "לאו רומני",
+      "symbol": "lei"
+    }
+  },
+  "RUS": {
+    "timeZone": "Europe/Moscow",
+    "city": "מוסקבה",
+    "currency": {
+      "code": "RUB",
+      "nameHe": "רובל רוסי",
+      "symbol": "₽"
+    }
+  },
+  "RWA": {
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "RWF",
+      "nameHe": "פרנק רואנדי",
+      "symbol": "RF"
+    }
+  },
+  "SAH": {
+    "timeZone": "Africa/El_Aaiun",
+    "currency": {
+      "code": "MAD",
+      "nameHe": "דירהם מרוקאי",
+      "symbol": "MAD"
+    }
+  },
+  "SAU": {
+    "timeZone": "Asia/Riyadh",
+    "currency": {
+      "code": "SAR",
+      "nameHe": "ריאל סעודי",
+      "symbol": "SAR"
+    }
+  },
+  "SDN": {
+    "timeZone": "Africa/Khartoum",
+    "currency": {
+      "code": "SDG",
+      "nameHe": "לירה סודנית",
+      "symbol": "SDG"
+    }
+  },
+  "SDS": {
+    "timeZone": "Africa/Juba",
+    "currency": {
+      "code": "SSP",
+      "nameHe": "לירה דרום-סודנית",
+      "symbol": "£"
+    }
+  },
+  "SEN": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "SGP": {
+    "timeZone": "Asia/Singapore",
+    "currency": {
+      "code": "SGD",
+      "nameHe": "דולר סינגפורי",
+      "symbol": "$"
+    }
+  },
+  "SGS": {
+    "timeZone": "Atlantic/South_Georgia",
+    "currency": {
+      "code": "FKP",
+      "nameHe": "לירה של איי פוקלנד",
+      "symbol": "£"
+    }
+  },
+  "SHN": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "SHP",
+      "nameHe": "פאונד סנט הלני",
+      "symbol": "£"
+    }
+  },
+  "SLB": {
+    "timeZone": "Pacific/Guadalcanal",
+    "currency": {
+      "code": "SBD",
+      "nameHe": "דולר איי שלמה",
+      "symbol": "$"
+    }
+  },
+  "SLE": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "SLE",
+      "nameHe": "ליאון סיירה לאוני",
+      "symbol": "SLE"
+    }
+  },
+  "SLV": {
+    "timeZone": "America/El_Salvador",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "SMR": {
+    "timeZone": "Europe/Rome",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "SOM": {
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "SOS",
+      "nameHe": "שילינג סומלי",
+      "symbol": "SOS"
+    }
+  },
+  "SPM": {
+    "timeZone": "America/Miquelon",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "SRB": {
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "RSD",
+      "nameHe": "דינר סרבי",
+      "symbol": "RSD"
+    }
+  },
+  "STP": {
+    "timeZone": "Africa/Sao_Tome",
+    "currency": {
+      "code": "STN",
+      "nameHe": "דוברה של סאו טומה ופרינסיפה",
+      "symbol": "Db"
+    }
+  },
+  "SUR": {
+    "timeZone": "America/Paramaribo",
+    "currency": {
+      "code": "SRD",
+      "nameHe": "דולר סורינאמי",
+      "symbol": "$"
+    }
+  },
+  "SVK": {
+    "timeZone": "Europe/Prague",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "SVN": {
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "SWE": {
+    "timeZone": "Europe/Berlin",
+    "currency": {
+      "code": "SEK",
+      "nameHe": "כתר שוודי",
+      "symbol": "kr"
+    }
+  },
+  "SWZ": {
+    "timeZone": "Africa/Johannesburg",
+    "currency": {
+      "code": "SZL",
+      "nameHe": "לילנגני סווזילנדי",
+      "symbol": "SZL"
+    }
+  },
+  "SXM": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCG",
+      "nameHe": "גילדר של הקריביים",
+      "symbol": "Cg."
+    }
+  },
+  "SYC": {
+    "timeZone": "Asia/Dubai",
+    "currency": {
+      "code": "SCR",
+      "nameHe": "רופי סיישלי",
+      "symbol": "SCR"
+    }
+  },
+  "SYR": {
+    "timeZone": "Asia/Damascus",
+    "currency": {
+      "code": "SYP",
+      "nameHe": "לירה סורית",
+      "symbol": "£"
+    }
+  },
+  "TCA": {
+    "timeZone": "America/Grand_Turk",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "TCD": {
+    "timeZone": "Africa/Ndjamena",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "TGO": {
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "THA": {
+    "timeZone": "Asia/Bangkok",
+    "currency": {
+      "code": "THB",
+      "nameHe": "בהט תאילנדי",
+      "symbol": "฿"
+    }
+  },
+  "TJK": {
+    "timeZone": "Asia/Dushanbe",
+    "currency": {
+      "code": "TJS",
+      "nameHe": "סומוני טג׳קיסטני",
+      "symbol": "TJS"
+    }
+  },
+  "TKM": {
+    "timeZone": "Asia/Ashgabat",
+    "currency": {
+      "code": "TMT",
+      "nameHe": "מאנאט טורקמני",
+      "symbol": "TMT"
+    }
+  },
+  "TLS": {
+    "timeZone": "Asia/Dili",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "TON": {
+    "timeZone": "Pacific/Tongatapu",
+    "currency": {
+      "code": "TOP",
+      "nameHe": "פאנגה טונגי",
+      "symbol": "T$"
+    }
+  },
+  "TTO": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "TTD",
+      "nameHe": "דולר טרינידדי",
+      "symbol": "$"
+    }
+  },
+  "TUN": {
+    "timeZone": "Africa/Tunis",
+    "currency": {
+      "code": "TND",
+      "nameHe": "דינר טוניסאי",
+      "symbol": "TND"
+    }
+  },
+  "TUR": {
+    "timeZone": "Europe/Istanbul",
+    "currency": {
+      "code": "TRY",
+      "nameHe": "לירה טורקית חדשה",
+      "symbol": "₺"
+    }
+  },
+  "TUV": {
+    "timeZone": "Pacific/Tarawa",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "TWN": {
+    "timeZone": "Asia/Taipei",
+    "currency": {
+      "code": "TWD",
+      "nameHe": "דולר טייוואני חדש",
+      "symbol": "$"
+    }
+  },
+  "TZA": {
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "TZS",
+      "nameHe": "שילינג טנזני",
+      "symbol": "TZS"
+    }
+  },
+  "UGA": {
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "UGX",
+      "nameHe": "שילינג אוגנדי",
+      "symbol": "UGX"
+    }
+  },
+  "UKR": {
+    "timeZone": "Europe/Kyiv",
+    "city": "קייב",
+    "currency": {
+      "code": "UAH",
+      "nameHe": "הריבנה אוקראיני",
+      "symbol": "₴"
+    }
+  },
+  "UMI": {},
+  "URY": {
+    "timeZone": "America/Montevideo",
+    "currency": {
+      "code": "UYU",
+      "nameHe": "פסו אורוגוואי",
+      "symbol": "$"
+    }
+  },
+  "USA": {
+    "timeZone": "America/New_York",
+    "city": "וושינגטון",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "UZB": {
+    "timeZone": "Asia/Samarkand",
+    "currency": {
+      "code": "UZS",
+      "nameHe": "סום אוזבקי",
+      "symbol": "UZS"
+    }
+  },
+  "VAT": {
+    "timeZone": "Europe/Rome",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "VCT": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "VEN": {
+    "timeZone": "America/Caracas",
+    "currency": {
+      "code": "VES",
+      "nameHe": "בוליבר ונצואלי",
+      "symbol": "VES"
+    }
+  },
+  "VGB": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "VIR": {
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "VNM": {
+    "timeZone": "Asia/Bangkok",
+    "currency": {
+      "code": "VND",
+      "nameHe": "דונג וייטנאמי",
+      "symbol": "₫"
+    }
+  },
+  "VUT": {
+    "timeZone": "Pacific/Efate",
+    "currency": {
+      "code": "VUV",
+      "nameHe": "ואטו של ונואטו",
+      "symbol": "VUV"
+    }
+  },
+  "WLF": {
+    "timeZone": "Pacific/Tarawa",
+    "currency": {
+      "code": "XPF",
+      "nameHe": "פרנק פולינזיה הצרפתית",
+      "symbol": "CFPF"
+    }
+  },
+  "WSM": {
+    "timeZone": "Pacific/Apia",
+    "currency": {
+      "code": "WST",
+      "nameHe": "טאלה סמואי",
+      "symbol": "WST"
+    }
+  },
+  "YEM": {
+    "timeZone": "Asia/Riyadh",
+    "currency": {
+      "code": "YER",
+      "nameHe": "ריאל תימני",
+      "symbol": "YER"
+    }
+  },
+  "ZAF": {
+    "timeZone": "Africa/Johannesburg",
+    "currency": {
+      "code": "ZAR",
+      "nameHe": "ראנד דרום אפריקאי",
+      "symbol": "R"
+    }
+  },
+  "ZMB": {
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "ZMW",
+      "nameHe": "קוואצ׳ה זמבי",
+      "symbol": "ZK"
+    }
+  },
+  "ZWE": {
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "ZWG",
+      "nameHe": "זהב של זימבבואה",
+      "symbol": "ZWG"
+    }
+  }
+}

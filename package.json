@@ -15,6 +15,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "node --test \"scripts/**/*.test.mjs\" && npm run test --workspaces --if-present",
     "build:countries": "node scripts/build-countries.mjs",
+    "build:country-meta": "node scripts/build-country-meta.mjs",
+    "build:geo": "npm run build:countries && npm run build:country-meta",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test"
@@ -24,6 +26,8 @@
     "unrs-resolver": false
   },
   "devDependencies": {
+    "countries-and-timezones": "3.10.0",
+    "country-to-currency": "3.0.1",
     "topojson-client": "3.1.0",
     "topojson-server": "3.0.1",
     "topojson-simplify": "3.0.3"
