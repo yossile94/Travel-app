@@ -18,7 +18,13 @@ afterEach(() => {
 async function renderCard(adm0: string, onClose = jest.fn()) {
   const country = countryByAdm0(adm0)!;
   await render(
-    <BoardingPassCard country={country} colorScheme="light" reduceMotion onClose={onClose} />,
+    <BoardingPassCard
+      country={country}
+      colorScheme="light"
+      reduceMotion
+      bottomInset={0}
+      onClose={onClose}
+    />,
   );
   return { onClose };
 }

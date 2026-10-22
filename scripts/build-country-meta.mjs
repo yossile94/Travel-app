@@ -149,10 +149,34 @@ function allPositions(geometry) {
   return polygons.flat(2);
 }
 
+function inRing([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * The polygon the camera should frame: the one containing the label point,
+ * else the largest. Without this, France, the Netherlands and Norway are
+ * measured together with their overseas territories and barely get zoomed.
+ */
+function mainPolygon(geometry, label) {
+  if (geometry.type === 'Polygon') return geometry;
+  const polygons = geometry.coordinates.map((coordinates) => ({ type: 'Polygon', coordinates }));
+  return (
+    polygons.find((p) => inRing(label, p.coordinates[0])) ??
+    polygons.reduce((a, b) => (landArea(b) > landArea(a) ? b : a))
+  );
+}
+
 /**
  * The size of an area in degrees, taking the longitude span across the
  * shorter side of the antimeridian (Russia, Fiji) and narrowing it by
- * latitude. Used to choose the fly-to zoom and to find small areas.
+ * latitude. Used to choose the fly-to zoom.
  */
 function spanDegrees(geometry) {
   const positions = allPositions(geometry);
@@ -184,7 +208,7 @@ async function main() {
       throw new Error(`${adm0}: unknown time zone ${zone.timeZone}`);
     }
 
-    const span = spanDegrees(geometry);
+    const span = spanDegrees(mainPolygon(geometry, properties.label));
     const entry = {
       nameHe: properties.nameHe,
       nameEn: properties.nameEn,

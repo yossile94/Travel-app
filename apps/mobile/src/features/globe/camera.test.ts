@@ -4,7 +4,6 @@ import {
   flightDuration,
   greatCircleDegrees,
   rotationPlan,
-  westOf,
   zoomForSpan,
 } from './camera';
 
@@ -45,7 +44,7 @@ describe('flightDuration', () => {
 });
 
 describe('rotationPlan', () => {
-  const plan = rotationPlan();
+  const plan = rotationPlan(true);
 
   it('ramps up over one second, then rotates steadily (AC-2)', () => {
     const ramp = plan.slice(0, -1);
@@ -58,11 +57,10 @@ describe('rotationPlan', () => {
     const last = plan.at(-1)!;
     expect((last.degrees / last.durationMs) * 1000).toBeCloseTo(3);
   });
-});
 
-describe('westOf', () => {
-  it('moves west and wraps at the antimeridian', () => {
-    expect(westOf(10, 3)).toBe(7);
-    expect(westOf(-179, 3)).toBe(178);
+  it('has no ramp when it is already turning, so it never slows between segments', () => {
+    const continuing = rotationPlan(false);
+    expect(continuing).toHaveLength(1);
+    expect(continuing[0]).toEqual(plan.at(-1));
   });
 });

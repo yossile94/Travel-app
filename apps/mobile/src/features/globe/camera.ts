@@ -3,7 +3,7 @@
  */
 import { motion } from '@/theme/tokens';
 
-/** Zoom that shows the whole globe on a phone. */
+/** Zoom that shows the whole globe on a phone; the camera returns here when a card closes. */
 export const HOME_ZOOM = 1.2;
 export const MIN_COUNTRY_ZOOM = 1.6;
 export const MAX_COUNTRY_ZOOM = 6;
@@ -42,23 +42,24 @@ export interface RotationSegment {
   degrees: number;
 }
 
+export const ROTATION_SEGMENT_MS = 20_000;
+
 /**
  * The idle auto-rotation as a few camera animations instead of a per-frame
- * update (which would cross the JS–native bridge 60 times a second): a short
- * ramp of rising speed over `autoRotateRamp`, then one long constant segment.
- * The caller chains them and starts a new plan when the long one ends.
+ * update (which would cross the JS–native bridge 60 times a second). After a
+ * stop: a short ramp of rising speed over `autoRotateRamp`, then one long
+ * constant segment. While already turning: just the long segment, so the
+ * globe never slows down between segments.
  */
-export function rotationPlan(longSegmentMs = 20_000): RotationSegment[] {
+export function rotationPlan(fromStop: boolean, longSegmentMs = ROTATION_SEGMENT_MS) {
+  const perMs = motion.autoRotateDegPerSec / 1000;
+  const long: RotationSegment = { durationMs: longSegmentMs, degrees: perMs * longSegmentMs };
+  if (!fromStop) return [long];
+
   const steps = [0.2, 0.5, 0.8];
   const stepMs = motion.autoRotateRamp / steps.length;
-  const perMs = motion.autoRotateDegPerSec / 1000;
   return [
     ...steps.map((factor) => ({ durationMs: stepMs, degrees: perMs * stepMs * factor })),
-    { durationMs: longSegmentMs, degrees: perMs * longSegmentMs },
+    long,
   ];
-}
-
-/** Longitude after moving `degrees` west, wrapped to [-180, 180). */
-export function westOf(longitude: number, degrees: number): number {
-  return ((((longitude - degrees + 180) % 360) + 360) % 360) - 180;
 }

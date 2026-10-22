@@ -3,13 +3,13 @@ import { useEffect, useRef, type ComponentRef } from 'react';
 
 import { motion } from '@/theme/tokens';
 
-import { rotationPlan, westOf } from './camera';
+import { rotationPlan } from './camera';
 
 interface Options {
   cameraRef: React.RefObject<ComponentRef<typeof Camera> | null>;
-  /** Current camera centre, read when a new plan starts. */
+  /** Current camera centre, read when rotation (re)starts. */
   getCenter: () => Promise<[number, number] | null>;
-  /** False while a card is open, a gesture or flight is in progress, or motion is reduced. */
+  /** False while a card is open, a finger or flight is on the globe, or motion is reduced. */
   allowed: boolean;
   /** Timestamp of the last touch on the globe or of the card closing. */
   lastInteractionAt: number;
@@ -17,9 +17,9 @@ interface Options {
 
 /**
  * Idle auto-rotation (sprint 0 AC-2): starts 5 s after the last interaction,
- * eases in over 1 s, then turns steadily westward. Drives the camera with a
- * few long native animations rather than a per-frame update; a user gesture
- * cancels the native animation by itself.
+ * eases in over 1 s, then turns steadily westward in long native camera
+ * animations. A touch cancels the native animation by itself; the caller
+ * stops it explicitly when reduced motion is switched on (AC-6).
  */
 export function useAutoRotation({ cameraRef, getCenter, allowed, lastInteractionAt }: Options) {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -36,16 +36,16 @@ export function useAutoRotation({ cameraRef, getCenter, allowed, lastInteraction
 
     let cancelled = false;
 
-    const runPlan = async () => {
-      const center = await getCenter();
-      if (cancelled || !center) return;
-      let [lng] = center;
-      const [, lat] = center;
+    // Each plan continues from where the last one ends. Longitudes are not
+    // wrapped at ±180°, so the native animation never takes the long way round
+    // when it crosses the date line.
+    const run = (start: [number, number], fromStop: boolean) => {
+      let [lng] = start;
+      const [, lat] = start;
       let delay = 0;
-      const plan = rotationPlan();
-      plan.forEach((segment, i) => {
-        const target = westOf(lng, segment.degrees);
-        lng = target;
+      for (const segment of rotationPlan(fromStop)) {
+        lng -= segment.degrees;
+        const target = lng;
         timers.current.push(
           setTimeout(() => {
             if (cancelled) return;
@@ -54,19 +54,30 @@ export function useAutoRotation({ cameraRef, getCenter, allowed, lastInteraction
               animationMode: 'linearTo',
               animationDuration: segment.durationMs,
             });
-            // When the long segment ends, start again from wherever the camera is.
-            if (i === plan.length - 1) {
-              timers.current.push(setTimeout(() => void runPlan(), segment.durationMs));
-            }
           }, delay),
         );
         delay += segment.durationMs;
-      });
+      }
+      timers.current.push(
+        setTimeout(() => {
+          if (!cancelled) run([lng, lat], false);
+        }, delay),
+      );
+    };
+
+    const begin = async () => {
+      let center: [number, number] | null = null;
+      try {
+        center = await getCenter();
+      } catch {
+        center = null;
+      }
+      if (!cancelled && center) run(center, true);
     };
 
     const idleFor = Date.now() - lastInteractionAt;
     timers.current.push(
-      setTimeout(() => void runPlan(), Math.max(0, motion.autoRotateResumeDelay - idleFor)),
+      setTimeout(() => void begin(), Math.max(0, motion.autoRotateResumeDelay - idleFor)),
     );
 
     return () => {

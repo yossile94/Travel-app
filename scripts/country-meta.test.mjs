@@ -51,6 +51,13 @@ describe('globe card data', () => {
     }
   });
 
+  it('frames the mainland, not overseas territories, so the camera zooms in', () => {
+    // zoomForSpan(span) > 3 needs span < 123 / 2^3 ≈ 15.4 (apps/mobile/src/features/globe/camera.ts)
+    for (const adm0 of ['FRA', 'NLD', 'NOR', 'DNK', 'PRT', 'ESP', 'GBR']) {
+      assert.ok(meta[adm0].span < 15.4, `${adm0} span ${meta[adm0].span}`);
+    }
+  });
+
   it('measures countries that cross the antimeridian the short way round', () => {
     assert.ok(meta.RUS.span < 100, `Russia ${meta.RUS.span}`);
     assert.ok(meta.FJI.span < 15, `Fiji ${meta.FJI.span}`);

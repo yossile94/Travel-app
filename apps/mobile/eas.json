@@ -13,7 +13,12 @@
     "preview": {
       "distribution": "internal",
       "environment": "preview",
+      "env": { "EXPO_PUBLIC_PERF_LOG": "1" },
       "android": { "buildType": "apk" }
+    },
+    "e2e": {
+      "extends": "preview",
+      "env": { "EXPO_PUBLIC_PERF_LOG": "1", "EXPO_PUBLIC_E2E": "1" }
     },
     "production": {
       "environment": "production",

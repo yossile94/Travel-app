@@ -29,18 +29,29 @@ const STUB_WIDTH = 108;
 const NOTCH_RADIUS = 11;
 const CORNER_RADIUS = 18;
 const DECELERATE = Easing.bezier(0.05, 0.7, 0.1, 1);
+/** Space between the card and the bottom inset (Android navigation bar). */
+export const CARD_GAP = 16;
 
 interface Props {
   country: CountryInfo;
   colorScheme: ColorScheme;
   reduceMotion: boolean;
+  /** Safe-area bottom inset, so the card sits above Android's navigation bar. */
+  bottomInset: number;
   onClose: () => void;
   /** Reports the card's height so the camera can lift the globe above it. */
   onHeight?: (height: number) => void;
 }
 
 /** The country card from design direction C: a boarding pass (sprint 0 AC-4). */
-export function BoardingPassCard({ country, colorScheme, reduceMotion, onClose, onHeight }: Props) {
+export function BoardingPassCard({
+  country,
+  colorScheme,
+  reduceMotion,
+  bottomInset,
+  onClose,
+  onHeight,
+}: Props) {
   const { t } = useTranslation();
   const palette = colors[colorScheme];
   const dark = colorScheme === 'dark';
@@ -56,10 +67,14 @@ export function BoardingPassCard({ country, colorScheme, reduceMotion, onClose, 
       }),
     );
   }, [progress, reduceMotion]);
+  // Hidden until measured, so the first frame doesn't flash in place before sliding up.
   const enter = useAnimatedStyle(() =>
     reduceMotion
       ? { opacity: progress.value }
-      : { transform: [{ translateY: (1 - progress.value) * (size.height + 40) }] },
+      : {
+          opacity: size.height > 0 ? 1 : 0,
+          transform: [{ translateY: (1 - progress.value) * (size.height + 40) }],
+        },
   );
 
   const onLayout = (event: LayoutChangeEvent) => {
@@ -71,7 +86,11 @@ export function BoardingPassCard({ country, colorScheme, reduceMotion, onClose, 
   const notchX = I18nManager.isRTL ? STUB_WIDTH : size.width - STUB_WIDTH;
 
   return (
-    <Animated.View style={[styles.card, enter]} onLayout={onLayout} testID="country-card">
+    <Animated.View
+      style={[styles.card, { bottom: bottomInset + CARD_GAP }, enter]}
+      onLayout={onLayout}
+      testID="country-card"
+    >
       {size.width > 0 && (
         <Svg width={size.width} height={size.height} style={StyleSheet.absoluteFill}>
           <Path
@@ -198,7 +217,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     start: 12,
     end: 12,
-    bottom: 30,
     minHeight: 168,
     elevation: 12,
     shadowColor: '#000',
