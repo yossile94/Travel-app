@@ -21,6 +21,24 @@ const file = join(
 const bytes = readFileSync(file);
 const { features } = JSON.parse(bytes.toString('utf8'));
 
+function inRing([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function contains(geometry, point) {
+  if (!geometry) return false;
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+  return polygons.some(
+    ([outer, ...holes]) => inRing(point, outer) && !holes.some((hole) => inRing(point, hole)),
+  );
+}
+
 // The main shape for each code (overseas territories come after their parent).
 const byCode = new Map();
 for (const f of features) {
@@ -75,6 +93,52 @@ describe('bundled country borders', () => {
 
   it('uses the Israeli point of view', () => {
     assert.equal(byCode.get('IL')?.properties.nameHe, 'ישראל');
+  });
+
+  describe('border policy (Yossi, 2026-10-22)', () => {
+    const israel = byCode.get('IL');
+    const gaza = features.find((f) => f.properties.adm0 === 'GAZ');
+    const areaAt = (point) => features.find((f) => contains(f.geometry, point))?.properties.adm0;
+
+    it('shows Judea and Samaria, all of Jerusalem and the Golan as Israel', () => {
+      for (const [place, point] of Object.entries({
+        'Tel Aviv': [34.78, 32.08],
+        'Jerusalem, Old City': [35.234, 31.777],
+        Ramallah: [35.2, 31.9],
+        Hebron: [35.1, 31.53],
+        Ariel: [35.17, 32.1],
+        Katzrin: [35.69, 32.99],
+        Eilat: [34.95, 29.56],
+      })) {
+        assert.equal(areaAt(point), 'ISR', place);
+      }
+    });
+
+    it('draws Israel as one shape, with no seam where Judea and Samaria were joined', () => {
+      const polygons =
+        israel.geometry.type === 'Polygon'
+          ? [israel.geometry.coordinates]
+          : israel.geometry.coordinates;
+      assert.equal(polygons.length, 1);
+      assert.equal(polygons[0].length, 1, 'no holes');
+    });
+
+    it('shows the Gaza Strip as its own area, named in Hebrew and English', () => {
+      assert.equal(areaAt([34.46, 31.5]), 'GAZ');
+      assert.equal(gaza?.properties.nameHe, 'רצועת עזה');
+      assert.equal(gaza?.properties.nameEn, 'Gaza Strip');
+    });
+
+    it('does not offer the Gaza Strip as a destination', () => {
+      assert.equal(gaza?.properties.code, null);
+    });
+
+    it('no longer contains the source "Palestine" feature', () => {
+      assert.equal(
+        features.some((f) => f.properties.adm0 === 'PSX'),
+        false,
+      );
+    });
   });
 
   for (const [code, nameHe] of [

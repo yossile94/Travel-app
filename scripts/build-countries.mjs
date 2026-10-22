@@ -15,7 +15,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { feature } from 'topojson-client';
+import { feature, merge } from 'topojson-client';
 import { topology } from 'topojson-server';
 import { presimplify, quantile, simplify, sphericalTriangleArea } from 'topojson-simplify';
 
@@ -83,6 +83,57 @@ function slimProperties(props) {
   };
 }
 
+/**
+ * Product decision (Yossi, 2026-10-22; spec 5.1): Judea and Samaria are shown
+ * as part of Israel, and the Gaza Strip as its own area named "רצועת עזה".
+ * In the source both are one feature (ADM0_A3 "PSX") with two polygons. This
+ * splits it: the Judea and Samaria polygon is tagged to merge into Israel
+ * after simplification (shared border removed, no seam), and Gaza becomes a
+ * separate feature without an ISO code, so it is not a selectable destination.
+ */
+function applyBorderPolicy(features) {
+  const psx = features.find((f) => f.properties.ADM0_A3 === 'PSX');
+  const israel = features.find((f) => f.properties.ADM0_A3 === 'ISR');
+  if (
+    !psx ||
+    !israel ||
+    psx.geometry.type !== 'MultiPolygon' ||
+    psx.geometry.coordinates.length !== 2
+  ) {
+    throw new Error('Unexpected PSX/ISR structure in the source; review the border policy.');
+  }
+
+  // Gaza lies entirely west of 34.7°E; Judea and Samaria entirely east of it.
+  const isGaza = (polygon) => polygon[0].every(([lng]) => lng < 34.7);
+  const gaza = psx.geometry.coordinates.filter(isGaza);
+  const judeaSamaria = psx.geometry.coordinates.filter((polygon) => !isGaza(polygon));
+  if (gaza.length !== 1 || judeaSamaria.length !== 1) {
+    throw new Error('Could not tell Gaza from Judea and Samaria in the PSX feature.');
+  }
+
+  return features.flatMap((f) => {
+    if (f !== psx) return [{ ...f, properties: slimProperties(f.properties) }];
+    return [
+      {
+        type: 'Feature',
+        properties: { ...slimProperties(israel.properties), mergeInto: 'ISR' },
+        geometry: { type: 'Polygon', coordinates: judeaSamaria[0] },
+      },
+      {
+        type: 'Feature',
+        properties: {
+          code: null,
+          adm0: 'GAZ',
+          nameEn: 'Gaza Strip',
+          nameHe: 'רצועת עזה',
+          label: [34.39, 31.42],
+        },
+        geometry: { type: 'Polygon', coordinates: gaza[0] },
+      },
+    ];
+  });
+}
+
 function round(value) {
   const factor = 10 ** COORDINATE_DECIMALS;
   return Math.round(value * factor) / factor;
@@ -144,21 +195,33 @@ function roundCoordinates(coordinates) {
 async function main() {
   const source = await loadSource();
 
-  const slim = {
-    type: 'FeatureCollection',
-    features: source.features.map((f) => ({
-      type: 'Feature',
-      properties: slimProperties(f.properties),
-      geometry: f.geometry,
-    })),
-  };
+  const prepared = applyBorderPolicy(source.features);
 
-  const topo = presimplify(topology({ countries: slim }, 1e6), sphericalTriangleArea);
+  const topo = presimplify(
+    topology({ countries: { type: 'FeatureCollection', features: prepared } }, 1e6),
+    sphericalTriangleArea,
+  );
   // Without this, a single global threshold erases microstates (Vatican,
   // Monaco, ...) entirely: every one of their triangles is "small".
-  const protectedCount = protectSmallCountries(topo, source.features);
+  const protectedCount = protectSmallCountries(topo, prepared);
   const simplified = simplify(topo, quantile(topo, KEEP_FRACTION));
-  const result = feature(simplified, simplified.objects.countries);
+
+  const geometries = simplified.objects.countries.geometries;
+  const result = {
+    type: 'FeatureCollection',
+    features: geometries
+      .filter((g) => !g.properties.mergeInto)
+      .map((g) => {
+        const partners = geometries.filter((p) => p.properties.mergeInto === g.properties.adm0);
+        if (partners.length === 0) return feature(simplified, g);
+        // merge() unions polygons that share arcs, dropping the shared border.
+        return {
+          type: 'Feature',
+          properties: g.properties,
+          geometry: merge(simplified, [g, ...partners]),
+        };
+      }),
+  };
 
   for (const f of result.features) {
     if (f.geometry) f.geometry.coordinates = roundCoordinates(f.geometry.coordinates);
@@ -188,9 +251,14 @@ async function main() {
   );
 
   // Quality check: how much did simplification change each country's area?
+  const areaBefore = new Map();
+  for (const f of prepared) {
+    const key = f.properties.mergeInto ?? f.properties.adm0;
+    areaBefore.set(key, (areaBefore.get(key) ?? 0) + approximateArea(f.geometry));
+  }
   const drift = result.features
-    .map((f, i) => {
-      const before = approximateArea(source.features[i].geometry);
+    .map((f) => {
+      const before = areaBefore.get(f.properties.adm0) ?? 0;
       const after = approximateArea(f.geometry);
       return { name: f.properties.nameEn, change: before ? Math.abs(after - before) / before : 0 };
     })
