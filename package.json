@@ -13,7 +13,8 @@
   "scripts": {
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "test": "node --test \"scripts/**/*.test.mjs\" && npm run test --workspaces --if-present",
+    "build:countries": "node scripts/build-countries.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test"
@@ -21,5 +22,10 @@
   "allowScripts": {
     "@parcel/watcher": false,
     "unrs-resolver": false
+  },
+  "devDependencies": {
+    "topojson-client": "3.1.0",
+    "topojson-server": "3.0.1",
+    "topojson-simplify": "3.0.3"
   }
 }

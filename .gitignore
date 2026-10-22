@@ -9,6 +9,9 @@ dist/
 build/
 coverage/
 
+# Downloaded source data (scripts/build-countries.mjs)
+.cache/
+
 # OS and editors
 .DS_Store
 Thumbs.db
