@@ -71,12 +71,21 @@ function countryCode(props) {
   return null;
 }
 
+/**
+ * Corrections to Natural Earth's localized names, by ADM0_A3. In v5.1.1 the
+ * Spratly Islands (PGA, ~114–116°E 10°N) carry the names of Wake Island, an
+ * unrelated island in the Pacific.
+ */
+const NAME_FIXES = {
+  PGA: { nameEn: 'Spratly Islands', nameHe: 'איי ספרטלי' },
+};
+
 function slimProperties(props) {
   return {
     code: countryCode(props),
     adm0: props.ADM0_A3,
-    nameEn: props.NAME_EN ?? props.NAME,
-    nameHe: props.NAME_HE ?? null,
+    nameEn: NAME_FIXES[props.ADM0_A3]?.nameEn ?? props.NAME_EN ?? props.NAME,
+    nameHe: NAME_FIXES[props.ADM0_A3]?.nameHe ?? props.NAME_HE ?? null,
     // Natural Earth's label point: inside the country even for odd shapes.
     // Used as the fly-to target and the enlarged tap target for small countries.
     label: [round(props.LABEL_X), round(props.LABEL_Y)],

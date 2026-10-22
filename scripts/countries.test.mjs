@@ -91,6 +91,12 @@ describe('bundled country borders', () => {
     }
   });
 
+  it('names the Spratly Islands correctly (Natural Earth labels them "Wake Island")', () => {
+    const spratly = features.find((f) => f.properties.adm0 === 'PGA');
+    assert.equal(spratly.properties.nameEn, 'Spratly Islands');
+    assert.equal(spratly.properties.nameHe, 'איי ספרטלי');
+  });
+
   it('uses the Israeli point of view', () => {
     assert.equal(byCode.get('IL')?.properties.nameHe, 'ישראל');
   });

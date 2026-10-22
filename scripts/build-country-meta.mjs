@@ -116,11 +116,60 @@ function currencyFor(code) {
   return { code: currency, nameHe, symbol: currencySymbol(currency) };
 }
 
+/**
+ * Areas with less land than this (square degrees, latitude-corrected; ~6,000
+ * km² at the equator) get an enlarged tap target. Measured by land, not by
+ * span, so spread-out archipelagos of tiny islands (Maldives, Kiribati) count.
+ */
+const SMALL_LAND_AREA = 0.5;
+
+/** Ring area on the sphere (equal-area slices), in square degrees at the equator. */
+function ringArea(ring) {
+  const toRad = Math.PI / 180;
+  let sum = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [x1, y1] = ring[j];
+    const [x2, y2] = ring[i];
+    sum += ((x2 - x1) * (Math.sin(y2 * toRad) + Math.sin(y1 * toRad))) / 2;
+  }
+  return Math.abs(sum) / toRad;
+}
+
+function landArea(geometry) {
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+  return polygons.reduce(
+    (total, [outer, ...holes]) =>
+      total + ringArea(outer) - holes.reduce((sum, hole) => sum + ringArea(hole), 0),
+    0,
+  );
+}
+
+function allPositions(geometry) {
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+  return polygons.flat(2);
+}
+
+/**
+ * The size of an area in degrees, taking the longitude span across the
+ * shorter side of the antimeridian (Russia, Fiji) and narrowing it by
+ * latitude. Used to choose the fly-to zoom and to find small areas.
+ */
+function spanDegrees(geometry) {
+  const positions = allPositions(geometry);
+  const lats = positions.map(([, lat]) => lat);
+  const lonSpan = (lons) => Math.max(...lons) - Math.min(...lons);
+  const lons = positions.map(([lng]) => lng);
+  const span = Math.min(lonSpan(lons), lonSpan(lons.map((lng) => (lng < 0 ? lng + 360 : lng))));
+  const midLat = (Math.max(...lats) + Math.min(...lats)) / 2;
+  const width = span * Math.cos((midLat * Math.PI) / 180);
+  return Math.round(Math.max(width, Math.max(...lats) - Math.min(...lats)) * 100) / 100;
+}
+
 async function main() {
   const { features } = JSON.parse(await readFile(bordersFile, 'utf8'));
   const meta = {};
 
-  for (const { properties } of features) {
+  for (const { properties, geometry } of features) {
     const { adm0, code } = properties;
     if (!code) continue; // not selectable (e.g. Gaza Strip, military bases)
 
@@ -135,7 +184,14 @@ async function main() {
       throw new Error(`${adm0}: unknown time zone ${zone.timeZone}`);
     }
 
-    const entry = {};
+    const span = spanDegrees(geometry);
+    const entry = {
+      nameHe: properties.nameHe,
+      nameEn: properties.nameEn,
+      label: properties.label,
+      span,
+    };
+    if (landArea(geometry) < SMALL_LAND_AREA) entry.small = true;
     if (zone.timeZone) entry.timeZone = zone.timeZone;
     if (zone.city) entry.city = zone.city;
     if (currency) entry.currency = currency;
@@ -151,6 +207,12 @@ async function main() {
   console.log(`  with time zone: ${entries.filter((e) => e.timeZone).length}`);
   console.log(`  with currency: ${entries.filter((e) => e.currency).length}`);
   console.log(`  with city label: ${entries.filter((e) => e.city).length}`);
+  console.log(
+    `  small (enlarged tap target): ${entries.filter((e) => e.small).length} — ${entries
+      .filter((e) => e.small)
+      .map((e) => e.nameEn)
+      .join(', ')}`,
+  );
 }
 
 main().catch((error) => {

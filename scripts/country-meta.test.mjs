@@ -43,11 +43,32 @@ describe('globe card data', () => {
     }
   });
 
+  it('gives every area its names, a label point and a size for the camera', () => {
+    for (const [adm0, entry] of Object.entries(meta)) {
+      assert.ok(entry.nameHe?.trim() && entry.nameEn?.trim(), `${adm0} names`);
+      assert.equal(entry.label.length, 2, `${adm0} label`);
+      assert.ok(entry.span >= 0 && entry.span < 180, `${adm0} span ${entry.span}`);
+    }
+  });
+
+  it('measures countries that cross the antimeridian the short way round', () => {
+    assert.ok(meta.RUS.span < 100, `Russia ${meta.RUS.span}`);
+    assert.ok(meta.FJI.span < 15, `Fiji ${meta.FJI.span}`);
+  });
+
+  it('enlarges the tap target of small areas, measured by land not by spread', () => {
+    for (const adm0 of ['VAT', 'MCO', 'SGP', 'MLT', 'LUX', 'MDV', 'KIR']) {
+      assert.equal(meta[adm0].small, true, adm0);
+    }
+    for (const adm0 of ['ISR', 'BEL', 'CHE', 'CYP', 'THA']) {
+      assert.equal(meta[adm0].small, undefined, adm0);
+    }
+  });
+
   it('shows the right data for popular destinations', () => {
-    assert.deepEqual(meta.THA, {
-      timeZone: 'Asia/Bangkok',
-      currency: { code: 'THB', nameHe: 'בהט תאילנדי', symbol: '฿' },
-    });
+    assert.equal(meta.THA.nameHe, 'תאילנד');
+    assert.equal(meta.THA.timeZone, 'Asia/Bangkok');
+    assert.deepEqual(meta.THA.currency, { code: 'THB', nameHe: 'בהט תאילנדי', symbol: '฿' });
     assert.equal(meta.GRC.timeZone, 'Europe/Athens');
     assert.equal(meta.GRC.currency.code, 'EUR');
     assert.equal(meta.ISR.currency.code, 'ILS');
@@ -73,7 +94,8 @@ describe('globe card data', () => {
 
   it('hides time and currency for uninhabited areas', () => {
     for (const adm0 of ['ATA', 'CSI', 'ATC', 'CLP', 'HMD', 'UMI']) {
-      assert.deepEqual(meta[adm0], {}, adm0);
+      assert.equal(meta[adm0].timeZone, undefined, adm0);
+      assert.equal(meta[adm0].currency, undefined, adm0);
     }
   });
 
