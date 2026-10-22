@@ -43,7 +43,8 @@
             "../../node_modules/@expo-google-fonts/rubik/700Bold/Rubik_700Bold.ttf"
           ]
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

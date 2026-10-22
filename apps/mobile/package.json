@@ -14,6 +14,7 @@
     "@expo-google-fonts/rubik": "^0.4.2",
     "@rnmapbox/maps": "^10.3.11",
     "expo": "~58.0.17",
+    "expo-asset": "~58.0.18",
     "expo-constants": "~58.0.13",
     "expo-dev-client": "~58.0.14",
     "expo-font": "~58.0.9",

@@ -6,8 +6,8 @@ import {
   type SelectionState,
 } from './selection';
 
-const thailand = { code: 'TH' };
-const japan = { code: 'JP' };
+const thailand = { adm0: 'THA' };
+const japan = { adm0: 'JPN' };
 
 function run(...events: SelectionEvent[]): SelectionState {
   return events.reduce(selectionReducer, initialSelection);

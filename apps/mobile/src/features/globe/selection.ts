@@ -8,8 +8,8 @@
  */
 
 export interface SelectedCountry {
-  /** ISO 3166-1 alpha-2 code, e.g. "TH". */
-  code: string;
+  /** Natural Earth adm0 code, unique per area (e.g. "THA"). */
+  adm0: string;
 }
 
 export interface SelectionState {
@@ -31,7 +31,7 @@ export function selectionReducer(state: SelectionState, event: SelectionEvent): 
     case 'countryTapped':
       // Tapping the country that is already selected and settled does nothing;
       // anything else (including a different country mid-flight) starts a new flight.
-      if (state.selected?.code === event.country.code && !state.flying) return state;
+      if (state.selected?.adm0 === event.country.adm0 && !state.flying) return state;
       return { selected: event.country, flying: true };
     case 'oceanTapped':
     case 'backPressed':
