@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import '@/i18n';
 
-import { BoardingPassCard, isolateLtr } from './BoardingPassCard';
+import { BoardingPassCard, isolateLtr, isolateOwn } from './BoardingPassCard';
 import { countryByAdm0 } from './countryData';
 
 // 20:53 in Israel on 22 Oct 2026 (Israel on summer time, UTC+3).
@@ -52,7 +52,17 @@ describe('BoardingPassCard', () => {
   it('shows the currency with its Hebrew name, symbol and code (AC-4)', async () => {
     await renderCard('THA');
     expect(screen.getByText('בהט תאילנדי')).toBeOnTheScreen();
-    expect(screen.getByText(isolateLtr('฿ · THB'))).toBeOnTheScreen();
+    expect(screen.getByText(isolateLtr(`${isolateOwn('฿')} · THB`))).toBeOnTheScreen();
+  });
+
+  it('shows the local symbol where English has none, in its own direction', async () => {
+    await renderCard('BHR');
+    expect(screen.getByText(isolateLtr(`${isolateOwn('د.ب.')} · BHD`))).toBeOnTheScreen();
+  });
+
+  it('shows the code alone where there is no other symbol (Switzerland)', async () => {
+    await renderCard('CHE');
+    expect(screen.getByText(isolateLtr('CHF'))).toBeOnTheScreen();
   });
 
   it('hides time and currency where there are none (Antarctica)', async () => {

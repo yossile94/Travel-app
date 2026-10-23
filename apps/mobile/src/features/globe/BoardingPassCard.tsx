@@ -144,7 +144,7 @@ export function BoardingPassCard({
                   {isolateLtr(
                     country.currency.symbol === country.currency.code
                       ? country.currency.code
-                      : `${country.currency.symbol} · ${country.currency.code}`,
+                      : `${isolateOwn(country.currency.symbol)} · ${country.currency.code}`,
                   )}
                 </Text>
               </View>
@@ -205,6 +205,14 @@ export function BoardingPassCard({
  */
 export function isolateLtr(text: string): string {
   return `⁦${text}⁩`;
+}
+
+/**
+ * Text in its own direction, taken from its first strong character: an Arabic
+ * symbol inside the LTR line keeps its trailing period on the left (.د.ب).
+ */
+export function isolateOwn(text: string): string {
+  return `⁨${text}⁩`;
 }
 
 function LocalTime({ country, colorScheme }: { country: CountryInfo; colorScheme: ColorScheme }) {
