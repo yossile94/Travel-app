@@ -3,7 +3,7 @@
  * that records camera moves and answers hit-test queries. Rendering and
  * gestures themselves are checked on the device (Maestro).
  */
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { BackHandler } from 'react-native';
 
 import '@/i18n';
@@ -20,7 +20,7 @@ const mockMap = {
   setCamera: jest.fn(),
   onPress: null as null | ((feature: unknown) => Promise<void>),
 };
-let mockReduceMotion = false;
+let mockReduceMotion: boolean | null = false;
 
 jest.mock('@rnmapbox/maps', () => {
   const React = jest.requireActual<typeof import('react')>('react');
@@ -97,8 +97,22 @@ async function tap(hits: Hits) {
   });
 }
 
-function lastCameraMove() {
-  return mockMap.setCamera.mock.calls.at(-1)?.[0];
+interface CameraMove {
+  animationMode?: string;
+  animationDuration?: number;
+  centerCoordinate?: number[];
+  zoomLevel?: number;
+  padding?: Record<string, number>;
+}
+
+function cameraMoves(): CameraMove[] {
+  return mockMap.setCamera.mock.calls.map(([move]) => move as CameraMove);
+}
+
+function lastMoveWhere(match: (move: CameraMove) => boolean): CameraMove {
+  const move = cameraMoves().filter(match).at(-1);
+  if (!move) throw new Error('no matching camera move');
+  return move;
 }
 
 beforeEach(() => {
@@ -115,12 +129,12 @@ describe('GlobeScreen', () => {
     await tap(BANGKOK_TAP);
 
     expect(screen.getByText('תאילנד')).toBeOnTheScreen();
-    const move = lastCameraMove();
-    expect(move.animationMode).toBe('flyTo');
+    const move = lastMoveWhere((m) => m.animationMode === 'flyTo');
+    expect(move).toBeDefined();
     expect(move.animationDuration).toBeGreaterThanOrEqual(1200);
     expect(move.animationDuration).toBeLessThanOrEqual(1800);
     expect(move.centerCoordinate).toEqual([101.0732, 15.4597]);
-    expect(move.padding.paddingBottom).toBeGreaterThan(0);
+    expect(move.padding?.paddingBottom).toBeGreaterThan(0);
   });
 
   it('closes the card on the sea and returns to the whole globe', async () => {
@@ -129,8 +143,8 @@ describe('GlobeScreen', () => {
     await tap({});
 
     expect(screen.queryByTestId('country-card')).toBeNull();
-    const move = lastCameraMove();
-    expect(move.zoomLevel).toBe(HOME_ZOOM);
+    const move = lastMoveWhere((m) => m.zoomLevel === HOME_ZOOM);
+    expect(move).toBeDefined();
     expect(move.padding).toEqual({
       paddingTop: 0,
       paddingBottom: 0,
@@ -143,7 +157,7 @@ describe('GlobeScreen', () => {
     await render(<GlobeScreen />);
     await tap({ country: { adm0: 'GAZ', code: null } });
     expect(screen.queryByTestId('country-card')).toBeNull();
-    expect(mockMap.setCamera).not.toHaveBeenCalled();
+    expect(cameraMoves().some((m) => m.animationMode === 'flyTo')).toBe(false);
   });
 
   it('selects Italy, not the Vatican, for a tap in Rome (AC-5)', async () => {
@@ -196,6 +210,37 @@ describe('GlobeScreen', () => {
     await act(async () => jest.advanceTimersByTime(30_000));
     const rotations = mockMap.setCamera.mock.calls.filter(([m]) => m.animationMode === 'linearTo');
     expect(rotations).toHaveLength(0);
+  });
+
+  it('resumes rotation 5 s after a drag ends, even with no fling (AC-2)', async () => {
+    await render(<GlobeScreen />);
+    const surface = screen.getByTestId('globe-touch-surface');
+    await act(async () => jest.advanceTimersByTime(1));
+    mockMap.setCamera.mockClear();
+
+    await fireEvent(surface, 'touchStart', { nativeEvent: { touches: [{}] } });
+    await act(async () => jest.advanceTimersByTime(10_000)); // finger held still
+    expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(false);
+
+    await fireEvent(surface, 'touchEnd', { nativeEvent: { touches: [] } });
+    await act(async () => jest.advanceTimersByTime(4_000));
+    expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(false);
+    await act(async () => {
+      jest.advanceTimersByTime(1_100);
+      await Promise.resolve();
+    });
+    await act(async () => jest.advanceTimersByTime(10));
+    expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(true);
+  });
+
+  it('does not start rotating before the reduce-motion setting is known (AC-6)', async () => {
+    mockReduceMotion = null;
+    await render(<GlobeScreen />);
+    await act(async () => {
+      jest.advanceTimersByTime(8_000);
+      await Promise.resolve();
+    });
+    expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(false);
   });
 
   it('uses the layer ids the tap logic queries', () => {

@@ -8,7 +8,7 @@ import {
   RasterSource,
   ShapeSource,
 } from '@rnmapbox/maps';
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { globe, highlightColor, motion } from '@/theme/tokens';
 
@@ -178,14 +178,20 @@ function useHighlight(target: string | null, reduceMotion: boolean) {
     visible: false,
   });
 
+  // Whether a highlight is on screen right now; read when the target changes.
+  const showing = useRef(false);
+  useEffect(() => {
+    showing.current = state.visible && state.adm0 !== null;
+  }, [state]);
+
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
     const later = (ms: number, fn: () => void) => timers.push(setTimeout(fn, ms));
 
-    // Fade out whatever is showing (a no-op when nothing is).
+    // Fade out whatever is showing; with nothing showing, don't wait for it.
+    const fadeOut = showing.current && !reduceMotion ? motion.highlight : 0;
     later(0, () => setState((s) => ({ ...s, visible: false })));
     if (target) {
-      const fadeOut = reduceMotion ? 0 : motion.highlight;
       later(fadeOut, () => setState({ adm0: target, visible: false }));
       // One more tick so the native layer has the new filter before it fades in.
       later(fadeOut + 16, () => setState({ adm0: target, visible: true }));

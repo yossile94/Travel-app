@@ -1,8 +1,8 @@
 import { resolveTap } from './resolveTap';
 
-const italy = { adm0: 'ITA', code: 'IT', small: false };
-const gaza = { adm0: 'GAZ', code: null, small: false };
-const malta = { adm0: 'MLT', code: 'MT', small: true };
+const italy = { adm0: 'ITA', code: 'IT' };
+const gaza = { adm0: 'GAZ', code: null };
+const malta = { adm0: 'MLT', code: 'MT' };
 
 describe('resolveTap', () => {
   it('selects the country under the finger', () => {

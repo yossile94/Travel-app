@@ -14,7 +14,7 @@ export interface TapHits {
   /** adm0 of a small area whose tight target (3–10 pt, growing with zoom) contains the tap. */
   smallTight?: string;
   /** The country polygon under the tap, if any. */
-  country?: { adm0: string; code: string | null; small: boolean };
+  country?: { adm0: string; code: string | null };
 }
 
 export type TapResult =

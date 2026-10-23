@@ -1,7 +1,15 @@
 import { Camera, MapView } from '@rnmapbox/maps';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useReducer, useRef, useState, type ComponentRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type ComponentRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
@@ -10,6 +18,7 @@ import {
   Text,
   View,
   useColorScheme,
+  type GestureResponderEvent,
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +40,8 @@ import { useReduceMotion } from './useReduceMotion';
 /** An empty style: every layer is ours, so nothing depends on a remote style's layer ids. */
 const STYLE_JSON = JSON.stringify({ version: 8, sources: {}, layers: [] });
 
+const DEFAULT_CAMERA = { centerCoordinate: HOME_CENTER, zoomLevel: HOME_ZOOM };
+
 /** Card height before it has been measured, for the first flight's camera padding. */
 const ESTIMATED_CARD_HEIGHT = 184;
 
@@ -51,7 +62,6 @@ export function GlobeScreen() {
   const mapRef = useRef<MapView>(null);
   const cameraRef = useRef<CameraHandle>(null);
   const cardHeight = useRef(ESTIMATED_CARD_HEIGHT);
-  const touches = useRef(0);
 
   const [selection, dispatch] = useReducer(selectionReducer, initialSelection);
   const [fingerDown, setFingerDown] = useState(false);
@@ -74,12 +84,18 @@ export function GlobeScreen() {
 
   // AC-2: turn slowly while idle; never while a card is open, a finger or a
   // flight is on the globe, or the device asks for reduced motion (AC-6).
-  useAutoRotation({
-    cameraRef,
-    getCenter,
-    allowed: !E2E && !reduceMotion && !selectedAdm0 && !selection.flying && !fingerDown,
-    lastInteractionAt,
-  });
+  // `reduceMotion` is null until the setting is known, so the globe doesn't
+  // start a ramp it would have to stop a moment later.
+  const rotationAllowed =
+    !E2E && reduceMotion === false && !selectedAdm0 && !selection.flying && !fingerDown;
+  useAutoRotation({ cameraRef, getCenter, allowed: rotationAllowed, lastInteractionAt });
+
+  /** Cancels a native rotation segment in flight (a zero-length move stops every animator). */
+  const stopRotation = useCallback(() => {
+    void getCenter().then((center) => {
+      if (center) cameraRef.current?.setCamera({ centerCoordinate: center, animationDuration: 0 });
+    });
+  }, [getCenter]);
 
   // E2E builds only: travelapp://?lng=12&lat=42.8&zoom=4 puts the camera at an
   // exact view, so Maestro can tap a known point on screen.
@@ -101,27 +117,33 @@ export function GlobeScreen() {
 
   // AC-6: switching "Remove animations" on mid-turn stops the native animation
   // (a zero-length camera move cancels it), not just the next segment.
+  // With a card open there is no rotation to stop, and a jump would cut a flight short.
   useEffect(() => {
-    if (!reduceMotion) return;
-    void getCenter().then((center) => {
-      if (center) cameraRef.current?.setCamera({ centerCoordinate: center, animationDuration: 0 });
-    });
-  }, [reduceMotion, getCenter]);
+    if (reduceMotion && !selectedAdm0) stopRotation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduceMotion, stopRotation]);
 
   // Touches are tracked on the view around the map: Mapbox on Android only
   // reports a gesture's end when the camera moves afterwards, so a drag that
-  // stops before lifting the finger would leave rotation off for good.
-  const onTouchStart = useCallback(() => {
-    touches.current += 1;
-    setFingerDown(true);
+  // stops before lifting the finger would leave rotation off for good. The
+  // count comes from each event rather than a running tally, so a lost
+  // end/cancel event can't leave it stuck.
+  const onTouch = useCallback((event: GestureResponderEvent) => {
+    const down = event.nativeEvent.touches.length > 0;
+    setFingerDown(down);
+    if (!down) setLastInteractionAt(Date.now());
   }, []);
-  const onTouchEnd = useCallback(() => {
-    touches.current = Math.max(0, touches.current - 1);
-    if (touches.current === 0) {
-      setFingerDown(false);
-      setLastInteractionAt(Date.now());
-    }
+  // A cancel means the gesture ended for us; the finger may still be on the
+  // glass, but no end event will follow, so treat it as lifted.
+  const onTouchCancel = useCallback(() => {
+    setFingerDown(false);
+    setLastInteractionAt(Date.now());
   }, []);
+
+  const rotationAllowedRef = useRef(rotationAllowed);
+  useEffect(() => {
+    rotationAllowedRef.current = rotationAllowed;
+  }, [rotationAllowed]);
 
   // AC-6: with reduced motion the camera jumps behind a quick fade instead of flying.
   const veil = useSharedValue(0);
@@ -211,51 +233,54 @@ export function GlobeScreen() {
     return () => subscription.remove();
   }, [selection]);
 
-  const onPress = useCallback(async (feature: PressFeature) => {
-    const map = mapRef.current;
-    if (!map) return;
-    const point: [number, number] = [
-      feature.properties.screenPointX,
-      feature.properties.screenPointY,
-    ];
-    const firstAdm0 = async (layer: string) => {
-      const result = await map.queryRenderedFeaturesAtPoint(point, [], [layer]);
-      return result?.features[0]?.properties as { adm0?: string; code?: string | null } | undefined;
-    };
+  const onPress = useCallback(
+    async (feature: PressFeature) => {
+      const map = mapRef.current;
+      if (!map) return;
+      // A tap doesn't move the camera, so Mapbox doesn't cancel a running
+      // rotation segment by itself; stop it so the globe holds still.
+      if (rotationAllowedRef.current) stopRotation();
+      const point: [number, number] = [
+        feature.properties.screenPointX,
+        feature.properties.screenPointY,
+      ];
+      const firstAdm0 = async (layer: string) => {
+        const result = await map.queryRenderedFeaturesAtPoint(point, [], [layer]);
+        return result?.features[0]?.properties as
+          { adm0?: string; code?: string | null } | undefined;
+      };
 
-    const [wide, tight, country] = await Promise.all([
-      firstAdm0(LAYER.smallHitWide),
-      firstAdm0(LAYER.smallHitTight),
-      firstAdm0(LAYER.countriesHit),
-    ]);
-    const hits: TapHits = {
-      smallWide: wide?.adm0,
-      smallTight: tight?.adm0,
-      country: country?.adm0
-        ? {
-            adm0: country.adm0,
-            code: country.code ?? null,
-            small: Boolean(countryByAdm0(country.adm0)?.small),
-          }
-        : undefined,
-    };
+      const [wide, tight, country] = await Promise.all([
+        firstAdm0(LAYER.smallHitWide),
+        firstAdm0(LAYER.smallHitTight),
+        firstAdm0(LAYER.countriesHit),
+      ]);
+      const hits: TapHits = {
+        smallWide: wide?.adm0,
+        smallTight: tight?.adm0,
+        country: country?.adm0 ? { adm0: country.adm0, code: country.code ?? null } : undefined,
+      };
 
-    const result = resolveTap(hits);
-    if (result.type === 'select' && countryByAdm0(result.adm0)) {
-      dispatch({ type: 'countryTapped', country: { adm0: result.adm0 } });
-    } else if (result.type === 'ocean') {
-      dispatch({ type: 'oceanTapped' });
-    }
-  }, []);
+      const result = resolveTap(hits);
+      if (result.type === 'select' && countryByAdm0(result.adm0)) {
+        dispatch({ type: 'countryTapped', country: { adm0: result.adm0 } });
+      } else if (result.type === 'ocean') {
+        dispatch({ type: 'oceanTapped' });
+      }
+    },
+    [stopRotation],
+  );
 
-  // AC-1: log once, after the borders are on the map, not before.
+  // AC-1: the map mounts once the borders file is ready (a fast local copy),
+  // so Mapbox's "map loaded" event — style, visible tiles and the borders
+  // drawn — is the end point. It fires once. (onDidFinishRenderingMapFully is
+  // never sent on Android in @rnmapbox/maps 10.3.)
   useEffect(markGlobeMounted, []);
-  const loggedReady = useRef(false);
-  const onFullyRendered = useCallback(() => {
-    if (loggedReady.current || !countries.url) return;
-    loggedReady.current = true;
-    logGlobeReady();
-  }, [countries.url]);
+  const mapReady = Boolean(countries.url || countries.error);
+  const onMapLoaded = useCallback(() => logGlobeReady(), []);
+
+  const logoPosition = useMemo(() => ({ top: insets.top + 8, left: 8 }), [insets.top]);
+  const attributionPosition = useMemo(() => ({ top: insets.top + 8, left: 92 }), [insets.top]);
 
   useEffect(() => {
     if (countries.error) console.error('[globe] could not load country borders', countries.error);
@@ -276,37 +301,40 @@ export function GlobeScreen() {
       <StatusBar style="light" />
       <View
         style={StyleSheet.absoluteFill}
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
+        onTouchStart={onTouch}
+        onTouchEnd={onTouch}
+        onTouchCancel={onTouchCancel}
+        testID="globe-touch-surface"
       >
-        <MapView
-          ref={mapRef}
-          style={StyleSheet.absoluteFill}
-          projection="globe"
-          styleJSON={STYLE_JSON}
-          onPress={onPress}
-          onDidFinishRenderingMapFully={onFullyRendered}
-          scaleBarEnabled={false}
-          compassEnabled={false}
-          pitchEnabled={false}
-          rotateEnabled={false}
-          logoPosition={{ top: insets.top + 8, left: 8 }}
-          attributionPosition={{ top: insets.top + 8, left: 92 }}
-          accessibilityLabel={t('globe.a11yLabel')}
-        >
-          <Camera
-            ref={cameraRef}
-            defaultSettings={{ centerCoordinate: HOME_CENTER, zoomLevel: HOME_ZOOM }}
-            minZoomLevel={0.8}
-            maxZoomLevel={8}
-          />
-          <GlobeLayers
-            countriesUrl={countries.url}
-            highlightedAdm0={selectedAdm0}
-            reduceMotion={reduceMotion}
-          />
-        </MapView>
+        {mapReady && (
+          <MapView
+            ref={mapRef}
+            style={StyleSheet.absoluteFill}
+            projection="globe"
+            styleJSON={STYLE_JSON}
+            onPress={onPress}
+            onDidFinishLoadingMap={onMapLoaded}
+            scaleBarEnabled={false}
+            compassEnabled={false}
+            pitchEnabled={false}
+            rotateEnabled={false}
+            logoPosition={logoPosition}
+            attributionPosition={attributionPosition}
+            accessibilityLabel={t('globe.a11yLabel')}
+          >
+            <Camera
+              ref={cameraRef}
+              defaultSettings={DEFAULT_CAMERA}
+              minZoomLevel={0.8}
+              maxZoomLevel={8}
+            />
+            <GlobeLayers
+              countriesUrl={countries.url}
+              highlightedAdm0={selectedAdm0}
+              reduceMotion={reduceMotion === true}
+            />
+          </MapView>
+        )}
       </View>
 
       <Animated.View
@@ -325,7 +353,7 @@ export function GlobeScreen() {
           key={selectedCountry.adm0}
           country={selectedCountry}
           colorScheme={colorScheme}
-          reduceMotion={reduceMotion}
+          reduceMotion={reduceMotion === true}
           bottomInset={insets.bottom}
           onClose={() => dispatch({ type: 'backPressed' })}
           onHeight={(height) => {
