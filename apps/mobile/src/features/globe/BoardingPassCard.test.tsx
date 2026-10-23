@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { withTiming } from 'react-native-reanimated';
 
 import '@/i18n';
+import { motion } from '@/theme/tokens';
 
 import { BoardingPassCard, isolateLtr, isolateOwn } from './BoardingPassCard';
 import { countryByAdm0 } from './countryData';
@@ -53,6 +55,15 @@ describe('BoardingPassCard', () => {
     await renderCard('THA');
     expect(screen.getByText('בהט תאילנדי')).toBeOnTheScreen();
     expect(screen.getByText(isolateLtr(`${isolateOwn('฿')} · THB`))).toBeOnTheScreen();
+  });
+
+  it('fades in with reduced motion, even though Reanimated would skip it (AC-6)', async () => {
+    jest.mocked(withTiming).mockClear();
+    await renderCard('THA');
+    expect(withTiming).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ duration: motion.short, reduceMotion: 'never' }),
+    );
   });
 
   it('shows the local symbol where English has none, in its own direction', async () => {

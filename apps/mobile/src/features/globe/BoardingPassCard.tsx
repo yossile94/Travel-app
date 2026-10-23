@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Animated, {
   Easing,
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -58,13 +59,17 @@ export function BoardingPassCard({
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   // Slide up from below (or fade, with reduced motion) when the card appears.
+  // The fade is the reduced-motion version, so it runs even then: Reanimated's
+  // default (ReduceMotion.System) would skip it and the card would pop in.
   const progress = useSharedValue(0);
   useEffect(() => {
     progress.set(
-      withTiming(1, {
-        duration: reduceMotion ? motion.short : motion.sheet,
-        easing: reduceMotion ? Easing.linear : DECELERATE,
-      }),
+      withTiming(
+        1,
+        reduceMotion
+          ? { duration: motion.short, easing: Easing.linear, reduceMotion: ReduceMotion.Never }
+          : { duration: motion.sheet, easing: DECELERATE },
+      ),
     );
   }, [progress, reduceMotion]);
   // Hidden until measured, so the first frame doesn't flash in place before sliding up.
