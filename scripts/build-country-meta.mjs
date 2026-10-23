@@ -18,16 +18,16 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import ct from 'countries-and-timezones';
+import countryToCurrency from 'country-to-currency';
 
 // Currency symbols and Hebrew names come from Node's CLDR data; older data
 // (Node 22) gives other fallback symbols. Regenerate only with this or newer.
 const MIN_CLDR_MAJOR = 48;
-if (Number.parseInt(process.versions.cldr, 10) < MIN_CLDR_MAJOR) {
+if (!(Number.parseInt(process.versions.cldr ?? '', 10) >= MIN_CLDR_MAJOR)) {
   throw new Error(
-    `CLDR ${process.versions.cldr} is older than ${MIN_CLDR_MAJOR}; use Node 24 LTS.`,
+    `CLDR ${process.versions.cldr ?? '(none)'} is older than ${MIN_CLDR_MAJOR}; use Node 24 LTS.`,
   );
 }
-import countryToCurrency from 'country-to-currency';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const bordersFile = join(root, 'apps', 'mobile', 'assets', 'geo', 'countries.geojson');
