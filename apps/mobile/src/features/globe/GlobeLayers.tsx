@@ -18,7 +18,7 @@ export const LAYER = {
   countriesHit: 'countries-hit',
   /** 22 pt radius: a 44 pt target for small areas, used over the sea (AC-5). */
   smallHitWide: 'small-countries-hit-wide',
-  /** 10 pt radius: the only small-area target that counts over land (see resolveTap). */
+  /** 3–10 pt radius by zoom: the only small-area target that counts over land (see resolveTap). */
   smallHitTight: 'small-countries-hit-tight',
 } as const;
 
@@ -99,7 +99,15 @@ export const GlobeLayers = memo(function GlobeLayers({
 
       <ShapeSource id="small-countries" shape={smallCountryPoints}>
         <CircleLayer id={LAYER.smallHitWide} style={{ circleRadius: 22, circleOpacity: 0 }} />
-        <CircleLayer id={LAYER.smallHitTight} style={{ circleRadius: 10, circleOpacity: 0 }} />
+        {/* Grows with zoom: at the whole-globe view 10 pt is hundreds of km, so a tap
+            in central Italy would select the Vatican; zoomed in, the dot is a fair target. */}
+        <CircleLayer
+          id={LAYER.smallHitTight}
+          style={{
+            circleRadius: ['interpolate', ['linear'], ['zoom'], 1, 3, 4, 6, 6, 10],
+            circleOpacity: 0,
+          }}
+        />
         <CircleLayer id="small-countries-dot" style={highlightStyles.dot} />
       </ShapeSource>
 

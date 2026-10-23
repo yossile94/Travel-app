@@ -1,4 +1,5 @@
 import { Camera, MapView } from '@rnmapbox/maps';
+import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useReducer, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,6 +80,24 @@ export function GlobeScreen() {
     allowed: !E2E && !reduceMotion && !selectedAdm0 && !selection.flying && !fingerDown,
     lastInteractionAt,
   });
+
+  // E2E builds only: travelapp://?lng=12&lat=42.8&zoom=4 puts the camera at an
+  // exact view, so Maestro can tap a known point on screen.
+  const link = Linking.useURL();
+  useEffect(() => {
+    if (!E2E || !link) return;
+    const { queryParams } = Linking.parse(link);
+    const lng = Number(queryParams?.lng);
+    const lat = Number(queryParams?.lat);
+    const zoom = Number(queryParams?.zoom ?? HOME_ZOOM);
+    if (!Number.isFinite(lng) || !Number.isFinite(lat) || !Number.isFinite(zoom)) return;
+    cameraRef.current?.setCamera({
+      centerCoordinate: [lng, lat],
+      zoomLevel: zoom,
+      animationMode: 'none',
+      animationDuration: 0,
+    });
+  }, [link]);
 
   // AC-6: switching "Remove animations" on mid-turn stops the native animation
   // (a zero-length camera move cancels it), not just the next segment.

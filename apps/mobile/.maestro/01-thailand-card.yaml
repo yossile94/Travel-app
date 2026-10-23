@@ -1,0 +1,27 @@
+appId: com.travelapp.companion
+name: Thailand opens a card with local time, difference and currency (AC-4)
+tags: [sprint-0, ac-4]
+---
+- launchApp:
+    clearState: true
+- openLink: travelapp://?lng=101.0732&lat=15.4597&zoom=4
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible:
+      id: country-card
+    timeout: 4000
+- assertVisible: תאילנד
+- assertVisible: Thailand
+# The clock is checked on the device because Hermes, not Node, formats it.
+- assertVisible:
+    id: card-time
+- assertVisible: '.*\d\d:\d\d.*'
+- assertVisible: '.*לפני ישראל'
+- assertVisible: בהט תאילנדי
+- assertVisible: '.*THB.*'
+# Android back closes the card.
+- back
+- assertNotVisible:
+    id: country-card
