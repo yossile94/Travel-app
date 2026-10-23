@@ -120,10 +120,15 @@ export function BoardingPassCard({
           <Text style={[styles.label, { color: palette.textSecondary }]}>
             {t('card.destination')}
           </Text>
-          <Text style={[styles.nameHe, { color: palette.textPrimary }]} accessibilityRole="header">
+          <Text
+            style={[styles.nameHe, styles.clearOfClose, { color: palette.textPrimary }]}
+            accessibilityRole="header"
+          >
             {country.nameHe}
           </Text>
-          <Text style={[styles.nameEn, { color: palette.textSecondary }]}>{country.nameEn}</Text>
+          <Text style={[styles.nameEn, styles.clearOfClose, { color: palette.textSecondary }]}>
+            {country.nameEn}
+          </Text>
 
           <View style={styles.fields}>
             {country.timeZone && <LocalTime country={country} colorScheme={colorScheme} />}
@@ -135,10 +140,12 @@ export function BoardingPassCard({
                 <Text style={[styles.value, { color: palette.textPrimary }]}>
                   {country.currency.nameHe}
                 </Text>
-                <Text style={[styles.sub, styles.ltr, { color: palette.textSecondary }]}>
-                  {country.currency.symbol === country.currency.code
-                    ? country.currency.code
-                    : `${country.currency.symbol} · ${country.currency.code}`}
+                <Text style={[styles.sub, { color: palette.textSecondary }]}>
+                  {isolateLtr(
+                    country.currency.symbol === country.currency.code
+                      ? country.currency.code
+                      : `${country.currency.symbol} · ${country.currency.code}`,
+                  )}
                 </Text>
               </View>
             )}
@@ -191,22 +198,41 @@ export function BoardingPassCard({
   );
 }
 
+/**
+ * Wraps text in Unicode left-to-right isolates (LRI…PDI). Android ignores
+ * writingDirection, so without this "฿ · THB" can be reordered inside the
+ * Hebrew paragraph.
+ */
+export function isolateLtr(text: string): string {
+  return `⁦${text}⁩`;
+}
+
 function LocalTime({ country, colorScheme }: { country: CountryInfo; colorScheme: ColorScheme }) {
   const { t } = useTranslation();
   const palette = colors[colorScheme];
   const now = useMinuteClock();
   const timeZone = country.timeZone!;
 
+  // A runtime that formats dates unexpectedly must hide the field, not crash
+  // the screen (same rule as missing data, AC-4).
+  let clock: string;
+  let difference: string;
+  try {
+    clock = formatClock(zonedClock(timeZone, now));
+    difference = timeDifferenceText(t, describeDifference(differenceFromIsrael(timeZone, now)));
+  } catch (error) {
+    console.warn(`[globe] could not compute local time for ${timeZone}`, error);
+    return null;
+  }
+
   return (
     <View testID="card-time">
       <Text style={[styles.label, { color: palette.textSecondary }]}>
         {country.city ? t('card.localTimeIn', { city: country.city }) : t('card.localTime')}
       </Text>
-      <Text style={[styles.clock, styles.ltr, { color: palette.textPrimary }]}>
-        {formatClock(zonedClock(timeZone, now))}
-      </Text>
+      <Text style={[styles.clock, { color: palette.textPrimary }]}>{isolateLtr(clock)}</Text>
       <Text style={[styles.sub, { color: palette.textSecondary }]} testID="card-time-difference">
-        {timeDifferenceText(t, describeDifference(differenceFromIsrael(timeZone, now)))}
+        {difference}
       </Text>
     </View>
   );
@@ -257,7 +283,8 @@ const styles = StyleSheet.create({
   clock: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 26, fontVariant: ['tabular-nums'] },
   value: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 20, textAlign: 'left' },
   sub: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, textAlign: 'left' },
-  ltr: { writingDirection: 'ltr' },
+  // The 44 pt close button sits at the end of the title row; long names wrap before it.
+  clearOfClose: { paddingEnd: 44 },
   barcode: { marginTop: 'auto' },
   close: {
     position: 'absolute',
