@@ -5,8 +5,10 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { BackHandler } from 'react-native';
+import { withTiming } from 'react-native-reanimated';
 
 import '@/i18n';
+import { motion } from '@/theme/tokens';
 
 import { HOME_ZOOM } from './camera';
 import { GlobeScreen } from './GlobeScreen';
@@ -20,6 +22,8 @@ const mockMap = {
   setCamera: jest.fn(),
   loads: true,
   onPress: null as null | ((feature: unknown) => Promise<void>),
+  /** Last style each circle layer was rendered with, by layer id. */
+  circles: {} as Record<string, { circleRadius?: unknown }>,
 };
 let mockReduceMotion: boolean | null = false;
 
@@ -80,7 +84,10 @@ jest.mock('@rnmapbox/maps', () => {
     ShapeSource: Children,
     FillLayer: Nothing,
     LineLayer: Nothing,
-    CircleLayer: Nothing,
+    CircleLayer: ({ id, style }: { id: string; style: { circleRadius?: unknown } }) => {
+      mockMap.circles[id] = style;
+      return null;
+    },
   };
 });
 jest.mock(
@@ -211,6 +218,37 @@ describe('GlobeScreen', () => {
     const moves = mockMap.setCamera.mock.calls.map(([move]) => move);
     expect(moves.some((m) => m.animationMode === 'flyTo')).toBe(false);
     expect(moves.some((m) => m.animationMode === 'none' && m.zoomLevel)).toBe(true);
+  });
+
+  it('fades the veil even though the system reduces motion (AC-6)', async () => {
+    mockReduceMotion = true;
+    jest.mocked(withTiming).mockClear();
+    await render(<GlobeScreen />);
+    await tap(BANGKOK_TAP);
+    await act(async () => jest.advanceTimersByTime(500));
+
+    // The veil's fades, not the card's own entrance.
+    const fades = jest
+      .mocked(withTiming)
+      .mock.calls.filter(([, config]) =>
+        [motion.reduceFadeOut, motion.reduceFadeIn].some((ms) => ms === config?.duration),
+      );
+    expect(fades.map(([target]) => target)).toEqual([1, 0]);
+    for (const [, config] of fades) expect(config?.reduceMotion).toBe('never');
+  });
+
+  it('shrinks a small island’s dot back when its card closes', async () => {
+    await render(<GlobeScreen />);
+    const enlarged = () =>
+      JSON.stringify(mockMap.circles['small-countries-dot']?.circleRadius).includes('"MDV"');
+
+    await tap({ wide: 'MDV' });
+    await act(async () => jest.advanceTimersByTime(1_000));
+    expect(enlarged()).toBe(true);
+
+    await tap({});
+    await act(async () => jest.advanceTimersByTime(1_000));
+    expect(enlarged()).toBe(false);
   });
 
   it('does not auto-rotate while a card is open (AC-2)', async () => {

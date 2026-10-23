@@ -79,14 +79,37 @@ function isValidTimeZone(timeZone) {
   }
 }
 
-function currencySymbol(code) {
-  return new Intl.NumberFormat('en', {
+function symbolIn(locale, currency) {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: code,
+    currency,
     currencyDisplay: 'narrowSymbol',
   })
     .formatToParts(0)
     .find((part) => part.type === 'currency').value;
+}
+
+/** A real symbol, not the ISO code again (or a look-alike of it) and not an invisible mark. */
+function isSymbol(value, currency) {
+  const visible = value.replace(/[\p{Cf}\s]/gu, '');
+  return visible !== '' && visible.toUpperCase() !== currency && !/^\p{Lu}{3}$/u.test(visible);
+}
+
+/**
+ * English has symbols only for widely traded currencies; for the rest (AED, KES,
+ * PEN…) the symbol locals use comes from the country's own language, then from
+ * English as written there (e.g. en-PG → K). Falls back to the code, which the
+ * card then shows alone (CHF is written "CHF" in Switzerland too).
+ */
+function currencySymbol(currency, countryCode) {
+  const symbol = symbolIn('en', currency);
+  if (isSymbol(symbol, currency)) return symbol;
+  const { language } = new Intl.Locale(`und-${countryCode}`).maximize();
+  for (const locale of [`${language}-${countryCode}`, `en-${countryCode}`]) {
+    const local = symbolIn(locale, currency);
+    if (isSymbol(local, currency)) return local;
+  }
+  return currency;
 }
 
 const hebrewCurrencyNames = new Intl.DisplayNames(['he'], { type: 'currency', fallback: 'none' });
@@ -113,7 +136,7 @@ function currencyFor(code) {
   if (!currency) return null;
   const nameHe = hebrewCurrencyNames.of(currency);
   if (!nameHe) throw new Error(`No Hebrew name for currency ${currency} (${code}).`);
-  return { code: currency, nameHe, symbol: currencySymbol(currency) };
+  return { code: currency, nameHe, symbol: currencySymbol(currency, code) };
 }
 
 /**

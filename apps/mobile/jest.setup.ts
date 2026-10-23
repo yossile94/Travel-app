@@ -28,6 +28,7 @@ jest.mock('react-native-reanimated', () => {
     Easing: { linear: identity, bezier: () => identity },
     useSharedValue,
     useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T>(target: T) => target,
+    ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
+    withTiming: jest.fn(<T>(target: T) => target),
   };
 });

@@ -43,6 +43,20 @@ describe('globe card data', () => {
     }
   });
 
+  it('uses the symbol locals use when English has none (not the ISO code again)', () => {
+    assert.equal(meta.ARE.currency.symbol, 'د.إ.');
+    assert.equal(meta.KEN.currency.symbol, 'Ksh');
+    assert.equal(meta.PER.currency.symbol, 'S/');
+    assert.equal(meta.COD.currency.symbol, 'FC');
+    assert.equal(meta.PNG.currency.symbol, 'K');
+    // CLDR has no other symbol for these; the card shows the code alone.
+    const codeOnly = new Set();
+    for (const { currency } of Object.values(meta)) {
+      if (currency && currency.symbol === currency.code) codeOnly.add(currency.code);
+    }
+    assert.deepEqual([...codeOnly].sort(), ['CHF', 'CVE', 'HTG', 'RSD', 'TMT', 'ZWG']);
+  });
+
   it('gives every area its names, a label point and a size for the camera', () => {
     for (const [adm0, entry] of Object.entries(meta)) {
       assert.ok(entry.nameHe?.trim() && entry.nameEn?.trim(), `${adm0} names`);

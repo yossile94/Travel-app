@@ -20,7 +20,12 @@ import {
   useColorScheme,
   type GestureResponderEvent,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { globe, motion } from '@/theme/tokens';
@@ -47,6 +52,11 @@ const ESTIMATED_CARD_HEIGHT = 184;
 
 /** End-to-end tests (Maestro) build with EXPO_PUBLIC_E2E=1: a still globe at a fixed view. */
 const E2E = process.env.EXPO_PUBLIC_E2E === '1';
+
+// The fade is what replaces the flight under reduced motion (AC-6), so it must
+// run even then: Reanimated's default (ReduceMotion.System) would snap it to black.
+const VEIL_FADE_OUT = { duration: motion.reduceFadeOut, reduceMotion: ReduceMotion.Never };
+const VEIL_FADE_IN = { duration: motion.reduceFadeIn, reduceMotion: ReduceMotion.Never };
 
 type CameraHandle = ComponentRef<typeof Camera>;
 type PressFeature = GeoJSON.Feature<GeoJSON.Point, { screenPointX: number; screenPointY: number }>;
@@ -180,10 +190,10 @@ export function GlobeScreen() {
       };
 
       if (reduceMotion) {
-        veil.set(withTiming(1, { duration: motion.reduceFadeOut }));
+        veil.set(withTiming(1, VEIL_FADE_OUT));
         timer = setTimeout(() => {
           cameraRef.current?.setCamera({ ...stop, animationMode: 'none', animationDuration: 0 });
-          veil.set(withTiming(0, { duration: motion.reduceFadeIn }));
+          veil.set(withTiming(0, VEIL_FADE_IN));
           dispatch({ type: 'flightEnded' });
         }, motion.reduceFadeOut);
         return;
@@ -202,7 +212,7 @@ export function GlobeScreen() {
       cancelled = true;
       if (timer) clearTimeout(timer);
       // A card closed within the fade must not leave the screen covered.
-      veil.set(withTiming(0, { duration: motion.reduceFadeIn }));
+      veil.set(withTiming(0, VEIL_FADE_IN));
     };
     // Re-run only for a new selection; insets and motion settings are read at flight time.
     // eslint-disable-next-line react-hooks/exhaustive-deps

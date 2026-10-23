@@ -9,7 +9,7 @@
     "currency": {
       "code": "AWG",
       "nameHe": "פלורין של ארובה",
-      "symbol": "AWG"
+      "symbol": "Afl."
     }
   },
   "AFG": {
@@ -58,7 +58,7 @@
     "currency": {
       "code": "ALL",
       "nameHe": "לק אלבני",
-      "symbol": "ALL"
+      "symbol": "Lekë"
     }
   },
   "ALD": {
@@ -96,7 +96,7 @@
     "currency": {
       "code": "AED",
       "nameHe": "דירהם של איחוד הנסיכויות הערביות",
-      "symbol": "AED"
+      "symbol": "د.إ."
     }
   },
   "ARG": {
@@ -221,7 +221,7 @@
     "currency": {
       "code": "BIF",
       "nameHe": "פרנק בורונדי",
-      "symbol": "BIF"
+      "symbol": "FBu"
     }
   },
   "BEL": {
@@ -294,7 +294,7 @@
     "currency": {
       "code": "BHD",
       "nameHe": "דינר בחרייני",
-      "symbol": "BHD"
+      "symbol": "د.ب."
     }
   },
   "BHS": {
@@ -343,7 +343,7 @@
     "currency": {
       "code": "BYN",
       "nameHe": "רובל בלרוסי",
-      "symbol": "BYN"
+      "symbol": "Br"
     }
   },
   "BLZ": {
@@ -444,7 +444,7 @@
     "currency": {
       "code": "BTN",
       "nameHe": "נגולטרום בהוטני",
-      "symbol": "BTN"
+      "symbol": "Nu."
     }
   },
   "BWA": {
@@ -563,7 +563,7 @@
     "currency": {
       "code": "CDF",
       "nameHe": "פרנק קונגולזי",
-      "symbol": "CDF"
+      "symbol": "FC"
     }
   },
   "COG": {
@@ -731,7 +731,7 @@
     "currency": {
       "code": "DJF",
       "nameHe": "פרנק ג׳יבוטי",
-      "symbol": "DJF"
+      "symbol": "Fdj"
     }
   },
   "DMA": {
@@ -780,7 +780,7 @@
     "currency": {
       "code": "DZD",
       "nameHe": "דינר אלג׳ירי",
-      "symbol": "DZD"
+      "symbol": "د.ج."
     }
   },
   "ECU": {
@@ -817,7 +817,7 @@
     "currency": {
       "code": "ERN",
       "nameHe": "נאקפה אריתראי",
-      "symbol": "ERN"
+      "symbol": "Nfk"
     }
   },
   "ESP": {
@@ -854,7 +854,7 @@
     "currency": {
       "code": "ETB",
       "nameHe": "ביר אתיופי",
-      "symbol": "ETB"
+      "symbol": "ብር"
     }
   },
   "FIN": {
@@ -1027,7 +1027,7 @@
     "currency": {
       "code": "GMD",
       "nameHe": "דלסי גמבי",
-      "symbol": "GMD"
+      "symbol": "D"
     }
   },
   "GNB": {
@@ -1283,7 +1283,7 @@
     "currency": {
       "code": "IRR",
       "nameHe": "ריאל איראני",
-      "symbol": "IRR"
+      "symbol": "ریال"
     }
   },
   "IRQ": {
@@ -1295,7 +1295,7 @@
     "currency": {
       "code": "IQD",
       "nameHe": "דינר עיראקי",
-      "symbol": "IQD"
+      "symbol": "د.ع."
     }
   },
   "ISL": {
@@ -1368,7 +1368,7 @@
     "currency": {
       "code": "JOD",
       "nameHe": "דינר ירדני",
-      "symbol": "JOD"
+      "symbol": "د.أ."
     }
   },
   "JPN": {
@@ -1404,7 +1404,7 @@
     "currency": {
       "code": "KES",
       "nameHe": "שילינג קנייתי",
-      "symbol": "KES"
+      "symbol": "Ksh"
     }
   },
   "KGZ": {
@@ -1491,7 +1491,7 @@
     "currency": {
       "code": "KWD",
       "nameHe": "דינר כוויתי",
-      "symbol": "KWD"
+      "symbol": "د.ك."
     }
   },
   "LAO": {
@@ -1539,7 +1539,7 @@
     "currency": {
       "code": "LYD",
       "nameHe": "דינר לובי",
-      "symbol": "LYD"
+      "symbol": "د.ل."
     }
   },
   "LCA": {
@@ -1589,7 +1589,7 @@
     "currency": {
       "code": "LSL",
       "nameHe": "לוטי לסותי",
-      "symbol": "LSL"
+      "symbol": "M"
     }
   },
   "LTU": {
@@ -1639,7 +1639,7 @@
     "currency": {
       "code": "MOP",
       "nameHe": "פטקה של מקאו",
-      "symbol": "MOP"
+      "symbol": "MOP$"
     }
   },
   "MAF": {
@@ -1664,7 +1664,7 @@
     "currency": {
       "code": "MAD",
       "nameHe": "דירהם מרוקאי",
-      "symbol": "MAD"
+      "symbol": "د.م."
     }
   },
   "MCO": {
@@ -1689,7 +1689,7 @@
     "currency": {
       "code": "MDL",
       "nameHe": "לאו מולדובני",
-      "symbol": "MDL"
+      "symbol": "L"
     }
   },
   "MDG": {
@@ -1714,7 +1714,7 @@
     "currency": {
       "code": "MVR",
       "nameHe": "רופיה מלדיבית",
-      "symbol": "MVR"
+      "symbol": "Rf"
     }
   },
   "MEX": {
@@ -1752,7 +1752,7 @@
     "currency": {
       "code": "MKD",
       "nameHe": "דינר מקדוני",
-      "symbol": "MKD"
+      "symbol": "ден."
     }
   },
   "MLI": {
@@ -1839,7 +1839,7 @@
     "currency": {
       "code": "MZN",
       "nameHe": "מטיקל מוזמביני",
-      "symbol": "MZN"
+      "symbol": "MTn"
     }
   },
   "MRT": {
@@ -1851,7 +1851,7 @@
     "currency": {
       "code": "MRU",
       "nameHe": "אואוגויה מאוריטני",
-      "symbol": "MRU"
+      "symbol": "أ.م."
     }
   },
   "MSR": {
@@ -1889,7 +1889,7 @@
     "currency": {
       "code": "MWK",
       "nameHe": "קואצ׳ה מלאווי",
-      "symbol": "MWK"
+      "symbol": "MK"
     }
   },
   "MYS": {
@@ -2061,7 +2061,7 @@
     "currency": {
       "code": "OMR",
       "nameHe": "ריאל עומאני",
-      "symbol": "OMR"
+      "symbol": "ر.ع."
     }
   },
   "PAK": {
@@ -2085,7 +2085,7 @@
     "currency": {
       "code": "PAB",
       "nameHe": "בלבואה פנמי",
-      "symbol": "PAB"
+      "symbol": "B/."
     }
   },
   "PCN": {
@@ -2110,7 +2110,7 @@
     "currency": {
       "code": "PEN",
       "nameHe": "סול פרואני",
-      "symbol": "PEN"
+      "symbol": "S/"
     }
   },
   "PHL": {
@@ -2148,7 +2148,7 @@
     "currency": {
       "code": "PGK",
       "nameHe": "קינה של פפואה גינאה החדשה",
-      "symbol": "PGK"
+      "symbol": "K"
     }
   },
   "POL": {
@@ -2235,7 +2235,7 @@
     "currency": {
       "code": "QAR",
       "nameHe": "ריאל קטארי",
-      "symbol": "QAR"
+      "symbol": "ر.ق."
     }
   },
   "ROU": {
@@ -2284,7 +2284,7 @@
     "currency": {
       "code": "MAD",
       "nameHe": "דירהם מרוקאי",
-      "symbol": "MAD"
+      "symbol": "د.م."
     }
   },
   "SAU": {
@@ -2296,7 +2296,7 @@
     "currency": {
       "code": "SAR",
       "nameHe": "ריאל סעודי",
-      "symbol": "SAR"
+      "symbol": "ر.س."
     }
   },
   "SDN": {
@@ -2308,7 +2308,7 @@
     "currency": {
       "code": "SDG",
       "nameHe": "לירה סודנית",
-      "symbol": "SDG"
+      "symbol": "ج.س."
     }
   },
   "SDS": {
@@ -2395,7 +2395,7 @@
     "currency": {
       "code": "SLE",
       "nameHe": "ליאון סיירה לאוני",
-      "symbol": "SLE"
+      "symbol": "Le"
     }
   },
   "SLV": {
@@ -2432,7 +2432,7 @@
     "currency": {
       "code": "SOS",
       "nameHe": "שילינג סומלי",
-      "symbol": "SOS"
+      "symbol": "S"
     }
   },
   "SPM": {
@@ -2530,7 +2530,7 @@
     "currency": {
       "code": "SZL",
       "nameHe": "לילנגני סווזילנדי",
-      "symbol": "SZL"
+      "symbol": "E"
     }
   },
   "SXM": {
@@ -2556,7 +2556,7 @@
     "currency": {
       "code": "SCR",
       "nameHe": "רופי סיישלי",
-      "symbol": "SCR"
+      "symbol": "SR"
     }
   },
   "SYR": {
@@ -2629,7 +2629,7 @@
     "currency": {
       "code": "TJS",
       "nameHe": "סומוני טג׳קיסטני",
-      "symbol": "TJS"
+      "symbol": "сом."
     }
   },
   "TKM": {
@@ -2691,7 +2691,7 @@
     "currency": {
       "code": "TND",
       "nameHe": "דינר טוניסאי",
-      "symbol": "TND"
+      "symbol": "د.ت."
     }
   },
   "TUR": {
@@ -2740,7 +2740,7 @@
     "currency": {
       "code": "TZS",
       "nameHe": "שילינג טנזני",
-      "symbol": "TZS"
+      "symbol": "TSh"
     }
   },
   "UGA": {
@@ -2752,7 +2752,7 @@
     "currency": {
       "code": "UGX",
       "nameHe": "שילינג אוגנדי",
-      "symbol": "UGX"
+      "symbol": "USh"
     }
   },
   "UKR": {
@@ -2809,7 +2809,7 @@
     "currency": {
       "code": "UZS",
       "nameHe": "סום אוזבקי",
-      "symbol": "UZS"
+      "symbol": "soʻm"
     }
   },
   "VAT": {
@@ -2847,7 +2847,7 @@
     "currency": {
       "code": "VES",
       "nameHe": "בוליבר ונצואלי",
-      "symbol": "VES"
+      "symbol": "Bs.S"
     }
   },
   "VGB": {
@@ -2897,7 +2897,7 @@
     "currency": {
       "code": "VUV",
       "nameHe": "ואטו של ונואטו",
-      "symbol": "VUV"
+      "symbol": "VT"
     }
   },
   "WLF": {
@@ -2923,7 +2923,7 @@
     "currency": {
       "code": "WST",
       "nameHe": "טאלה סמואי",
-      "symbol": "WST"
+      "symbol": "WS$"
     }
   },
   "YEM": {
@@ -2935,7 +2935,7 @@
     "currency": {
       "code": "YER",
       "nameHe": "ריאל תימני",
-      "symbol": "YER"
+      "symbol": "ر.ي."
     }
   },
   "ZAF": {

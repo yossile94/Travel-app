@@ -50,6 +50,7 @@ export const GlobeLayers = memo(function GlobeLayers({
   const highlightStyles = useMemo(() => {
     const fade = { duration: reduceMotion ? 0 : motion.highlight, delay: 0 };
     const shown = highlight.visible ? 1 : 0;
+    const shownAdm0 = highlight.visible ? (highlight.adm0 ?? '') : '';
     return {
       filter: ['==', ['get', 'adm0'], highlight.adm0 ?? ''] as const,
       fill: {
@@ -78,8 +79,9 @@ export const GlobeLayers = memo(function GlobeLayers({
         lineOpacityTransition: fade,
         lineJoin: 'round' as const,
       },
+      // Follows the highlight's visibility, so the dot shrinks back when the card closes.
       dot: {
-        circleRadius: ['case', ['==', ['get', 'adm0'], highlight.adm0 ?? ''], 6, 3] as const,
+        circleRadius: ['case', ['==', ['get', 'adm0'], shownAdm0], 6, 3] as const,
         circleColor: highlightColor,
         circleOpacity: 0.9,
         circleStrokeWidth: 1,
