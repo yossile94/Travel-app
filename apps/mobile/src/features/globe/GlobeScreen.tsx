@@ -65,6 +65,9 @@ export function GlobeScreen() {
 
   const [selection, dispatch] = useReducer(selectionReducer, initialSelection);
   const [fingerDown, setFingerDown] = useState(false);
+  // Until Mapbox has loaded the map, getCenter() answers [0, 0] rather than
+  // the default camera, so rotation would jump the globe to 0°,0° (seen on device).
+  const [mapLoaded, setMapLoaded] = useState(false);
   // Start "idle" so the globe begins turning (after the ramp) as soon as it appears.
   const [lastInteractionAt, setLastInteractionAt] = useState(
     () => Date.now() - motion.autoRotateResumeDelay,
@@ -87,7 +90,12 @@ export function GlobeScreen() {
   // `reduceMotion` is null until the setting is known, so the globe doesn't
   // start a ramp it would have to stop a moment later.
   const rotationAllowed =
-    !E2E && reduceMotion === false && !selectedAdm0 && !selection.flying && !fingerDown;
+    !E2E &&
+    mapLoaded &&
+    reduceMotion === false &&
+    !selectedAdm0 &&
+    !selection.flying &&
+    !fingerDown;
   useAutoRotation({ cameraRef, getCenter, allowed: rotationAllowed, lastInteractionAt });
 
   /** Cancels a native rotation segment in flight (a zero-length move stops every animator). */
@@ -277,7 +285,10 @@ export function GlobeScreen() {
   // never sent on Android in @rnmapbox/maps 10.3.)
   useEffect(markGlobeMounted, []);
   const mapReady = Boolean(countries.url || countries.error);
-  const onMapLoaded = useCallback(() => logGlobeReady(), []);
+  const onMapLoaded = useCallback(() => {
+    logGlobeReady();
+    setMapLoaded(true);
+  }, []);
 
   const logoPosition = useMemo(() => ({ top: insets.top + 8, left: 8 }), [insets.top]);
   const attributionPosition = useMemo(() => ({ top: insets.top + 8, left: 92 }), [insets.top]);

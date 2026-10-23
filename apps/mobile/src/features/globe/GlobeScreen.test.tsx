@@ -18,6 +18,7 @@ const mockMap = {
   hits: {} as Hits,
   center: [34.8, 22] as [number, number],
   setCamera: jest.fn(),
+  loads: true,
   onPress: null as null | ((feature: unknown) => Promise<void>),
 };
 let mockReduceMotion: boolean | null = false;
@@ -40,7 +41,11 @@ jest.mock('@rnmapbox/maps', () => {
   };
 
   const MapView = React.forwardRef(function MapView(
-    props: { onPress: (feature: unknown) => Promise<void>; children?: React.ReactNode },
+    props: {
+      onPress: (feature: unknown) => Promise<void>;
+      onDidFinishLoadingMap?: () => void;
+      children?: React.ReactNode;
+    },
     ref,
   ) {
     React.useImperativeHandle(ref, () => ({
@@ -48,6 +53,10 @@ jest.mock('@rnmapbox/maps', () => {
         featuresFor(layers[0]!),
       getCenter: async () => mockMap.center,
     }));
+    const { onDidFinishLoadingMap } = props;
+    React.useEffect(() => {
+      if (mockMap.loads) onDidFinishLoadingMap?.();
+    }, [onDidFinishLoadingMap]);
     mockMap.onPress = props.onPress;
     return React.createElement(View, { testID: 'map' }, props.children);
   });
@@ -119,6 +128,7 @@ beforeEach(() => {
   jest.useFakeTimers({ now: new Date(Date.UTC(2026, 9, 22, 17, 53)) });
   mockMap.setCamera.mockClear();
   mockMap.hits = {};
+  mockMap.loads = true;
   mockReduceMotion = false;
 });
 afterEach(() => jest.useRealTimers());
@@ -235,6 +245,16 @@ describe('GlobeScreen', () => {
 
   it('does not start rotating before the reduce-motion setting is known (AC-6)', async () => {
     mockReduceMotion = null;
+    await render(<GlobeScreen />);
+    await act(async () => {
+      jest.advanceTimersByTime(8_000);
+      await Promise.resolve();
+    });
+    expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(false);
+  });
+
+  it('does not rotate before Mapbox has loaded the map (it would jump to 0°,0°)', async () => {
+    mockMap.loads = false;
     await render(<GlobeScreen />);
     await act(async () => {
       jest.advanceTimersByTime(8_000);
