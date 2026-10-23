@@ -81,6 +81,16 @@ npx eas-cli whoami
 1. להיכנס ל-[console.cloud.google.com](https://console.cloud.google.com/) וליצור פרויקט חדש בשם `travel-app`.
 2. את שאר ההגדרות, כמו מסך ההסכמה ומזהי ה-OAuth, נעשה יחד בתחילת ספרינט 1. הן תלויות בפרטי הבנייה של האפליקציה.
 
+**מצב (2026-10-23):** הפרויקט, מסך ההסכמה (Testing), לקוח Android ולקוח Web הוקמו.
+
+| פרט | ערך | איפה הוא נשמר |
+|---|---|---|
+| לקוח Android | package `com.travelapp.companion`, SHA-1 `6A:AC:3F:B2:8A:CA:C8:95:7E:15:E3:01:82:2E:A2:90:59:A8:28:A4` (מפתח החתימה של EAS) | Google Cloud |
+| Web Client ID (ציבורי) | `263709257260-tl3otf6tnolr8un43tuaj834e1jti9so.apps.googleusercontent.com` | בקוד, כ-`EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, וב-Supabase |
+| Web Client secret (סודי) | — | **רק** ב-Supabase. לא בקוד, לא ב-Expo ולא בצ'אט |
+
+כשמזהה החבילה (package) משתנה לפני ההשקה, או כשמפתח החתימה של Google Play מתווסף, צריך לעדכן את לקוח ה-Android.
+
 ### 7. Docker Desktop
 
 **למה:** מריץ את Supabase על המחשב שלך, כסביבת הפיתוח (dev).
