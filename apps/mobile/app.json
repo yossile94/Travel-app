@@ -33,6 +33,7 @@
         }
       ],
       "@rnmapbox/maps",
+      "./plugins/withTurboModuleInterop",
       [
         "expo-font",
         {
