@@ -1,0 +1,29 @@
+{
+  "home": {
+    "title": "Where to?",
+    "subtitle": "Spin the globe and pick a country"
+  },
+  "globe": {
+    "a11yLabel": "Globe. Drag to rotate, pinch to zoom, tap a country.",
+    "selected": "Selected: {{name}}",
+    "closed": "Card closed",
+    "loadError": "We couldn't load the map. Check your connection and try again."
+  },
+  "card": {
+    "destination": "Destination",
+    "localTime": "Local time",
+    "localTimeIn": "Local time · {{city}}",
+    "currency": "Currency",
+    "close": "Close",
+    "code": "Country code {{code}}"
+  },
+  "timeDifference": {
+    "same": "Same as Israel",
+    "ahead": "{{amount}} ahead of Israel",
+    "behind": "{{amount}} behind Israel",
+    "oneHour": "1 hour",
+    "twoHours": "2 hours",
+    "hours": "{{n}} hours",
+    "hoursMinutes": "{{h}}:{{mm}} hours"
+  }
+}

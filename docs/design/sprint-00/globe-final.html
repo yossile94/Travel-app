@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Globe Final Prototype</title>
+<!-- Sprint 0 design prototype (not production code). Pinned CDN dependencies only.
+     Imagery: NASA Blue Marble / Black Marble (public domain), as shipped inside the three-globe npm package. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@300..900&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<style>
+/* ---- design tokens (from docs/design/tokens.json) ---- */
+:root {
+  --font: 'Rubik Variable', 'Rubik', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --bg-canvas: #FFFBF5; --bg-surface: #FFFFFF; --bg-surface-alt: #FBF4E8;
+  --text-primary: #121C36; --text-secondary: #4A5573; --text-tertiary: #646E8A;
+  --accent: #1561BC; --on-accent: #FFFFFF; --cta: #C8441F; --on-cta: #FFFFFF;
+  --border-subtle: #F4E7D0; --border-control: #7D869E; --focus: #1F78DB;
+  --radius-xl: 24px; --radius-sheet: 28px;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --dur-short: 200ms; --dur-sheet: 320ms;
+  --page-bg: #EDE6D9;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg-canvas: #060B18; --bg-surface: #0B1326; --bg-surface-alt: #121C36;
+  --text-primary: #F3F6FC; --text-secondary: #A3B3DB; --text-tertiary: #7487BD;
+  --accent: #6FB3FA; --on-accent: #060B18; --cta: #FF7A57; --on-cta: #060B18;
+  --border-subtle: #1A2749; --border-control: #7487BD; --focus: #6FB3FA;
+  --page-bg: #03060E;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: var(--font); background: var(--page-bg); color: var(--text-primary); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.stage { display: flex; gap: 40px; align-items: center; justify-content: center; padding: 32px 16px; min-height: 100vh; flex-wrap: wrap; }
+
+/* ---- phone frame ---- */
+.phone { width: 390px; height: 844px; border-radius: 52px; padding: 10px; flex: none; background: #0E0F12; box-shadow: 0 0 0 2px #2A2C33, 0 30px 80px rgba(0,0,0,.35); }
+/* The globe scene is ALWAYS space (both themes). Only the card follows the theme. */
+.screen { position: relative; width: 100%; height: 100%; border-radius: 42px; overflow: hidden; background: #03060F; isolation: isolate; }
+#globe { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
+#globe:active { cursor: grabbing; }
+.statusbar { position: absolute; top: 0; inset-inline: 0; height: 48px; padding: 14px 30px 0; z-index: 3; display: flex; justify-content: space-between; align-items: center; pointer-events: none; font-size: 15px; font-weight: 600; color: #F3F6FC; direction: ltr; }
+.statusbar .icons { display: flex; gap: 6px; align-items: center; }
+.statusbar .icons i { display: block; background: currentColor; border-radius: 2px; }
+.home-ind { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; height: 5px; border-radius: 3px; background: #F3F6FC; opacity: .55; z-index: 6; pointer-events: none; }
+
+/* pills over the scene: always dark glass, because the scene is always dark */
+.pill { position: absolute; top: 100px; inset-inline: 0; margin: 0 auto; width: max-content; max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 999px; font-size: 13px; line-height: 18px; z-index: 3; pointer-events: none;
+  background: rgba(11,19,38,.62); color: #F3F6FC; border: 1px solid rgba(163,179,219,.18); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  transition: opacity 400ms var(--ease-standard), transform 400ms var(--ease-standard); }
+.pill.gone { opacity: 0; transform: translateY(-6px); }
+.net { display: flex; align-items: center; gap: 8px; }
+.net::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #F2BC62; flex: none; }
+.net[hidden] { display: none; }
+.screen:has(#net:not([hidden])) #hint { display: none; }   /* the network state wins over the onboarding hint */
+
+/* Mapbox wordmark + attribution placeholder (legal requirement in the app; position = top start of the map area) */
+.attrib { position: absolute; top: 48px; left: 10px; z-index: 3; display: flex; align-items: center; direction: ltr; color: rgba(243,246,252,.72); font-size: 12px; font-weight: 600; }
+.attrib .wm { padding: 0 2px 0 6px; letter-spacing: .02em; pointer-events: none; }
+.attrib button { width: 44px; height: 44px; border: 0; background: transparent; color: inherit; display: grid; place-items: center; cursor: pointer; border-radius: 50%; }
+.attrib button svg { width: 18px; height: 18px; }
+.attrib-pop { position: absolute; top: 92px; left: 12px; z-index: 7; width: 240px; padding: 12px 14px; border-radius: 12px; background: rgba(11,19,38,.92); color: #F3F6FC; font-size: 12px; line-height: 17px; border: 1px solid rgba(163,179,219,.2); }
+.attrib-pop[hidden] { display: none; }
+
+.loader { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center; padding: 24px; color: #A3B3DB; pointer-events: none; }
+.loader.error { pointer-events: auto; background: rgba(3,6,15,.55); }
+.loader[hidden] { display: none; }
+.loader p { margin: 0; font-size: 15px; line-height: 22px; }
+.loader strong { color: #F3F6FC; font-weight: 600; }
+.spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid rgba(163,179,219,.25); border-top-color: #6FB3FA; animation: spin 900ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-scene { font: inherit; font-weight: 500; min-height: 48px; padding: 0 20px; border-radius: 999px; border: 0; background: #6FB3FA; color: #060B18; cursor: pointer; }
+
+/* ---- bottom card (from direction C: boarding pass) ---- */
+.card { position: absolute; inset-inline: 12px; bottom: 30px; z-index: 5; transform: translateY(calc(100% + 40px)); transition: transform var(--dur-sheet) var(--ease-decel); }
+.card.open { transform: none; }
+:root[data-reduce] .card { transform: none; opacity: 0; transition: opacity var(--dur-short) linear; }
+:root[data-reduce] .card.open { opacity: 1; }
+.card .close { position: absolute; top: 6px; inset-inline-end: 32px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: transparent; color: inherit; cursor: pointer; display: grid; place-items: center; }
+.card .close svg { width: 20px; height: 20px; }
+.card .close:focus-visible, .btn-scene:focus-visible, .attrib button:focus-visible, .panel button:focus-visible, .panel input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.attrib button:focus-visible, .btn-scene:focus-visible { outline-color: #6FB3FA; }
+.card.swap .swap-target { animation: swapIn 220ms var(--ease-standard); }
+@keyframes swapIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+:root[data-reduce] .card.swap .swap-target { animation: fadeOnly 200ms linear; }
+@keyframes fadeOnly { from { opacity: 0; } to { opacity: 1; } }
+[dir="ltr"] { unicode-bidi: isolate; }
+#cardHe, #cardEn { text-align: right; }
+
+.c-card { filter: drop-shadow(0 12px 28px rgba(0,0,0,.45)); color: #121C36; }
+:root[data-theme="dark"] .c-card { color: #F3F6FC; }
+.c-pass {
+  --stub: 108px;
+  display: flex; min-height: 168px; border-radius: 18px; background: #FFFFFF; color: #121C36;
+  -webkit-mask: radial-gradient(circle 11px at var(--stub) 0, #0000 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 11px at var(--stub) 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+  mask: radial-gradient(circle 11px at var(--stub) 0, #0000 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 11px at var(--stub) 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+}
+:root[data-theme="dark"] .c-pass { background: #121C36; color: #F3F6FC; box-shadow: inset 0 0 0 1px rgba(163,179,219,.16); }
+/* strip = region colour of the selected country (ties the card to the glow on the globe) */
+.c-main { flex: 1; padding: 18px 20px 16px; border-top: 4px solid var(--sel, #F25C38); border-start-start-radius: 18px; }
+.c-stub { width: var(--stub); flex: none; border-inline-start: 2px dashed rgba(18,28,54,.22); padding: 54px 10px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-top: 4px solid #121C36; }
+:root[data-theme="dark"] .c-stub { border-inline-start-color: rgba(244,231,208,.22); border-top-color: #F4E7D0; }
+.c-label { display: block; margin: 0; font-size: 12px; line-height: 16px; font-weight: 600; color: #4A5573; }
+.c-label span { letter-spacing: .12em; font-weight: 500; margin-inline-start: 6px; }
+:root[data-theme="dark"] .c-label { color: #A3B3DB; }
+.c-he { margin: 4px 0 0; font-size: 28px; line-height: 34px; font-weight: 700; }
+.c-en { margin: 0; font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: #4A5573; }
+:root[data-theme="dark"] .c-en { color: #A3B3DB; }
+.c-fields { display: flex; gap: 20px; margin-top: 12px; }
+.c-fields b { display: block; font-size: 15px; line-height: 20px; font-weight: 500; text-align: right; }
+.c-fields .c-big { font-size: 22px; line-height: 26px; font-weight: 700; letter-spacing: .02em; }
+.c-sub { display: block; font-size: 12px; line-height: 16px; color: #4A5573; text-align: right; }
+:root[data-theme="dark"] .c-sub { color: #A3B3DB; }
+.c-flaps { display: flex; gap: 2px; }
+.c-flap { position: relative; width: 26px; height: 36px; border-radius: 4px; display: grid; place-items: center; background: #121C36; color: #F4E7D0; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; overflow: hidden; }
+:root[data-theme="dark"] .c-flap { background: #060B18; box-shadow: inset 0 0 0 1px rgba(244,231,208,.12); }
+.c-flap::after { content: ""; position: absolute; inset-inline: 0; top: 50%; height: 1px; background: rgba(0,0,0,.55); }
+.c-flap.tick { animation: flapTick 70ms linear; }
+@keyframes flapTick { from { transform: scaleY(.15); filter: brightness(.55); } to { transform: none; filter: none; } }
+.c-barcode { width: 100%; height: 34px; margin-top: auto; opacity: .85; background: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 4px, currentColor 4px 5px, transparent 5px 8px, currentColor 8px 11px, transparent 11px 12px); }
+
+/* ---- prototype control panel (not app UI) ---- */
+.panel { width: 380px; max-width: 100%; background: var(--bg-surface); border-radius: var(--radius-xl); padding: 24px; box-shadow: 0 1px 2px rgba(18,28,54,.06), 0 8px 24px rgba(18,28,54,.08); }
+:root[data-theme="dark"] .panel { box-shadow: none; border: 1px solid var(--border-subtle); }
+.panel .eyebrow { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin: 0 0 4px; }
+.panel h1 { font-size: 26px; line-height: 32px; margin: 0 0 4px; font-weight: 700; }
+.panel h1 small { display: block; font-size: 15px; line-height: 22px; font-weight: 400; color: var(--text-secondary); }
+.panel p { font-size: 15px; line-height: 22px; color: var(--text-secondary); margin: 12px 0; }
+.panel h2 { font-size: 13px; line-height: 18px; font-weight: 600; margin: 20px 0 8px; color: var(--text-primary); }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.swatches span { width: 32px; height: 32px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(127,127,127,.25); }
+.seg { display: flex; border: 1px solid var(--border-control); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button { flex: 1; font: inherit; font-size: 14px; min-height: 40px; border: 0; border-radius: 999px; background: transparent; color: var(--text-primary); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 500; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-size: 15px; }
+.row input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); }
+.range { width: 100%; accent-color: var(--accent); direction: ltr; }
+.linkbtn { font: inherit; font-size: 14px; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 8px 0; min-height: 44px; }
+.dirs { display: flex; gap: 8px; margin-top: 8px; }
+.dirs a { flex: 1; text-align: center; padding: 10px 0; border-radius: 12px; text-decoration: none; color: var(--text-primary); border: 1px solid var(--border-control); font-size: 14px; }
+.dirs a[aria-current="page"] { background: var(--text-primary); color: var(--bg-surface); border-color: transparent; font-weight: 600; }
+.panel ul { margin: 0; padding-inline-start: 18px; font-size: 14px; line-height: 21px; color: var(--text-secondary); }
+.src { font-size: 13px; line-height: 18px; color: var(--text-secondary); margin-top: 6px; }
+.src.warn { color: #C81E16; font-weight: 600; }
+:root[data-theme="dark"] .src.warn { color: #FF8A80; }
+@media (max-width: 520px) {
+  .stage { padding: 0; gap: 0; }
+  .phone { width: 100vw; height: 100dvh; border-radius: 0; padding: 0; box-shadow: none; }
+  .screen { border-radius: 0; }
+  .panel { width: 100%; border-radius: 0; }
+}
+</style>
+</head>
+<body>
+<main class="stage">
+  <aside class="panel" aria-label="בקרות ההדמיה">
+    <p class="eyebrow">ספרינט 0 · הגלובוס הסופי (F-001)</p>
+    <h1>גלובוס חי + כרטיס עלייה<small dir="ltr" lang="en">Vivid globe · Boarding Pass card</small></h1>
+    <p>הגלובוס של A עם כדור ארץ "צילומי": תמונת לוויין רוויה וחדה, ים כחול-עמוק עם ברק, תבליט עדין והילת אטמוספרה חדה. כדור הארץ תמיד מואר, בכל שעה, כדי שכל מדינה תהיה קריאה. בחירת מדינה פותחת את כרטיס העלייה של C, עם השעה המקומית בזמן אמת והמטבע המקומי.</p>
+    <div class="swatches" aria-label="פלטה"><span style="background:#03060F"></span><span style="background:#0B3E8A"></span><span style="background:#6FB3FA"></span><span style="background:#FFAA78"></span><span style="background:#FFC978"></span><span style="background:#FF7A57"></span></div>
+    <h2>מה לנסות</h2>
+    <ul>
+      <li>להקיש על תאילנד: השעה בבנגקוק, ההפרש משעון ישראל והמטבע</li>
+      <li>להקיש על יפן ומיד על יוון, באמצע המעוף</li>
+      <li>להקיש על הים כדי לסגור, או על Esc ("חזור" ב-Android)</li>
+      <li>מלטה, המלדיביים וסינגפור: אזור הקשה מוגדל</li>
+      <li>"הדמיית offline": המפה הבסיסית שתוצג כשאין תמונות לוויין במטמון</li>
+    </ul>
+    <h2>מצב תצוגה (הכרטיס בלבד; הגלובוס תמיד בחלל)</h2>
+    <div class="seg" role="group" aria-label="מצב תצוגה">
+      <button type="button" data-pref="system" aria-pressed="true">לפי המערכת</button>
+      <button type="button" data-pref="light" aria-pressed="false">בהיר</button>
+      <button type="button" data-pref="dark" aria-pressed="false">כהה</button>
+    </div>
+    <label class="row"><span>הדמיית "הפחתת תנועה"</span><input type="checkbox" id="rm"></label>
+    <label class="row"><span>הדמיית offline (בלי תמונות לוויין)</span><input type="checkbox" id="off"></label>
+    <h2>מקור התמונות</h2>
+    <div id="texSrc" class="src">טוען…</div>
+    <h2>כיוונים קודמים</h2>
+    <nav class="dirs" aria-label="כיווני עיצוב">
+      <a href="globe-final.html" aria-current="page">סופי</a>
+      <a href="globe-a.html">A · טיסת לילה</a>
+      <a href="globe-c.html">C · לוח המראות</a>
+    </nav>
+  </aside>
+
+  <div class="phone">
+    <div class="screen" id="screen">
+      <canvas id="globe" aria-label="גלובוס אינטראקטיבי. גררו לסיבוב, צבטו לקירוב, הקישו על מדינה."></canvas>
+      <div class="statusbar"><span id="sbTime" class="num">9:41</span><span class="icons" aria-hidden="true"><i style="width:17px;height:11px;clip-path:polygon(0 100%,25% 100%,25% 70%,0 70%,0 100%,33% 100%,33% 45%,58% 45%,58% 100%,66% 100%,66% 20%,91% 20%,91% 100%)"></i><i style="width:24px;height:11px;border-radius:3px"></i></span></div>
+      <div class="attrib"><span class="wm" aria-hidden="true">mapbox</span><button type="button" id="attribBtn" aria-label="מקורות המפה" aria-expanded="false" aria-controls="attribPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5" stroke-linecap="round"/></svg></button></div>
+      <div class="attrib-pop" id="attribPop" hidden dir="rtl">באפליקציה: הלוגו וכפתור הקרדיטים של Mapbox (חובה לפי תנאי השימוש). בהדמיה: תמונות NASA Blue Marble ו-Black Marble (נחלת הכלל) וגבולות Natural Earth.</div>
+      <div class="pill" id="hint">גררו כדי לסובב · הקישו על מדינה</div>
+      <div class="pill net" id="net" hidden></div>
+      <div class="loader" id="loader" hidden></div>
+      <section id="card" class="card c-card" role="dialog" aria-labelledby="cardHe" hidden>
+        <div class="c-pass swap-target">
+          <div class="c-main">
+            <p class="c-label">יעד<span dir="ltr" lang="en">DESTINATION</span></p>
+            <h2 id="cardHe" class="c-he"></h2>
+            <p id="cardEn" class="c-en" dir="ltr" lang="en"></p>
+            <div class="c-fields">
+              <div><span class="c-label" id="cardTimeLabel">שעה מקומית</span><b id="cardTime" class="num c-big" dir="ltr"></b><small id="cardDiff" class="c-sub"></small></div>
+              <div><span class="c-label">מטבע</span><b id="cardCur"></b><small id="cardCurCode" class="c-sub num" dir="ltr"></small></div>
+            </div>
+          </div>
+          <div class="c-stub">
+            <span class="c-label" dir="ltr">CODE</span>
+            <div id="cardCode" class="c-flaps" dir="ltr"></div>
+            <div class="c-barcode" aria-hidden="true"></div>
+          </div>
+        </div>
+        <button type="button" class="close" data-close aria-label="סגירה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </section>
+      <div id="live" class="sr-only" aria-live="polite"></div>
+      <div class="home-ind" aria-hidden="true"></div>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+/* ==========================================================================
+   Final globe prototype - Sharona, Sprint 0
+   three.js r160 custom shaders on a unit sphere. Same engine semantics as A/B/C
+   (camera state lon/lat/k, gestures, hit-testing, fly-to, reduce-motion).
+   Every effect is mapped to @rnmapbox/maps in docs/design/sprint-00/README.md.
+   ========================================================================== */
+import * as THREE from 'three';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+
+THREE.ColorManagement.enabled = false;   // hex values are used as-is (sRGB in, sRGB out)
+const DEG = Math.PI / 180;
+const $ = (s) => document.querySelector(s);
+
+/* ---------- motion tokens (mirror of tokens.json) ---------- */
+const M = {
+  autoRotateDegPerSec: 3, autoResumeDelay: 5000, autoResumeRamp: 1000,
+  flyMin: 1200, flyMax: 1800, fadeOut: 150, fadeIn: 250, sunUpdate: 60000,
+  highlight: 600, reveal: 600, offlineFade: 300
+};
+
+/* ---------- look (mirror of tokens.json globe.final.*) ---------- */
+const LOOK = {
+  saturation: 1.35, contrast: 1.12, exposure: 1.06,   // imagery grading (Mapbox: raster-saturation / raster-contrast)
+  oceanDeepen: 0.75,                                   // push oceans to deep saturated blue
+  bump: 1.1, spec: 1.0,                                // relief + ocean shine
+  ocean: '#0A1A3C', land: '#1F3A68',                   // offline / loading fallback (= A palette)
+  atmo: '#6FB3FA', dawn: '#FFAA78', lights: '#FFC978',
+  border: '#F3F6FC', borderAlpha: 0.42, micro: '#FF7A57'
+};
+// Globe highlight always uses the bright (dark-mode) region colours, because the scene is always dark.
+const REGION_GLOBE = { tropical: '#4FD18E', alpine: '#8FB0F0', desert: '#F2BC62', urban: '#B896F5', med: '#4CB8EC' };
+const REGION_LIGHT = { tropical: '#2DB36F', alpine: '#5E8FD9', desert: '#E2A13B', urban: '#9B6BEA', med: '#1E9BD7' };
+
+/* ---------- names: ISO numeric -> [he, en, iso3, region] ---------- */
+const NAMES = {
+  '376': ['ישראל', 'Israel', 'ISR', 'med'], '764': ['תאילנד', 'Thailand', 'THA', 'tropical'],
+  '300': ['יוון', 'Greece', 'GRC', 'med'], '196': ['קפריסין', 'Cyprus', 'CYP', 'med'],
+  '840': ['ארצות הברית', 'United States', 'USA', 'urban'], '380': ['איטליה', 'Italy', 'ITA', 'med'],
+  '392': ['יפן', 'Japan', 'JPN', 'urban'], '724': ['ספרד', 'Spain', 'ESP', 'med'],
+  '250': ['צרפת', 'France', 'FRA', 'urban'], '826': ['בריטניה', 'United Kingdom', 'GBR', 'urban'],
+  '276': ['גרמניה', 'Germany', 'DEU', 'urban'], '348': ['הונגריה', 'Hungary', 'HUN', 'urban'],
+  '642': ['רומניה', 'Romania', 'ROU', 'urban'], '100': ['בולגריה', 'Bulgaria', 'BGR', 'alpine'],
+  '191': ['קרואטיה', 'Croatia', 'HRV', 'med'], '499': ['מונטנגרו', 'Montenegro', 'MNE', 'med'],
+  '688': ['סרביה', 'Serbia', 'SRB', 'urban'], '203': ["צ'כיה", 'Czechia', 'CZE', 'urban'],
+  '040': ['אוסטריה', 'Austria', 'AUT', 'alpine'], '756': ['שווייץ', 'Switzerland', 'CHE', 'alpine'],
+  '528': ['הולנד', 'Netherlands', 'NLD', 'urban'], '056': ['בלגיה', 'Belgium', 'BEL', 'urban'],
+  '620': ['פורטוגל', 'Portugal', 'PRT', 'med'], '616': ['פולין', 'Poland', 'POL', 'urban'],
+  '268': ['גאורגיה', 'Georgia', 'GEO', 'alpine'], '051': ['ארמניה', 'Armenia', 'ARM', 'alpine'],
+  '031': ["אזרבייג'ן", 'Azerbaijan', 'AZE', 'urban'], '792': ['טורקיה', 'Türkiye', 'TUR', 'med'],
+  '818': ['מצרים', 'Egypt', 'EGY', 'desert'], '400': ['ירדן', 'Jordan', 'JOR', 'desert'],
+  '784': ['איחוד האמירויות', 'United Arab Emirates', 'ARE', 'desert'], '504': ['מרוקו', 'Morocco', 'MAR', 'desert'],
+  '356': ['הודו', 'India', 'IND', 'tropical'], '524': ['נפאל', 'Nepal', 'NPL', 'alpine'],
+  '144': ['סרי לנקה', 'Sri Lanka', 'LKA', 'tropical'], '704': ['וייטנאם', 'Vietnam', 'VNM', 'tropical'],
+  '116': ['קמבודיה', 'Cambodia', 'KHM', 'tropical'], '418': ['לאוס', 'Laos', 'LAO', 'tropical'],
+  '360': ['אינדונזיה', 'Indonesia', 'IDN', 'tropical'], '458': ['מלזיה', 'Malaysia', 'MYS', 'tropical'],
+  '608': ['הפיליפינים', 'Philippines', 'PHL', 'tropical'], '156': ['סין', 'China', 'CHN', 'urban'],
+  '410': ['דרום קוריאה', 'South Korea', 'KOR', 'urban'], '036': ['אוסטרליה', 'Australia', 'AUS', 'desert'],
+  '554': ['ניו זילנד', 'New Zealand', 'NZL', 'alpine'], '124': ['קנדה', 'Canada', 'CAN', 'alpine'],
+  '484': ['מקסיקו', 'Mexico', 'MEX', 'tropical'], '032': ['ארגנטינה', 'Argentina', 'ARG', 'alpine'],
+  '076': ['ברזיל', 'Brazil', 'BRA', 'tropical'], '604': ['פרו', 'Peru', 'PER', 'alpine'],
+  '152': ["צ'ילה", 'Chile', 'CHL', 'alpine'], '170': ['קולומביה', 'Colombia', 'COL', 'tropical'],
+  '188': ['קוסטה ריקה', 'Costa Rica', 'CRI', 'tropical'], '192': ['קובה', 'Cuba', 'CUB', 'tropical'],
+  '710': ['דרום אפריקה', 'South Africa', 'ZAF', 'desert'], '404': ['קניה', 'Kenya', 'KEN', 'tropical'],
+  '834': ['טנזניה', 'Tanzania', 'TZA', 'tropical'], '231': ['אתיופיה', 'Ethiopia', 'ETH', 'alpine'],
+  '352': ['איסלנד', 'Iceland', 'ISL', 'alpine'], '578': ['נורווגיה', 'Norway', 'NOR', 'alpine'],
+  '752': ['שוודיה', 'Sweden', 'SWE', 'alpine'], '246': ['פינלנד', 'Finland', 'FIN', 'alpine'],
+  '208': ['דנמרק', 'Denmark', 'DNK', 'urban'], '372': ['אירלנד', 'Ireland', 'IRL', 'urban'],
+  '643': ['רוסיה', 'Russia', 'RUS', 'urban'], '804': ['אוקראינה', 'Ukraine', 'UKR', 'urban'],
+  '398': ['קזחסטן', 'Kazakhstan', 'KAZ', 'desert'], '860': ['אוזבקיסטן', 'Uzbekistan', 'UZB', 'desert'],
+  '496': ['מונגוליה', 'Mongolia', 'MNG', 'desert'], '705': ['סלובניה', 'Slovenia', 'SVN', 'alpine'],
+  '703': ['סלובקיה', 'Slovakia', 'SVK', 'alpine'], '008': ['אלבניה', 'Albania', 'ALB', 'med'],
+  '807': ['צפון מקדוניה', 'North Macedonia', 'MKD', 'alpine'], '442': ['לוקסמבורג', 'Luxembourg', 'LUX', 'urban'],
+  '516': ['נמיביה', 'Namibia', 'NAM', 'desert'], '450': ['מדגסקר', 'Madagascar', 'MDG', 'tropical'],
+  '788': ['תוניסיה', 'Tunisia', 'TUN', 'desert'], '634': ['קטאר', 'Qatar', 'QAT', 'desert'],
+  '512': ['עומאן', 'Oman', 'OMN', 'desert'], '682': ['ערב הסעודית', 'Saudi Arabia', 'SAU', 'desert'],
+  '304': ['גרינלנד', 'Greenland', 'GRL', 'alpine'], '010': ['אנטארקטיקה', 'Antarctica', 'ATA', 'alpine'],
+  '158': ['טאיוואן', 'Taiwan', 'TWN', 'urban'],
+  // micro-states (not in the 110m polygons) - shown as enlarged tap targets (AC-5)
+  '470': ['מלטה', 'Malta', 'MLT', 'med'], '702': ['סינגפור', 'Singapore', 'SGP', 'urban'],
+  '462': ['האיים המלדיביים', 'Maldives', 'MDV', 'tropical'], '690': ['סיישל', 'Seychelles', 'SYC', 'tropical'],
+  '480': ['מאוריציוס', 'Mauritius', 'MUS', 'tropical'], '048': ['בחריין', 'Bahrain', 'BHR', 'desert']
+};
+const MICRO_DEF = [['470', 14.43, 35.90], ['702', 103.82, 1.35], ['462', 73.22, 3.20], ['690', 55.45, -4.62], ['480', 57.55, -20.25], ['048', 50.56, 26.07]];
+// Prototype data is the default Natural Earth view; the app uses the Israeli point of view (sprint-00 decision). See README.
+const BLOCKED = { '275': true };
+function infoFor(id, fallbackEn) {
+  const n = NAMES[id];
+  if (n) return { id, he: n[0], en: n[1], iso3: n[2], region: n[3] };
+  return { id: id || fallbackEn, he: null, en: fallbackEn, iso3: null, region: null };
+}
+
+function wrapLon(l) { return ((l + 540) % 360 + 360) % 360 - 180; }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+/* ---------- lon/lat <-> unit sphere (matches THREE.SphereGeometry UVs: u=0.5 is lon 0) ---------- */
+function v3(lon, lat, r = 1) {
+  const l = lon * DEG, p = lat * DEG;
+  return new THREE.Vector3(r * Math.cos(p) * Math.cos(l), r * Math.sin(p), -r * Math.cos(p) * Math.sin(l));
+}
+function toLonLat(v) { const n = v.clone().normalize(); return [Math.atan2(-n.z, n.x) / DEG, Math.asin(clamp(n.y, -1, 1)) / DEG]; }
+
+/* ---------- DOM / theme ---------- */
+const screenEl = $('#screen'), canvas = $('#globe'), card = $('#card'), hint = $('#hint'), loader = $('#loader'), net = $('#net'), live = $('#live');
+let W = 0, H = 0, DPR = 1;
+const mqDark = matchMedia('(prefers-color-scheme: dark)'), mqReduce = matchMedia('(prefers-reduced-motion: reduce)');
+let themePref = 'system', reduceOverride = null;
+const themeName = () => themePref === 'system' ? (mqDark.matches ? 'dark' : 'light') : themePref;
+const isReduced = () => reduceOverride !== null ? reduceOverride : mqReduce.matches;
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', themeName());
+  document.documentElement.toggleAttribute('data-reduce', isReduced());
+  if (S.sel) card.style.setProperty('--sel', cardColor(S.sel.info));
+}
+
+const S = {
+  lon: 34.8, lat: 22, k: 1, cy: null,
+  autoF: 1, lastInput: -1e9, vel: null, dragging: false,
+  flight: null, sel: null, timeOffsetH: 0, world: null, micro: [],
+  revealT0: 0, offlineSim: false, offAmt: 0
+};
+
+/* ---------- renderer & scene ---------- */
+let renderer = null;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' }); } catch (e) { renderer = null; }
+
+const VERT = /* glsl */`
+  varying vec2 vUv; varying vec3 vN; varying vec3 vP;
+  void main() {
+    vUv = uv;
+    vN = normalize(mat3(modelMatrix) * normal);
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vP = wp.xyz;
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }`;
+
+const EARTH_FRAG = /* glsl */`
+  uniform sampler2D uDay; uniform sampler2D uNight; uniform sampler2D uWater; uniform sampler2D uTopo; uniform sampler2D uSel;
+  uniform vec3 uSun; uniform vec2 uTopoTexel;
+  uniform float uHasNight; uniform float uHasWater; uniform float uWaterInv; uniform float uHasTopo; uniform float uReveal;
+  uniform float uSat; uniform float uContrast; uniform float uExposure; uniform float uDeepen; uniform float uBump; uniform float uSpec; uniform float uOffline;
+  uniform vec4 uSelBox; uniform float uSelLatSpan; uniform float uSelFill; uniform float uSelGlow; uniform float uSelOn; uniform vec3 uSelColor;
+  uniform vec3 uOcean; uniform vec3 uLand; uniform vec3 uAtmo; uniform vec3 uDawn; uniform vec3 uLights;
+  varying vec2 vUv; varying vec3 vN; varying vec3 vP;
+
+  vec3 grade(vec3 c) {
+    float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    c = mix(vec3(l), c, uSat);                 // saturation
+    c = (c - 0.5) * uContrast + 0.5;           // contrast
+    return clamp(c * uExposure, 0.0, 1.0);     // brightness
+  }
+
+  void main() {
+    vec3 N = normalize(vN);
+    vec3 V = normalize(cameraPosition - vP);
+    vec3 L = normalize(uSun);
+    float mu = dot(N, L);                      // sin(sun altitude) at this point
+    float ndv = max(dot(N, V), 0.0);
+
+    float water = 0.0;
+    if (uHasWater > 0.5) { float w = texture2D(uWater, vUv).r; water = mix(w, 1.0 - w, uWaterInv); }
+
+    // imagery, sampled slightly sharper than the default mip (negative LOD bias = crisper coastlines)
+    vec3 col = grade(texture2D(uDay, vUv, -0.6).rgb);
+    vec3 deep = clamp(col * vec3(0.50, 0.86, 1.45) + vec3(0.0, 0.012, 0.045), 0.0, 1.0);
+    col = mix(col, deep, water * uDeepen);
+    vec3 basic = mix(uLand, uOcean, water);    // offline fallback look (A palette)
+    col = mix(col, basic, uOffline);
+    col = mix(uOcean, col, uReveal);           // imagery fades in over the loading sphere
+
+    // relief: bump from the topology map, land only
+    vec3 Nb = N;
+    if (uHasTopo > 0.5) {
+      float hL = texture2D(uTopo, vUv - vec2(uTopoTexel.x, 0.0)).r;
+      float hR = texture2D(uTopo, vUv + vec2(uTopoTexel.x, 0.0)).r;
+      float hD = texture2D(uTopo, vUv - vec2(0.0, uTopoTexel.y)).r;
+      float hU = texture2D(uTopo, vUv + vec2(0.0, uTopoTexel.y)).r;
+      vec3 t = vec3(N.z, 0.0, -N.x);
+      vec3 T = length(t) > 1e-4 ? normalize(t) : vec3(0.0, 0.0, -1.0);   // east
+      vec3 B = cross(N, T);                                                // north
+      float k = uBump * (1.0 - water) * uReveal * (1.0 - uOffline);
+      Nb = normalize(N - k * ((hR - hL) * T + (hU - hD) * B));
+    }
+
+    // Always daylight (Yossi, 2026-10-22): every country stays readable at any hour.
+    // A soft "studio" light from just above-left of the viewer (uSun, set in JS) gives
+    // depth and the ocean shine without ever darkening part of the globe.
+    float diff = max(dot(Nb, L), 0.0);
+    vec3 c = col * (0.68 + 0.42 * diff);
+
+    // ocean shine: sharp glint + broad sheen, water only
+    vec3 Hh = normalize(L + V);
+    float nh = max(dot(N, Hh), 0.0);
+    float spec = (pow(nh, 110.0) * 1.25 + pow(nh, 14.0) * 0.14) * water * uSpec;
+    spec *= uReveal * (1.0 - uOffline);
+    c += vec3(1.0, 0.95, 0.84) * spec;
+    c += uAtmo * pow(1.0 - ndv, 5.0) * water * 0.35;
+
+    // selected country: tint inside, glow outside (local high-res mask)
+    if (uSelOn > 0.5) {
+      float lon = vUv.x * 360.0 - 180.0;
+      float lat = vUv.y * 180.0 - 90.0;
+      float lp = mod(lon - uSelBox.x + 540.0, 360.0) - 180.0;
+      vec2 su = vec2((lp - uSelBox.y) / uSelBox.z, (lat - uSelBox.w) / uSelLatSpan);
+      if (su.x >= 0.0 && su.x <= 1.0 && su.y >= 0.0 && su.y <= 1.0) {
+        vec2 m = texture2D(uSel, su).rg;
+        float glow = m.g * (1.0 - m.r);
+        c = mix(c, c * 0.55 + uSelColor * 0.6, m.r * 0.5 * uSelFill);
+        c += uSelColor * glow * 0.95 * uSelGlow;
+      }
+    }
+
+    // atmosphere seen through the limb (brighter on the day side)
+    float rim = pow(1.0 - ndv, 3.0);
+    c += uAtmo * rim * (0.12 + 0.55 * smoothstep(-0.25, 0.5, mu));
+    gl_FragColor = vec4(c, 1.0);
+  }`;
+
+const ATMO_R = 1.12;
+const ATMO_FRAG = /* glsl */`
+  uniform vec3 uSun; uniform vec3 uAtmo; uniform float uEdge; uniform float uReveal;
+  varying vec2 vUv; varying vec3 vN; varying vec3 vP;
+  void main() {
+    vec3 N = normalize(vN);
+    vec3 V = normalize(cameraPosition - vP);
+    float t = clamp(-dot(N, V) / uEdge, 0.0, 1.0);          // 0 at the outer edge, 1 at the Earth limb
+    float a = pow(t, 5.0) * 1.15 + pow(t, 1.6) * 0.18;      // crisp bright rim + faint wide halo
+    float sun = smoothstep(-0.35, 0.5, dot(normalize(vP), normalize(uSun)));
+    gl_FragColor = vec4(uAtmo * a * mix(0.28, 1.2, sun) * mix(0.6, 1.0, uReveal), 1.0);
+  }`;
+
+const BORDER_VERT = /* glsl */`
+  varying vec3 vN; varying vec3 vP;
+  void main() { vN = normalize(position); vec4 wp = modelMatrix * vec4(position, 1.0); vP = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`;
+const BORDER_FRAG = /* glsl */`
+  uniform vec3 uSun; uniform vec3 uColor; uniform float uAlpha;
+  varying vec3 vN; varying vec3 vP;
+  void main() {
+    vec3 N = normalize(vN);
+    float mu = dot(N, normalize(uSun));
+    float facing = dot(N, normalize(cameraPosition - vP));
+    float a = uAlpha * smoothstep(0.02, 0.3, facing);
+    gl_FragColor = vec4(uColor, a);
+  }`;
+
+const STAR_VERT = /* glsl */`
+  attribute vec2 aP; attribute float aSize; attribute float aPhase; attribute float aAlpha;
+  uniform vec2 uShift; uniform float uDpr; uniform float uTime; uniform float uTw;
+  varying float vA;
+  void main() {
+    vec2 p = fract(aP + uShift) * 2.0 - 1.0;
+    gl_Position = vec4(p, 0.9999, 1.0);
+    gl_PointSize = aSize * uDpr;
+    vA = aAlpha * (1.0 - uTw * 0.35 * (0.5 + 0.5 * sin(uTime * 1.2 + aPhase)));
+  }`;
+const STAR_FRAG = /* glsl */`
+  varying float vA;
+  void main() {
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    float a = (1.0 - smoothstep(0.2, 1.0, d)) * vA;
+    if (a < 0.01) discard;
+    gl_FragColor = vec4(0.92, 0.95, 1.0, a);
+  }`;
+
+const MICRO_VERT = /* glsl */`
+  attribute float aSel; uniform float uDpr; varying float vSel;
+  void main() { vSel = aSel; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_PointSize = (aSel > 0.5 ? 30.0 : 18.0) * uDpr; }`;
+const MICRO_FRAG = /* glsl */`
+  uniform vec3 uColor; uniform vec3 uSelColor; uniform float uSelAmt; varying float vSel;
+  void main() {
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    vec4 o;
+    if (vSel > 0.5) {
+      float dotA = 1.0 - smoothstep(0.26, 0.34, d);
+      float ring = smoothstep(0.34, 0.40, d) * (1.0 - smoothstep(0.44, 0.50, d));
+      float halo = exp(-d * d * 5.0) * 0.7 * uSelAmt;
+      o = vec4(uSelColor * (halo + dotA) + vec3(ring), clamp(halo + dotA + ring, 0.0, 1.0));
+    } else {
+      float dotA = 1.0 - smoothstep(0.30, 0.38, d);
+      float ring = smoothstep(0.74, 0.80, d) * (1.0 - smoothstep(0.86, 0.92, d)) * 0.45;
+      o = vec4(uColor, max(dotA, ring));
+    }
+    if (o.a < 0.01) discard;
+    gl_FragColor = o;
+  }`;
+
+const col3 = (h) => new THREE.Color(h);
+const U = {
+  uDay: { value: null }, uNight: { value: null }, uWater: { value: null }, uTopo: { value: null }, uSel: { value: null },
+  uSun: { value: new THREE.Vector3(1, 0, 0) }, uTopoTexel: { value: new THREE.Vector2(1 / 2048, 1 / 1024) },
+  uHasNight: { value: 0 }, uHasWater: { value: 0 }, uWaterInv: { value: 0 }, uHasTopo: { value: 0 }, uReveal: { value: 0 },
+  uSat: { value: LOOK.saturation }, uContrast: { value: LOOK.contrast }, uExposure: { value: LOOK.exposure }, uDeepen: { value: LOOK.oceanDeepen },
+  uBump: { value: LOOK.bump }, uSpec: { value: LOOK.spec }, uOffline: { value: 0 },
+  uSelBox: { value: new THREE.Vector4(0, 0, 1, 0) }, uSelLatSpan: { value: 1 }, uSelFill: { value: 0 }, uSelGlow: { value: 0 }, uSelOn: { value: 0 }, uSelColor: { value: col3('#FF7A57') },
+  uOcean: { value: col3(LOOK.ocean) }, uLand: { value: col3(LOOK.land) }, uAtmo: { value: col3(LOOK.atmo) }, uDawn: { value: col3(LOOK.dawn) }, uLights: { value: col3(LOOK.lights) }
+};
+
+let scene, camera, earth, atmo, borders = null, outline, outlineMat, starU, microU, microPts = null, maxAniso = 1;
+
+function buildScene() {
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace;   // no conversion: shaders work on sRGB values directly
+  renderer.setClearColor(col3('#03060F'), 1);
+  maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  scene = new THREE.Scene();
+  scene.background = spaceBackground();
+  camera = new THREE.PerspectiveCamera(30, 1, 0.01, 400);
+
+  earth = new THREE.Mesh(new THREE.SphereGeometry(1, 160, 100),
+    new THREE.ShaderMaterial({ uniforms: U, vertexShader: VERT, fragmentShader: EARTH_FRAG, extensions: { derivatives: true } }));
+  scene.add(earth);
+
+  atmo = new THREE.Mesh(new THREE.SphereGeometry(ATMO_R, 96, 64), new THREE.ShaderMaterial({
+    uniforms: { uSun: U.uSun, uAtmo: U.uAtmo, uReveal: U.uReveal, uEdge: { value: Math.sqrt(ATMO_R * ATMO_R - 1) / ATMO_R } },
+    vertexShader: VERT, fragmentShader: ATMO_FRAG, side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false
+  }));
+  atmo.renderOrder = 3;
+  scene.add(atmo);
+
+  // stars: screen-space points with a gentle drift tied to the globe longitude (1 screen width per full turn)
+  const N = 260, aP = new Float32Array(N * 2), aSize = new Float32Array(N), aPhase = new Float32Array(N), aAlpha = new Float32Array(N);
+  let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  for (let i = 0; i < N; i++) { aP[i * 2] = rnd(); aP[i * 2 + 1] = rnd(); aSize[i] = 1.2 + Math.pow(rnd(), 3) * 2.6; aPhase[i] = rnd() * 6.28; aAlpha[i] = 0.25 + rnd() * 0.65; }
+  const sg = new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+  sg.setAttribute('aP', new THREE.BufferAttribute(aP, 2)); sg.setAttribute('aSize', new THREE.BufferAttribute(aSize, 1));
+  sg.setAttribute('aPhase', new THREE.BufferAttribute(aPhase, 1)); sg.setAttribute('aAlpha', new THREE.BufferAttribute(aAlpha, 1));
+  starU = { uShift: { value: new THREE.Vector2() }, uDpr: { value: 1 }, uTime: { value: 0 }, uTw: { value: 1 } };
+  const stars = new THREE.Points(sg, new THREE.ShaderMaterial({ uniforms: starU, vertexShader: STAR_VERT, fragmentShader: STAR_FRAG, transparent: true, depthWrite: false }));
+  stars.frustumCulled = false; stars.renderOrder = 1;
+  scene.add(stars);
+
+  // selected-country outline: crisp 1.6px line (Mapbox: line layer)
+  outlineMat = new LineMaterial({ color: 0xF3F6FC, linewidth: 1.6, transparent: true, opacity: 0, depthWrite: false });
+  outline = new LineSegments2(new LineSegmentsGeometry(), outlineMat);
+  outline.visible = false; outline.renderOrder = 4; outline.frustumCulled = false;
+  scene.add(outline);
+
+  microU = { uDpr: { value: 1 }, uColor: { value: col3(LOOK.micro) }, uSelColor: U.uSelColor, uSelAmt: { value: 0 } };
+}
+
+function spaceBackground() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 512;
+  const x = c.getContext('2d'), g = x.createRadialGradient(128, 215, 20, 128, 215, 420);
+  g.addColorStop(0, '#0E1B3D'); g.addColorStop(1, '#03060F');
+  x.fillStyle = g; x.fillRect(0, 0, 256, 512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace; return t;
+}
+
+/* ---------- geometry helpers ---------- */
+function segPositions(lines, r) {
+  const out = [];
+  for (const line of lines) {
+    for (let i = 1; i < line.length; i++) {
+      const a = line[i - 1], b = line[i];
+      const n = Math.max(1, Math.ceil(d3.geoDistance(a, b) / DEG / 1.0));   // follow the curvature (max 1 deg per piece)
+      const it = n > 1 ? d3.geoInterpolate(a, b) : null;
+      let prev = v3(a[0], a[1], r);
+      for (let k = 1; k <= n; k++) {
+        const p = it ? it(k / n) : b, cur = v3(p[0], p[1], r);
+        out.push(prev.x, prev.y, prev.z, cur.x, cur.y, cur.z); prev = cur;
+      }
+    }
+  }
+  return new Float32Array(out);
+}
+function ringsOf(geom) { return geom.type === 'Polygon' ? geom.coordinates : geom.type === 'MultiPolygon' ? geom.coordinates.flat() : []; }
+
+/* ---------- selection mask: local equirectangular raster around the country (R = fill, G = blurred glow) ---------- */
+const maskCanvas = document.createElement('canvas');
+function buildSelMask(feature) {
+  const b = d3.geoBounds(feature);
+  let lonSpan = b[1][0] - b[0][0]; if (lonSpan < 0) lonSpan += 360;
+  if (lonSpan === 0 || lonSpan > 359) lonSpan = 360;
+  const lon0 = b[0][0] + lonSpan / 2;
+  const pad = Math.max(1.5, 0.22 * Math.max(lonSpan, b[1][1] - b[0][1]));
+  const half = Math.min(180, lonSpan / 2 + pad);
+  const latMin = Math.max(-90, b[0][1] - pad), latMaxReq = Math.min(90, b[1][1] + pad);
+  const MAX = 1024, lonSpanL = half * 2, latSpanReq = latMaxReq - latMin;
+  let cw, ch;
+  if (lonSpanL >= latSpanReq) { cw = MAX; ch = Math.max(32, Math.round(MAX * latSpanReq / lonSpanL)); }
+  else { ch = MAX; cw = Math.max(32, Math.round(MAX * lonSpanL / latSpanReq)); }
+  const sx = cw / (lonSpanL * DEG);                       // px per radian (uniform scale)
+  const latSpan = ch / sx / DEG, latMax = latMin + latSpan;
+  maskCanvas.width = cw; maskCanvas.height = ch;
+  const x = maskCanvas.getContext('2d');
+  const proj = d3.geoEquirectangular().rotate([-lon0, 0]).scale(sx).translate([sx * half * DEG, sx * latMax * DEG]).precision(0.1);
+  const path = d3.geoPath(proj, x);
+  x.fillStyle = '#000'; x.fillRect(0, 0, cw, ch);
+  const blur = Math.max(6, 0.035 * Math.max(cw, ch)), OFF = cw + 200;
+  // glow: draw the shape off-canvas and keep only its blurred shadow (works in every browser, unlike ctx.filter)
+  x.save(); x.translate(-OFF, 0);
+  x.shadowColor = 'rgb(0,255,0)'; x.shadowBlur = blur; x.shadowOffsetX = OFF;
+  x.fillStyle = '#0f0'; x.strokeStyle = '#0f0'; x.lineWidth = blur * 0.4; x.lineJoin = 'round';
+  x.beginPath(); path(feature); x.fill(); x.stroke();
+  x.restore();
+  // crisp fill in red
+  x.globalCompositeOperation = 'lighter'; x.fillStyle = 'rgb(255,0,0)';
+  x.beginPath(); path(feature); x.fill();
+  x.globalCompositeOperation = 'source-over';
+  if (U.uSel.value) U.uSel.value.dispose();
+  const t = new THREE.CanvasTexture(maskCanvas);
+  t.colorSpace = THREE.NoColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  U.uSel.value = t;
+  U.uSelBox.value.set(lon0, -half, lonSpanL, latMin);
+  U.uSelLatSpan.value = latSpan;
+}
+
+/* ---------- loading (textures + borders) ---------- */
+// three-globe ships NASA textures under /example/img/. Pinned to one version, verified on the CDN on 2026-10-22.
+const TEX_VERSIONS = ['2.31.0'];
+const texUrl = (v, f) => 'https://cdn.jsdelivr.net/npm/three-globe' + (v ? '@' + v : '') + '/example/img/' + f;
+const WORLD_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json';
+let texVersion;
+
+// Images are fetched and decoded with createImageBitmap instead of an <img>: embedded
+// viewers (like the app's side panel) may block cross-site images while allowing fetch.
+async function loadTex(file, versions) {
+  let lastError = null;
+  for (const v of versions) {
+    try {
+      const res = await fetch(texUrl(v, file), { mode: 'cors' });
+      if (!res.ok) throw new Error(file + ': HTTP ' + res.status);
+      const bitmap = await createImageBitmap(await res.blob(), { imageOrientation: 'flipY' });
+      const t = new THREE.Texture(bitmap);
+      t.flipY = false;               // already flipped while decoding (ImageBitmap ignores flipY)
+      t.needsUpdate = true;
+      return { tex: prep(t), v };
+    } catch (e) {
+      lastError = new Error(file + ': ' + (e && e.message ? e.message : e));
+    }
+  }
+  throw lastError || new Error(file);
+}
+function prep(t) { t.colorSpace = THREE.NoColorSpace; t.anisotropy = maxAniso; return t; }
+function waterIsDark(img) {           // the mask should be white = water; detect an inverted file instead of trusting it
+  try {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 32;
+    const x = c.getContext('2d'); x.drawImage(img, 0, 0, 64, 32);
+    const d = x.getImageData(0, 0, 64, 32).data; let s = 0;
+    for (let i = 0; i < d.length; i += 4) s += d[i];
+    return s / (d.length / 4) < 128;   // ~70% of Earth is water, so a white-water mask averages > 128
+  } catch (e) { return false; }
+}
+
+function showLoading() {
+  loader.className = 'loader';
+  loader.innerHTML = '<div class="spinner" aria-hidden="true"></div><p>טוענים את כדור הארץ…</p>';
+  loader.hidden = false;
+}
+function showError(kind, detail) {
+  const offline = !navigator.onLine;
+  loader.className = 'loader error';
+  let msg = offline
+    ? '<p><strong>אין חיבור לאינטרנט.</strong><br>הגלובוס ייטען לבד כשהחיבור יחזור.</p>'
+    : '<p><strong>לא הצלחנו לטעון את כדור הארץ.</strong><br>בדקו את החיבור ונסו שוב.</p>';
+  if (kind === 'webgl') msg = '<p><strong>הדפדפן לא תומך ב-WebGL.</strong><br>פתחו את ההדמיה ב-Chrome, Safari או Edge עדכניים.</p>';
+  // Prototype only: show the technical reason so a failed load can be diagnosed from a screenshot.
+  const tech = detail ? '<p dir="ltr" style="font-size:12px;line-height:16px;opacity:.75;word-break:break-all">' + String(detail).replace(/[<>&]/g, '') + '</p>' : '';
+  loader.innerHTML = msg + tech + (kind === 'webgl' ? '' : '<button type="button" class="btn-scene" id="retry">ניסיון חוזר</button>');
+  loader.hidden = false;
+  const r = $('#retry'); if (r) { r.addEventListener('click', load); r.focus(); }
+}
+function setTexSource() {
+  const el = $('#texSrc');
+  if (texVersion) { el.className = 'src'; el.innerHTML = 'three-globe@' + texVersion + ' · NASA Blue Marble / Black Marble (נחלת הכלל)'; }
+  else { el.className = 'src warn'; el.textContent = 'אזהרה: אף גרסה נעולה לא נטענה, ונטענה גרסה לא נעולה של three-globe. צריך לתקן את רשימת הגרסאות.'; }
+}
+
+let loading = false;
+async function load() {
+  if (loading) return; loading = true;
+  showLoading();
+  try {
+    const [day, topo] = await Promise.all([
+      loadTex('earth-blue-marble.jpg', TEX_VERSIONS),
+      fetch(WORLD_URL).then((r) => { if (!r.ok) throw new Error('world-atlas: HTTP ' + r.status); return r.json(); })
+    ]);
+    texVersion = day.v; setTexSource();
+    U.uDay.value = day.tex;
+    initWorld(topo);
+    loader.hidden = true;
+    S.revealT0 = performance.now();
+    const vs = [texVersion];
+    loadTex('earth-water.png', vs).then((r) => { U.uWaterInv.value = waterIsDark(r.tex.image) ? 1 : 0; U.uWater.value = r.tex; U.uHasWater.value = 1; }).catch(() => {});
+    loadTex('earth-topology.png', vs).then((r) => { U.uTopo.value = r.tex; U.uTopoTexel.value.set(1 / r.tex.image.width, 1 / r.tex.image.height); U.uHasTopo.value = 1; }).catch(() => {});
+  } catch (e) {
+    showError(undefined, e && e.message ? e.message : e);
+  } finally { loading = false; }
+}
+
+function initWorld(topo) {
+  if (S.world) return;
+  const features = topojson.feature(topo, topo.objects.countries).features;
+  features.forEach((f, i) => {
+    f.index = i; f.info = infoFor(f.id, f.properties.name); f.blocked = !!BLOCKED[f.id];
+    let main = f.geometry;
+    if (main.type === 'MultiPolygon') {
+      let best = null, ba = -1;
+      main.coordinates.forEach((c) => { const g = { type: 'Polygon', coordinates: c }, a = d3.geoArea(g); if (a > ba) { ba = a; best = g; } });
+      main = best;
+    }
+    f.main = main; f.center = d3.geoCentroid(main); f.area = d3.geoArea(main);
+  });
+  S.world = { features };
+  // borders (Mapbox: line layer on our 50m GeoJSON)
+  const mesh = topojson.mesh(topo, topo.objects.countries, (a, b) => a !== b);
+  const bg = new THREE.BufferGeometry();
+  bg.setAttribute('position', new THREE.BufferAttribute(segPositions(mesh.coordinates, 1.0012), 3));
+  borders = new THREE.LineSegments(bg, new THREE.ShaderMaterial({
+    uniforms: { uSun: U.uSun, uColor: { value: col3(LOOK.border) }, uAlpha: { value: LOOK.borderAlpha } },
+    vertexShader: BORDER_VERT, fragmentShader: BORDER_FRAG, transparent: true, depthWrite: false
+  }));
+  borders.renderOrder = 2;
+  scene.add(borders);
+  // micro-states
+  S.micro = MICRO_DEF.map((m) => ({ id: m[0], c: [m[1], m[2]], info: infoFor(m[0], m[0]), micro: true }));
+  const mg = new THREE.BufferGeometry(), pos = new Float32Array(S.micro.length * 3);
+  S.micro.forEach((m, i) => { const p = v3(m.c[0], m.c[1], 1.004); pos.set([p.x, p.y, p.z], i * 3); });
+  mg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  mg.setAttribute('aSel', new THREE.BufferAttribute(new Float32Array(S.micro.length), 1));
+  microPts = new THREE.Points(mg, new THREE.ShaderMaterial({ uniforms: microU, vertexShader: MICRO_VERT, fragmentShader: MICRO_FRAG, transparent: true, depthWrite: false }));
+  microPts.renderOrder = 5;
+  scene.add(microPts);
+}
+
+/* ---------- lighting: always day, a studio light that follows the camera ---------- */
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+function updateLight() {
+  const dir = camera.position.clone().normalize();                               // from the Earth towards the viewer
+  const up = WORLD_UP.clone().addScaledVector(dir, -dir.y).normalize();          // screen up, on the globe
+  const left = new THREE.Vector3().crossVectors(dir, up).normalize();            // screen left
+  U.uSun.value.copy(dir).addScaledVector(up, 0.55).addScaledVector(left, 0.45).normalize();
+}
+
+/* ---------- camera ---------- */
+function resize() {
+  const r = screenEl.getBoundingClientRect();
+  W = r.width; H = r.height; DPR = Math.min(2, window.devicePixelRatio || 1);
+  renderer.setPixelRatio(DPR); renderer.setSize(W, H, false);
+  camera.aspect = W / H;
+  outlineMat.resolution.set(W, H);
+  starU.uDpr.value = DPR; microU.uDpr.value = DPR;
+}
+function baseR() { return Math.min(W * 0.42, H * 0.3); }      // globe radius in px at k = 1 (same as A)
+function targetCy() { return S.sel ? H * 0.37 : H * 0.47; }
+function camDist(k) {                                         // camera distance that renders the globe at baseR * k px
+  const q = baseR() * k * Math.tan(camera.fov * DEG / 2) / (H / 2);
+  return 1 / Math.sin(Math.atan(q));
+}
+function updateCamera() {
+  camera.position.copy(v3(S.lon, S.lat, camDist(S.k)));
+  camera.up.set(0, 1, 0); camera.lookAt(0, 0, 0);
+  camera.setViewOffset(W, H, 0, H / 2 - S.cy, W, H);         // lifts the globe when the card is open (Mapbox: camera padding)
+  updateLight();
+}
+const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const clampK = (k) => clamp(k, 0.85, 9);
+function zoomFor(target) {
+  if (target.micro) return 4.5;
+  const a = Math.sqrt(target.area / Math.PI);
+  return clamp((0.16 * W) / (baseR() * Math.sin(Math.min(a * 1.3, 1.3))), 1.15, 5);
+}
+function flyTo(center, k) {
+  const from = [S.lon, S.lat], dist = d3.geoDistance(from, center) / DEG;
+  S.vel = null;
+  if (isReduced()) {                                           // AC-6: fade instead of fly
+    S.flight = null;
+    canvas.style.transition = 'opacity ' + M.fadeOut + 'ms linear'; canvas.style.opacity = '0';
+    clearTimeout(S.fadeTimer);
+    S.fadeTimer = setTimeout(() => {
+      S.lon = center[0]; S.lat = center[1]; S.k = k; S.cy = targetCy();
+      canvas.style.transition = 'opacity ' + M.fadeIn + 'ms linear'; canvas.style.opacity = '1';
+    }, M.fadeOut);
+    return;
+  }
+  S.flight = {
+    t0: performance.now(),
+    dur: clamp(M.flyMin + (dist / 180) * (M.flyMax - M.flyMin), M.flyMin, M.flyMax),
+    interp: d3.geoInterpolate(from, center), lk0: Math.log(S.k), lk1: Math.log(k),
+    bump: 0.7 * Math.min(1, dist / 90)                        // zoom out mid-flight, like Mapbox flyTo
+  };
+}
+
+/* ---------- selection & card ---------- */
+const globeColor = (info) => (info.region && REGION_GLOBE[info.region]) || '#FF7A57';
+const cardColor = (info) => themeName() === 'dark' ? globeColor(info) : ((info.region && REGION_LIGHT[info.region]) || '#F25C38');
+
+function select(target) {
+  const center = target.micro ? target.c : target.center;
+  const info = Object.assign({}, target.info, { center });
+  const same = S.sel && S.sel.id === info.id;
+  if (!same) {
+    S.sel = { id: info.id, info, feature: target.micro ? null : target, micro: target.micro ? target : null, t0: performance.now() };
+    U.uSelColor.value.set(globeColor(info));
+    if (S.sel.feature) {
+      buildSelMask(S.sel.feature);
+      outline.geometry.dispose();
+      outline.geometry = new LineSegmentsGeometry().setPositions(segPositions(ringsOf(S.sel.feature.geometry), 1.0025));
+      outline.visible = true; U.uSelOn.value = 1;
+    } else { outline.visible = false; U.uSelOn.value = 0; }
+    setMicroSel(S.sel.micro);
+  }
+  flyTo([center[0], clamp(center[1], -65, 65)], zoomFor(target));
+  if (!same) { showCard(info); live.textContent = 'נבחרה: ' + (info.he || info.en); }
+}
+function setMicroSel(m) {
+  if (!microPts) return;
+  const a = microPts.geometry.getAttribute('aSel');
+  S.micro.forEach((x, i) => { a.array[i] = x === m ? 1 : 0; });
+  a.needsUpdate = true;
+}
+function deselect() {
+  if (!S.sel) return;
+  S.sel = null; U.uSelOn.value = 0; outline.visible = false; setMicroSel(null);
+  S.lastInput = performance.now();                            // auto-rotate resumes 5 s after the card closes
+  clearInterval(clockTimer);
+  hideCard(); live.textContent = 'הכרטיס נסגר';
+}
+function showCard(info) {
+  const wasOpen = card.classList.contains('open');
+  card.hidden = false;
+  fillCard(info);
+  if (wasOpen) { card.classList.remove('swap'); void card.offsetWidth; card.classList.add('swap'); }
+  requestAnimationFrame(() => card.classList.add('open'));
+}
+function hideCard() {
+  card.classList.remove('open');
+  clearTimeout(S.cardTimer);
+  S.cardTimer = setTimeout(() => { if (!card.classList.contains('open')) card.hidden = true; }, 400);
+}
+let flapTimer = null;
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+function flap(el, text, reduce) {
+  clearInterval(flapTimer);
+  el.innerHTML = ''; el.setAttribute('role', 'img'); el.setAttribute('aria-label', text);
+  const cells = text.split('').map((ch) => { const s = document.createElement('span'); s.className = 'c-flap'; s.setAttribute('aria-hidden', 'true'); s.textContent = reduce ? ch : LETTERS[Math.floor(Math.random() * 26)]; el.appendChild(s); return s; });
+  if (reduce) return;
+  const t0 = performance.now();
+  flapTimer = setInterval(() => {
+    const now = performance.now() - t0; let done = true;
+    cells.forEach((c, i) => {
+      const settle = 300 + i * 140, target = text[i];           // last letter settles at 580ms; total <= 0.7 s (12.3)
+      if (now < settle) { done = false; c.textContent = LETTERS[Math.floor(Math.random() * LETTERS.length)]; }
+      else if (c.textContent !== target) c.textContent = target; else return;
+      c.classList.remove('tick'); void c.offsetWidth; c.classList.add('tick');
+    });
+    if (done) clearInterval(flapTimer);
+  }, 60);
+}
+/* ---------- local time and currency on the card ---------- */
+// iso3 -> [IANA time zone, ISO 4217 currency, city shown when the country has several zones].
+// Prototype data for the named destinations; the app builds this table from open data for every country.
+const LOCAL = {
+  ISR: ['Asia/Jerusalem', 'ILS'], THA: ['Asia/Bangkok', 'THB'], GRC: ['Europe/Athens', 'EUR'], CYP: ['Asia/Nicosia', 'EUR'],
+  USA: ['America/New_York', 'USD', 'וושינגטון'], ITA: ['Europe/Rome', 'EUR'], JPN: ['Asia/Tokyo', 'JPY'], ESP: ['Europe/Madrid', 'EUR', 'מדריד'],
+  FRA: ['Europe/Paris', 'EUR'], GBR: ['Europe/London', 'GBP'], DEU: ['Europe/Berlin', 'EUR'], HUN: ['Europe/Budapest', 'HUF'],
+  ROU: ['Europe/Bucharest', 'RON'], BGR: ['Europe/Sofia', 'EUR'], HRV: ['Europe/Zagreb', 'EUR'], MNE: ['Europe/Podgorica', 'EUR'],
+  SRB: ['Europe/Belgrade', 'RSD'], CZE: ['Europe/Prague', 'CZK'], AUT: ['Europe/Vienna', 'EUR'], CHE: ['Europe/Zurich', 'CHF'],
+  NLD: ['Europe/Amsterdam', 'EUR'], BEL: ['Europe/Brussels', 'EUR'], PRT: ['Europe/Lisbon', 'EUR', 'ליסבון'], POL: ['Europe/Warsaw', 'PLN'],
+  GEO: ['Asia/Tbilisi', 'GEL'], ARM: ['Asia/Yerevan', 'AMD'], AZE: ['Asia/Baku', 'AZN'], TUR: ['Europe/Istanbul', 'TRY'],
+  EGY: ['Africa/Cairo', 'EGP'], JOR: ['Asia/Amman', 'JOD'], ARE: ['Asia/Dubai', 'AED'], MAR: ['Africa/Casablanca', 'MAD'],
+  IND: ['Asia/Kolkata', 'INR'], NPL: ['Asia/Kathmandu', 'NPR'], LKA: ['Asia/Colombo', 'LKR'], VNM: ['Asia/Ho_Chi_Minh', 'VND'],
+  KHM: ['Asia/Phnom_Penh', 'KHR'], LAO: ['Asia/Vientiane', 'LAK'], IDN: ['Asia/Jakarta', 'IDR', "ג'קרטה"], MYS: ['Asia/Kuala_Lumpur', 'MYR'],
+  PHL: ['Asia/Manila', 'PHP'], CHN: ['Asia/Shanghai', 'CNY'], KOR: ['Asia/Seoul', 'KRW'], AUS: ['Australia/Sydney', 'AUD', 'קנברה'],
+  NZL: ['Pacific/Auckland', 'NZD'], CAN: ['America/Toronto', 'CAD', 'אוטווה'], MEX: ['America/Mexico_City', 'MXN', 'מקסיקו סיטי'], ARG: ['America/Argentina/Buenos_Aires', 'ARS'],
+  BRA: ['America/Sao_Paulo', 'BRL', 'ברזיליה'], PER: ['America/Lima', 'PEN'], CHL: ['America/Santiago', 'CLP', 'סנטיאגו'], COL: ['America/Bogota', 'COP'],
+  CRI: ['America/Costa_Rica', 'CRC'], CUB: ['America/Havana', 'CUP'], ZAF: ['Africa/Johannesburg', 'ZAR'], KEN: ['Africa/Nairobi', 'KES'],
+  TZA: ['Africa/Dar_es_Salaam', 'TZS'], ETH: ['Africa/Addis_Ababa', 'ETB'], ISL: ['Atlantic/Reykjavik', 'ISK'], NOR: ['Europe/Oslo', 'NOK'],
+  SWE: ['Europe/Stockholm', 'SEK'], FIN: ['Europe/Helsinki', 'EUR'], DNK: ['Europe/Copenhagen', 'DKK'], IRL: ['Europe/Dublin', 'EUR'],
+  RUS: ['Europe/Moscow', 'RUB', 'מוסקבה'], UKR: ['Europe/Kyiv', 'UAH'], KAZ: ['Asia/Almaty', 'KZT', 'אסטנה'], UZB: ['Asia/Tashkent', 'UZS'],
+  MNG: ['Asia/Ulaanbaatar', 'MNT', 'אולן בטור'], SVN: ['Europe/Ljubljana', 'EUR'], SVK: ['Europe/Bratislava', 'EUR'], ALB: ['Europe/Tirane', 'ALL'],
+  MKD: ['Europe/Skopje', 'MKD'], LUX: ['Europe/Luxembourg', 'EUR'], NAM: ['Africa/Windhoek', 'NAD'], MDG: ['Indian/Antananarivo', 'MGA'],
+  TUN: ['Africa/Tunis', 'TND'], QAT: ['Asia/Qatar', 'QAR'], OMN: ['Asia/Muscat', 'OMR'], SAU: ['Asia/Riyadh', 'SAR'],
+  GRL: ['America/Nuuk', 'DKK', 'נואוק'], TWN: ['Asia/Taipei', 'TWD'], MLT: ['Europe/Malta', 'EUR'], SGP: ['Asia/Singapore', 'SGD'],
+  MDV: ['Indian/Maldives', 'MVR'], SYC: ['Indian/Mahe', 'SCR'], MUS: ['Indian/Mauritius', 'MUR'], BHR: ['Asia/Bahrain', 'BHD']
+};
+const currencyNames = new Intl.DisplayNames(['he'], { type: 'currency' });
+function currencySymbol(code) {
+  try {
+    return new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' })
+      .formatToParts(0).find((p) => p.type === 'currency').value;
+  } catch (e) { return code; }
+}
+function offsetMinutes(timeZone, date) {     // UTC offset of a zone at a moment, from "GMT+5:30"
+  const name = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' })
+    .formatToParts(date).find((p) => p.type === 'timeZoneName').value;
+  const m = /GMT([+-])(\d{1,2})(?::(\d{2}))?/.exec(name);
+  return m ? (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] || 0)) : 0;
+}
+function diffFromIsrael(timeZone, date) {
+  const d = offsetMinutes(timeZone, date) - offsetMinutes('Asia/Jerusalem', date);
+  if (d === 0) return 'כמו שעון ישראל';
+  const h = Math.floor(Math.abs(d) / 60), m = Math.abs(d) % 60;
+  const amount = m ? h + ':' + String(m).padStart(2, '0') + ' שעות' : (h === 1 ? 'שעה' : (h === 2 ? 'שעתיים' : h + ' שעות'));
+  return amount + (d > 0 ? ' לפני ישראל' : ' אחרי ישראל');
+}
+let clockTimer = null;
+function renderLocal(info) {
+  const local = info.iso3 && LOCAL[info.iso3];
+  clearInterval(clockTimer);
+  if (!local) {
+    $('#cardTimeLabel').textContent = 'שעה מקומית';
+    $('#cardTime').textContent = '—'; $('#cardDiff').textContent = '';
+    $('#cardCur').textContent = '—'; $('#cardCurCode').textContent = '';
+    return;
+  }
+  const [timeZone, currency, city] = local;
+  $('#cardTimeLabel').textContent = city ? 'שעה מקומית · ' + city : 'שעה מקומית';
+  const tick = () => {
+    const now = new Date();
+    $('#cardTime').textContent = new Intl.DateTimeFormat('he-IL', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
+    $('#cardDiff').textContent = diffFromIsrael(timeZone, now);
+  };
+  tick(); clockTimer = setInterval(tick, 10000);
+  $('#cardCur').textContent = currencyNames.of(currency);
+  const symbol = currencySymbol(currency);
+  $('#cardCurCode').textContent = symbol === currency ? currency : symbol + ' · ' + currency;
+}
+
+function fillCard(info) {
+  const he = $('#cardHe'), en = $('#cardEn');
+  he.textContent = info.he || info.en; he.setAttribute('dir', info.he ? 'rtl' : 'ltr');
+  en.textContent = info.he ? info.en : ''; en.hidden = !info.he;
+  renderLocal(info);
+  card.style.setProperty('--sel', cardColor(info));
+  flap($('#cardCode'), info.iso3 || '---', isReduced());
+}
+
+/* ---------- hit testing (AC-4, AC-5) ---------- */
+const ray = new THREE.Raycaster(), unitSphere = new THREE.Sphere(new THREE.Vector3(), 1), hitV = new THREE.Vector3();
+function pick(x, y) {
+  ray.setFromCamera(new THREE.Vector2(x / W * 2 - 1, -(y / H) * 2 + 1), camera);
+  return ray.ray.intersectSphere(unitSphere, hitV) ? toLonLat(hitV) : null;
+}
+function screenOf(ll) {
+  const p = v3(ll[0], ll[1], 1);
+  if (p.dot(camera.position) <= 1.01) return null;            // behind the horizon
+  const n = p.project(camera);
+  return [(n.x + 1) / 2 * W, (1 - n.y) / 2 * H];
+}
+function featureAt(ll) {
+  if (!ll) return null;
+  const fs = S.world.features;
+  for (let i = 0; i < fs.length; i++) if (d3.geoContains(fs[i], ll)) return fs[i];
+  return null;
+}
+function hitTest(x, y) {
+  let best = null, bd = 1e9;
+  S.micro.forEach((m) => { const s = screenOf(m.c); if (s) { const d = Math.hypot(s[0] - x, s[1] - y); if (d < bd) { bd = d; best = m; } } });
+  if (best && bd <= 10) return { micro: best };
+  const ll = pick(x, y);
+  if (!ll) return { space: true };
+  const f = featureAt(ll);
+  if (f) return { feature: f };
+  for (const rad of [8, 15, 22]) {                              // enlarged tap area: 44pt target
+    if (best && bd <= rad) return { micro: best };
+    for (let a = 0; a < 8; a++) {
+      const l2 = pick(x + rad * Math.cos(a * Math.PI / 4), y + rad * Math.sin(a * Math.PI / 4));
+      const f2 = featureAt(l2);
+      if (f2 && !f2.blocked) return { feature: f2 };
+    }
+  }
+  return { sea: true };
+}
+function onTap(x, y) {
+  if (!S.world) return;
+  const h = hitTest(x, y);
+  if (h.micro) select(h.micro);
+  else if (h.feature) { if (!h.feature.blocked) select(h.feature); }
+  else deselect();                                            // sea or space closes the card
+}
+
+/* ---------- gestures ---------- */
+const pts = new Map(); let G = null;
+function interact() { S.lastInput = performance.now(); S.autoF = 0; if (!hint.classList.contains('gone')) hint.classList.add('gone'); }
+function local(e) { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+function bindGestures() {
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    const p = local(e); pts.set(e.pointerId, p); interact(); S.vel = null;
+    if (pts.size === 1) G = { type: 'drag', sx: p.x, sy: p.y, lx: p.x, ly: p.y, t0: performance.now(), moved: false, samples: [] };
+    else if (pts.size === 2) { const a = [...pts.values()]; G = { type: 'pinch', d0: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1, k0: S.k, moved: true }; S.flight = null; }
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId) || !G) return;
+    const p = local(e); pts.set(e.pointerId, p); interact();
+    if (G.type === 'drag') {
+      const dx = p.x - G.lx, dy = p.y - G.ly;
+      if (!G.moved && Math.hypot(p.x - G.sx, p.y - G.sy) > 6) { G.moved = true; S.flight = null; S.dragging = true; }
+      if (G.moved) {
+        const dpp = 180 / (Math.PI * baseR() * S.k);
+        S.lon = wrapLon(S.lon - dx * dpp); S.lat = clamp(S.lat + dy * dpp, -85, 85);
+        const now = performance.now();
+        G.samples.push({ t: now, lon: -dx * dpp, lat: dy * dpp });
+        while (G.samples.length && now - G.samples[0].t > 90) G.samples.shift();
+      }
+      G.lx = p.x; G.ly = p.y;
+    } else if (G.type === 'pinch' && pts.size >= 2) {
+      const a = [...pts.values()];
+      S.k = clampK(G.k0 * Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) / G.d0);
+    }
+  });
+  const end = (e) => {
+    if (!pts.has(e.pointerId)) return;
+    const p = local(e); pts.delete(e.pointerId); interact();
+    if (G && G.type === 'drag') {
+      if (!G.moved && performance.now() - G.t0 < 450) onTap(p.x, p.y);
+      else if (G.moved && G.samples.length > 1 && !isReduced()) {
+        const span = (G.samples[G.samples.length - 1].t - G.samples[0].t) / 1000 || 0.016;
+        let sl = 0, sa = 0; G.samples.forEach((s) => { sl += s.lon; sa += s.lat; });
+        S.vel = { lon: sl / span, lat: sa / span };
+      }
+      S.dragging = false; G = null;
+    } else if (G && G.type === 'pinch') {
+      if (pts.size === 1) { const q = [...pts.values()][0]; G = { type: 'drag', sx: q.x, sy: q.y, lx: q.x, ly: q.y, t0: 0, moved: true, samples: [] }; }
+      else G = null;
+    }
+  };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('wheel', (e) => { e.preventDefault(); interact(); S.flight = null; S.k = clampK(S.k * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') deselect(); });   // = Android "back"
+  card.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) deselect(); });
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); showError(); });
+}
+
+/* ---------- loop ---------- */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const reduce = isReduced();
+  if (S.cy === null) S.cy = targetCy();
+  const tcy = targetCy();
+  S.cy = reduce ? tcy : S.cy + (tcy - S.cy) * (1 - Math.exp(-dt * 7));
+
+  if (S.flight) {
+    const f = S.flight, t = Math.min(1, (now - f.t0) / f.dur), e = easeInOutCubic(t), c = f.interp(e);
+    S.lon = c[0]; S.lat = c[1];
+    S.k = Math.exp(f.lk0 + (f.lk1 - f.lk0) * e - f.bump * Math.sin(Math.PI * e));
+    if (t >= 1) S.flight = null;
+  } else if (S.vel && !S.dragging) {
+    S.lon = wrapLon(S.lon + S.vel.lon * dt); S.lat = clamp(S.lat + S.vel.lat * dt, -85, 85);
+    const decay = Math.exp(-dt * 4); S.vel.lon *= decay; S.vel.lat *= decay;
+    if (Math.abs(S.vel.lon) + Math.abs(S.vel.lat) < 0.5) S.vel = null;
+  }
+  const wantAuto = !reduce && !S.sel && !S.dragging && !S.flight && !S.vel && pts.size === 0 && (now - S.lastInput > M.autoResumeDelay);
+  S.autoF = wantAuto ? Math.min(1, S.autoF + dt * 1000 / M.autoResumeRamp) : 0;
+  S.lon = wrapLon(S.lon - M.autoRotateDegPerSec * dt * S.autoF * S.autoF * (3 - 2 * S.autoF));
+
+  // imagery reveal, offline fallback, selection "rises and glows"
+  if (S.revealT0) U.uReveal.value = reduce ? 1 : Math.min(1, (now - S.revealT0) / M.reveal);
+  const offT = S.offlineSim ? 1 : 0;
+  S.offAmt = reduce ? offT : S.offAmt + clamp(offT - S.offAmt, -dt * 1000 / M.offlineFade, dt * 1000 / M.offlineFade);
+  U.uOffline.value = S.offAmt;
+  if (S.sel) {
+    const t = reduce ? 1 : Math.min(1, (now - S.sel.t0) / M.highlight), e = 1 - Math.pow(1 - t, 3);
+    const pulse = reduce ? 0 : 0.55 * Math.sin(Math.PI * Math.min(1, t * 1.4));
+    U.uSelFill.value = e; U.uSelGlow.value = e + pulse; outlineMat.opacity = e; microU.uSelAmt.value = e + pulse;
+  }
+  starU.uTime.value = now / 1000; starU.uTw.value = reduce ? 0 : 1;
+  starU.uShift.value.set(-S.lon / 360, S.lat / 360);
+
+  updateCamera();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- network state ---------- */
+function updateNet() {
+  const offline = S.offlineSim || !navigator.onLine;
+  net.hidden = !offline;
+  if (offline) net.textContent = S.offlineSim ? 'אין חיבור · מציגים מפה בסיסית מהמכשיר' : 'אין חיבור · מציגים את מה שנשמר במכשיר';
+}
+
+/* ---------- prototype controls (outside the phone) ---------- */
+function initControls() {
+  document.querySelectorAll('[data-pref]').forEach((b) => b.addEventListener('click', () => {
+    themePref = b.getAttribute('data-pref');
+    document.querySelectorAll('[data-pref]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    applyTheme();
+  }));
+  const rm = $('#rm'); rm.checked = mqReduce.matches;
+  rm.addEventListener('change', () => { reduceOverride = rm.checked; applyTheme(); });
+  const off = $('#off'); off.addEventListener('change', () => { S.offlineSim = off.checked; updateNet(); });
+  mqDark.addEventListener('change', applyTheme);
+  mqReduce.addEventListener('change', () => { if (reduceOverride === null) rm.checked = mqReduce.matches; applyTheme(); });
+  const ab = $('#attribBtn'), ap = $('#attribPop');
+  ab.addEventListener('click', () => { ap.hidden = !ap.hidden; ab.setAttribute('aria-expanded', String(!ap.hidden)); });
+  window.addEventListener('online', () => { updateNet(); if (!S.world) load(); });
+  window.addEventListener('offline', updateNet);
+  const clock = $('#sbTime');
+  const tick = () => { clock.textContent = new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit' }).format(new Date()); };
+  tick(); setInterval(tick, 15000);
+}
+
+/* ---------- boot ---------- */
+applyTheme();
+if (!renderer) {
+  W = screenEl.clientWidth; H = screenEl.clientHeight;
+  showError('webgl');
+} else {
+  buildScene();
+  resize();
+  window.addEventListener('resize', resize);
+  initControls(); bindGestures(); updateNet();
+  load();
+  requestAnimationFrame(frame);
+  window.__globe = { state: S, uniforms: U, select: (id) => { const f = S.world && S.world.features.find((x) => x.id === id); if (f) select(f); }, deselect };
+}
+</script>
+</body>
+</html>

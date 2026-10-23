@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Globe B, Postcard</title>
+<!-- Pinned CDN dependencies only (Sprint 0 design prototype - not production code) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/rubik@5.1.0/index.css">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<style>
+/* ---- design tokens (from docs/design/tokens.json) ---- */
+:root {
+  --font: 'Rubik Variable', 'Rubik', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --bg-canvas: #FFFBF5; --bg-surface: #FFFFFF; --bg-surface-alt: #FBF4E8;
+  --text-primary: #121C36; --text-secondary: #4A5573; --text-tertiary: #646E8A;
+  --accent: #1561BC; --on-accent: #FFFFFF; --cta: #C8441F; --on-cta: #FFFFFF;
+  --border-subtle: #F4E7D0; --border-control: #7D869E; --focus: #1F78DB;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 24px; --radius-sheet: 28px;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --dur-short: 200ms; --dur-medium: 300ms; --dur-sheet: 320ms;
+  --page-bg: #EDE6D9;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg-canvas: #060B18; --bg-surface: #0B1326; --bg-surface-alt: #121C36;
+  --text-primary: #F3F6FC; --text-secondary: #A3B3DB; --text-tertiary: #7487BD;
+  --accent: #6FB3FA; --on-accent: #060B18; --cta: #FF7A57; --on-cta: #060B18;
+  --border-subtle: #1A2749; --border-control: #7487BD; --focus: #6FB3FA;
+  --page-bg: #03060E;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: var(--font); background: var(--page-bg); color: var(--text-primary);
+  min-height: 100vh; -webkit-font-smoothing: antialiased;
+}
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+.stage { display: flex; gap: 40px; align-items: center; justify-content: center; padding: 32px 16px; min-height: 100vh; flex-wrap: wrap; }
+/* ---- phone frame ---- */
+.phone {
+  width: 390px; height: 844px; border-radius: 52px; padding: 10px; flex: none;
+  background: #0E0F12; box-shadow: 0 0 0 2px #2A2C33, 0 30px 80px rgba(0,0,0,.35);
+}
+.screen {
+  position: relative; width: 100%; height: 100%; border-radius: 42px; overflow: hidden;
+  background: var(--bg-canvas); isolation: isolate;
+}
+#globe { position: absolute; inset: 0; touch-action: none; cursor: grab; display: block; }
+#globe:active { cursor: grabbing; }
+.statusbar {
+  position: absolute; top: 0; inset-inline: 0; height: 48px; padding: 14px 30px 0; z-index: 3;
+  display: flex; justify-content: space-between; align-items: center; pointer-events: none;
+  font-size: 15px; font-weight: 600; color: var(--sb-color, var(--text-primary)); direction: ltr;
+}
+.statusbar .icons { display: flex; gap: 6px; align-items: center; }
+.statusbar .icons i { display: block; background: currentColor; border-radius: 2px; }
+.home-ind { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; height: 5px; border-radius: 3px; background: var(--sb-color, var(--text-primary)); opacity: .55; z-index: 6; pointer-events: none; }
+.hint {
+  position: absolute; top: 64px; inset-inline: 0; margin: 0 auto; width: max-content; max-width: calc(100% - 32px);
+  padding: 8px 14px; border-radius: 999px; font-size: 13px; z-index: 3; pointer-events: none;
+  transition: opacity 400ms var(--ease-standard), transform 400ms var(--ease-standard);
+}
+.hint.gone { opacity: 0; transform: translateY(-6px); }
+.loader { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center; padding: 24px; color: var(--text-secondary); }
+.loader[hidden] { display: none; }
+.loader p { margin: 0; font-size: 15px; line-height: 22px; }
+.spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--border-subtle); border-top-color: var(--accent); animation: spin 900ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn { font: inherit; font-weight: 500; min-height: 48px; padding: 0 20px; border-radius: 999px; border: 0; background: var(--accent); color: var(--on-accent); cursor: pointer; }
+/* ---- bottom card: shared behaviour; look is per direction ---- */
+.card {
+  position: absolute; inset-inline: 12px; bottom: 30px; z-index: 5;
+  transform: translateY(calc(100% + 40px));
+  transition: transform var(--dur-sheet) var(--ease-decel);
+}
+.card.open { transform: none; }
+:root[data-reduce] .card { transform: none; opacity: 0; transition: opacity var(--dur-short) linear; }
+:root[data-reduce] .card.open { opacity: 1; }
+.card .close {
+  position: absolute; top: 10px; inset-inline-end: 10px; width: 44px; height: 44px; border-radius: 50%;
+  border: 0; background: transparent; color: inherit; cursor: pointer; display: grid; place-items: center;
+}
+.card .close svg { width: 20px; height: 20px; }
+.card .close:focus-visible, .btn:focus-visible, .panel button:focus-visible, .panel input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.card.swap .swap-target { animation: swapIn 220ms var(--ease-standard); }
+@keyframes swapIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+:root[data-reduce] .card.swap .swap-target { animation: fadeOnly 200ms linear; }
+@keyframes fadeOnly { from { opacity: 0; } to { opacity: 1; } }
+[dir="ltr"] { unicode-bidi: isolate; }
+#cardHe, #cardEn { text-align: right; }
+/* ---- prototype control panel (not app UI) ---- */
+.panel { width: 360px; max-width: 100%; background: var(--bg-surface); border-radius: var(--radius-xl); padding: 24px; box-shadow: 0 1px 2px rgba(18,28,54,.06), 0 8px 24px rgba(18,28,54,.08); }
+:root[data-theme="dark"] .panel { box-shadow: none; border: 1px solid var(--border-subtle); }
+.panel .eyebrow { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin: 0 0 4px; }
+.panel h1 { font-size: 28px; line-height: 34px; margin: 0 0 4px; font-weight: 700; }
+.panel h1 small { display: block; font-size: 15px; line-height: 22px; font-weight: 400; color: var(--text-secondary); }
+.panel p { font-size: 15px; line-height: 22px; color: var(--text-secondary); margin: 12px 0; }
+.panel h2 { font-size: 13px; line-height: 18px; font-weight: 600; margin: 20px 0 8px; color: var(--text-primary); }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.swatches span { width: 32px; height: 32px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(127,127,127,.25); }
+.seg { display: flex; border: 1px solid var(--border-control); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button { flex: 1; font: inherit; font-size: 14px; min-height: 40px; border: 0; border-radius: 999px; background: transparent; color: var(--text-primary); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 500; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-size: 15px; }
+.row input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); }
+.range { width: 100%; accent-color: var(--accent); direction: ltr; }
+.linkbtn { font: inherit; font-size: 14px; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 8px 0; min-height: 44px; }
+.dirs { display: flex; gap: 8px; margin-top: 8px; }
+.dirs a { flex: 1; text-align: center; padding: 10px 0; border-radius: 12px; text-decoration: none; color: var(--text-primary); border: 1px solid var(--border-control); font-size: 14px; }
+.dirs a[aria-current="page"] { background: var(--text-primary); color: var(--bg-surface); border-color: transparent; font-weight: 600; }
+.panel ul { margin: 0; padding-inline-start: 18px; font-size: 14px; line-height: 21px; color: var(--text-secondary); }
+@media (max-width: 520px) {
+  .stage { padding: 0; gap: 0; }
+  .phone { width: 100vw; height: 100dvh; border-radius: 0; padding: 0; box-shadow: none; }
+  .screen { border-radius: 0; }
+  .panel { width: 100%; border-radius: 0; }
+}
+.hint { background: #FFFBF5; color: #121C36; border: 1.5px solid #2A2B4A; box-shadow: 2px 2px 0 #2A2B4A; }
+:root[data-theme="dark"] .hint { background: #121C36; color: #F4E7D0; border-color: rgba(244,231,208,.7); box-shadow: 2px 2px 0 rgba(244,231,208,.5); }
+.b-card { filter: drop-shadow(0 10px 24px rgba(42,43,74,.22)); }
+.b-paper {
+  position: relative; border-radius: 20px; overflow: hidden; padding: 30px 24px 20px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255,255,255,.7), transparent 40%),
+    #FFFBF5;
+  color: #121C36; border: 1px solid #EAD6B3;
+}
+.b-paper::before { /* air-mail edge */
+  content: ""; position: absolute; inset-inline: 0; top: 0; height: 8px;
+  background: repeating-linear-gradient(-45deg, #F25C38 0 12px, #FFFBF5 12px 18px, #1561BC 18px 30px, #FFFBF5 30px 36px);
+}
+:root[data-theme="dark"] .b-paper { background: #121C36; color: #F4E7D0; border-color: #24355F; }
+:root[data-theme="dark"] .b-paper::before { background: repeating-linear-gradient(-45deg, #FF7A57 0 12px, #121C36 12px 18px, #6FB3FA 18px 30px, #121C36 30px 36px); }
+.b-card .close { inset-inline-end: auto; inset-inline-start: 8px; top: 14px; }
+.b-stamp {
+  position: absolute; top: 20px; inset-inline-end: 18px; width: 74px; height: 88px; padding: 5px;
+  background: radial-gradient(circle, transparent 2.6px, #FFFFFF 3px) -5px -5px / 10px 10px;
+  filter: drop-shadow(0 1px 1.5px rgba(42,43,74,.35));
+  transform: rotate(4deg);
+}
+:root[data-theme="dark"] .b-stamp { background: radial-gradient(circle, transparent 2.6px, #F4E7D0 3px) -5px -5px / 10px 10px; }
+.b-stamp-in { width: 100%; height: 100%; background: var(--region, #F25C38); display: grid; grid-template-rows: 1fr auto; place-items: center; padding: 6px 4px 5px; color: #121C36; }
+.b-stamp-in svg { width: 44px; height: 40px; }
+.b-iso { font-size: 13px; font-weight: 700; letter-spacing: .08em; line-height: 16px; }
+.b-postmark { position: absolute; top: 34px; inset-inline-end: 62px; width: 96px; height: 60px; opacity: .55; color: #2A2B4A; pointer-events: none; }
+:root[data-theme="dark"] .b-postmark { color: #F4E7D0; opacity: .4; }
+.b-card.open:not(.no-stamp) .b-stamp { animation: stampIn 520ms cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes stampIn { 0% { transform: scale(1.5) rotate(-10deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: rotate(4deg); } }
+:root[data-reduce] .b-card .b-stamp { animation: none !important; }
+.b-eyebrow { margin: 6px 0 2px; font-size: 13px; line-height: 18px; font-weight: 500; color: #4A5573; padding-inline-start: 36px; }
+:root[data-theme="dark"] .b-eyebrow { color: #A3B3DB; }
+.b-he { margin: 0; font-size: 32px; line-height: 38px; font-weight: 700; padding-inline-end: 90px; }
+.b-en { margin: 2px 0 0; font-size: 15px; line-height: 22px; letter-spacing: .14em; text-transform: uppercase; font-weight: 500; color: #4A5573; padding-inline-end: 90px; }
+:root[data-theme="dark"] .b-en { color: #A3B3DB; }
+.b-lines { margin-top: 14px; display: grid; gap: 10px; }
+.b-lines i { display: block; height: 1px; background: repeating-linear-gradient(to left, #D9BE90 0 6px, transparent 6px 10px); }
+:root[data-theme="dark"] .b-lines i { background: repeating-linear-gradient(to left, #34477D 0 6px, transparent 6px 10px); }
+
+</style>
+</head>
+<body>
+<main class="stage">
+  <aside class="panel" aria-label="בקרות ההדמיה">
+    <p class="eyebrow">ספרינט 0 · כיוון עיצוב לגלובוס</p>
+    <h1>B · גלויה<small dir="ltr" lang="en">Postcard</small></h1>
+    <p>גלובוס מאויר כמו גלויה מחופשה: נייר חם, קו דיו, ים עם גלים קטנים ורשת קווי אורך ורוחב מקווקווים. כל מדינה צבועה בגוון האזור שלה (טרופי, אלפיני, מדברי, אורבני, ים תיכוני). השמש והירח מסמנים את היום והלילה, וקו הלילה מצויר כמו מסלול טיסה. מדינה נבחרת מתרוממת מהדף, ובכרטיס ננעץ בול.</p>
+    <div class="swatches" aria-label="פלטה"><span style="background:#F6ECD9"></span><span style="background:#CFE8F1"></span><span style="background:#2A2B4A"></span><span style="background:#9FDCB4"></span><span style="background:#F2CF8F"></span><span style="background:#D5C2F5"></span><span style="background:#9FD8EA"></span><span style="background:#F25C38"></span></div>
+    <h2>מה לנסות</h2>
+    <ul><li>להקיש על יוון, תאילנד או מרוקו ולראות את הבול מתחלף לפי האזור</li><li>להזיז את השעה: השמש והירח זזים על הגלובוס</li><li>לעבור למצב כהה: "גלויה בלילה"</li><li>להקיש על הים כדי לסגור, או על Esc ("חזור")</li></ul>
+
+    <h2>מצב תצוגה</h2>
+    <div class="seg" role="group" aria-label="מצב תצוגה">
+      <button type="button" data-pref="system" aria-pressed="true">לפי המערכת</button>
+      <button type="button" data-pref="light" aria-pressed="false">בהיר</button>
+      <button type="button" data-pref="dark" aria-pressed="false">כהה</button>
+    </div>
+    <label class="row"><span>הדמיית "הפחתת תנועה"</span><input type="checkbox" id="rm"></label>
+    <h2>הדמיית שעה (רק בהדמיה): <span id="todLabel" class="num"></span></h2>
+    <input class="range" type="range" id="tod" min="-12" max="12" step="0.25" value="0" aria-label="הזזת השעה בשעות">
+    <button type="button" class="linkbtn" id="todReset">חזרה לשעה הנוכחית</button>
+    <h2>כיוונים</h2>
+    <nav class="dirs" aria-label="כיווני עיצוב">
+      <a href="globe-a.html">A · טיסת לילה</a>
+      <a href="globe-b.html" aria-current="page">B · גלויה</a>
+      <a href="globe-c.html">C · לוח המראות</a>
+    </nav>
+  </aside>
+  <div class="phone">
+    <div class="screen" id="screen">
+      <canvas id="globe" aria-label="גלובוס אינטראקטיבי. גררו לסיבוב, צבטו לקירוב, הקישו על מדינה."></canvas>
+      <div class="statusbar"><span id="sbTime" class="num">9:41</span><span class="icons" aria-hidden="true"><i style="width:17px;height:11px;clip-path:polygon(0 100%,25% 100%,25% 70%,0 70%,0 100%,33% 100%,33% 45%,58% 45%,58% 100%,66% 100%,66% 20%,91% 20%,91% 100%)"></i><i style="width:24px;height:11px;border-radius:3px"></i></span></div>
+      <div class="hint" id="hint">גררו כדי לסובב · הקישו על מדינה</div>
+      <div class="loader" id="loader" hidden></div>
+      <section id="card" class="card b-card" role="dialog" aria-labelledby="cardHe" hidden>
+        <div class="b-paper swap-target">
+          <div class="b-stamp" aria-hidden="true"><div class="b-stamp-in"><svg id="cardEmblem" viewBox="0 0 44 40"></svg><span id="cardIso" class="b-iso" dir="ltr"></span></div></div>
+          <svg class="b-postmark" viewBox="0 0 96 60" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="70" cy="30" r="22"/><circle cx="70" cy="30" r="17" stroke-dasharray="2 3"/><path d="M0 18c8-5 16 5 24 0s16 5 24 0M0 30c8-5 16 5 24 0s16 5 24 0M0 42c8-5 16 5 24 0s16 5 24 0"/></svg>
+          <p class="b-eyebrow">גלויה מ־</p>
+          <h2 id="cardHe" class="b-he"></h2>
+          <p id="cardEn" class="b-en" dir="ltr" lang="en"></p>
+          <div class="b-lines" aria-hidden="true"><i></i><i></i></div>
+        </div>
+        <button type="button" class="close" data-close aria-label="סגירה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </section>
+
+      <div class="home-ind" aria-hidden="true"></div>
+    </div>
+  </div>
+</main>
+<script>
+window.DIRECTION = (function () {
+  var TAU = Math.PI * 2;
+  var SAT = { tropical: '#2DB36F', alpine: '#5E7FD9', desert: '#E2A13B', urban: '#9B6BEA', med: '#1E9BD7', none: '#F25C38' };
+  var PAL = {
+    light: { paper: '#F6ECD9', grain: 'rgba(107,87,59,0.07)', vignette: 'rgba(107,87,59,0.16)', ocean: '#CFE8F1', wave: 'rgba(21,97,188,0.30)',
+      ink: '#2A2B4A', inkSoft: 'rgba(42,43,74,0.55)', grat: 'rgba(42,43,74,0.16)', halo: '255,170,140',
+      night: '48,44,120', nightA: [0.07, 0.06, 0.06, 0.07], term: 'rgba(52,71,125,0.75)', sun: '#F2A03B', moon: '#FFFBF5', stars: false,
+      land: { tropical: '#A9E0BC', alpine: '#C3D0F2', desert: '#F4D597', urban: '#DCCBF6', med: '#A8DCEC', none: '#F0E2C2' } },
+    dark: { paper: '#0F1830', grain: 'rgba(244,231,208,0.05)', vignette: 'rgba(0,0,0,0.35)', ocean: '#1A2C55', wave: 'rgba(163,179,219,0.22)',
+      ink: 'rgba(244,231,208,0.85)', inkSoft: 'rgba(244,231,208,0.35)', grat: 'rgba(244,231,208,0.10)', halo: '108,123,217',
+      night: '0,0,10', nightA: [0.12, 0.10, 0.10, 0.12], term: 'rgba(244,231,208,0.6)', sun: '#FFB35C', moon: '#F4E7D0', stars: true,
+      land: { tropical: '#2F6F57', alpine: '#3E4F86', desert: '#7D6337', urban: '#5A4687', med: '#2A6A85', none: '#3B4A6B' } }
+  };
+  var EMBLEM = {
+    tropical: '<circle cx="31" cy="11" r="6" fill="#FFFBF5"/><path d="M14 36c1-9 3-15 6-20" stroke="#121C36" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M20 16c-6-3-11-1-13 3M20 16c3-5 9-6 12-4M20 16c-1-5-5-8-9-8" stroke="#121C36" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M4 37c5-3 10 3 15 0s10 3 15 0 7 2 7 2" stroke="#121C36" stroke-width="1.8" fill="none"/>',
+    alpine: '<circle cx="33" cy="9" r="5" fill="#FFFBF5"/><path d="M2 36l13-20 7 10 5-6 15 16z" fill="#121C36"/><path d="M15 16l4 6-3-1-3 2z" fill="#FFFBF5"/>',
+    desert: '<circle cx="22" cy="14" r="8" fill="#FFFBF5"/><path d="M2 34c8-8 16-8 24-2s12 2 16 0v6H2z" fill="#121C36"/>',
+    urban: '<path d="M4 37V22h6v-6h5v21M17 37V10h8v27M27 37V18h5v-4h4v23" fill="none" stroke="#121C36" stroke-width="2.2" stroke-linejoin="round"/><path d="M2 37h40" stroke="#121C36" stroke-width="2.2"/><circle cx="36" cy="7" r="3" fill="#FFFBF5"/>',
+    med: '<circle cx="22" cy="15" r="9" fill="#FFFBF5"/><path d="M2 28c5-3 10 3 15 0s10 3 15 0 7 0 10-1M2 35c5-3 10 3 15 0s10 3 15 0 7 0 10-1" stroke="#121C36" stroke-width="2" fill="none"/>',
+    none: '<path d="M8 26l26-12-8 16-4-6z" fill="#121C36"/><path d="M4 34c6-3 12 2 18-1" stroke="#121C36" stroke-width="1.8" fill="none" stroke-dasharray="2 3"/>'
+  };
+  var seed = 11; function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  var groups = null, waves = null, grat = d3.geoGraticule10(), patterns = {}, STARS = [];
+  for (var i = 0; i < 50; i++) STARS.push({ x: rnd(), y: rnd(), s: 1.5 + rnd() * 2.5, a: 0.25 + rnd() * 0.45 });
+
+  function init(world) {
+    // one MultiPolygon per region -> 6 fills (Mapbox: one fill layer, fill-color by ['get','region'])
+    var acc = {};
+    world.features.forEach(function (f) {
+      var reg = f.info.region || 'none'; acc[reg] = acc[reg] || [];
+      if (f.geometry.type === 'Polygon') acc[reg].push(f.geometry.coordinates);
+      else f.geometry.coordinates.forEach(function (c) { acc[reg].push(c); });
+    });
+    groups = Object.keys(acc).map(function (k) { return { region: k, geo: { type: 'MultiPolygon', coordinates: acc[k] } }; });
+    // decorative wave marks on open sea (Mapbox: symbol layer with a wave icon)
+    waves = [];
+    for (var lat = -60; lat <= 70; lat += 10) for (var lon = -180; lon < 180; lon += 12) {
+      var ll = [lon + (lat / 10 % 2 ? 6 : 0), lat];
+      if (!d3.geoContains(world.land, ll)) waves.push(ll);
+    }
+  }
+  function paperPattern(ctx, theme) {
+    if (patterns[theme]) return patterns[theme];
+    var P = PAL[theme], c = document.createElement('canvas'); c.width = c.height = 180;
+    var x = c.getContext('2d'); x.fillStyle = P.paper; x.fillRect(0, 0, 180, 180); x.fillStyle = P.grain;
+    for (var i = 0; i < 2600; i++) x.fillRect(rnd() * 180, rnd() * 180, 1, 1);
+    x.strokeStyle = P.grain; x.lineWidth = 0.6;
+    for (var j = 0; j < 30; j++) { var a = rnd() * 180, b = rnd() * 180; x.beginPath(); x.moveTo(a, b); x.lineTo(a + rnd() * 10 - 5, b + rnd() * 10 - 5); x.stroke(); }
+    patterns[theme] = ctx.createPattern(c, 'repeat'); return patterns[theme];
+  }
+  function sunIcon(ctx, x, y, P) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.strokeStyle = P.sun; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    for (var i = 0; i < 8; i++) { var a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 9, Math.sin(a) * 9); ctx.lineTo(Math.cos(a) * 13, Math.sin(a) * 13); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, TAU); ctx.fillStyle = P.sun; ctx.fill(); ctx.lineWidth = 1.4; ctx.strokeStyle = P.ink; ctx.stroke();
+    ctx.restore();
+  }
+  function moonIcon(ctx, x, y, P) {
+    ctx.save(); ctx.beginPath(); ctx.arc(x, y, 7, 0, TAU); ctx.clip();
+    ctx.beginPath(); ctx.rect(x - 8, y - 8, 16, 16); ctx.arc(x + 4, y - 3, 6.5, 0, TAU); ctx.fillStyle = P.moon; ctx.fill('evenodd');
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(x, y, 7, 0.5, 4.6); ctx.strokeStyle = P.ink; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+
+  function render(ctx, F) {
+    var P = PAL[F.theme], cx = F.cx, cy = F.cy, r = F.r, path = F.path;
+    ctx.fillStyle = paperPattern(ctx, F.theme); ctx.fillRect(0, 0, F.W, F.H);
+    var vg = ctx.createRadialGradient(F.W / 2, F.H / 2, F.H * 0.25, F.W / 2, F.H / 2, F.H * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, P.vignette); ctx.fillStyle = vg; ctx.fillRect(0, 0, F.W, F.H);
+    if (P.stars) {
+      ctx.strokeStyle = P.ink; ctx.lineWidth = 1;
+      STARS.forEach(function (s) { var x = s.x * F.W, y = s.y * F.H; ctx.globalAlpha = s.a; ctx.beginPath(); ctx.moveTo(x - s.s, y); ctx.lineTo(x + s.s, y); ctx.moveTo(x, y - s.s); ctx.lineTo(x, y + s.s); ctx.stroke(); });
+      ctx.globalAlpha = 1;
+    }
+    // watercolor halo = atmosphere (Mapbox fog color/high-color in warm peach, horizon-blend wide)
+    var hg = ctx.createRadialGradient(cx, cy, r * 0.95, cx, cy, r * 1.32);
+    hg.addColorStop(0, 'rgba(' + P.halo + ',0.55)'); hg.addColorStop(0.35, 'rgba(' + P.halo + ',0.22)'); hg.addColorStop(1, 'rgba(' + P.halo + ',0)');
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(cx, cy, r * 1.32, 0, TAU); ctx.fill();
+    // ocean + waves
+    ctx.beginPath(); path({ type: 'Sphere' }); ctx.fillStyle = P.ocean; ctx.fill();
+    if (!F.world) { ctx.strokeStyle = P.ink; ctx.lineWidth = 1.6; ctx.stroke(); return; }
+    var ws = Math.max(3, Math.min(9, 2.6 * Math.pow(F.k, 0.6)));
+    ctx.strokeStyle = P.wave; ctx.lineWidth = 1.2; ctx.lineCap = 'round'; ctx.beginPath();
+    for (var i = 0; i < waves.length; i++) {
+      if (!F.visible(waves[i])) continue;
+      var p = F.proj(waves[i]);
+      ctx.moveTo(p[0] - ws, p[1]); ctx.quadraticCurveTo(p[0] - ws / 2, p[1] - ws * 0.6, p[0], p[1]); ctx.quadraticCurveTo(p[0] + ws / 2, p[1] + ws * 0.6, p[0] + ws, p[1]);
+    }
+    ctx.stroke();
+    // graticule (dashed, like a vintage map)
+    ctx.setLineDash([2, 4]); ctx.beginPath(); path(grat); ctx.strokeStyle = P.grat; ctx.lineWidth = 0.8; ctx.stroke(); ctx.setLineDash([]);
+    // land by region
+    groups.forEach(function (g) { ctx.beginPath(); path(g.geo); ctx.fillStyle = P.land[g.region]; ctx.fill(); });
+    ctx.beginPath(); path(F.world.borders); ctx.strokeStyle = P.inkSoft; ctx.lineWidth = 0.7; ctx.stroke();
+    ctx.beginPath(); path(F.world.land); ctx.strokeStyle = P.ink; ctx.lineWidth = 1.2; ctx.lineJoin = 'round'; ctx.stroke();
+    // night wash + terminator drawn as a dashed "route"
+    if (F.rings) {
+      F.rings.forEach(function (ring, i) { ctx.beginPath(); path(ring); ctx.fillStyle = 'rgba(' + P.night + ',' + P.nightA[i] + ')'; ctx.fill(); });
+      ctx.setLineDash([7, 5]); ctx.beginPath(); path(F.rings[0]); ctx.strokeStyle = P.term; ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]);
+    }
+    // selection: lifts off the paper (Mapbox: fill-translate + offset shadow fill)
+    if (F.sel) {
+      var t = Math.min(1, F.sel.age / 450), e = 1 - Math.pow(1 - t, 3), col = F.sel.color;
+      if (F.sel.feature) {
+        ctx.save();
+        ctx.translate(0, -3 * e);
+        ctx.beginPath(); path(F.sel.feature);
+        ctx.shadowColor = F.theme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(42,43,74,0.38)';
+        ctx.shadowOffsetY = 5 * e * F.DPR; ctx.shadowBlur = 6 * F.DPR;
+        ctx.fillStyle = col; ctx.fill();
+        ctx.shadowColor = 'transparent'; ctx.lineWidth = 2; ctx.strokeStyle = F.theme === 'dark' ? '#F4E7D0' : '#2A2B4A'; ctx.stroke();
+        ctx.restore();
+      } else if (F.sel.micro && F.sel.micro.vis) {
+        var m = F.sel.micro; ctx.beginPath(); ctx.arc(m.x, m.y - 3 * e, 6, 0, TAU); ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = P.ink; ctx.stroke();
+      }
+    }
+    F.micro.forEach(function (m) {
+      if (!m.vis || (F.sel && F.sel.micro === m)) return;
+      ctx.beginPath(); ctx.arc(m.x, m.y, 4, 0, TAU); ctx.fillStyle = P.land[m.info.region] || P.land.none; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = P.ink; ctx.stroke();
+      ctx.setLineDash([1.5, 2.5]); ctx.beginPath(); ctx.arc(m.x, m.y, 9, 0, TAU); ctx.strokeStyle = P.inkSoft; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+    });
+    // sun & moon markers
+    if (F.sun && F.visible(F.sun)) { var s = F.proj(F.sun); sunIcon(ctx, s[0], s[1], P); }
+    if (F.anti && F.visible(F.anti)) { var mo = F.proj(F.anti); moonIcon(ctx, mo[0], mo[1], P); }
+    // ink rim, double line
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.strokeStyle = P.ink; ctx.lineWidth = 1.8; ctx.stroke();
+    ctx.setLineDash([1, 4]); ctx.beginPath(); ctx.arc(cx, cy, r + 7, 0, TAU); ctx.strokeStyle = P.inkSoft; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+  }
+  function highlightColor(info) { return SAT[info.region] || SAT.none; }
+  function fillCard(card, info, o) {
+    var he = card.querySelector('#cardHe'), en = card.querySelector('#cardEn');
+    he.textContent = info.he || info.en; en.textContent = info.he ? info.en : ''; en.hidden = !info.he;
+    card.querySelector('#cardIso').textContent = info.iso3 || '✈';
+    card.querySelector('#cardEmblem').innerHTML = EMBLEM[info.region] || EMBLEM.none;
+    card.style.setProperty('--region', highlightColor(info));
+    var st = card.querySelector('.b-stamp'); st.style.animation = 'none'; void st.offsetWidth; st.style.animation = '';
+  }
+  return { init: init, render: render, highlightColor: highlightColor, fillCard: fillCard };
+})();
+
+</script>
+<script>
+/* ==========================================================================
+   Globe prototype engine (shared by directions A/B/C) - Sharona, Sprint 0
+   Camera, gestures, hit-testing, fly-to, day/night, card, reduce-motion.
+   Every behaviour here has a Mapbox equivalent, see docs/design/sprint-00/README.md
+   ========================================================================== */
+(function () {
+  'use strict';
+  var D = window.DIRECTION;
+  var $ = function (s) { return document.querySelector(s); };
+  var DEG = Math.PI / 180;
+
+  /* ---------- motion tokens (mirror of tokens.json) ---------- */
+  var M = {
+    autoRotateDegPerSec: 3,      // one turn in 2 minutes
+    autoResumeDelay: 5000,       // AC-2
+    autoResumeRamp: 1000,        // AC-2
+    flyMin: 1200, flyMax: 1800,  // AC-4
+    fadeOut: 150, fadeIn: 250,   // AC-6 (reduce motion)
+    sunUpdate: 60000             // AC-3
+  };
+
+  /* ---------- names: ISO numeric -> [he, en, iso3, region] ---------- */
+  var NAMES = {
+    '376': ['ישראל', 'Israel', 'ISR', 'med'], '764': ['תאילנד', 'Thailand', 'THA', 'tropical'],
+    '300': ['יוון', 'Greece', 'GRC', 'med'], '196': ['קפריסין', 'Cyprus', 'CYP', 'med'],
+    '840': ['ארצות הברית', 'United States', 'USA', 'urban'], '380': ['איטליה', 'Italy', 'ITA', 'med'],
+    '392': ['יפן', 'Japan', 'JPN', 'urban'], '724': ['ספרד', 'Spain', 'ESP', 'med'],
+    '250': ['צרפת', 'France', 'FRA', 'urban'], '826': ['בריטניה', 'United Kingdom', 'GBR', 'urban'],
+    '276': ['גרמניה', 'Germany', 'DEU', 'urban'], '348': ['הונגריה', 'Hungary', 'HUN', 'urban'],
+    '642': ['רומניה', 'Romania', 'ROU', 'urban'], '100': ['בולגריה', 'Bulgaria', 'BGR', 'alpine'],
+    '191': ['קרואטיה', 'Croatia', 'HRV', 'med'], '499': ['מונטנגרו', 'Montenegro', 'MNE', 'med'],
+    '688': ['סרביה', 'Serbia', 'SRB', 'urban'], '203': ["צ'כיה", 'Czechia', 'CZE', 'urban'],
+    '040': ['אוסטריה', 'Austria', 'AUT', 'alpine'], '756': ['שווייץ', 'Switzerland', 'CHE', 'alpine'],
+    '528': ['הולנד', 'Netherlands', 'NLD', 'urban'], '056': ['בלגיה', 'Belgium', 'BEL', 'urban'],
+    '620': ['פורטוגל', 'Portugal', 'PRT', 'med'], '616': ['פולין', 'Poland', 'POL', 'urban'],
+    '268': ['גאורגיה', 'Georgia', 'GEO', 'alpine'], '051': ['ארמניה', 'Armenia', 'ARM', 'alpine'],
+    '031': ["אזרבייג'ן", 'Azerbaijan', 'AZE', 'urban'], '792': ['טורקיה', 'Türkiye', 'TUR', 'med'],
+    '818': ['מצרים', 'Egypt', 'EGY', 'desert'], '400': ['ירדן', 'Jordan', 'JOR', 'desert'],
+    '784': ['איחוד האמירויות', 'United Arab Emirates', 'ARE', 'desert'], '504': ['מרוקו', 'Morocco', 'MAR', 'desert'],
+    '356': ['הודו', 'India', 'IND', 'tropical'], '524': ['נפאל', 'Nepal', 'NPL', 'alpine'],
+    '144': ['סרי לנקה', 'Sri Lanka', 'LKA', 'tropical'], '704': ['וייטנאם', 'Vietnam', 'VNM', 'tropical'],
+    '116': ['קמבודיה', 'Cambodia', 'KHM', 'tropical'], '418': ['לאוס', 'Laos', 'LAO', 'tropical'],
+    '360': ['אינדונזיה', 'Indonesia', 'IDN', 'tropical'], '458': ['מלזיה', 'Malaysia', 'MYS', 'tropical'],
+    '608': ['הפיליפינים', 'Philippines', 'PHL', 'tropical'], '156': ['סין', 'China', 'CHN', 'urban'],
+    '410': ['דרום קוריאה', 'South Korea', 'KOR', 'urban'], '036': ['אוסטרליה', 'Australia', 'AUS', 'desert'],
+    '554': ['ניו זילנד', 'New Zealand', 'NZL', 'alpine'], '124': ['קנדה', 'Canada', 'CAN', 'alpine'],
+    '484': ['מקסיקו', 'Mexico', 'MEX', 'tropical'], '032': ['ארגנטינה', 'Argentina', 'ARG', 'alpine'],
+    '076': ['ברזיל', 'Brazil', 'BRA', 'tropical'], '604': ['פרו', 'Peru', 'PER', 'alpine'],
+    '152': ["צ'ילה", 'Chile', 'CHL', 'alpine'], '170': ['קולומביה', 'Colombia', 'COL', 'tropical'],
+    '188': ['קוסטה ריקה', 'Costa Rica', 'CRI', 'tropical'], '192': ['קובה', 'Cuba', 'CUB', 'tropical'],
+    '710': ['דרום אפריקה', 'South Africa', 'ZAF', 'desert'], '404': ['קניה', 'Kenya', 'KEN', 'tropical'],
+    '834': ['טנזניה', 'Tanzania', 'TZA', 'tropical'], '231': ['אתיופיה', 'Ethiopia', 'ETH', 'alpine'],
+    '352': ['איסלנד', 'Iceland', 'ISL', 'alpine'], '578': ['נורווגיה', 'Norway', 'NOR', 'alpine'],
+    '752': ['שוודיה', 'Sweden', 'SWE', 'alpine'], '246': ['פינלנד', 'Finland', 'FIN', 'alpine'],
+    '208': ['דנמרק', 'Denmark', 'DNK', 'urban'], '372': ['אירלנד', 'Ireland', 'IRL', 'urban'],
+    '643': ['רוסיה', 'Russia', 'RUS', 'urban'], '804': ['אוקראינה', 'Ukraine', 'UKR', 'urban'],
+    '398': ['קזחסטן', 'Kazakhstan', 'KAZ', 'desert'], '860': ['אוזבקיסטן', 'Uzbekistan', 'UZB', 'desert'],
+    '496': ['מונגוליה', 'Mongolia', 'MNG', 'desert'], '705': ['סלובניה', 'Slovenia', 'SVN', 'alpine'],
+    '703': ['סלובקיה', 'Slovakia', 'SVK', 'alpine'], '008': ['אלבניה', 'Albania', 'ALB', 'med'],
+    '807': ['צפון מקדוניה', 'North Macedonia', 'MKD', 'alpine'], '442': ['לוקסמבורג', 'Luxembourg', 'LUX', 'urban'],
+    '516': ['נמיביה', 'Namibia', 'NAM', 'desert'], '450': ['מדגסקר', 'Madagascar', 'MDG', 'tropical'],
+    '788': ['תוניסיה', 'Tunisia', 'TUN', 'desert'], '634': ['קטאר', 'Qatar', 'QAT', 'desert'],
+    '512': ['עומאן', 'Oman', 'OMN', 'desert'], '682': ['ערב הסעודית', 'Saudi Arabia', 'SAU', 'desert'],
+    '304': ['גרינלנד', 'Greenland', 'GRL', 'alpine'], '010': ['אנטארקטיקה', 'Antarctica', 'ATA', 'alpine'],
+    '158': ['טאיוואן', 'Taiwan', 'TWN', 'urban'],
+    // micro-states (not in the 110m polygons) - shown as enlarged tap targets (AC-5)
+    '470': ['מלטה', 'Malta', 'MLT', 'med'], '702': ['סינגפור', 'Singapore', 'SGP', 'urban'],
+    '462': ['האיים המלדיביים', 'Maldives', 'MDV', 'tropical'], '690': ['סיישל', 'Seychelles', 'SYC', 'tropical'],
+    '480': ['מאוריציוס', 'Mauritius', 'MUS', 'tropical'], '048': ['בחריין', 'Bahrain', 'BHR', 'desert']
+  };
+  var MICRO_DEF = [
+    ['470', 14.43, 35.90], ['702', 103.82, 1.35], ['462', 73.22, 3.20],
+    ['690', 55.45, -4.62], ['480', 57.55, -20.25], ['048', 50.56, 26.07]
+  ];
+  // Prototype data is the default Natural Earth view; the app uses the Israeli point of view (sprint-00 decision).
+  // Feature 275 is therefore not selectable here. See README.
+  var BLOCKED = { '275': true };
+
+  function infoFor(id, fallbackEn) {
+    var n = NAMES[id];
+    if (n) return { id: id, he: n[0], en: n[1], iso3: n[2], region: n[3] };
+    return { id: id || fallbackEn, he: null, en: fallbackEn, iso3: null, region: null };
+  }
+
+  /* ---------- sun (NOAA solar position) ---------- */
+  function subsolar(date) {
+    var jd = date.getTime() / 864e5 + 2440587.5, t = (jd - 2451545) / 36525;
+    var L0 = ((280.46646 + t * (36000.76983 + t * 0.0003032)) % 360 + 360) % 360;
+    var Mm = 357.52911 + t * (35999.05029 - 0.0001537 * t), Mr = Mm * DEG;
+    var e = 0.016708634 - t * (0.000042037 + 0.0000001267 * t);
+    var C = Math.sin(Mr) * (1.914602 - t * (0.004817 + 0.000014 * t)) + Math.sin(2 * Mr) * (0.019993 - 0.000101 * t) + Math.sin(3 * Mr) * 0.000289;
+    var om = (125.04 - 1934.136 * t) * DEG;
+    var lam = (L0 + C - 0.00569 - 0.00478 * Math.sin(om)) * DEG;
+    var eps0 = 23 + (26 + (21.448 - t * (46.815 + t * (0.00059 - t * 0.001813))) / 60) / 60;
+    var eps = (eps0 + 0.00256 * Math.cos(om)) * DEG;
+    var decl = Math.asin(Math.sin(eps) * Math.sin(lam)) / DEG;
+    var y = Math.pow(Math.tan(eps / 2), 2), L = L0 * DEG;
+    var eqt = 4 / DEG * (y * Math.sin(2 * L) - 2 * e * Math.sin(Mr) + 4 * e * y * Math.sin(Mr) * Math.cos(2 * L) - 0.5 * y * y * Math.sin(4 * L) - 1.25 * e * e * Math.sin(2 * Mr));
+    var utcMin = date.getUTCHours() * 60 + date.getUTCMinutes() + date.getUTCSeconds() / 60;
+    var lon = -(utcMin + eqt - 720) / 4;
+    lon = ((lon + 540) % 360 + 360) % 360 - 180;
+    return [lon, decl];
+  }
+  function wrapLon(l) { return ((l + 540) % 360 + 360) % 360 - 180; }
+
+  /* ---------- DOM ---------- */
+  var screen = $('#screen'), canvas = $('#globe'), ctx = canvas.getContext('2d');
+  var card = $('#card'), hint = $('#hint'), loader = $('#loader');
+  var W = 0, H = 0, DPR = 1;
+  var projection = d3.geoOrthographic().clipAngle(90).precision(0.5);
+  var path = d3.geoPath(projection, ctx);
+
+  var mqDark = window.matchMedia('(prefers-color-scheme: dark)');
+  var mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var themePref = 'system', reduceOverride = null;
+  function themeName() { return themePref === 'system' ? (mqDark.matches ? 'dark' : 'light') : themePref; }
+  function isReduced() { return reduceOverride !== null ? reduceOverride : mqReduce.matches; }
+  function applyTheme() {
+    var t = themeName();
+    document.documentElement.setAttribute('data-theme', t);
+    document.documentElement.toggleAttribute('data-reduce', isReduced());
+    if (D.onTheme) D.onTheme(t);
+  }
+
+  var S = {
+    lon: 34.8, lat: 22, k: 1, cy: null,
+    autoF: 1, lastInput: -1e9, vel: null, dragging: false,
+    flight: null, sel: null, timeOffsetH: 0,
+    sun: null, anti: null, rings: null, world: null, micro: []
+  };
+
+  function resize() {
+    var r = screen.getBoundingClientRect();
+    W = r.width; H = r.height; DPR = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  }
+  function baseR() { return Math.min(W * 0.42, H * 0.3); }
+  function targetCy() { return S.sel ? H * 0.37 : H * 0.47; }
+
+  /* ---------- day / night ---------- */
+  function updateSun() {
+    var d = new Date(Date.now() + S.timeOffsetH * 3600e3);
+    S.sun = subsolar(d);
+    S.anti = [wrapLon(S.sun[0] + 180), -S.sun[1]];
+    // night polygon + twilight bands: sun altitude < 0, -6, -12, -18 deg
+    S.rings = [90, 84, 78, 72].map(function (rad) {
+      return d3.geoCircle().center(S.anti).radius(rad).precision(2)();
+    });
+    var lab = $('#todLabel');
+    if (lab) lab.textContent = new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }).format(d) + ' שעון ישראל';
+  }
+
+  /* ---------- data ---------- */
+  var WORLD_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json';
+  function load() {
+    loader.className = 'loader';
+    loader.innerHTML = '<div class="spinner" aria-hidden="true"></div><p>טוענים את העולם…</p>';
+    loader.hidden = false;
+    fetch(WORLD_URL).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (topo) {
+      var features = topojson.feature(topo, topo.objects.countries).features;
+      features.forEach(function (f, i) {
+        f.index = i;
+        f.info = infoFor(f.id, f.properties.name);
+        f.blocked = !!BLOCKED[f.id];
+        var main = f.geometry;
+        if (main.type === 'MultiPolygon') {
+          var best = null, ba = -1;
+          main.coordinates.forEach(function (c) { var g = { type: 'Polygon', coordinates: c }, a = d3.geoArea(g); if (a > ba) { ba = a; best = g; } });
+          main = best;
+        }
+        f.main = main; f.center = d3.geoCentroid(main); f.area = d3.geoArea(main);
+      });
+      S.world = {
+        topo: topo, features: features,
+        land: topojson.feature(topo, topo.objects.land),
+        borders: topojson.mesh(topo, topo.objects.countries, function (a, b) { return a !== b; })
+      };
+      S.micro = MICRO_DEF.map(function (m) { return { id: m[0], c: [m[1], m[2]], info: infoFor(m[0], m[0]), micro: true }; });
+      if (D.init) D.init(S.world);
+      loader.hidden = true;
+    }).catch(function () {
+      loader.className = 'loader error';
+      loader.innerHTML = '<p><strong>לא הצלחנו לטעון את המפה.</strong><br>בדקו את החיבור ונסו שוב.</p><button type="button" class="btn" id="retry">ניסיון חוזר</button>';
+      $('#retry').addEventListener('click', load);
+    });
+  }
+
+  /* ---------- camera ---------- */
+  function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function clampK(k) { return Math.max(0.85, Math.min(9, k)); }
+  function zoomFor(target) {
+    if (target.micro) return 4.5;
+    var a = Math.sqrt(target.area / Math.PI);           // angular radius (rad)
+    var k = (0.16 * W) / (baseR() * Math.sin(Math.min(a * 1.3, 1.3)));
+    return Math.max(1.15, Math.min(5, k));
+  }
+  function flyTo(center, k) {
+    var from = [S.lon, S.lat];
+    var dist = d3.geoDistance(from, center) / DEG;     // degrees
+    S.vel = null;
+    if (isReduced()) {                                  // AC-6: fade instead of fly
+      S.flight = null;
+      canvas.style.transition = 'opacity ' + M.fadeOut + 'ms linear';
+      canvas.style.opacity = '0';
+      clearTimeout(S.fadeTimer);
+      S.fadeTimer = setTimeout(function () {
+        S.lon = center[0]; S.lat = center[1]; S.k = k; S.cy = targetCy();
+        canvas.style.transition = 'opacity ' + M.fadeIn + 'ms linear';
+        canvas.style.opacity = '1';
+      }, M.fadeOut);
+      return;
+    }
+    S.flight = {
+      t0: performance.now(),
+      dur: Math.max(M.flyMin, Math.min(M.flyMax, M.flyMin + (dist / 180) * (M.flyMax - M.flyMin))),
+      interp: d3.geoInterpolate(from, center),
+      lk0: Math.log(S.k), lk1: Math.log(k),
+      bump: 0.7 * Math.min(1, dist / 90)               // zoom out mid-flight, like Mapbox flyTo(curve)
+    };
+  }
+
+  /* ---------- selection ---------- */
+  function select(target) {
+    var center = target.micro ? target.c : target.center;
+    var info = Object.assign({}, target.info, { center: center });
+    var same = S.sel && S.sel.id === info.id;
+    S.sel = { id: info.id, info: info, feature: target.micro ? null : target, micro: target.micro ? target : null, t0: performance.now() };
+    S.sel.color = D.highlightColor ? D.highlightColor(info, themeName()) : '#F25C38';
+    flyTo([center[0], Math.max(-65, Math.min(65, center[1]))], zoomFor(target));
+    if (!same) showCard(info);
+  }
+  function deselect() {
+    if (!S.sel) return;
+    S.sel = null;
+    S.lastInput = performance.now();                     // auto-rotate resumes 5 s after the card closes
+    hideCard();
+  }
+  function showCard(info) {
+    var reduce = isReduced();
+    var wasOpen = card.classList.contains('open');
+    card.hidden = false;
+    D.fillCard(card, info, { theme: themeName(), reduce: reduce, swap: wasOpen });
+    if (wasOpen) {
+      card.classList.remove('swap'); void card.offsetWidth; card.classList.add('swap');
+    }
+    requestAnimationFrame(function () { card.classList.add('open'); });
+  }
+  function hideCard() {
+    card.classList.remove('open');
+    clearTimeout(S.cardTimer);
+    S.cardTimer = setTimeout(function () { if (!card.classList.contains('open')) card.hidden = true; }, 400);
+  }
+
+  /* ---------- hit testing (AC-4, AC-5) ---------- */
+  function featureAt(ll) {
+    if (!ll) return null;
+    var fs = S.world.features;
+    for (var i = 0; i < fs.length; i++) if (d3.geoContains(fs[i], ll)) return fs[i];
+    return null;
+  }
+  function hitTest(x, y) {
+    var cx = W / 2, cy = S.cy, r = baseR() * S.k;
+    var best = null, bd = 1e9;
+    S.micro.forEach(function (m) { if (m.vis) { var d = Math.hypot(m.x - x, m.y - y); if (d < bd) { bd = d; best = m; } } });
+    if (best && bd <= 10) return { micro: best };
+    if (Math.hypot(x - cx, y - cy) > r) return { space: true };
+    var f = featureAt(projection.invert([x, y]));
+    if (f) return { feature: f };
+    // enlarged tap area for small countries / islands: rings of 8, 15, 22 px (44pt target)
+    var radii = [8, 15, 22];
+    for (var ri = 0; ri < radii.length; ri++) {
+      var rad = radii[ri];
+      if (best && bd <= rad) return { micro: best };
+      for (var a = 0; a < 8; a++) {
+        var sx = x + rad * Math.cos(a * Math.PI / 4), sy = y + rad * Math.sin(a * Math.PI / 4);
+        if (Math.hypot(sx - cx, sy - cy) > r) continue;
+        var f2 = featureAt(projection.invert([sx, sy]));
+        if (f2 && !f2.blocked) return { feature: f2 };
+      }
+    }
+    return { sea: true };
+  }
+  function onTap(x, y) {
+    if (!S.world) return;
+    var h = hitTest(x, y);
+    if (h.micro) select(h.micro);
+    else if (h.feature) { if (!h.feature.blocked) select(h.feature); }
+    else deselect();                                      // sea or space closes the card
+  }
+
+  /* ---------- gestures ---------- */
+  var pts = new Map(), G = null;
+  function interact() {
+    S.lastInput = performance.now(); S.autoF = 0;
+    if (hint && !hint.classList.contains('gone')) hint.classList.add('gone');
+  }
+  function local(e) { var r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  canvas.addEventListener('pointerdown', function (e) {
+    canvas.setPointerCapture(e.pointerId);
+    var p = local(e); pts.set(e.pointerId, p); interact(); S.vel = null;
+    if (pts.size === 1) G = { type: 'drag', sx: p.x, sy: p.y, lx: p.x, ly: p.y, t0: performance.now(), moved: false, samples: [] };
+    else if (pts.size === 2) {
+      var a = Array.from(pts.values());
+      G = { type: 'pinch', d0: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1, k0: S.k, moved: true };
+      S.flight = null;
+    }
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!pts.has(e.pointerId) || !G) return;
+    var p = local(e); pts.set(e.pointerId, p); interact();
+    if (G.type === 'drag') {
+      var dx = p.x - G.lx, dy = p.y - G.ly;
+      if (!G.moved && Math.hypot(p.x - G.sx, p.y - G.sy) > 6) { G.moved = true; S.flight = null; S.dragging = true; }
+      if (G.moved) {
+        var dpp = 180 / (Math.PI * baseR() * S.k);       // the grabbed point follows the finger
+        S.lon = wrapLon(S.lon - dx * dpp);
+        S.lat = Math.max(-85, Math.min(85, S.lat + dy * dpp));
+        var now = performance.now();
+        G.samples.push({ t: now, lon: -dx * dpp, lat: dy * dpp });
+        while (G.samples.length && now - G.samples[0].t > 90) G.samples.shift();
+      }
+      G.lx = p.x; G.ly = p.y;
+    } else if (G.type === 'pinch' && pts.size >= 2) {
+      var a = Array.from(pts.values());
+      S.k = clampK(G.k0 * Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) / G.d0);
+    }
+  });
+  function end(e) {
+    if (!pts.has(e.pointerId)) return;
+    var p = local(e); pts.delete(e.pointerId); interact();
+    if (G && G.type === 'drag') {
+      if (!G.moved && performance.now() - G.t0 < 450) onTap(p.x, p.y);
+      else if (G.moved && G.samples.length > 1 && !isReduced()) {
+        var span = (G.samples[G.samples.length - 1].t - G.samples[0].t) / 1000 || 0.016, sl = 0, sa = 0;
+        G.samples.forEach(function (s) { sl += s.lon; sa += s.lat; });
+        S.vel = { lon: sl / span, lat: sa / span };
+      }
+      S.dragging = false; G = null;
+    } else if (G && G.type === 'pinch') {
+      if (pts.size === 1) { var q = Array.from(pts.values())[0]; G = { type: 'drag', sx: q.x, sy: q.y, lx: q.x, ly: q.y, t0: 0, moved: true, samples: [] }; }
+      else G = null;
+    }
+  }
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('wheel', function (e) {
+    e.preventDefault(); interact(); S.flight = null;
+    S.k = clampK(S.k * Math.exp(-e.deltaY * 0.0015));
+  }, { passive: false });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') deselect(); });  // = Android "back"
+  card.addEventListener('click', function (e) { if (e.target.closest('[data-close]')) deselect(); });
+
+  /* ---------- loop ---------- */
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    var reduce = isReduced();
+    if (S.cy === null) S.cy = targetCy();
+    var tcy = targetCy();
+    S.cy = reduce ? tcy : S.cy + (tcy - S.cy) * (1 - Math.exp(-dt * 7));
+
+    if (S.flight) {
+      var f = S.flight, t = Math.min(1, (now - f.t0) / f.dur), e = easeInOutCubic(t), c = f.interp(e);
+      S.lon = c[0]; S.lat = c[1];
+      S.k = Math.exp(f.lk0 + (f.lk1 - f.lk0) * e - f.bump * Math.sin(Math.PI * e));
+      if (t >= 1) S.flight = null;
+    } else if (S.vel && !S.dragging) {
+      S.lon = wrapLon(S.lon + S.vel.lon * dt);
+      S.lat = Math.max(-85, Math.min(85, S.lat + S.vel.lat * dt));
+      var decay = Math.exp(-dt * 4); S.vel.lon *= decay; S.vel.lat *= decay;
+      if (Math.abs(S.vel.lon) + Math.abs(S.vel.lat) < 0.5) S.vel = null;
+    }
+    var wantAuto = !reduce && !S.sel && !S.dragging && !S.flight && !S.vel && pts.size === 0 && (now - S.lastInput > M.autoResumeDelay);
+    S.autoF = wantAuto ? Math.min(1, S.autoF + dt * 1000 / M.autoResumeRamp) : 0;
+    var ramp = S.autoF * S.autoF * (3 - 2 * S.autoF);
+    S.lon = wrapLon(S.lon - M.autoRotateDegPerSec * dt * ramp);
+
+    render(now, reduce);
+    requestAnimationFrame(frame);
+  }
+
+  function render(now, reduce) {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    var r = baseR() * S.k;
+    projection.scale(r).translate([W / 2, S.cy]).rotate([-S.lon, -S.lat, 0]);
+    var center = [S.lon, S.lat];
+    var F = {
+      ctx: ctx, W: W, H: H, DPR: DPR, cx: W / 2, cy: S.cy, r: r, k: S.k, R: baseR(),
+      proj: projection, path: path, center: center, world: S.world,
+      theme: themeName(), reduce: reduce, now: now,
+      sun: S.sun, anti: S.anti, rings: S.rings, sel: null, micro: S.micro,
+      visible: function (ll) { return d3.geoDistance(ll, center) < Math.PI / 2 - 0.02; }
+    };
+    S.micro.forEach(function (m) {
+      m.vis = F.visible(m.c);
+      if (m.vis) { var p = projection(m.c); m.x = p[0]; m.y = p[1]; }
+    });
+    if (S.sel) {
+      F.sel = { id: S.sel.id, info: S.sel.info, feature: S.sel.feature, micro: S.sel.micro, color: S.sel.color,
+        age: reduce ? 1e6 : now - S.sel.t0 };
+    }
+    D.render(ctx, F);
+  }
+
+  /* ---------- prototype controls (outside the phone) ---------- */
+  function initControls() {
+    document.querySelectorAll('[data-pref]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        themePref = b.getAttribute('data-pref');
+        document.querySelectorAll('[data-pref]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        applyTheme(); if (S.sel) S.sel.color = D.highlightColor ? D.highlightColor(S.sel.info, themeName()) : S.sel.color;
+      });
+    });
+    var rm = $('#rm');
+    if (rm) { rm.checked = mqReduce.matches; rm.addEventListener('change', function () { reduceOverride = rm.checked; applyTheme(); }); }
+    var tod = $('#tod');
+    if (tod) tod.addEventListener('input', function () { S.timeOffsetH = parseFloat(tod.value); updateSun(); });
+    var rs = $('#todReset');
+    if (rs) rs.addEventListener('click', function () { tod.value = 0; S.timeOffsetH = 0; updateSun(); });
+    mqDark.addEventListener('change', applyTheme);
+    mqReduce.addEventListener('change', function () { if (rm && reduceOverride === null) rm.checked = mqReduce.matches; applyTheme(); });
+    var clock = $('#sbTime');
+    function tick() { if (clock) clock.textContent = new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit' }).format(new Date()); }
+    tick(); setInterval(tick, 15000);
+  }
+
+  window.addEventListener('resize', resize);
+  resize(); applyTheme(); initControls(); updateSun();
+  setInterval(updateSun, M.sunUpdate);
+  load();
+  requestAnimationFrame(frame);
+  window.__globe = { state: S, select: function (id) { var f = S.world && S.world.features.find(function (x) { return x.id === id; }); if (f) select(f); }, deselect: deselect };
+})();
+
+</script>
+</body>
+</html>

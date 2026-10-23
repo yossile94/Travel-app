@@ -1,0 +1,2977 @@
+{
+  "ABW": {
+    "nameHe": "ארובה",
+    "nameEn": "Aruba",
+    "label": [-69.9728, 12.5174],
+    "span": 0.21,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "AWG",
+      "nameHe": "פלורין של ארובה",
+      "symbol": "Afl."
+    }
+  },
+  "AFG": {
+    "nameHe": "אפגניסטן",
+    "nameEn": "Afghanistan",
+    "label": [66.4966, 34.1643],
+    "span": 11.95,
+    "timeZone": "Asia/Kabul",
+    "currency": {
+      "code": "AFN",
+      "nameHe": "אפגני אפגני",
+      "symbol": "؋"
+    }
+  },
+  "AGO": {
+    "nameHe": "אנגולה",
+    "nameEn": "Angola",
+    "label": [17.9842, -12.1828],
+    "span": 12.18,
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "AOA",
+      "nameHe": "קואנזה אנגולי",
+      "symbol": "Kz"
+    }
+  },
+  "AIA": {
+    "nameHe": "אנגווילה",
+    "nameEn": "Anguilla",
+    "label": [-63.0264, 18.243],
+    "span": 0.19,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "ALB": {
+    "nameHe": "אלבניה",
+    "nameEn": "Albania",
+    "label": [20.1138, 40.6549],
+    "span": 3.02,
+    "timeZone": "Europe/Tirane",
+    "currency": {
+      "code": "ALL",
+      "nameHe": "לק אלבני",
+      "symbol": "Lekë"
+    }
+  },
+  "ALD": {
+    "nameHe": "אולנד",
+    "nameEn": "Åland",
+    "label": [19.8697, 60.1565],
+    "span": 0.36,
+    "small": true,
+    "timeZone": "Europe/Helsinki",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "AND": {
+    "nameHe": "אנדורה",
+    "nameEn": "Andorra",
+    "label": [1.5394, 42.5476],
+    "span": 0.26,
+    "small": true,
+    "timeZone": "Europe/Andorra",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "ARE": {
+    "nameHe": "איחוד האמירויות הערביות",
+    "nameEn": "United Arab Emirates",
+    "label": [54.5473, 23.4663],
+    "span": 4.39,
+    "timeZone": "Asia/Dubai",
+    "currency": {
+      "code": "AED",
+      "nameHe": "דירהם של איחוד הנסיכויות הערביות",
+      "symbol": "د.إ."
+    }
+  },
+  "ARG": {
+    "nameHe": "ארגנטינה",
+    "nameEn": "Argentina",
+    "label": [-64.1733, -33.5012],
+    "span": 30.55,
+    "timeZone": "America/Argentina/Buenos_Aires",
+    "currency": {
+      "code": "ARS",
+      "nameHe": "פסו ארגנטינאי",
+      "symbol": "$"
+    }
+  },
+  "ARM": {
+    "nameHe": "ארמניה",
+    "nameEn": "Armenia",
+    "label": [44.8006, 40.4591],
+    "span": 2.43,
+    "timeZone": "Asia/Yerevan",
+    "currency": {
+      "code": "AMD",
+      "nameHe": "דראם ארמני",
+      "symbol": "֏"
+    }
+  },
+  "ASM": {
+    "nameHe": "סמואה האמריקנית",
+    "nameEn": "American Samoa",
+    "label": [-170.7472, -14.3267],
+    "span": 0.26,
+    "small": true,
+    "timeZone": "Pacific/Pago_Pago",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "ATA": {
+    "nameHe": "אנטארקטיקה",
+    "nameEn": "Antarctica",
+    "label": [35.8855, -79.8432],
+    "span": 97.92
+  },
+  "ATC": {
+    "nameHe": "איי אשמור וקרטייה",
+    "nameEn": "Ashmore and Cartier Islands",
+    "label": [123.5864, -12.4326],
+    "span": 0.02,
+    "small": true
+  },
+  "ATF": {
+    "nameHe": "הארצות הדרומיות והאנטארקטיות של צרפת",
+    "nameEn": "French Southern and Antarctic Lands",
+    "label": [69.1221, -49.3037],
+    "span": 1.19,
+    "timeZone": "Indian/Kerguelen",
+    "city": "קרגלן",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "ATG": {
+    "nameHe": "אנטיגואה וברבודה",
+    "nameEn": "Antigua and Barbuda",
+    "label": [-61.7906, 17.3522],
+    "span": 0.22,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "AUS": {
+    "nameHe": "אוסטרליה",
+    "nameEn": "Australia",
+    "label": [134.0497, -24.1295],
+    "span": 36.55,
+    "timeZone": "Australia/Sydney",
+    "city": "קנברה",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "AUT": {
+    "nameHe": "אוסטריה",
+    "nameEn": "Austria",
+    "label": [14.1305, 47.5189],
+    "span": 5.13,
+    "timeZone": "Europe/Vienna",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "AZE": {
+    "nameHe": "אזרבייג'ן",
+    "nameEn": "Azerbaijan",
+    "label": [47.211, 40.4024],
+    "span": 4.1,
+    "timeZone": "Asia/Baku",
+    "currency": {
+      "code": "AZN",
+      "nameHe": "מאנאט אזרבייג׳ני",
+      "symbol": "₼"
+    }
+  },
+  "BDI": {
+    "nameHe": "בורונדי",
+    "nameEn": "Burundi",
+    "label": [29.9171, -3.3328],
+    "span": 2.16,
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "BIF",
+      "nameHe": "פרנק בורונדי",
+      "symbol": "FBu"
+    }
+  },
+  "BEL": {
+    "nameHe": "בלגיה",
+    "nameEn": "Belgium",
+    "label": [4.8004, 50.7854],
+    "span": 2.45,
+    "timeZone": "Europe/Brussels",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "BEN": {
+    "nameHe": "בנין",
+    "nameEn": "Benin",
+    "label": [2.352, 10.3248],
+    "span": 6.19,
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "BFA": {
+    "nameHe": "בורקינה פאסו",
+    "nameEn": "Burkina Faso",
+    "label": [-1.3639, 12.673],
+    "span": 7.73,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "BGD": {
+    "nameHe": "בנגלדש",
+    "nameEn": "Bangladesh",
+    "label": [89.685, 24.215],
+    "span": 5.8,
+    "timeZone": "Asia/Dhaka",
+    "currency": {
+      "code": "BDT",
+      "nameHe": "טאקה בנגלדשי",
+      "symbol": "৳"
+    }
+  },
+  "BGR": {
+    "nameHe": "בולגריה",
+    "nameEn": "Bulgaria",
+    "label": [25.1571, 42.5088],
+    "span": 4.6,
+    "timeZone": "Europe/Sofia",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "BHR": {
+    "nameHe": "בחריין",
+    "nameEn": "Bahrain",
+    "label": [50.5548, 26.056],
+    "span": 0.45,
+    "small": true,
+    "timeZone": "Asia/Qatar",
+    "currency": {
+      "code": "BHD",
+      "nameHe": "דינר בחרייני",
+      "symbol": "د.ب."
+    }
+  },
+  "BHS": {
+    "nameHe": "איי בהאמה",
+    "nameEn": "The Bahamas",
+    "label": [-77.1467, 26.4018],
+    "span": 1.04,
+    "timeZone": "America/Toronto",
+    "currency": {
+      "code": "BSD",
+      "nameHe": "דולר בהאמי",
+      "symbol": "$"
+    }
+  },
+  "BIH": {
+    "nameHe": "בוסניה והרצגובינה",
+    "nameEn": "Bosnia and Herzegovina",
+    "label": [18.0684, 44.0911],
+    "span": 2.81,
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "BAM",
+      "nameHe": "מארק סחיר של בוסניה והרצגובינה",
+      "symbol": "KM"
+    }
+  },
+  "BLM": {
+    "nameHe": "סן ברתלמי",
+    "nameEn": "Saint Barthélemy",
+    "label": [-62.8332, 17.902],
+    "span": 0.07,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "BLR": {
+    "nameHe": "בלארוס",
+    "nameEn": "Belarus",
+    "label": [28.4177, 53.8219],
+    "span": 5.66,
+    "timeZone": "Europe/Minsk",
+    "currency": {
+      "code": "BYN",
+      "nameHe": "רובל בלרוסי",
+      "symbol": "Br"
+    }
+  },
+  "BLZ": {
+    "nameHe": "בליז",
+    "nameEn": "Belize",
+    "label": [-88.713, 17.2021],
+    "span": 2.61,
+    "timeZone": "America/Belize",
+    "currency": {
+      "code": "BZD",
+      "nameHe": "דולר בליזי",
+      "symbol": "$"
+    }
+  },
+  "BMU": {
+    "nameHe": "ברמודה",
+    "nameEn": "Bermuda",
+    "label": [-64.7636, 32.2966],
+    "span": 0.2,
+    "small": true,
+    "timeZone": "Atlantic/Bermuda",
+    "currency": {
+      "code": "BMD",
+      "nameHe": "דולר ברמודה",
+      "symbol": "$"
+    }
+  },
+  "BOL": {
+    "nameHe": "בוליביה",
+    "nameEn": "Bolivia",
+    "label": [-64.5934, -16.666],
+    "span": 13.21,
+    "timeZone": "America/La_Paz",
+    "currency": {
+      "code": "BOB",
+      "nameHe": "בוליביאנו",
+      "symbol": "Bs"
+    }
+  },
+  "BRA": {
+    "nameHe": "ברזיל",
+    "nameEn": "Brazil",
+    "label": [-49.5594, -12.0987],
+    "span": 39.01,
+    "timeZone": "America/Sao_Paulo",
+    "city": "ברזיליה",
+    "currency": {
+      "code": "BRL",
+      "nameHe": "ריאל ברזילאי",
+      "symbol": "R$"
+    }
+  },
+  "BRB": {
+    "nameHe": "ברבדוס",
+    "nameEn": "Barbados",
+    "label": [-59.569, 13.1637],
+    "span": 0.29,
+    "small": true,
+    "timeZone": "America/Barbados",
+    "currency": {
+      "code": "BBD",
+      "nameHe": "דולר ברבדיאני",
+      "symbol": "$"
+    }
+  },
+  "BRI": {
+    "nameHe": "אי ברזילאי",
+    "nameEn": "Brazilian Island",
+    "label": [-57.623, -30.1876],
+    "span": 0.03,
+    "small": true,
+    "timeZone": "America/Sao_Paulo",
+    "currency": {
+      "code": "BRL",
+      "nameHe": "ריאל ברזילאי",
+      "symbol": "R$"
+    }
+  },
+  "BRN": {
+    "nameHe": "ברוניי",
+    "nameEn": "Brunei",
+    "label": [114.5519, 4.4483],
+    "span": 1.1,
+    "small": true,
+    "timeZone": "Asia/Kuching",
+    "currency": {
+      "code": "BND",
+      "nameHe": "דולר ברוניי",
+      "symbol": "$"
+    }
+  },
+  "BTN": {
+    "nameHe": "בהוטן",
+    "nameEn": "Bhutan",
+    "label": [90.0403, 27.5367],
+    "span": 2.97,
+    "timeZone": "Asia/Thimphu",
+    "currency": {
+      "code": "BTN",
+      "nameHe": "נגולטרום בהוטני",
+      "symbol": "Nu."
+    }
+  },
+  "BWA": {
+    "nameHe": "בוטסואנה",
+    "nameEn": "Botswana",
+    "label": [24.1792, -22.1026],
+    "span": 9.1,
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "BWP",
+      "nameHe": "פולה בוטסואני",
+      "symbol": "P"
+    }
+  },
+  "CAF": {
+    "nameHe": "הרפובליקה המרכז-אפריקאית",
+    "nameEn": "Central African Republic",
+    "label": [20.9069, 6.9897],
+    "span": 12.96,
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "CAN": {
+    "nameHe": "קנדה",
+    "nameEn": "Canada",
+    "label": [-101.9107, 60.3243],
+    "span": 46.69,
+    "timeZone": "America/Toronto",
+    "city": "אוטווה",
+    "currency": {
+      "code": "CAD",
+      "nameHe": "דולר קנדי",
+      "symbol": "$"
+    }
+  },
+  "CHE": {
+    "nameHe": "שווייץ",
+    "nameEn": "Switzerland",
+    "label": [7.464, 46.7191],
+    "span": 3.08,
+    "timeZone": "Europe/Zurich",
+    "currency": {
+      "code": "CHF",
+      "nameHe": "פרנק שוויצרי",
+      "symbol": "CHF"
+    }
+  },
+  "CHL": {
+    "nameHe": "צ'ילה",
+    "nameEn": "Chile",
+    "label": [-72.3189, -38.1518],
+    "span": 36.37,
+    "timeZone": "America/Santiago",
+    "city": "סנטיאגו",
+    "currency": {
+      "code": "CLP",
+      "nameHe": "פסו צ׳ילאני",
+      "symbol": "$"
+    }
+  },
+  "CHN": {
+    "nameHe": "הרפובליקה העממית של סין",
+    "nameEn": "People's Republic of China",
+    "label": [106.3373, 32.4982],
+    "span": 48.91,
+    "timeZone": "Asia/Shanghai",
+    "city": "בייג'ינג",
+    "currency": {
+      "code": "CNY",
+      "nameHe": "יואן סיני",
+      "symbol": "¥"
+    }
+  },
+  "CIV": {
+    "nameHe": "חוף השנהב",
+    "nameEn": "Ivory Coast",
+    "label": [-5.5686, 7.4914],
+    "span": 6.38,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "CLP": {
+    "nameHe": "קליפרטון",
+    "nameEn": "Clipperton Island",
+    "label": [-109.2204, 10.2973],
+    "span": 0.03,
+    "small": true
+  },
+  "CMR": {
+    "nameHe": "קמרון",
+    "nameEn": "Cameroon",
+    "label": [12.4735, 4.585],
+    "span": 11.35,
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "COD": {
+    "nameHe": "הרפובליקה הדמוקרטית של קונגו",
+    "nameEn": "Democratic Republic of the Congo",
+    "label": [23.4588, -1.8582],
+    "span": 19.02,
+    "timeZone": "Africa/Kinshasa",
+    "city": "קינשסה",
+    "currency": {
+      "code": "CDF",
+      "nameHe": "פרנק קונגולזי",
+      "symbol": "FC"
+    }
+  },
+  "COG": {
+    "nameHe": "הרפובליקה של קונגו",
+    "nameEn": "Republic of the Congo",
+    "label": [15.9005, 0.1423],
+    "span": 8.73,
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "COK": {
+    "nameHe": "איי קוק",
+    "nameEn": "Cook Islands",
+    "label": [-159.7857, -21.216],
+    "span": 0.1,
+    "small": true,
+    "timeZone": "Pacific/Rarotonga",
+    "currency": {
+      "code": "NZD",
+      "nameHe": "דולר ניו זילנדי",
+      "symbol": "$"
+    }
+  },
+  "COL": {
+    "nameHe": "קולומביה",
+    "nameEn": "Colombia",
+    "label": [-73.1743, 3.3731],
+    "span": 16.68,
+    "timeZone": "America/Bogota",
+    "currency": {
+      "code": "COP",
+      "nameHe": "פסו קולומביאני",
+      "symbol": "$"
+    }
+  },
+  "COM": {
+    "nameHe": "קומורו",
+    "nameEn": "Comoros",
+    "label": [43.3181, -11.7277],
+    "span": 0.57,
+    "small": true,
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "KMF",
+      "nameHe": "פרנק קומורואי",
+      "symbol": "CF"
+    }
+  },
+  "CPV": {
+    "nameHe": "כף ורדה",
+    "nameEn": "Cape Verde",
+    "label": [-23.6394, 15.0748],
+    "span": 0.43,
+    "small": true,
+    "timeZone": "Atlantic/Cape_Verde",
+    "currency": {
+      "code": "CVE",
+      "nameHe": "אסקודו כף ורדה",
+      "symbol": "CVE"
+    }
+  },
+  "CRI": {
+    "nameHe": "קוסטה ריקה",
+    "nameEn": "Costa Rica",
+    "label": [-84.0779, 10.0651],
+    "span": 3.29,
+    "timeZone": "America/Costa_Rica",
+    "currency": {
+      "code": "CRC",
+      "nameHe": "קולון קוסטה־ריקני",
+      "symbol": "₡"
+    }
+  },
+  "CSI": {
+    "nameHe": "טריטוריית איי ים האלמוגים",
+    "nameEn": "Coral Sea Islands",
+    "label": [154.3906, -21.0293],
+    "span": 0,
+    "small": true
+  },
+  "CUB": {
+    "nameHe": "קובה",
+    "nameEn": "Cuba",
+    "label": [-77.9759, 21.334],
+    "span": 10.03,
+    "timeZone": "America/Havana",
+    "currency": {
+      "code": "CUP",
+      "nameHe": "פסו קובני",
+      "symbol": "$"
+    }
+  },
+  "CUW": {
+    "nameHe": "קוראסאו",
+    "nameEn": "Curaçao",
+    "label": [-68.9206, 12.145],
+    "span": 0.42,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCG",
+      "nameHe": "גילדר של הקריביים",
+      "symbol": "Cg."
+    }
+  },
+  "CYM": {
+    "nameHe": "איי קיימן",
+    "nameEn": "Cayman Islands",
+    "label": [-81.2405, 19.3199],
+    "span": 0.31,
+    "small": true,
+    "timeZone": "America/Panama",
+    "currency": {
+      "code": "KYD",
+      "nameHe": "דולר קיימני",
+      "symbol": "$"
+    }
+  },
+  "CYP": {
+    "nameHe": "קפריסין",
+    "nameEn": "Cyprus",
+    "label": [33.0842, 34.9133],
+    "span": 1.9,
+    "timeZone": "Asia/Famagusta",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "CZE": {
+    "nameHe": "צ'כיה",
+    "nameEn": "Czech Republic",
+    "label": [15.3776, 49.8824],
+    "span": 4.36,
+    "timeZone": "Europe/Prague",
+    "currency": {
+      "code": "CZK",
+      "nameHe": "קורונה צ׳כית",
+      "symbol": "Kč"
+    }
+  },
+  "DEU": {
+    "nameHe": "גרמניה",
+    "nameEn": "Germany",
+    "label": [9.6783, 50.9617],
+    "span": 7.59,
+    "timeZone": "Europe/Berlin",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "DJI": {
+    "nameHe": "ג'יבוטי",
+    "nameEn": "Djibouti",
+    "label": [42.4988, 11.9763],
+    "span": 1.78,
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "DJF",
+      "nameHe": "פרנק ג׳יבוטי",
+      "symbol": "Fdj"
+    }
+  },
+  "DMA": {
+    "nameHe": "דומיניקה",
+    "nameEn": "Dominica",
+    "label": [-61.345, 15.4588],
+    "span": 0.43,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "DNK": {
+    "nameHe": "דנמרק",
+    "nameEn": "Denmark",
+    "label": [9.0182, 55.967],
+    "span": 2.94,
+    "timeZone": "Europe/Berlin",
+    "currency": {
+      "code": "DKK",
+      "nameHe": "כתר דני",
+      "symbol": "kr"
+    }
+  },
+  "DOM": {
+    "nameHe": "הרפובליקה הדומיניקנית",
+    "nameEn": "Dominican Republic",
+    "label": [-70.654, 19.1041],
+    "span": 3.48,
+    "timeZone": "America/Santo_Domingo",
+    "currency": {
+      "code": "DOP",
+      "nameHe": "פסו דומיניקני",
+      "symbol": "$"
+    }
+  },
+  "DZA": {
+    "nameHe": "אלג'יריה",
+    "nameEn": "Algeria",
+    "label": [2.8082, 27.3974],
+    "span": 18.23,
+    "timeZone": "Africa/Algiers",
+    "currency": {
+      "code": "DZD",
+      "nameHe": "דינר אלג׳ירי",
+      "symbol": "د.ج."
+    }
+  },
+  "ECU": {
+    "nameHe": "אקוודור",
+    "nameEn": "Ecuador",
+    "label": [-78.1884, -1.2591],
+    "span": 6.45,
+    "timeZone": "America/Guayaquil",
+    "city": "קיטו",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "EGY": {
+    "nameHe": "מצרים",
+    "nameEn": "Egypt",
+    "label": [29.4458, 26.1862],
+    "span": 10.89,
+    "timeZone": "Africa/Cairo",
+    "currency": {
+      "code": "EGP",
+      "nameHe": "לירה מצרית",
+      "symbol": "E£"
+    }
+  },
+  "ERI": {
+    "nameHe": "אריתריאה",
+    "nameEn": "Eritrea",
+    "label": [38.2856, 15.7874],
+    "span": 6.46,
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "ERN",
+      "nameHe": "נאקפה אריתראי",
+      "symbol": "Nfk"
+    }
+  },
+  "ESP": {
+    "nameHe": "ספרד",
+    "nameEn": "Spain",
+    "label": [-3.4647, 40.091],
+    "span": 9.67,
+    "timeZone": "Europe/Madrid",
+    "city": "מדריד",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "EST": {
+    "nameHe": "אסטוניה",
+    "nameEn": "Estonia",
+    "label": [25.8671, 58.7249],
+    "span": 2.48,
+    "timeZone": "Europe/Tallinn",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "ETH": {
+    "nameHe": "אתיופיה",
+    "nameEn": "Ethiopia",
+    "label": [39.0886, 8.0328],
+    "span": 14.8,
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "ETB",
+      "nameHe": "ביר אתיופי",
+      "symbol": "ብር"
+    }
+  },
+  "FIN": {
+    "nameHe": "פינלנד",
+    "nameEn": "Finland",
+    "label": [27.2764, 63.2524],
+    "span": 10.23,
+    "timeZone": "Europe/Helsinki",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "FJI": {
+    "nameHe": "פיג'י",
+    "nameEn": "Fiji",
+    "label": [177.9754, -17.8261],
+    "span": 1.39,
+    "timeZone": "Pacific/Fiji",
+    "currency": {
+      "code": "FJD",
+      "nameHe": "דולר פיג׳י",
+      "symbol": "$"
+    }
+  },
+  "FLK": {
+    "nameHe": "איי פוקלנד",
+    "nameEn": "Falkland Islands",
+    "label": [-58.7386, -51.6089],
+    "span": 1.23,
+    "timeZone": "Atlantic/Stanley",
+    "currency": {
+      "code": "FKP",
+      "nameHe": "לירה של איי פוקלנד",
+      "symbol": "£"
+    }
+  },
+  "FRA": {
+    "nameHe": "צרפת",
+    "nameEn": "France",
+    "label": [2.5523, 46.6961],
+    "span": 8.9,
+    "timeZone": "Europe/Paris",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "FRO": {
+    "nameHe": "איי פארו",
+    "nameEn": "Faroe Islands",
+    "label": [-7.0584, 62.1856],
+    "span": 0.38,
+    "small": true,
+    "timeZone": "Atlantic/Faroe",
+    "currency": {
+      "code": "DKK",
+      "nameHe": "כתר דני",
+      "symbol": "kr"
+    }
+  },
+  "FSM": {
+    "nameHe": "מיקרונזיה",
+    "nameEn": "Federated States of Micronesia",
+    "label": [158.234, 6.8876],
+    "span": 0.21,
+    "small": true,
+    "timeZone": "Pacific/Pohnpei",
+    "city": "פליקיר",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "GAB": {
+    "nameHe": "גבון",
+    "nameEn": "Gabon",
+    "label": [11.8359, -0.4377],
+    "span": 6.25,
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "GBR": {
+    "nameHe": "הממלכה המאוחדת",
+    "nameEn": "United Kingdom",
+    "label": [-2.1163, 54.4027],
+    "span": 8.7,
+    "timeZone": "Europe/London",
+    "currency": {
+      "code": "GBP",
+      "nameHe": "לירה שטרלינג",
+      "symbol": "£"
+    }
+  },
+  "GEO": {
+    "nameHe": "גאורגיה",
+    "nameEn": "Georgia",
+    "label": [43.7357, 41.8701],
+    "span": 4.96,
+    "timeZone": "Asia/Tbilisi",
+    "currency": {
+      "code": "GEL",
+      "nameHe": "לארי גאורגי",
+      "symbol": "₾"
+    }
+  },
+  "GGY": {
+    "nameHe": "גרנזי",
+    "nameEn": "Guernsey",
+    "label": [-2.5617, 49.4635],
+    "span": 0.11,
+    "small": true,
+    "timeZone": "Europe/London",
+    "currency": {
+      "code": "GBP",
+      "nameHe": "לירה שטרלינג",
+      "symbol": "£"
+    }
+  },
+  "GHA": {
+    "nameHe": "גאנה",
+    "nameEn": "Ghana",
+    "label": [-1.0369, 7.7176],
+    "span": 6.43,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "GHS",
+      "nameHe": "סדי גאני",
+      "symbol": "GH₵"
+    }
+  },
+  "GIB": {
+    "nameHe": "גיברלטר",
+    "nameEn": "Gibraltar",
+    "label": [-5.3467, 36.1294],
+    "span": 0.03,
+    "small": true,
+    "timeZone": "Europe/Gibraltar",
+    "currency": {
+      "code": "GIP",
+      "nameHe": "פאונד גיברלטר",
+      "symbol": "£"
+    }
+  },
+  "GIN": {
+    "nameHe": "גינאה",
+    "nameEn": "Guinea",
+    "label": [-10.0164, 10.6185],
+    "span": 7.31,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "GNF",
+      "nameHe": "פרנק גינאי",
+      "symbol": "FG"
+    }
+  },
+  "GMB": {
+    "nameHe": "גמביה",
+    "nameEn": "The Gambia",
+    "label": [-14.9983, 13.6417],
+    "span": 2.93,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "GMD",
+      "nameHe": "דלסי גמבי",
+      "symbol": "D"
+    }
+  },
+  "GNB": {
+    "nameHe": "גינאה ביסאו",
+    "nameEn": "Guinea-Bissau",
+    "label": [-14.5241, 12.1637],
+    "span": 3,
+    "timeZone": "Africa/Bissau",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "GNQ": {
+    "nameHe": "גינאה המשוונית",
+    "nameEn": "Equatorial Guinea",
+    "label": [8.9902, 2.333],
+    "span": 1.99,
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "GRC": {
+    "nameHe": "יוון",
+    "nameEn": "Greece",
+    "label": [21.7257, 39.4928],
+    "span": 5.28,
+    "timeZone": "Europe/Athens",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "GRD": {
+    "nameHe": "גרנדה",
+    "nameEn": "Grenada",
+    "label": [-61.6805, 12.1132],
+    "span": 0.24,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "GRL": {
+    "nameHe": "גרינלנד",
+    "nameEn": "Greenland",
+    "label": [-39.3353, 74.3194],
+    "span": 23.63,
+    "timeZone": "America/Nuuk",
+    "city": "נואוק",
+    "currency": {
+      "code": "DKK",
+      "nameHe": "כתר דני",
+      "symbol": "kr"
+    }
+  },
+  "GTM": {
+    "nameHe": "גואטמלה",
+    "nameEn": "Guatemala",
+    "label": [-90.4971, 14.9821],
+    "span": 4.08,
+    "timeZone": "America/Guatemala",
+    "currency": {
+      "code": "GTQ",
+      "nameHe": "קצאל גואטמלי",
+      "symbol": "Q"
+    }
+  },
+  "GUM": {
+    "nameHe": "גואם",
+    "nameEn": "Guam",
+    "label": [144.7036, 13.3542],
+    "span": 0.41,
+    "small": true,
+    "timeZone": "Pacific/Guam",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "GUY": {
+    "nameHe": "גיאנה",
+    "nameEn": "Guyana",
+    "label": [-58.9426, 5.1243],
+    "span": 7.34,
+    "timeZone": "America/Guyana",
+    "currency": {
+      "code": "GYD",
+      "nameHe": "דולר גיאני",
+      "symbol": "$"
+    }
+  },
+  "HKG": {
+    "nameHe": "הונג קונג",
+    "nameEn": "Hong Kong",
+    "label": [114.0978, 22.4488],
+    "span": 0.47,
+    "small": true,
+    "timeZone": "Asia/Hong_Kong",
+    "currency": {
+      "code": "HKD",
+      "nameHe": "דולר הונג קונגי",
+      "symbol": "$"
+    }
+  },
+  "HMD": {
+    "nameHe": "האי הרד ואיי מקדונלד",
+    "nameEn": "Heard Island and McDonald Islands",
+    "label": [73.5052, -53.1035],
+    "span": 0.35,
+    "small": true
+  },
+  "HND": {
+    "nameHe": "הונדורס",
+    "nameEn": "Honduras",
+    "label": [-86.8876, 14.7948],
+    "span": 6.03,
+    "timeZone": "America/Tegucigalpa",
+    "currency": {
+      "code": "HNL",
+      "nameHe": "למפירה הונדורי",
+      "symbol": "L"
+    }
+  },
+  "HRV": {
+    "nameHe": "קרואטיה",
+    "nameEn": "Croatia",
+    "label": [16.3724, 45.8058],
+    "span": 4.18,
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "HTI": {
+    "nameHe": "האיטי",
+    "nameEn": "Haiti",
+    "label": [-72.2241, 19.2638],
+    "span": 2.7,
+    "timeZone": "America/Port-au-Prince",
+    "currency": {
+      "code": "HTG",
+      "nameHe": "גורד האיטי",
+      "symbol": "HTG"
+    }
+  },
+  "HUN": {
+    "nameHe": "הונגריה",
+    "nameEn": "Hungary",
+    "label": [19.4479, 47.0868],
+    "span": 4.61,
+    "timeZone": "Europe/Budapest",
+    "currency": {
+      "code": "HUF",
+      "nameHe": "פורינט הונגרי",
+      "symbol": "Ft"
+    }
+  },
+  "IDN": {
+    "nameHe": "אינדונזיה",
+    "nameEn": "Indonesia",
+    "label": [101.8929, -0.9544],
+    "span": 11.57,
+    "timeZone": "Asia/Jakarta",
+    "city": "ג'קרטה",
+    "currency": {
+      "code": "IDR",
+      "nameHe": "רופיה אינדונזית",
+      "symbol": "Rp"
+    }
+  },
+  "IMN": {
+    "nameHe": "האי מאן",
+    "nameEn": "Isle of Man",
+    "label": [-4.5301, 54.2208],
+    "span": 0.36,
+    "small": true,
+    "timeZone": "Europe/London",
+    "currency": {
+      "code": "GBP",
+      "nameHe": "לירה שטרלינג",
+      "symbol": "£"
+    }
+  },
+  "IND": {
+    "nameHe": "הודו",
+    "nameEn": "India",
+    "label": [79.3581, 22.6869],
+    "span": 27.57,
+    "timeZone": "Asia/Kolkata",
+    "currency": {
+      "code": "INR",
+      "nameHe": "רופי הודי",
+      "symbol": "₹"
+    }
+  },
+  "IOA": {
+    "nameHe": "טריטוריה של האוקיינוס ההודי",
+    "nameEn": "Australian Indian Ocean Territories",
+    "label": [105.6726, -10.4908],
+    "span": 0.14,
+    "small": true,
+    "timeZone": "Indian/Christmas",
+    "city": "אי חג המולד",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "IOT": {
+    "nameHe": "הטריטוריה הבריטית באוקיינוס ההודי",
+    "nameEn": "British Indian Ocean Territory",
+    "label": [71.3483, -6.1908],
+    "span": 0.03,
+    "small": true,
+    "timeZone": "Indian/Chagos",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "IRL": {
+    "nameHe": "אירלנד",
+    "nameEn": "Ireland",
+    "label": [-7.7986, 53.0787],
+    "span": 3.94,
+    "timeZone": "Europe/Dublin",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "IRN": {
+    "nameHe": "איראן",
+    "nameEn": "Iran",
+    "label": [54.9315, 32.1662],
+    "span": 16.26,
+    "timeZone": "Asia/Tehran",
+    "currency": {
+      "code": "IRR",
+      "nameHe": "ריאל איראני",
+      "symbol": "ریال"
+    }
+  },
+  "IRQ": {
+    "nameHe": "עיראק",
+    "nameEn": "Iraq",
+    "label": [43.2618, 33.094],
+    "span": 8.31,
+    "timeZone": "Asia/Baghdad",
+    "currency": {
+      "code": "IQD",
+      "nameHe": "דינר עיראקי",
+      "symbol": "د.ع."
+    }
+  },
+  "ISL": {
+    "nameHe": "איסלנד",
+    "nameEn": "Iceland",
+    "label": [-18.6737, 64.7793],
+    "span": 4.64,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "ISK",
+      "nameHe": "כתר איסלנדי",
+      "symbol": "kr"
+    }
+  },
+  "ISR": {
+    "nameHe": "ישראל",
+    "nameEn": "Israel",
+    "label": [34.8479, 30.9111],
+    "span": 3.92,
+    "timeZone": "Asia/Jerusalem",
+    "currency": {
+      "code": "ILS",
+      "nameHe": "שקל חדש",
+      "symbol": "₪"
+    }
+  },
+  "ITA": {
+    "nameHe": "איטליה",
+    "nameEn": "Italy",
+    "label": [11.0769, 44.7325],
+    "span": 9.15,
+    "timeZone": "Europe/Rome",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "JAM": {
+    "nameHe": "ג'מייקה",
+    "nameEn": "Jamaica",
+    "label": [-77.3188, 18.1371],
+    "span": 2.08,
+    "timeZone": "America/Jamaica",
+    "currency": {
+      "code": "JMD",
+      "nameHe": "דולר ג׳מייקני",
+      "symbol": "$"
+    }
+  },
+  "JEY": {
+    "nameHe": "ג'רזי",
+    "nameEn": "Jersey",
+    "label": [-2.0901, 49.2208],
+    "span": 0.15,
+    "small": true,
+    "timeZone": "Europe/London",
+    "currency": {
+      "code": "GBP",
+      "nameHe": "לירה שטרלינג",
+      "symbol": "£"
+    }
+  },
+  "JOR": {
+    "nameHe": "ירדן",
+    "nameEn": "Jordan",
+    "label": [36.376, 30.805],
+    "span": 4.18,
+    "timeZone": "Asia/Amman",
+    "currency": {
+      "code": "JOD",
+      "nameHe": "דינר ירדני",
+      "symbol": "د.أ."
+    }
+  },
+  "JPN": {
+    "nameHe": "יפן",
+    "nameEn": "Japan",
+    "label": [138.4422, 36.1425],
+    "span": 8.89,
+    "timeZone": "Asia/Tokyo",
+    "currency": {
+      "code": "JPY",
+      "nameHe": "ין יפני",
+      "symbol": "¥"
+    }
+  },
+  "KAZ": {
+    "nameHe": "קזחסטן",
+    "nameEn": "Kazakhstan",
+    "label": [68.6855, 49.0541],
+    "span": 27.33,
+    "timeZone": "Asia/Almaty",
+    "currency": {
+      "code": "KZT",
+      "nameHe": "טנגה קזחסטני",
+      "symbol": "₸"
+    }
+  },
+  "KEN": {
+    "nameHe": "קניה",
+    "nameEn": "Kenya",
+    "label": [37.9076, 0.549],
+    "span": 9.3,
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "KES",
+      "nameHe": "שילינג קנייתי",
+      "symbol": "Ksh"
+    }
+  },
+  "KGZ": {
+    "nameHe": "קירגיזסטן",
+    "nameEn": "Kyrgyzstan",
+    "label": [74.5326, 41.6685],
+    "span": 8.26,
+    "timeZone": "Asia/Bishkek",
+    "currency": {
+      "code": "KGS",
+      "nameHe": "סום קירגיזי",
+      "symbol": "⃀"
+    }
+  },
+  "KHM": {
+    "nameHe": "קמבודיה",
+    "nameEn": "Cambodia",
+    "label": [104.5049, 12.6476],
+    "span": 5.15,
+    "timeZone": "Asia/Bangkok",
+    "currency": {
+      "code": "KHR",
+      "nameHe": "ריל קמבודי",
+      "symbol": "៛"
+    }
+  },
+  "KIR": {
+    "nameHe": "קיריבטי",
+    "nameEn": "Kiribati",
+    "label": [-157.3846, 1.8204],
+    "span": 0.41,
+    "small": true,
+    "timeZone": "Pacific/Tarawa",
+    "city": "טאראווה",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "KNA": {
+    "nameHe": "סנט קיטס ונוויס",
+    "nameEn": "Saint Kitts and Nevis",
+    "label": [-62.758, 17.3366],
+    "span": 0.23,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "KOR": {
+    "nameHe": "קוריאה הדרומית",
+    "nameEn": "South Korea",
+    "label": [128.1295, 36.3849],
+    "span": 4.32,
+    "timeZone": "Asia/Seoul",
+    "currency": {
+      "code": "KRW",
+      "nameHe": "וון דרום קוריאני",
+      "symbol": "₩"
+    }
+  },
+  "KOS": {
+    "nameHe": "קוסובו",
+    "nameEn": "Kosovo",
+    "label": [20.8607, 42.5936],
+    "span": 1.42,
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "KWT": {
+    "nameHe": "כווית",
+    "nameEn": "Kuwait",
+    "label": [47.314, 29.4136],
+    "span": 1.66,
+    "timeZone": "Asia/Riyadh",
+    "currency": {
+      "code": "KWD",
+      "nameHe": "דינר כוויתי",
+      "symbol": "د.ك."
+    }
+  },
+  "LAO": {
+    "nameHe": "לאוס",
+    "nameEn": "Laos",
+    "label": [102.5339, 19.4318],
+    "span": 8.53,
+    "timeZone": "Asia/Bangkok",
+    "currency": {
+      "code": "LAK",
+      "nameHe": "קיפ לאי",
+      "symbol": "₭"
+    }
+  },
+  "LBN": {
+    "nameHe": "לבנון",
+    "nameEn": "Lebanon",
+    "label": [35.9929, 34.1334],
+    "span": 1.63,
+    "timeZone": "Asia/Beirut",
+    "currency": {
+      "code": "LBP",
+      "nameHe": "לירה לבנונית",
+      "symbol": "L£"
+    }
+  },
+  "LBR": {
+    "nameHe": "ליבריה",
+    "nameEn": "Liberia",
+    "label": [-9.4604, 6.4472],
+    "span": 4.16,
+    "timeZone": "Africa/Monrovia",
+    "currency": {
+      "code": "LRD",
+      "nameHe": "דולר ליברי",
+      "symbol": "$"
+    }
+  },
+  "LBY": {
+    "nameHe": "לוב",
+    "nameEn": "Libya",
+    "label": [18.011, 26.6389],
+    "span": 14.22,
+    "timeZone": "Africa/Tripoli",
+    "currency": {
+      "code": "LYD",
+      "nameHe": "דינר לובי",
+      "symbol": "د.ل."
+    }
+  },
+  "LCA": {
+    "nameHe": "סנט לוסיה",
+    "nameEn": "Saint Lucia",
+    "label": [-60.9801, 13.8924],
+    "span": 0.4,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "LIE": {
+    "nameHe": "ליכטנשטיין",
+    "nameEn": "Liechtenstein",
+    "label": [9.5594, 47.1114],
+    "span": 0.21,
+    "small": true,
+    "timeZone": "Europe/Zurich",
+    "currency": {
+      "code": "CHF",
+      "nameHe": "פרנק שוויצרי",
+      "symbol": "CHF"
+    }
+  },
+  "LKA": {
+    "nameHe": "סרי לנקה",
+    "nameEn": "Sri Lanka",
+    "label": [80.7048, 7.5811],
+    "span": 3.9,
+    "timeZone": "Asia/Colombo",
+    "currency": {
+      "code": "LKR",
+      "nameHe": "רופי סרי לנקי",
+      "symbol": "Rs"
+    }
+  },
+  "LSO": {
+    "nameHe": "לסוטו",
+    "nameEn": "Lesotho",
+    "label": [28.2466, -29.4802],
+    "span": 2.12,
+    "timeZone": "Africa/Johannesburg",
+    "currency": {
+      "code": "LSL",
+      "nameHe": "לוטי לסותי",
+      "symbol": "M"
+    }
+  },
+  "LTU": {
+    "nameHe": "ליטא",
+    "nameEn": "Lithuania",
+    "label": [24.0899, 55.1037],
+    "span": 3.28,
+    "timeZone": "Europe/Vilnius",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "LUX": {
+    "nameHe": "לוקסמבורג",
+    "nameEn": "Luxembourg",
+    "label": [6.0776, 49.7337],
+    "span": 0.73,
+    "small": true,
+    "timeZone": "Europe/Brussels",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "LVA": {
+    "nameHe": "לטביה",
+    "nameEn": "Latvia",
+    "label": [25.4587, 57.0669],
+    "span": 3.96,
+    "timeZone": "Europe/Riga",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "MAC": {
+    "nameHe": "מקאו",
+    "nameEn": "Macau",
+    "label": [113.556, 22.1297],
+    "span": 0.06,
+    "small": true,
+    "timeZone": "Asia/Macau",
+    "currency": {
+      "code": "MOP",
+      "nameHe": "פטקה של מקאו",
+      "symbol": "MOP$"
+    }
+  },
+  "MAF": {
+    "nameHe": "סן מרטן",
+    "nameEn": "Saint Martin",
+    "label": [-63.0494, 18.0813],
+    "span": 0.13,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "MAR": {
+    "nameHe": "מרוקו",
+    "nameEn": "Morocco",
+    "label": [-7.1873, 31.6507],
+    "span": 10.31,
+    "timeZone": "Africa/Casablanca",
+    "currency": {
+      "code": "MAD",
+      "nameHe": "דירהם מרוקאי",
+      "symbol": "د.م."
+    }
+  },
+  "MCO": {
+    "nameHe": "מונקו",
+    "nameEn": "Monaco",
+    "label": [7.3983, 43.7397],
+    "span": 0.05,
+    "small": true,
+    "timeZone": "Europe/Paris",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "MDA": {
+    "nameHe": "מולדובה",
+    "nameEn": "Moldova",
+    "label": [28.4879, 47.435],
+    "span": 3.02,
+    "timeZone": "Europe/Chisinau",
+    "currency": {
+      "code": "MDL",
+      "nameHe": "לאו מולדובני",
+      "symbol": "L"
+    }
+  },
+  "MDG": {
+    "nameHe": "מדגסקר",
+    "nameEn": "Madagascar",
+    "label": [46.7042, -18.6283],
+    "span": 13.64,
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "MGA",
+      "nameHe": "אריארי מלגשי",
+      "symbol": "Ar"
+    }
+  },
+  "MDV": {
+    "nameHe": "האיים המלדיביים",
+    "nameEn": "Maldives",
+    "label": [73.5076, 4.1744],
+    "span": 0.12,
+    "small": true,
+    "timeZone": "Indian/Maldives",
+    "currency": {
+      "code": "MVR",
+      "nameHe": "רופיה מלדיבית",
+      "symbol": "Rf"
+    }
+  },
+  "MEX": {
+    "nameHe": "מקסיקו",
+    "nameEn": "Mexico",
+    "label": [-102.2894, 23.92],
+    "span": 27.84,
+    "timeZone": "America/Mexico_City",
+    "city": "מקסיקו סיטי",
+    "currency": {
+      "code": "MXN",
+      "nameHe": "פסו מקסיקני",
+      "symbol": "$"
+    }
+  },
+  "MHL": {
+    "nameHe": "איי מרשל",
+    "nameEn": "Marshall Islands",
+    "label": [171.1936, 7.0826],
+    "span": 0.36,
+    "small": true,
+    "timeZone": "Pacific/Kwajalein",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "MKD": {
+    "nameHe": "מקדוניה הצפונית",
+    "nameEn": "North Macedonia",
+    "label": [21.5558, 41.5582],
+    "span": 1.92,
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "MKD",
+      "nameHe": "דינר מקדוני",
+      "symbol": "ден."
+    }
+  },
+  "MLI": {
+    "nameHe": "מאלי",
+    "nameEn": "Mali",
+    "label": [-2.0385, 18.6927],
+    "span": 15.73,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "MLT": {
+    "nameHe": "מלטה",
+    "nameEn": "Malta",
+    "label": [14.433, 35.8929],
+    "span": 0.2,
+    "small": true,
+    "timeZone": "Europe/Malta",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "MMR": {
+    "nameHe": "מיאנמר",
+    "nameEn": "Myanmar",
+    "label": [95.8045, 21.5739],
+    "span": 18.55,
+    "timeZone": "Asia/Yangon",
+    "currency": {
+      "code": "MMK",
+      "nameHe": "קיאט מיאנמרי",
+      "symbol": "K"
+    }
+  },
+  "MNE": {
+    "nameHe": "מונטנגרו",
+    "nameEn": "Montenegro",
+    "label": [19.1437, 42.8031],
+    "span": 1.7,
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "MNG": {
+    "nameHe": "מונגוליה",
+    "nameEn": "Mongolia",
+    "label": [104.1504, 45.9975],
+    "span": 21.95,
+    "timeZone": "Asia/Ulaanbaatar",
+    "city": "אולן בטור",
+    "currency": {
+      "code": "MNT",
+      "nameHe": "טוגרוג מונגולי",
+      "symbol": "₮"
+    }
+  },
+  "MNP": {
+    "nameHe": "איי מריאנה הצפוניים",
+    "nameEn": "Northern Mariana Islands",
+    "label": [145.7344, 15.1882],
+    "span": 0.18,
+    "small": true,
+    "timeZone": "Pacific/Guam",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "MOZ": {
+    "nameHe": "מוזמביק",
+    "nameEn": "Mozambique",
+    "label": [37.8379, -13.9432],
+    "span": 16.37,
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "MZN",
+      "nameHe": "מטיקל מוזמביני",
+      "symbol": "MTn"
+    }
+  },
+  "MRT": {
+    "nameHe": "מאוריטניה",
+    "nameEn": "Mauritania",
+    "label": [-9.7403, 19.5871],
+    "span": 12.55,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "MRU",
+      "nameHe": "אואוגויה מאוריטני",
+      "symbol": "أ.م."
+    }
+  },
+  "MSR": {
+    "nameHe": "מונטסראט",
+    "nameEn": "Montserrat",
+    "label": [-62.1883, 16.7372],
+    "span": 0.14,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "MUS": {
+    "nameHe": "מאוריציוס",
+    "nameEn": "Mauritius",
+    "label": [57.5658, -20.2995],
+    "span": 0.54,
+    "small": true,
+    "timeZone": "Indian/Mauritius",
+    "currency": {
+      "code": "MUR",
+      "nameHe": "רופי מאוריציני",
+      "symbol": "Rs"
+    }
+  },
+  "MWI": {
+    "nameHe": "מלאווי",
+    "nameEn": "Malawi",
+    "label": [33.6081, -13.3867],
+    "span": 7.72,
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "MWK",
+      "nameHe": "קואצ׳ה מלאווי",
+      "symbol": "MK"
+    }
+  },
+  "MYS": {
+    "nameHe": "מלזיה",
+    "nameEn": "Malaysia",
+    "label": [113.8371, 2.5287],
+    "span": 9.72,
+    "timeZone": "Asia/Kuching",
+    "currency": {
+      "code": "MYR",
+      "nameHe": "רינגיט מלזי",
+      "symbol": "RM"
+    }
+  },
+  "NAM": {
+    "nameHe": "נמיביה",
+    "nameEn": "Namibia",
+    "label": [17.1082, -20.5753],
+    "span": 12.47,
+    "timeZone": "Africa/Windhoek",
+    "currency": {
+      "code": "NAD",
+      "nameHe": "דולר נמיבי",
+      "symbol": "$"
+    }
+  },
+  "NCL": {
+    "nameHe": "קלדוניה החדשה",
+    "nameEn": "New Caledonia",
+    "label": [165.084, -21.0647],
+    "span": 2.84,
+    "timeZone": "Pacific/Noumea",
+    "currency": {
+      "code": "XPF",
+      "nameHe": "פרנק פולינזיה הצרפתית",
+      "symbol": "CFPF"
+    }
+  },
+  "NER": {
+    "nameHe": "ניז'ר",
+    "nameEn": "Niger",
+    "label": [9.5044, 17.4462],
+    "span": 15.06,
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "NFK": {
+    "nameHe": "נורפוק",
+    "nameEn": "Norfolk Island",
+    "label": [167.9545, -29.033],
+    "span": 0.08,
+    "small": true,
+    "timeZone": "Pacific/Norfolk",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "NGA": {
+    "nameHe": "ניגריה",
+    "nameEn": "Nigeria",
+    "label": [7.5032, 9.4398],
+    "span": 11.85,
+    "timeZone": "Africa/Lagos",
+    "currency": {
+      "code": "NGN",
+      "nameHe": "נאירה ניגרי",
+      "symbol": "₦"
+    }
+  },
+  "NIC": {
+    "nameHe": "ניקרגואה",
+    "nameEn": "Nicaragua",
+    "label": [-85.0693, 12.6707],
+    "span": 4.4,
+    "timeZone": "America/Managua",
+    "currency": {
+      "code": "NIO",
+      "nameHe": "קורדובה ניקרגואה",
+      "symbol": "C$"
+    }
+  },
+  "NIU": {
+    "nameHe": "ניואה",
+    "nameEn": "Niue",
+    "label": [-169.8626, -19.046],
+    "span": 0.18,
+    "small": true,
+    "timeZone": "Pacific/Niue",
+    "currency": {
+      "code": "NZD",
+      "nameHe": "דולר ניו זילנדי",
+      "symbol": "$"
+    }
+  },
+  "NLD": {
+    "nameHe": "הולנד",
+    "nameEn": "Netherlands",
+    "label": [5.6114, 52.4222],
+    "span": 2.71,
+    "timeZone": "Europe/Brussels",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "NOR": {
+    "nameHe": "נורווגיה",
+    "nameEn": "Norway",
+    "label": [9.68, 61.3571],
+    "span": 13.08,
+    "timeZone": "Europe/Berlin",
+    "currency": {
+      "code": "NOK",
+      "nameHe": "כתר נורווגי",
+      "symbol": "kr"
+    }
+  },
+  "NPL": {
+    "nameHe": "נפאל",
+    "nameEn": "Nepal",
+    "label": [83.6399, 28.2979],
+    "span": 7.15,
+    "timeZone": "Asia/Kathmandu",
+    "currency": {
+      "code": "NPR",
+      "nameHe": "רופי נפאלי",
+      "symbol": "Rs"
+    }
+  },
+  "NRU": {
+    "nameHe": "נאורו",
+    "nameEn": "Nauru",
+    "label": [166.9326, -0.5203],
+    "span": 0.06,
+    "small": true,
+    "timeZone": "Pacific/Nauru",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "NZL": {
+    "nameHe": "ניו זילנד",
+    "nameEn": "New Zealand",
+    "label": [172.787, -39.759],
+    "span": 6.17,
+    "timeZone": "Pacific/Auckland",
+    "city": "ולינגטון",
+    "currency": {
+      "code": "NZD",
+      "nameHe": "דולר ניו זילנדי",
+      "symbol": "$"
+    }
+  },
+  "OMN": {
+    "nameHe": "עומאן",
+    "nameEn": "Oman",
+    "label": [57.3366, 22.1204],
+    "span": 8.34,
+    "timeZone": "Asia/Dubai",
+    "currency": {
+      "code": "OMR",
+      "nameHe": "ריאל עומאני",
+      "symbol": "ر.ع."
+    }
+  },
+  "PAK": {
+    "nameHe": "פקיסטן",
+    "nameEn": "Pakistan",
+    "label": [68.5456, 29.3284],
+    "span": 13.98,
+    "timeZone": "Asia/Karachi",
+    "currency": {
+      "code": "PKR",
+      "nameHe": "רופי פקיסטני",
+      "symbol": "Rs"
+    }
+  },
+  "PAN": {
+    "nameHe": "פנמה",
+    "nameEn": "Panama",
+    "label": [-80.3521, 8.722],
+    "span": 5.82,
+    "timeZone": "America/Panama",
+    "currency": {
+      "code": "PAB",
+      "nameHe": "בלבואה פנמי",
+      "symbol": "B/."
+    }
+  },
+  "PCN": {
+    "nameHe": "פיטקרן",
+    "nameEn": "Pitcairn Islands",
+    "label": [-128.3175, -24.3646],
+    "span": 0.09,
+    "small": true,
+    "timeZone": "Pacific/Pitcairn",
+    "currency": {
+      "code": "NZD",
+      "nameHe": "דולר ניו זילנדי",
+      "symbol": "$"
+    }
+  },
+  "PER": {
+    "nameHe": "פרו",
+    "nameEn": "Peru",
+    "label": [-72.9002, -12.9767],
+    "span": 18.31,
+    "timeZone": "America/Lima",
+    "currency": {
+      "code": "PEN",
+      "nameHe": "סול פרואני",
+      "symbol": "S/"
+    }
+  },
+  "PHL": {
+    "nameHe": "הפיליפינים",
+    "nameEn": "Philippines",
+    "label": [122.465, 11.198],
+    "span": 1.5,
+    "timeZone": "Asia/Manila",
+    "currency": {
+      "code": "PHP",
+      "nameHe": "פסו פיליפיני",
+      "symbol": "₱"
+    }
+  },
+  "PLW": {
+    "nameHe": "פלאו",
+    "nameEn": "Palau",
+    "label": [134.5802, 7.5183],
+    "span": 0.38,
+    "small": true,
+    "timeZone": "Pacific/Palau",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "PNG": {
+    "nameHe": "פפואה גינאה החדשה",
+    "nameEn": "Papua New Guinea",
+    "label": [143.9102, -5.6953],
+    "span": 9.78,
+    "timeZone": "Pacific/Port_Moresby",
+    "city": "פורט מורסבי",
+    "currency": {
+      "code": "PGK",
+      "nameHe": "קינה של פפואה גינאה החדשה",
+      "symbol": "K"
+    }
+  },
+  "POL": {
+    "nameHe": "פולין",
+    "nameEn": "Poland",
+    "label": [19.4905, 51.9903],
+    "span": 6.17,
+    "timeZone": "Europe/Warsaw",
+    "currency": {
+      "code": "PLN",
+      "nameHe": "זלוטי פולני",
+      "symbol": "zł"
+    }
+  },
+  "PRI": {
+    "nameHe": "פוארטו ריקו",
+    "nameEn": "Puerto Rico",
+    "label": [-66.4811, 18.2347],
+    "span": 1.59,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "PRK": {
+    "nameHe": "קוריאה הצפונית",
+    "nameEn": "North Korea",
+    "label": [126.4445, 39.8853],
+    "span": 5.3,
+    "timeZone": "Asia/Pyongyang",
+    "currency": {
+      "code": "KPW",
+      "nameHe": "וון צפון קוריאני",
+      "symbol": "₩"
+    }
+  },
+  "PRT": {
+    "nameHe": "פורטוגל",
+    "nameEn": "Portugal",
+    "label": [-8.2718, 39.6067],
+    "span": 5.15,
+    "timeZone": "Europe/Lisbon",
+    "city": "ליסבון",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "PRY": {
+    "nameHe": "פרגוואי",
+    "nameEn": "Paraguay",
+    "label": [-60.1464, -21.6745],
+    "span": 8.29,
+    "timeZone": "America/Asuncion",
+    "currency": {
+      "code": "PYG",
+      "nameHe": "גוארני פרגוואי",
+      "symbol": "₲"
+    }
+  },
+  "PYF": {
+    "nameHe": "פולינזיה הצרפתית",
+    "nameEn": "French Polynesia",
+    "label": [-149.4616, -17.6281],
+    "span": 0.47,
+    "small": true,
+    "timeZone": "Pacific/Tahiti",
+    "city": "פאפטה",
+    "currency": {
+      "code": "XPF",
+      "nameHe": "פרנק פולינזיה הצרפתית",
+      "symbol": "CFPF"
+    }
+  },
+  "QAT": {
+    "nameHe": "קטר",
+    "nameEn": "Qatar",
+    "label": [51.1435, 25.2374],
+    "span": 1.6,
+    "timeZone": "Asia/Qatar",
+    "currency": {
+      "code": "QAR",
+      "nameHe": "ריאל קטארי",
+      "symbol": "ر.ق."
+    }
+  },
+  "ROU": {
+    "nameHe": "רומניה",
+    "nameEn": "Romania",
+    "label": [24.9726, 45.7332],
+    "span": 6.55,
+    "timeZone": "Europe/Bucharest",
+    "currency": {
+      "code": "RON",
+      "nameHe": "לאו רומני",
+      "symbol": "lei"
+    }
+  },
+  "RUS": {
+    "nameHe": "רוסיה",
+    "nameEn": "Russia",
+    "label": [44.6865, 58.2494],
+    "span": 77.56,
+    "timeZone": "Europe/Moscow",
+    "city": "מוסקבה",
+    "currency": {
+      "code": "RUB",
+      "nameHe": "רובל רוסי",
+      "symbol": "₽"
+    }
+  },
+  "RWA": {
+    "nameHe": "רואנדה",
+    "nameEn": "Rwanda",
+    "label": [30.1039, -1.8972],
+    "span": 2.03,
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "RWF",
+      "nameHe": "פרנק רואנדי",
+      "symbol": "RF"
+    }
+  },
+  "SAH": {
+    "nameHe": "סהרה המערבית",
+    "nameEn": "Western Sahara",
+    "label": [-12.6303, 23.9676],
+    "span": 7.68,
+    "timeZone": "Africa/El_Aaiun",
+    "currency": {
+      "code": "MAD",
+      "nameHe": "דירהם מרוקאי",
+      "symbol": "د.م."
+    }
+  },
+  "SAU": {
+    "nameHe": "ערב הסעודית",
+    "nameEn": "Saudi Arabia",
+    "label": [44.6996, 23.8069],
+    "span": 19.14,
+    "timeZone": "Asia/Riyadh",
+    "currency": {
+      "code": "SAR",
+      "nameHe": "ריאל סעודי",
+      "symbol": "ر.س."
+    }
+  },
+  "SDN": {
+    "nameHe": "סודאן",
+    "nameEn": "Sudan",
+    "label": [29.2607, 16.3307],
+    "span": 16.18,
+    "timeZone": "Africa/Khartoum",
+    "currency": {
+      "code": "SDG",
+      "nameHe": "לירה סודנית",
+      "symbol": "ج.س."
+    }
+  },
+  "SDS": {
+    "nameHe": "דרום סודאן",
+    "nameEn": "South Sudan",
+    "label": [30.3902, 7.2305],
+    "span": 11.68,
+    "timeZone": "Africa/Juba",
+    "currency": {
+      "code": "SSP",
+      "nameHe": "לירה דרום-סודנית",
+      "symbol": "£"
+    }
+  },
+  "SEN": {
+    "nameHe": "סנגל",
+    "nameEn": "Senegal",
+    "label": [-14.7786, 15.1381],
+    "span": 5.95,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "SGP": {
+    "nameHe": "סינגפור",
+    "nameEn": "Singapore",
+    "label": [103.8169, 1.3666],
+    "span": 0.36,
+    "small": true,
+    "timeZone": "Asia/Singapore",
+    "currency": {
+      "code": "SGD",
+      "nameHe": "דולר סינגפורי",
+      "symbol": "$"
+    }
+  },
+  "SGS": {
+    "nameHe": "איי ג'ורג'יה הדרומית ואיי סנדוויץ' הדרומיים",
+    "nameEn": "South Georgia and the South Sandwich Islands",
+    "label": [-31.0632, -55.6834],
+    "span": 1.31,
+    "small": true,
+    "timeZone": "Atlantic/South_Georgia",
+    "currency": {
+      "code": "FKP",
+      "nameHe": "לירה של איי פוקלנד",
+      "symbol": "£"
+    }
+  },
+  "SHN": {
+    "nameHe": "סנט הלנה",
+    "nameEn": "Saint Helena",
+    "label": [-5.7126, -15.9505],
+    "span": 0.13,
+    "small": true,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "SHP",
+      "nameHe": "פאונד סנט הלני",
+      "symbol": "£"
+    }
+  },
+  "SLB": {
+    "nameHe": "איי שלמה",
+    "nameEn": "Solomon Islands",
+    "label": [159.1705, -8.0295],
+    "span": 1.44,
+    "timeZone": "Pacific/Guadalcanal",
+    "currency": {
+      "code": "SBD",
+      "nameHe": "דולר איי שלמה",
+      "symbol": "$"
+    }
+  },
+  "SLE": {
+    "nameHe": "סיירה לאון",
+    "nameEn": "Sierra Leone",
+    "label": [-11.7637, 8.6174],
+    "span": 3.08,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "SLE",
+      "nameHe": "ליאון סיירה לאוני",
+      "symbol": "Le"
+    }
+  },
+  "SLV": {
+    "nameHe": "אל סלוודור",
+    "nameEn": "El Salvador",
+    "label": [-88.8901, 13.6854],
+    "span": 2.34,
+    "timeZone": "America/El_Salvador",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "SMR": {
+    "nameHe": "סן מרינו",
+    "nameEn": "San Marino",
+    "label": [12.4412, 43.9339],
+    "span": 0.09,
+    "small": true,
+    "timeZone": "Europe/Rome",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "SOM": {
+    "nameHe": "סומליה",
+    "nameEn": "Somalia",
+    "label": [45.1924, 3.5689],
+    "span": 13.69,
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "SOS",
+      "nameHe": "שילינג סומלי",
+      "symbol": "S"
+    }
+  },
+  "SPM": {
+    "nameHe": "סן-פייר ומיקלון",
+    "nameEn": "Saint Pierre and Miquelon",
+    "label": [-56.3324, 47.0403],
+    "span": 0.36,
+    "small": true,
+    "timeZone": "America/Miquelon",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "SRB": {
+    "nameHe": "סרביה",
+    "nameEn": "Serbia",
+    "label": [20.788, 44.1899],
+    "span": 3.93,
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "RSD",
+      "nameHe": "דינר סרבי",
+      "symbol": "RSD"
+    }
+  },
+  "STP": {
+    "nameHe": "סאו טומה ופרינסיפה",
+    "nameEn": "São Tomé and Príncipe",
+    "label": [7.021, 0.9709],
+    "span": 0.39,
+    "small": true,
+    "timeZone": "Africa/Sao_Tome",
+    "currency": {
+      "code": "STN",
+      "nameHe": "דוברה של סאו טומה ופרינסיפה",
+      "symbol": "Db"
+    }
+  },
+  "SUR": {
+    "nameHe": "סורינאם",
+    "nameEn": "Suriname",
+    "label": [-55.9109, 4.144],
+    "span": 4.18,
+    "timeZone": "America/Paramaribo",
+    "currency": {
+      "code": "SRD",
+      "nameHe": "דולר סורינאמי",
+      "symbol": "$"
+    }
+  },
+  "SVK": {
+    "nameHe": "סלובקיה",
+    "nameEn": "Slovakia",
+    "label": [19.0499, 48.734],
+    "span": 3.76,
+    "timeZone": "Europe/Prague",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "SVN": {
+    "nameHe": "סלובניה",
+    "nameEn": "Slovenia",
+    "label": [14.9153, 46.0608],
+    "span": 2.18,
+    "timeZone": "Europe/Belgrade",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "SWE": {
+    "nameHe": "שוודיה",
+    "nameEn": "Sweden",
+    "label": [19.0171, 65.8592],
+    "span": 13.69,
+    "timeZone": "Europe/Berlin",
+    "currency": {
+      "code": "SEK",
+      "nameHe": "כתר שוודי",
+      "symbol": "kr"
+    }
+  },
+  "SWZ": {
+    "nameHe": "אסוואטיני",
+    "nameEn": "Eswatini",
+    "label": [31.4673, -26.5337],
+    "span": 1.58,
+    "timeZone": "Africa/Johannesburg",
+    "currency": {
+      "code": "SZL",
+      "nameHe": "לילנגני סווזילנדי",
+      "symbol": "E"
+    }
+  },
+  "SXM": {
+    "nameHe": "סנט מארטן",
+    "nameEn": "Sint Maarten",
+    "label": [-63.0701, 18.0409],
+    "span": 0.1,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCG",
+      "nameHe": "גילדר של הקריביים",
+      "symbol": "Cg."
+    }
+  },
+  "SYC": {
+    "nameHe": "סיישל",
+    "nameEn": "Seychelles",
+    "label": [55.4802, -4.6767],
+    "span": 0.24,
+    "small": true,
+    "timeZone": "Asia/Dubai",
+    "currency": {
+      "code": "SCR",
+      "nameHe": "רופי סיישלי",
+      "symbol": "SR"
+    }
+  },
+  "SYR": {
+    "nameHe": "סוריה",
+    "nameEn": "Syria",
+    "label": [38.2778, 35.0066],
+    "span": 5.45,
+    "timeZone": "Asia/Damascus",
+    "currency": {
+      "code": "SYP",
+      "nameHe": "לירה סורית",
+      "symbol": "£"
+    }
+  },
+  "TCA": {
+    "nameHe": "איי טרקס וקייקוס",
+    "nameEn": "Turks and Caicos Islands",
+    "label": [-71.7527, 21.8166],
+    "span": 0.2,
+    "small": true,
+    "timeZone": "America/Grand_Turk",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "TCD": {
+    "nameHe": "צ'אד",
+    "nameEn": "Chad",
+    "label": [18.645, 15.143],
+    "span": 15.99,
+    "timeZone": "Africa/Ndjamena",
+    "currency": {
+      "code": "XAF",
+      "nameHe": "פרנק CFA מרכז אפריקני",
+      "symbol": "FCFA"
+    }
+  },
+  "TGO": {
+    "nameHe": "טוגו",
+    "nameEn": "Togo",
+    "label": [1.0581, 8.8072],
+    "span": 5.03,
+    "timeZone": "Africa/Abidjan",
+    "currency": {
+      "code": "XOF",
+      "nameHe": "פרנק CFA מערב אפריקני",
+      "symbol": "F CFA"
+    }
+  },
+  "THA": {
+    "nameHe": "תאילנד",
+    "nameEn": "Thailand",
+    "label": [101.0732, 15.4597],
+    "span": 14.81,
+    "timeZone": "Asia/Bangkok",
+    "currency": {
+      "code": "THB",
+      "nameHe": "בהט תאילנדי",
+      "symbol": "฿"
+    }
+  },
+  "TJK": {
+    "nameHe": "טג׳יקיסטן",
+    "nameEn": "Tajikistan",
+    "label": [72.5873, 38.1998],
+    "span": 6.08,
+    "timeZone": "Asia/Dushanbe",
+    "currency": {
+      "code": "TJS",
+      "nameHe": "סומוני טג׳קיסטני",
+      "symbol": "сом."
+    }
+  },
+  "TKM": {
+    "nameHe": "טורקמניסטן",
+    "nameEn": "Turkmenistan",
+    "label": [58.6766, 39.8552],
+    "span": 11.05,
+    "timeZone": "Asia/Ashgabat",
+    "currency": {
+      "code": "TMT",
+      "nameHe": "מאנאט טורקמני",
+      "symbol": "TMT"
+    }
+  },
+  "TLS": {
+    "nameHe": "מזרח טימור",
+    "nameEn": "East Timor",
+    "label": [125.8547, -8.8037],
+    "span": 2.38,
+    "timeZone": "Asia/Dili",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "TON": {
+    "nameHe": "טונגה",
+    "nameEn": "Tonga",
+    "label": [-175.163, -21.21],
+    "span": 0.29,
+    "small": true,
+    "timeZone": "Pacific/Tongatapu",
+    "currency": {
+      "code": "TOP",
+      "nameHe": "פאנגה טונגי",
+      "symbol": "T$"
+    }
+  },
+  "TTO": {
+    "nameHe": "טרינידד וטובגו",
+    "nameEn": "Trinidad and Tobago",
+    "label": [-60.9184, 10.9989],
+    "span": 1,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "TTD",
+      "nameHe": "דולר טרינידדי",
+      "symbol": "$"
+    }
+  },
+  "TUN": {
+    "nameHe": "תוניסיה",
+    "nameEn": "Tunisia",
+    "label": [9.0079, 33.6873],
+    "span": 7.11,
+    "timeZone": "Africa/Tunis",
+    "currency": {
+      "code": "TND",
+      "nameHe": "דינר טוניסאי",
+      "symbol": "د.ت."
+    }
+  },
+  "TUR": {
+    "nameHe": "טורקיה",
+    "nameEn": "Turkey",
+    "label": [34.5083, 39.3454],
+    "span": 14.57,
+    "timeZone": "Europe/Istanbul",
+    "currency": {
+      "code": "TRY",
+      "nameHe": "לירה טורקית חדשה",
+      "symbol": "₺"
+    }
+  },
+  "TUV": {
+    "nameHe": "טובאלו",
+    "nameEn": "Tuvalu",
+    "label": [179.2096, -8.5137],
+    "span": 0.08,
+    "small": true,
+    "timeZone": "Pacific/Tarawa",
+    "currency": {
+      "code": "AUD",
+      "nameHe": "דולר אוסטרלי",
+      "symbol": "$"
+    }
+  },
+  "TWN": {
+    "nameHe": "טאיוואן",
+    "nameEn": "Taiwan",
+    "label": [120.8682, 23.6524],
+    "span": 3.37,
+    "timeZone": "Asia/Taipei",
+    "currency": {
+      "code": "TWD",
+      "nameHe": "דולר טייוואני חדש",
+      "symbol": "$"
+    }
+  },
+  "TZA": {
+    "nameHe": "טנזניה",
+    "nameEn": "Tanzania",
+    "label": [34.9592, -6.0519],
+    "span": 11.05,
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "TZS",
+      "nameHe": "שילינג טנזני",
+      "symbol": "TSh"
+    }
+  },
+  "UGA": {
+    "nameHe": "אוגנדה",
+    "nameEn": "Uganda",
+    "label": [32.9486, 1.9726],
+    "span": 5.69,
+    "timeZone": "Africa/Nairobi",
+    "currency": {
+      "code": "UGX",
+      "nameHe": "שילינג אוגנדי",
+      "symbol": "USh"
+    }
+  },
+  "UKR": {
+    "nameHe": "אוקראינה",
+    "nameEn": "Ukraine",
+    "label": [32.1409, 49.7247],
+    "span": 11.96,
+    "timeZone": "Europe/Kyiv",
+    "city": "קייב",
+    "currency": {
+      "code": "UAH",
+      "nameHe": "הריבנה אוקראיני",
+      "symbol": "₴"
+    }
+  },
+  "UMI": {
+    "nameHe": "האיים החיצוניים הקטנים של ארה\"ב",
+    "nameEn": "United States Minor Outlying Islands",
+    "label": [166.6445, 19.2857],
+    "span": 0.03,
+    "small": true
+  },
+  "URY": {
+    "nameHe": "אורוגוואי",
+    "nameEn": "Uruguay",
+    "label": [-55.9669, -32.9611],
+    "span": 4.87,
+    "timeZone": "America/Montevideo",
+    "currency": {
+      "code": "UYU",
+      "nameHe": "פסו אורוגוואי",
+      "symbol": "$"
+    }
+  },
+  "USA": {
+    "nameHe": "ארצות הברית",
+    "nameEn": "United States of America",
+    "label": [-97.4826, 39.5385],
+    "span": 45.98,
+    "timeZone": "America/New_York",
+    "city": "וושינגטון",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "UZB": {
+    "nameHe": "אוזבקיסטן",
+    "nameEn": "Uzbekistan",
+    "label": [64.0054, 41.6936],
+    "span": 12.86,
+    "timeZone": "Asia/Samarkand",
+    "currency": {
+      "code": "UZS",
+      "nameHe": "סום אוזבקי",
+      "symbol": "soʻm"
+    }
+  },
+  "VAT": {
+    "nameHe": "קריית הוותיקן",
+    "nameEn": "Vatican City",
+    "label": [12.4534, 41.9033],
+    "span": 0,
+    "small": true,
+    "timeZone": "Europe/Rome",
+    "currency": {
+      "code": "EUR",
+      "nameHe": "אירו",
+      "symbol": "€"
+    }
+  },
+  "VCT": {
+    "nameHe": "סנט וינסנט והגרנדינים",
+    "nameEn": "Saint Vincent and the Grenadines",
+    "label": [-61.3359, 13.0879],
+    "span": 0.25,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "XCD",
+      "nameHe": "דולר מזרח קריבי",
+      "symbol": "$"
+    }
+  },
+  "VEN": {
+    "nameHe": "ונצואלה",
+    "nameEn": "Venezuela",
+    "label": [-64.5994, 7.1825],
+    "span": 13.48,
+    "timeZone": "America/Caracas",
+    "currency": {
+      "code": "VES",
+      "nameHe": "בוליבר ונצואלי",
+      "symbol": "Bs.S"
+    }
+  },
+  "VGB": {
+    "nameHe": "איי הבתולה הבריטיים",
+    "nameEn": "British Virgin Islands",
+    "label": [-64.6366, 18.4266],
+    "span": 0.19,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "VIR": {
+    "nameHe": "איי הבתולה של ארצות הברית",
+    "nameEn": "United States Virgin Islands",
+    "label": [-64.7792, 17.7467],
+    "span": 0.32,
+    "small": true,
+    "timeZone": "America/Puerto_Rico",
+    "currency": {
+      "code": "USD",
+      "nameHe": "דולר אמריקאי",
+      "symbol": "$"
+    }
+  },
+  "VNM": {
+    "nameHe": "וייטנאם",
+    "nameEn": "Vietnam",
+    "label": [105.3873, 21.7154],
+    "span": 14.78,
+    "timeZone": "Asia/Bangkok",
+    "currency": {
+      "code": "VND",
+      "nameHe": "דונג וייטנאמי",
+      "symbol": "₫"
+    }
+  },
+  "VUT": {
+    "nameHe": "ונואטו",
+    "nameEn": "Vanuatu",
+    "label": [166.9088, -15.3715],
+    "span": 1.03,
+    "timeZone": "Pacific/Efate",
+    "currency": {
+      "code": "VUV",
+      "nameHe": "ואטו של ונואטו",
+      "symbol": "VT"
+    }
+  },
+  "WLF": {
+    "nameHe": "ואליס ופוטונה",
+    "nameEn": "Wallis and Futuna",
+    "label": [-178.1374, -14.2864],
+    "span": 0.13,
+    "small": true,
+    "timeZone": "Pacific/Tarawa",
+    "currency": {
+      "code": "XPF",
+      "nameHe": "פרנק פולינזיה הצרפתית",
+      "symbol": "CFPF"
+    }
+  },
+  "WSM": {
+    "nameHe": "סמואה",
+    "nameEn": "Samoa",
+    "label": [-172.4382, -13.6391],
+    "span": 0.59,
+    "small": true,
+    "timeZone": "Pacific/Apia",
+    "currency": {
+      "code": "WST",
+      "nameHe": "טאלה סמואי",
+      "symbol": "WS$"
+    }
+  },
+  "YEM": {
+    "nameHe": "תימן",
+    "nameEn": "Yemen",
+    "label": [45.8744, 15.3282],
+    "span": 10.08,
+    "timeZone": "Asia/Riyadh",
+    "currency": {
+      "code": "YER",
+      "nameHe": "ריאל תימני",
+      "symbol": "ر.ي."
+    }
+  },
+  "ZAF": {
+    "nameHe": "דרום אפריקה",
+    "nameEn": "South Africa",
+    "label": [23.6657, -29.7088],
+    "span": 14.42,
+    "timeZone": "Africa/Johannesburg",
+    "currency": {
+      "code": "ZAR",
+      "nameHe": "ראנד דרום אפריקאי",
+      "symbol": "R"
+    }
+  },
+  "ZMB": {
+    "nameHe": "זמביה",
+    "nameEn": "Zambia",
+    "label": [26.3953, -14.6608],
+    "span": 11.39,
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "ZMW",
+      "nameHe": "קוואצ׳ה זמבי",
+      "symbol": "ZK"
+    }
+  },
+  "ZWE": {
+    "nameHe": "זימבבואה",
+    "nameEn": "Zimbabwe",
+    "label": [29.9254, -18.9116],
+    "span": 7.36,
+    "timeZone": "Africa/Maputo",
+    "currency": {
+      "code": "ZWG",
+      "nameHe": "זהב של זימבבואה",
+      "symbol": "ZWG"
+    }
+  }
+}

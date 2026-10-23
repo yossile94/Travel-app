@@ -1,0 +1,44 @@
+appId: com.travelapp.companion
+name: Small areas, nearby big countries and non-destinations (AC-4, AC-5)
+tags: [sprint-0, ac-4, ac-5]
+---
+- launchApp:
+    clearState: true
+
+# Over land, a big country wins over a nearby microstate (Italy, ~100 km from the Vatican).
+- openLink: travelapp://?lng=12.0&lat=42.8&zoom=4
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible: איטליה
+    timeout: 4000
+- back
+
+# Zoomed in, tapping right on the dot selects the Vatican.
+- openLink: travelapp://?lng=12.4534&lat=41.9033&zoom=7
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible: קריית הוותיקן
+    timeout: 4000
+- back
+
+# Over the sea, small islands get a 44 pt target.
+- openLink: travelapp://?lng=73.5076&lat=4.1744&zoom=4
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible: האיים המלדיביים
+    timeout: 4000
+- back
+
+# The Gaza Strip is shown but is not a destination.
+- openLink: travelapp://?lng=34.39&lat=31.42&zoom=8
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,50%
+- assertNotVisible:
+    id: country-card

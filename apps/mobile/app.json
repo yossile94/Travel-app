@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "Travel App",
+    "slug": "travel-app",
+    "scheme": "travelapp",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "ExpoLocalization_forcesRTL": true
+      }
+    },
+    "android": {
+      "package": "com.travelapp.companion",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-localization",
+        {
+          "supportsRTL": true,
+          "forcesRTL": true
+        }
+      ],
+      "@rnmapbox/maps",
+      "./plugins/withTurboModuleInterop",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "../../node_modules/@expo-google-fonts/rubik/400Regular/Rubik_400Regular.ttf",
+            "../../node_modules/@expo-google-fonts/rubik/500Medium/Rubik_500Medium.ttf",
+            "../../node_modules/@expo-google-fonts/rubik/600SemiBold/Rubik_600SemiBold.ttf",
+            "../../node_modules/@expo-google-fonts/rubik/700Bold/Rubik_700Bold.ttf"
+          ]
+        }
+      ],
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "supportsRTL": true,
+      "forcesRTL": true,
+      "eas": {
+        "projectId": "acf23314-81dd-4f05-a2e9-5bbef56b4f11"
+      }
+    },
+    "owner": "yossile54"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "home": {
+    "title": "לאן טסים?",
+    "subtitle": "סובבו את הגלובוס ובחרו מדינה"
+  },
+  "globe": {
+    "a11yLabel": "גלובוס. גררו כדי לסובב, צבטו כדי לקרב, והקישו על מדינה.",
+    "selected": "נבחרה: {{name}}",
+    "closed": "הכרטיס נסגר",
+    "loadError": "לא הצלחנו לטעון את המפה. בדקו את החיבור ונסו שוב."
+  },
+  "card": {
+    "destination": "יעד",
+    "localTime": "שעה מקומית",
+    "localTimeIn": "שעה מקומית · {{city}}",
+    "currency": "מטבע",
+    "close": "סגירה",
+    "code": "קוד המדינה {{code}}"
+  },
+  "timeDifference": {
+    "same": "כמו שעון ישראל",
+    "ahead": "{{amount}} לפני ישראל",
+    "behind": "{{amount}} אחרי ישראל",
+    "oneHour": "שעה",
+    "twoHours": "שעתיים",
+    "hours": "{{n}} שעות",
+    "hoursMinutes": "{{h}}:{{mm}} שעות"
+  }
+}

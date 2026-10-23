@@ -1,0 +1,21 @@
+appId: com.travelapp.companion
+name: Tapping the sea closes the card (AC-4)
+tags: [sprint-0, ac-4]
+---
+- launchApp:
+    clearState: true
+- openLink: travelapp://?lng=101.0732&lat=15.4597&zoom=4
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible:
+      id: country-card
+    timeout: 4000
+# Middle of the South Atlantic: open sea.
+- openLink: travelapp://?lng=-20&lat=-35&zoom=3
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,30%
+- assertNotVisible:
+    id: country-card
