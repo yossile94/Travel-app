@@ -98,6 +98,7 @@
     "leave": "Cancel and sign out",
     "offline": "You're offline. Saving your acceptance needs a connection.",
     "error": "We couldn't save that. Please try again.",
+    "stale": "The documents were updated. Read the version shown and tick again to continue.",
     "leaveTitle": "Leave without accepting?",
     "leaveBody": "You'll be signed out. The globe and search keep working without an account.",
     "leaveConfirm": "Sign out",

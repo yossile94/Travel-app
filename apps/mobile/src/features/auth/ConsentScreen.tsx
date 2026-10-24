@@ -228,7 +228,13 @@ export function ConsentScreen({
           {problem ? (
             <View style={styles.noticeGap}>
               <InlineNotice
-                text={problem === 'offline' ? t('consent.offline') : t('consent.error')}
+                text={
+                  problem === 'offline'
+                    ? t('consent.offline')
+                    : problem === 'stale'
+                      ? t('consent.stale')
+                      : t('consent.error')
+                }
                 colorScheme={colorScheme}
                 testID="consent-notice"
               />

@@ -120,6 +120,12 @@ async function readLastUser(): Promise<AuthUser | null> {
 /** AC-18 re-checks on returning to the app, at most this often (one request per user per window). */
 const DOCUMENT_RECHECK_MS = 15 * 60 * 1000;
 
+/** The offline consent screen asks for the documents again at most this often when the network returns. */
+const RECONNECT_RETRY_MS = 30 * 1000;
+
+/** What settle() decided; null when a sign-out made the answer irrelevant. */
+type Settled = { signedIn: boolean; haveDocuments: boolean } | null;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(() =>
     supabase && hasGoogleConfig ? { status: 'loading' } : { status: 'unavailable' },
@@ -137,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lastDocumentCheck = useRef(0);
 
   /** Decides between the consent screen and the globe for a signed-in user. */
-  const settle = useCallback(async (user: AuthUser): Promise<boolean> => {
+  const settle = useCallback(async (user: AuthUser): Promise<Settled> => {
     const gen = generation.current;
     void AsyncStorage.setItem(LAST_USER_KEY, JSON.stringify(user)).catch(() => {});
     let agreed = await readLocalAgreement(user.id);
@@ -148,14 +154,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       agreed = await fetchAgreementFromLog();
       if (agreed) await writeLocalAgreement(user.id, agreed);
     }
-    if (gen !== generation.current) return false;
+    if (gen !== generation.current) return null;
     const need = consentNeed(agreed, documents);
     setState(
       need.kind === 'none'
         ? { status: 'signedIn', user }
         : { status: 'needsConsent', user, need, documents },
     );
-    return need.kind === 'none';
+    return { signedIn: need.kind === 'none', haveDocuments: documents !== null };
   }, []);
 
   /** Ends every in-flight flow and forgets the user on this device. */
@@ -227,13 +233,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [settle]);
 
   // Offline consent screen: once the network is back, show the real documents.
+  // Keyed on the user id alone, so a failed retry (a new state object) doesn't
+  // resubscribe; only a disconnected → connected change retries, at most every
+  // 30 s, since NetInfo answers at once on subscribing (review R2-1).
+  const waitingForDocuments =
+    state.status === 'needsConsent' && !state.documents ? state.user.id : null;
   useEffect(() => {
-    if (state.status !== 'needsConsent' || state.documents) return;
-    const user = state.user;
+    if (!waitingForDocuments) return;
+    let wasConnected: boolean | null = null;
+    let lastTry = 0;
     return NetInfo.addEventListener((net) => {
-      if (net.isConnected) void settle(user);
+      const connected = net.isConnected === true;
+      const cameBack = wasConnected === false && connected;
+      wasConnected = connected;
+      if (!cameBack || Date.now() - lastTry < RECONNECT_RETRY_MS) return;
+      const current = stateRef.current;
+      if (current.status !== 'needsConsent' || current.documents) return;
+      lastTry = Date.now();
+      void settle(current.user);
     });
-  }, [state, settle]);
+  }, [waitingForDocuments, settle]);
 
   const signOut = useCallback(async () => {
     forgetUser();
@@ -290,8 +309,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return 'abandoned';
         }
         const user = toAuthUser(data.user);
-        const upToDate = await settle(user);
-        if (upToDate) setNotice({ kind: 'signedIn', name: user.name ?? user.email ?? '' });
+        const settled = await settle(user);
+        if (settled?.signedIn) setNotice({ kind: 'signedIn', name: user.name ?? user.email ?? '' });
         return 'done';
       } finally {
         signInInFlight.current = false;
@@ -314,8 +333,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // The screen was showing the bundled texts (offline): show the real
       // documents first, and let the user confirm what they have now seen (AC-16).
       if (!current.documents) {
-        await settle(current.user);
-        return 'stale';
+        const settled = await settle(current.user);
+        if (!settled) return 'error';
+        if (settled.signedIn) return 'done';
+        // Online, but the server still didn't answer (review R2-2).
+        return settled.haveDocuments ? 'stale' : 'offline';
       }
       const documents = current.documents;
 

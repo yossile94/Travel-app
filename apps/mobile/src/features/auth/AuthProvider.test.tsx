@@ -90,6 +90,7 @@ beforeEach(async () => {
   mockStore.current = docs;
   mockStore.record = { ok: true };
   jest.mocked(NetInfo.fetch).mockResolvedValue({ isConnected: true } as never);
+  jest.mocked(NetInfo.addEventListener).mockImplementation(() => jest.fn());
 });
 
 async function signedOutHook() {
@@ -354,6 +355,61 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
       expect(outcome).toBe('stale');
       expect(jest.requireMock('./consentStore').recordConsent).not.toHaveBeenCalled();
       expect(result.current.state).toMatchObject({ status: 'needsConsent', documents: docs });
+    });
+
+    it('says "offline", not "stale", when online but the documents still fail to load (review R2-2)', async () => {
+      mockStore.current = null;
+      const { result } = await signedOutHook();
+      await act(async () => {
+        await result.current.signInWithGoogle(() => {});
+      });
+      let outcome = '';
+      await act(async () => {
+        outcome = await result.current.submitConsent({});
+      });
+      expect(outcome).toBe('offline');
+      expect(result.current.state).toMatchObject({ status: 'needsConsent', documents: null });
+    });
+
+    it('asks for the documents once per reconnection, never in a loop (review R2-1)', async () => {
+      const listeners: ((net: { isConnected: boolean }) => void)[] = [];
+      // Like NetInfo: the listener is called at once with the current state.
+      jest.mocked(NetInfo.addEventListener).mockImplementation((listener) => {
+        listeners.push(listener as never);
+        (listener as (net: { isConnected: boolean }) => void)({ isConnected: true });
+        return jest.fn();
+      });
+      mockStore.current = null;
+      const { fetchCurrentDocuments } = jest.requireMock('./consentStore');
+      const { result } = await signedOutHook();
+      await act(async () => {
+        await result.current.signInWithGoogle(() => {});
+      });
+      expect(result.current.state).toMatchObject({ status: 'needsConsent', documents: null });
+      const afterSignIn = jest.mocked(fetchCurrentDocuments).mock.calls.length;
+
+      // The immediate "connected" answer on subscribing asks nothing.
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(fetchCurrentDocuments).toHaveBeenCalledTimes(afterSignIn);
+      expect(listeners).toHaveLength(1);
+
+      // Disconnected, then back: one request, which fails again without resubscribing.
+      const listener = listeners[0]!;
+      await act(async () => {
+        listener({ isConnected: false });
+        listener({ isConnected: true });
+      });
+      expect(fetchCurrentDocuments).toHaveBeenCalledTimes(afterSignIn + 1);
+      expect(listeners).toHaveLength(1);
+
+      // A flapping connection within 30 s doesn't ask again.
+      await act(async () => {
+        listener({ isConnected: false });
+        listener({ isConnected: true });
+      });
+      expect(fetchCurrentDocuments).toHaveBeenCalledTimes(afterSignIn + 1);
     });
   });
 });

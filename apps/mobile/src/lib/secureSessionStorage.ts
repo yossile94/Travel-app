@@ -23,13 +23,30 @@ async function existingKey(storageKey: string): Promise<Uint8Array | null> {
   return keyHex ? aesjs.utils.hex.toBytes(keyHex) : null;
 }
 
+/** Keys being read or created, so two first writes at once can't each create one (review R2-3). */
+const pendingKeys = new Map<string, Promise<Uint8Array>>();
+
 /** The key for this storage key, created on first use and kept until removeItem. */
-async function keyFor(storageKey: string): Promise<Uint8Array> {
-  const existing = await existingKey(storageKey);
-  if (existing) return existing;
-  const key = Crypto.getRandomBytes(32);
-  await SecureStore.setItemAsync(keyName(storageKey), aesjs.utils.hex.fromBytes(key));
-  return key;
+function keyFor(storageKey: string): Promise<Uint8Array> {
+  let pending = pendingKeys.get(storageKey);
+  if (!pending) {
+    pending = (async () => {
+      const existing = await existingKey(storageKey);
+      if (existing) return existing;
+      const key = Crypto.getRandomBytes(32);
+      await SecureStore.setItemAsync(keyName(storageKey), aesjs.utils.hex.fromBytes(key));
+      return key;
+    })();
+    pendingKeys.set(storageKey, pending);
+    // Only the lookup in flight is shared; later calls read SecureStore again.
+    const settled = pending;
+    void settled
+      .catch(() => {})
+      .finally(() => {
+        if (pendingKeys.get(storageKey) === settled) pendingKeys.delete(storageKey);
+      });
+  }
+  return pending;
 }
 
 export const secureSessionStorage = {
@@ -61,6 +78,7 @@ export const secureSessionStorage = {
     );
   },
   async removeItem(storageKey: string): Promise<void> {
+    pendingKeys.delete(storageKey);
     await AsyncStorage.removeItem(storageKey);
     await SecureStore.deleteItemAsync(keyName(storageKey));
   },

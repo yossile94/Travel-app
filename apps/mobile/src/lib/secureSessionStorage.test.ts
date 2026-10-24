@@ -27,6 +27,7 @@ const SESSION = JSON.stringify({
 });
 
 beforeEach(async () => {
+  jest.clearAllMocks();
   mockSecure.clear();
   await AsyncStorage.clear();
 });
@@ -69,6 +70,16 @@ describe('secureSessionStorage (ADR-004)', () => {
     await secureSessionStorage.setItem(KEY, SESSION);
     await AsyncStorage.setItem(KEY, 'not-a-ciphertext');
     expect(await secureSessionStorage.getItem(KEY)).toBeNull();
+  });
+
+  it('creates one key when two first writes overlap (review R2-3)', async () => {
+    await Promise.all([
+      secureSessionStorage.setItem(KEY, SESSION),
+      secureSessionStorage.setItem(KEY, `${SESSION} `),
+    ]);
+    const SecureStore = jest.requireMock('expo-secure-store');
+    expect(SecureStore.setItemAsync).toHaveBeenCalledTimes(1);
+    expect(await secureSessionStorage.getItem(KEY)).not.toBeNull();
   });
 
   it('removes both the value and its key', async () => {
