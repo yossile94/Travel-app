@@ -45,7 +45,16 @@ describe('country search index', () => {
   it('names the sovereign of a territory, only of territories, and not twice', () => {
     const parentOf = (adm0) => index.find((e) => e.adm0 === adm0).parentHe;
     for (const entry of index) {
-      if (!meta[entry.adm0].parent) assert.equal(entry.parentHe, undefined, entry.adm0);
+      const parent = meta[entry.adm0].parent;
+      if (!parent) {
+        assert.equal(entry.parentHe, undefined, entry.adm0);
+        continue;
+      }
+      // Every territory names its sovereign, unless its own name already does.
+      const name = ` ${fold(entry.nameHe)} `;
+      const sovereignNames = [meta[parent].nameHe, ...(aliases[parent] ?? [])];
+      const saysItAlready = sovereignNames.some((n) => name.includes(` ${fold(n)} `));
+      assert.equal(entry.parentHe === undefined, saysItAlready, entry.adm0);
     }
     assert.equal(parentOf('GIB'), 'הממלכה המאוחדת');
     assert.equal(parentOf('IOA'), 'אוסטרליה');
