@@ -18,13 +18,20 @@
     "code": "קוד המדינה {{code}}"
   },
   "timeDifference": {
-    "same": "כמו שעון ישראל",
-    "ahead": "{{amount}} לפני ישראל",
-    "behind": "{{amount}} אחרי ישראל",
+    "same": "כמו בישראל",
+    "ahead": "{{amount}} יותר מבישראל",
+    "behind": "{{amount}} פחות מבישראל",
     "oneHour": "שעה",
     "twoHours": "שעתיים",
     "hours": "{{n}} שעות",
-    "hoursMinutes": "{{h}}:{{mm}} שעות"
+    "halfHour": "חצי שעה",
+    "oneAndHalf": "שעה וחצי",
+    "twoAndHalf": "שעתיים וחצי",
+    "hoursAndHalf": "{{n}} שעות וחצי",
+    "minutes": "{{m}} דקות",
+    "oneHourMinutes": "שעה ו-{{m}} דקות",
+    "twoHoursMinutes": "שעתיים ו-{{m}} דקות",
+    "hoursMinutes": "{{n}} שעות ו-{{m}} דקות"
   },
   "search": {
     "open": "חיפוש מדינה",

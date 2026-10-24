@@ -24,7 +24,14 @@
     "oneHour": "1 hour",
     "twoHours": "2 hours",
     "hours": "{{n}} hours",
-    "hoursMinutes": "{{h}}:{{mm}} hours"
+    "halfHour": "30 minutes",
+    "oneAndHalf": "1 hour 30 minutes",
+    "twoAndHalf": "2 hours 30 minutes",
+    "hoursAndHalf": "{{n}} hours 30 minutes",
+    "minutes": "{{m}} minutes",
+    "oneHourMinutes": "1 hour {{m}} minutes",
+    "twoHoursMinutes": "2 hours {{m}} minutes",
+    "hoursMinutes": "{{n}} hours {{m}} minutes"
   },
   "search": {
     "open": "Search for a country",

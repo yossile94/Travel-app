@@ -120,6 +120,15 @@ describe('globe card data', () => {
     }
   });
 
+  it('names every currency once, without a repeated word (AFN was "אפגני אפגני")', () => {
+    assert.equal(meta.AFG.currency.nameHe, 'אפגני');
+    for (const [adm0, { currency }] of Object.entries(meta)) {
+      if (!currency) continue;
+      const words = currency.nameHe.split(' ');
+      assert.equal(new Set(words).size, words.length, `${adm0}: ${currency.nameHe}`);
+    }
+  });
+
   it('links each territory to its sovereign, for search results', () => {
     assert.equal(meta.GIB.parent, 'GBR');
     assert.equal(meta.GUM.parent, 'USA');

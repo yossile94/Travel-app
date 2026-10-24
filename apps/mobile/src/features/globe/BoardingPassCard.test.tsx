@@ -41,14 +41,14 @@ describe('BoardingPassCard', () => {
   it('shows the live local time and the difference from Israel (AC-4)', async () => {
     await renderCard('THA');
     expect(screen.getByText(isolateLtr('00:53'))).toBeOnTheScreen();
-    expect(screen.getByText('4 שעות לפני ישראל')).toBeOnTheScreen();
+    expect(screen.getByText('4 שעות יותר מבישראל')).toBeOnTheScreen();
   });
 
   it('names the city when a country spans several time zones', async () => {
     await renderCard('USA');
     expect(screen.getByText('שעה מקומית · וושינגטון')).toBeOnTheScreen();
     expect(screen.getByText(isolateLtr('13:53'))).toBeOnTheScreen();
-    expect(screen.getByText('7 שעות אחרי ישראל')).toBeOnTheScreen();
+    expect(screen.getByText('7 שעות פחות מבישראל')).toBeOnTheScreen();
   });
 
   it('shows the currency with its Hebrew name, symbol and code (AC-4)', async () => {
@@ -125,7 +125,7 @@ describe('BoardingPassCard', () => {
       />,
     );
     expect(screen.getByText('יוון')).toBeOnTheScreen();
-    expect(screen.getByText('כמו שעון ישראל')).toBeOnTheScreen();
+    expect(screen.getByText('כמו בישראל')).toBeOnTheScreen();
   });
 
   it('exposes the country code to screen readers, not the flipping letters', async () => {
