@@ -16,6 +16,18 @@ export const colors = {
     chromeBg: 'rgba(255,255,255,0.92)',
     chromeFg: '#121C36',
     chromeBorder: 'rgba(18,28,54,0.08)',
+    canvas: '#FFFBF5',
+    scrim: 'rgba(6,11,24,0.48)',
+    primary: '#1561BC',
+    onPrimary: '#FFFFFF',
+    secondaryBg: '#EEF6FF',
+    secondaryFg: '#104C94',
+    disabledBg: '#E9EEFA',
+    disabledFg: '#646E8A',
+    infoBg: '#EEF6FF',
+    infoFg: '#104C94',
+    link: '#1561BC',
+    borderControl: '#7D869E',
   },
   dark: {
     surface: '#121C36',
@@ -29,10 +41,34 @@ export const colors = {
     chromeBg: 'rgba(18,28,54,0.88)',
     chromeFg: '#F3F6FC',
     chromeBorder: 'rgba(163,179,219,0.32)',
+    canvas: '#060B18',
+    scrim: 'rgba(0,0,0,0.6)',
+    primary: '#6FB3FA',
+    onPrimary: '#060B18',
+    secondaryBg: '#1A2749',
+    secondaryFg: '#A9D2FF',
+    disabledBg: '#1A2749',
+    disabledFg: '#7487BD',
+    infoBg: '#1A2749',
+    infoFg: '#A9D2FF',
+    link: '#6FB3FA',
+    borderControl: '#7487BD',
   },
 } as const;
 
 export type ColorScheme = keyof typeof colors;
+
+/**
+ * "Sign in with Google" button colours (design 4.3). Google's branding rules
+ * fix these; checked against developers.google.com/identity/branding-guidelines.
+ */
+export const googleBrand = {
+  light: { bg: '#FFFFFF', border: '#747775', fg: '#1F1F1F' },
+  dark: { bg: '#131314', border: '#8E918F', fg: '#E3E3E3' },
+} as const;
+
+/** Toasts sit over the globe, so they are dark in both modes (design 7.5). */
+export const toastColors = { bg: '#121C36', fg: '#F3F6FC' } as const;
 
 /** Selection accent on the globe and the card strip (region colours come later, spec 12.2). */
 export const highlightColor = '#FF7A57';
@@ -115,6 +151,8 @@ export const motion = {
   autoRotateRamp: 1000,
   /** Delay before the screen reader hears the result count (sprint 1 AC-6). */
   searchAnnounceDelay: 600,
+  /** How long a toast stays (design 7.5). */
+  toastVisible: 3000,
 } as const;
 
 /** Sizes and positions of the controls over the globe (sprint 1 design 1). */
@@ -133,7 +171,7 @@ export const layout = {
   cardNameStepDownChars: 16,
 } as const;
 
-export const radius = { xs: 4, lg: 16, sheet: 28, pill: 999, flap: 4 } as const;
+export const radius = { xs: 4, md: 12, lg: 16, sheet: 28, pill: 999, flap: 4 } as const;
 
 export const fonts = {
   regular: 'Rubik_400Regular',
