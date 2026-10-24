@@ -78,6 +78,8 @@ export const secureSessionStorage = {
     );
   },
   async removeItem(storageKey: string): Promise<void> {
+    // A key still being created would otherwise be written back after the delete.
+    await pendingKeys.get(storageKey)?.catch(() => {});
     pendingKeys.delete(storageKey);
     await AsyncStorage.removeItem(storageKey);
     await SecureStore.deleteItemAsync(keyName(storageKey));

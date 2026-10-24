@@ -82,6 +82,14 @@ describe('secureSessionStorage (ADR-004)', () => {
     expect(await secureSessionStorage.getItem(KEY)).not.toBeNull();
   });
 
+  it('leaves no key behind when removed while the first write creates it', async () => {
+    const writing = secureSessionStorage.setItem(KEY, SESSION);
+    await secureSessionStorage.removeItem(KEY);
+    await writing;
+    await secureSessionStorage.removeItem(KEY);
+    expect(mockSecure.size).toBe(0);
+  });
+
   it('removes both the value and its key', async () => {
     await secureSessionStorage.setItem(KEY, SESSION);
     await secureSessionStorage.removeItem(KEY);

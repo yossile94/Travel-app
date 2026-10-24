@@ -235,23 +235,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Offline consent screen: once the network is back, show the real documents.
   // Keyed on the user id alone, so a failed retry (a new state object) doesn't
   // resubscribe; only a disconnected → connected change retries, at most every
-  // 30 s, since NetInfo answers at once on subscribing (review R2-1).
+  // 30 s, since NetInfo answers at once on subscribing (review R2-1). A
+  // reconnection inside the window retries when it ends: NetInfo often says
+  // "connected" before the network works, so the first try may fail (round 3).
   const waitingForDocuments =
     state.status === 'needsConsent' && !state.documents ? state.user.id : null;
   useEffect(() => {
     if (!waitingForDocuments) return;
     let wasConnected: boolean | null = null;
     let lastTry = 0;
-    return NetInfo.addEventListener((net) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const retry = () => {
+      timer = undefined;
+      const current = stateRef.current;
+      if (!wasConnected || current.status !== 'needsConsent' || current.documents) return;
+      lastTry = Date.now();
+      void settle(current.user);
+    };
+    const unsubscribe = NetInfo.addEventListener((net) => {
       const connected = net.isConnected === true;
       const cameBack = wasConnected === false && connected;
       wasConnected = connected;
-      if (!cameBack || Date.now() - lastTry < RECONNECT_RETRY_MS) return;
-      const current = stateRef.current;
-      if (current.status !== 'needsConsent' || current.documents) return;
-      lastTry = Date.now();
-      void settle(current.user);
+      if (!cameBack) return;
+      const wait = lastTry + RECONNECT_RETRY_MS - Date.now();
+      if (wait <= 0) retry();
+      else timer ??= setTimeout(retry, wait);
     });
+    return () => {
+      unsubscribe();
+      clearTimeout(timer);
+    };
   }, [waitingForDocuments, settle]);
 
   const signOut = useCallback(async () => {

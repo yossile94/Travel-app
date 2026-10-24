@@ -404,12 +404,25 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
       expect(fetchCurrentDocuments).toHaveBeenCalledTimes(afterSignIn + 1);
       expect(listeners).toHaveLength(1);
 
-      // A flapping connection within 30 s doesn't ask again.
-      await act(async () => {
-        listener({ isConnected: false });
-        listener({ isConnected: true });
-      });
-      expect(fetchCurrentDocuments).toHaveBeenCalledTimes(afterSignIn + 1);
+      // A flapping connection within 30 s doesn't ask again at once...
+      jest.useFakeTimers({ now: Date.now() });
+      try {
+        await act(async () => {
+          listener({ isConnected: false });
+          listener({ isConnected: true });
+          listener({ isConnected: false });
+          listener({ isConnected: true });
+        });
+        expect(fetchCurrentDocuments).toHaveBeenCalledTimes(afterSignIn + 1);
+
+        // ...but once, when the window ends, in case the first try came too early.
+        await act(async () => {
+          jest.advanceTimersByTime(30_000);
+        });
+        expect(fetchCurrentDocuments).toHaveBeenCalledTimes(afterSignIn + 2);
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 });
