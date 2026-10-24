@@ -26,6 +26,9 @@ async function existingKey(storageKey: string): Promise<Uint8Array | null> {
 /** Keys being read or created, so two first writes at once can't each create one (review R2-3). */
 const pendingKeys = new Map<string, Promise<Uint8Array>>();
 
+/** Writes in flight, so removeItem never runs under one and leaves its value behind. */
+const pendingWrites = new Map<string, Promise<void>>();
+
 /** The key for this storage key, created on first use and kept until removeItem. */
 function keyFor(storageKey: string): Promise<Uint8Array> {
   let pending = pendingKeys.get(storageKey);
@@ -67,18 +70,28 @@ export const secureSessionStorage = {
       return null;
     }
   },
-  async setItem(storageKey: string, value: string): Promise<void> {
-    const key = await keyFor(storageKey);
-    const counter = Crypto.getRandomBytes(16);
-    const cipher = new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(counter));
-    const encrypted = cipher.encrypt(aesjs.utils.utf8.toBytes(value));
-    await AsyncStorage.setItem(
-      storageKey,
-      `${aesjs.utils.hex.fromBytes(counter)}:${aesjs.utils.hex.fromBytes(encrypted)}`,
-    );
+  setItem(storageKey: string, value: string): Promise<void> {
+    const write = (async () => {
+      const key = await keyFor(storageKey);
+      const counter = Crypto.getRandomBytes(16);
+      const cipher = new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(counter));
+      const encrypted = cipher.encrypt(aesjs.utils.utf8.toBytes(value));
+      await AsyncStorage.setItem(
+        storageKey,
+        `${aesjs.utils.hex.fromBytes(counter)}:${aesjs.utils.hex.fromBytes(encrypted)}`,
+      );
+    })();
+    pendingWrites.set(storageKey, write);
+    void write
+      .catch(() => {})
+      .finally(() => {
+        if (pendingWrites.get(storageKey) === write) pendingWrites.delete(storageKey);
+      });
+    return write;
   },
   async removeItem(storageKey: string): Promise<void> {
-    // A key still being created would otherwise be written back after the delete.
+    // A write in flight (and the key it may be creating) would otherwise land after the delete.
+    await pendingWrites.get(storageKey)?.catch(() => {});
     await pendingKeys.get(storageKey)?.catch(() => {});
     pendingKeys.delete(storageKey);
     await AsyncStorage.removeItem(storageKey);

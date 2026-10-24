@@ -83,10 +83,21 @@ describe('secureSessionStorage (ADR-004)', () => {
   });
 
   it('leaves no key behind when removed while the first write creates it', async () => {
+    // Hold the encrypted value's write until sign-out has started.
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const setItem = AsyncStorage.setItem.bind(AsyncStorage);
+    const spy = jest.spyOn(AsyncStorage, 'setItem').mockImplementationOnce(async (k, v) => {
+      await held;
+      return setItem(k, v);
+    });
     const writing = secureSessionStorage.setItem(KEY, SESSION);
-    await secureSessionStorage.removeItem(KEY);
-    await writing;
-    await secureSessionStorage.removeItem(KEY);
+    const removing = secureSessionStorage.removeItem(KEY);
+    await new Promise<void>((resolve) => setImmediate(() => resolve()));
+    release();
+    await Promise.all([writing, removing]);
+    spy.mockRestore();
+    expect(await AsyncStorage.getItem(KEY)).toBeNull();
     expect(mockSecure.size).toBe(0);
   });
 
