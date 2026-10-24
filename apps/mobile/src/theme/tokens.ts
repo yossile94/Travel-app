@@ -67,6 +67,17 @@ export const globe = {
     underlayColor: '#03060F',
     underlayOpacity: 0.6,
   },
+  /**
+   * Behind the status and navigation bars, so their light icons stay at least
+   * 3:1 over bright imagery (sprint 1 AC-9). Alpha never below 0.5 (design 6.4).
+   */
+  systemScrim: {
+    color: '#03060F',
+    opacityEdge: 0.6,
+    opacityInset: 0.5,
+    fadeLength: 16,
+    bottomFadeLength: 24,
+  },
   /** Dims the globe behind open search (sprint 1 design 2.1). */
   searchScrim: 'rgba(3,6,15,0.40)',
 } as const;

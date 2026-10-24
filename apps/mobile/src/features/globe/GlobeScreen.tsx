@@ -1,5 +1,6 @@
 import { Camera, MapView } from '@rnmapbox/maps';
 import * as Linking from 'expo-linking';
+import { NavigationBar } from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import {
   useCallback,
@@ -38,6 +39,7 @@ import { GlobeLayers, LAYER } from './GlobeLayers';
 import { hasMapboxToken } from './mapbox';
 import { logGlobeReady, markGlobeMounted } from './perfLog';
 import { resolveTap, type TapHits } from './resolveTap';
+import { SystemScrims } from './SystemScrims';
 import { handlesBack, initialSelection, selectionReducer } from './selection';
 import { useAutoRotation } from './useAutoRotation';
 import { useCountriesAsset } from './useCountriesAsset';
@@ -343,8 +345,9 @@ export function GlobeScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* The scene is always space, so the status bar is always light (AC-7). */}
+      {/* The scene is always space, so the system bars keep light icons (AC-7, AC-9). */}
       <StatusBar style="light" />
+      <NavigationBar style="light" />
       <View
         style={StyleSheet.absoluteFill}
         onTouchStart={onTouch}
@@ -383,6 +386,8 @@ export function GlobeScreen() {
           </MapView>
         )}
       </View>
+
+      <SystemScrims insetsTop={insets.top} insetsBottom={insets.bottom} />
 
       <Animated.View
         pointerEvents="none"

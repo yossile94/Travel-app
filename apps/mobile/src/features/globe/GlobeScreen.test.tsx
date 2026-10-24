@@ -457,6 +457,12 @@ describe('GlobeScreen', () => {
     });
   });
 
+  it('shades behind both system bars so their icons stay readable (AC-9)', async () => {
+    await render(<GlobeScreen />);
+    expect(screen.getByTestId('scrim-top')).toBeOnTheScreen();
+    expect(screen.getByTestId('scrim-bottom')).toBeOnTheScreen();
+  });
+
   it('uses the layer ids the tap logic queries', () => {
     expect(LAYER).toEqual({
       countriesHit: 'countries-hit',

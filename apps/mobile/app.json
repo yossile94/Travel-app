@@ -45,6 +45,13 @@
           ]
         }
       ],
+      [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": false,
+          "style": "light"
+        }
+      ],
       "expo-asset"
     ],
     "experiments": {
