@@ -28,7 +28,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { globe, motion } from '@/theme/tokens';
+import { SearchBar } from '@/features/search/SearchBar';
+import { globe, layout, motion } from '@/theme/tokens';
 
 import { BoardingPassCard, CARD_GAP } from './BoardingPassCard';
 import { HOME_CENTER, HOME_ZOOM, flightDuration, zoomForSpan } from './camera';
@@ -61,7 +62,7 @@ const VEIL_FADE_IN = { duration: motion.reduceFadeIn, reduceMotion: ReduceMotion
 type CameraHandle = ComponentRef<typeof Camera>;
 type PressFeature = GeoJSON.Feature<GeoJSON.Point, { screenPointX: number; screenPointY: number }>;
 
-/** Home screen globe (sprint 0, F-001). */
+/** Home screen globe (sprint 0, F-001) with country search (sprint 1, F-002). */
 export function GlobeScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -75,6 +76,7 @@ export function GlobeScreen() {
 
   const [selection, dispatch] = useReducer(selectionReducer, initialSelection);
   const [fingerDown, setFingerDown] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   // Until Mapbox has loaded the map, getCenter() answers [0, 0] rather than
   // the default camera, so rotation would jump the globe to 0°,0° (seen on device).
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -95,8 +97,8 @@ export function GlobeScreen() {
     }
   }, []);
 
-  // AC-2: turn slowly while idle; never while a card is open, a finger or a
-  // flight is on the globe, or the device asks for reduced motion (AC-6).
+  // AC-2: turn slowly while idle; never while a card or search is open, a
+  // finger or a flight is on the globe, or the device asks for reduced motion (AC-6).
   // `reduceMotion` is null until the setting is known, so the globe doesn't
   // start a ramp it would have to stop a moment later.
   const rotationAllowed =
@@ -105,7 +107,8 @@ export function GlobeScreen() {
     reduceMotion === false &&
     !selectedAdm0 &&
     !selection.flying &&
-    !fingerDown;
+    !fingerDown &&
+    !searchOpen;
   useAutoRotation({ cameraRef, getCenter, allowed: rotationAllowed, lastInteractionAt });
 
   /** Cancels a native rotation segment in flight (a zero-length move stops every animator). */
@@ -241,15 +244,30 @@ export function GlobeScreen() {
     AccessibilityInfo.announceForAccessibility(t('globe.closed'));
   }, [selectedAdm0, reduceMotion, t]);
 
-  // AC-4: Android back closes the card instead of leaving the app.
+  // AC-4: Android back closes the card instead of leaving the app. While
+  // search is open, back belongs to search (sprint 1 design 5.5).
   useEffect(() => {
-    if (!handlesBack(selection)) return;
+    if (!handlesBack(selection) || searchOpen) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       dispatch({ type: 'backPressed' });
       return true;
     });
     return () => subscription.remove();
-  }, [selection]);
+  }, [selection, searchOpen]);
+
+  // Sprint 1 F-002: search pauses the globe; choosing a result is a tap on it.
+  const openSearch = useCallback(() => {
+    if (rotationAllowedRef.current) stopRotation();
+    setSearchOpen(true);
+  }, [stopRotation]);
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setLastInteractionAt(Date.now());
+  }, []);
+  const selectFromSearch = useCallback((adm0: string) => {
+    setSearchOpen(false);
+    if (countryByAdm0(adm0)) dispatch({ type: 'countryTapped', country: { adm0 } });
+  }, []);
 
   const onPress = useCallback(
     async (feature: PressFeature) => {
@@ -300,8 +318,15 @@ export function GlobeScreen() {
     setMapLoaded(true);
   }, []);
 
-  const logoPosition = useMemo(() => ({ top: insets.top + 8, left: 8 }), [insets.top]);
-  const attributionPosition = useMemo(() => ({ top: insets.top + 8, left: 92 }), [insets.top]);
+  // The Mapbox logo and credits keep their own strip above the controls (sprint 1 design 1).
+  const logoPosition = useMemo(
+    () => ({ top: insets.top + layout.mapboxLogoTop, left: layout.mapboxLogoLeft }),
+    [insets.top],
+  );
+  const attributionPosition = useMemo(
+    () => ({ top: insets.top + layout.mapboxLogoTop, left: layout.mapboxAttributionLeft }),
+    [insets.top],
+  );
 
   useEffect(() => {
     if (countries.error) console.error('[globe] could not load country borders', countries.error);
@@ -325,6 +350,7 @@ export function GlobeScreen() {
         onTouchStart={onTouch}
         onTouchEnd={onTouch}
         onTouchCancel={onTouchCancel}
+        importantForAccessibility={searchOpen ? 'no-hide-descendants' : 'auto'}
         testID="globe-touch-surface"
       >
         {mapReady && (
@@ -364,12 +390,13 @@ export function GlobeScreen() {
       />
 
       {countries.error && (
-        <View style={[styles.banner, { top: insets.top + 56 }]} pointerEvents="none">
+        <View style={[styles.banner, { top: insets.top + layout.overlayTop }]} pointerEvents="none">
           <Text style={styles.message}>{t('globe.loadError')}</Text>
         </View>
       )}
 
-      {selectedCountry && (
+      {/* The card steps aside while searching and comes back if nothing is chosen. */}
+      {selectedCountry && !searchOpen && (
         <BoardingPassCard
           key={selectedCountry.adm0}
           country={selectedCountry}
@@ -382,6 +409,16 @@ export function GlobeScreen() {
           }}
         />
       )}
+
+      <SearchBar
+        open={searchOpen}
+        colorScheme={colorScheme}
+        insetsTop={insets.top}
+        insetsBottom={insets.bottom}
+        onOpen={openSearch}
+        onClose={closeSearch}
+        onSelect={selectFromSearch}
+      />
     </View>
   );
 }

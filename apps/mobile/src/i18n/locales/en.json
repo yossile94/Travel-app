@@ -25,5 +25,21 @@
     "twoHours": "2 hours",
     "hours": "{{n}} hours",
     "hoursMinutes": "{{h}}:{{mm}} hours"
+  },
+  "search": {
+    "open": "Search for a country",
+    "placeholder": "Search for a country",
+    "close": "Close search",
+    "clear": "Clear search",
+    "noResults": "No country found",
+    "noResultsHint": "Search by country name, in Hebrew or English.",
+    "more": "More results. Keep typing",
+    "unavailable": "Search isn't available right now. You can pick a country by tapping the globe.",
+    "countNone": "No country found",
+    "countOne": "1 country found",
+    "countMany": "{{count}} countries found",
+    "countMore": "Showing {{count}} countries. Keep typing to narrow down",
+    "row": "{{name}}, {{nameEn}}",
+    "rowTerritory": "{{name}}, territory of {{parent}}, {{nameEn}}"
   }
 }

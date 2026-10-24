@@ -25,3 +25,9 @@ export function logGlobeReady() {
       (startup?.startTime ? ` rnStartupStart=${Math.round(startup.startTime)}` : ''),
   );
 }
+
+/** Sprint 1 AC-1: keystroke to the frame that shows that query's results. */
+export function logSearchResults(query: string, ms: number) {
+  if (!enabled) return;
+  console.log(`[perf] search-results ms=${Math.round(ms)} length=${query.length}`);
+}

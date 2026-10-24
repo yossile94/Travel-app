@@ -301,6 +301,98 @@ describe('GlobeScreen', () => {
     expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(false);
   });
 
+  describe('search (sprint 1 F-002)', () => {
+    async function search(text: string) {
+      await fireEvent.press(screen.getByTestId('search-open'));
+      await fireEvent.changeText(screen.getByTestId('search-input'), text);
+    }
+
+    it('flies to a chosen result and opens its card, like a tap (AC-3)', async () => {
+      await render(<GlobeScreen />);
+      await search('תאי');
+      expect(screen.getByTestId('search-result-THA')).toBeOnTheScreen();
+
+      await fireEvent.press(screen.getByTestId('search-result-THA'));
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByTestId('search-input')).toBeNull();
+      expect(screen.getByText('תאילנד')).toBeOnTheScreen();
+      expect(lastMoveWhere((m) => m.animationMode === 'flyTo').centerCoordinate).toEqual([
+        101.0732, 15.4597,
+      ]);
+    });
+
+    it('picks the first result from the keyboard search key (design 2.3)', async () => {
+      await render(<GlobeScreen />);
+      await search('ותיק');
+      await fireEvent(screen.getByTestId('search-input'), 'submitEditing');
+      expect(screen.getByText('קריית הוותיקן')).toBeOnTheScreen();
+    });
+
+    it('shows no list for an empty field, and says when nothing matches (AC-4)', async () => {
+      await render(<GlobeScreen />);
+      await search('');
+      expect(screen.queryByTestId('search-empty')).toBeNull();
+      expect(screen.queryByText('תאילנד')).toBeNull();
+
+      await fireEvent.changeText(screen.getByTestId('search-input'), 'עזה');
+      expect(screen.getByTestId('search-empty')).toBeOnTheScreen();
+    });
+
+    it('closes on Android back before the card does (AC-4, design 5.5)', async () => {
+      const handlers: (() => boolean)[] = [];
+      const spy = jest
+        .spyOn(BackHandler, 'addEventListener')
+        .mockImplementation((_event, handler) => {
+          handlers.push(handler as () => boolean);
+          return { remove: () => handlers.splice(handlers.indexOf(handler as () => boolean), 1) };
+        });
+      await render(<GlobeScreen />);
+      await tap(BANGKOK_TAP);
+      await search('יפ');
+
+      // The card steps aside while searching (design 2.2).
+      expect(screen.queryByTestId('country-card')).toBeNull();
+      expect(handlers).toHaveLength(1);
+      await act(async () => {
+        handlers.at(-1)!();
+      });
+      expect(screen.queryByTestId('search-input')).toBeNull();
+      // Closed without choosing: the card comes back.
+      expect(screen.getByTestId('country-card')).toBeOnTheScreen();
+      spy.mockRestore();
+    });
+
+    it('does not rotate while search is open (AC-4)', async () => {
+      await render(<GlobeScreen />);
+      await fireEvent.press(screen.getByTestId('search-open'));
+      mockMap.setCamera.mockClear();
+      await act(async () => {
+        jest.advanceTimersByTime(30_000);
+        await Promise.resolve();
+      });
+      expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(false);
+    });
+
+    it('tells the screen reader how many countries were found, once typing pauses (AC-6)', async () => {
+      await render(<GlobeScreen />);
+      await search('קוריאה');
+      expect(screen.queryByText('נמצאו 2 מדינות')).toBeNull();
+      await act(async () => jest.advanceTimersByTime(600));
+      expect(screen.getByText('נמצאו 2 מדינות')).toBeOnTheScreen();
+    });
+
+    it('labels a territory with its sovereign (AC-4)', async () => {
+      await render(<GlobeScreen />);
+      await search('גיברלטר');
+      expect(
+        screen.getByLabelText('גיברלטר, טריטוריה של הממלכה המאוחדת, Gibraltar'),
+      ).toBeOnTheScreen();
+    });
+  });
+
   it('uses the layer ids the tap logic queries', () => {
     expect(LAYER).toEqual({
       countriesHit: 'countries-hit',

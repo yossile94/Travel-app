@@ -58,6 +58,39 @@ describe('design tokens in the app', () => {
     expectValue('autoRotateRamp', 'motion.globe.autoRotateRamp');
   });
 
+  it('match the sprint 1 search and chrome tokens', () => {
+    expectValue('searchScrim', 'globe.final.searchScrim');
+    expectValue('micro', 'motion.duration.micro');
+    expectValue('medium', 'motion.duration.medium');
+    expectValue('searchAnnounceDelay', 'motion.search.announceDelay');
+    expectValue('touchTargetMin', 'size.touchTarget.min');
+    expectValue('listRowMin', 'size.listRow.min');
+    expectValue('chromeEdge', 'layout.chrome.edge');
+    expectValue('chromeRowTop', 'layout.chrome.rowTop');
+    expectValue('overlayTop', 'layout.chrome.overlayTop');
+    expectValue('mapboxLogoTop', 'layout.mapbox.logoTop');
+    expectValue('mapboxLogoLeft', 'layout.mapbox.logoLeft');
+    expectValue('mapboxAttributionLeft', 'layout.mapbox.attributionLeft');
+    const light = app.slice(app.indexOf('light: {'), app.indexOf('dark: {'));
+    const dark = app.slice(app.indexOf('dark: {'), app.indexOf('} as const;'));
+    for (const [scheme, block] of [
+      ['light', light],
+      ['dark', dark],
+    ]) {
+      for (const [name, key] of [
+        ['textTertiary', 'text.tertiary'],
+        ['pressed', 'bg.pressed'],
+        ['tag', 'bg.tag'],
+        ['chromeBg', 'chrome.bg'],
+        ['chromeFg', 'chrome.fg'],
+        ['chromeBorder', 'chrome.border'],
+      ]) {
+        const value = design[`color.${scheme}.${key}`];
+        assert.ok(block.includes(`${name}: '${value}'`), `${scheme} ${name} should be ${value}`);
+      }
+    }
+  });
+
   it('match the card colours', () => {
     const light = app.slice(app.indexOf('light: {'), app.indexOf('dark: {'));
     const dark = app.slice(app.indexOf('dark: {'), app.indexOf('} as const;'));
