@@ -257,9 +257,47 @@ function countriesAt(simplified) {
 }
 
 /**
- * The sea, as one polygon: the whole world with every land ring as a hole.
- * Lakes inside the land (the Caspian, the Great Lakes...) come back as their
- * own polygons, so they get the same tint as the sea.
+ * Water bodies inside the land that get the sea tint, by a point inside each.
+ * The merged land also has holes that are not water: gaps between countries
+ * (Bir Tawil, the Ilemi triangle, Abyei, the Southern Patagonian Ice
+ * Field...). Only the ones listed here are tinted.
+ */
+const INLAND_WATER = [{ name: 'Caspian Sea', point: [51.2, 42.2] }];
+
+/** Shoelace area in square degrees; positive when the ring runs counter-clockwise. */
+function signedArea(ring) {
+  let sum = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    sum += ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1];
+  }
+  return sum / 2;
+}
+
+/** GeoJSON (RFC 7946) winding: outer rings counter-clockwise, holes clockwise. */
+function wound(ring, counterClockwise) {
+  return signedArea(ring) > 0 === counterClockwise ? ring : [...ring].reverse();
+}
+
+/** Rounding leaves some tiny rings flat or with fewer than three distinct points. */
+function usableRing(ring) {
+  const distinct = new Set(ring.map(([x, y]) => `${x},${y}`));
+  return distinct.size >= 3 && Math.abs(signedArea(ring)) > 1e-9;
+}
+
+function pointInRing([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * The sea, as one polygon: the whole world with every land ring as a hole,
+ * plus the listed inland water as polygons of their own. Built from the same
+ * coarse topology as the borders, so the tint's coast matches exactly.
  */
 function oceanMask(simplified) {
   const land = merge(simplified, simplified.objects.countries.geometries);
@@ -270,8 +308,16 @@ function oceanMask(simplified) {
     [-180, 90],
     [-180, -90],
   ];
-  const landRings = land.coordinates.map(([outer]) => outer);
-  const lakes = land.coordinates.flatMap(([, ...holes]) => holes.map((hole) => [hole]));
+  const landRings = roundCoordinates(land.coordinates.map(([outer]) => outer))
+    .filter(usableRing)
+    .map((ring) => wound(ring, false));
+  const lakes = roundCoordinates(land.coordinates.flatMap(([, ...holes]) => holes))
+    .filter(usableRing)
+    .filter((ring) => INLAND_WATER.some(({ point }) => pointInRing(point, ring)))
+    .map((ring) => [wound(ring, true)]);
+  if (lakes.length !== INLAND_WATER.length) {
+    throw new Error(`Expected ${INLAND_WATER.length} inland water bodies, found ${lakes.length}.`);
+  }
   return {
     type: 'FeatureCollection',
     features: [
@@ -280,7 +326,7 @@ function oceanMask(simplified) {
         properties: {},
         geometry: {
           type: 'MultiPolygon',
-          coordinates: roundCoordinates([[world, ...landRings], ...lakes]),
+          coordinates: [[wound(world, true), ...landRings], ...lakes],
         },
       },
     ],

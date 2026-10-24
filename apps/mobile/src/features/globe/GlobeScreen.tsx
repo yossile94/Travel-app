@@ -41,7 +41,7 @@ import { BoardingPassCard, CARD_GAP } from './BoardingPassCard';
 import { HOME_CENTER, HOME_ZOOM, flightDuration, zoomForSpan } from './camera';
 import { countryByAdm0 } from './countryData';
 import { GlobeLayers, LAYER } from './GlobeLayers';
-import { hasMapboxToken } from './mapbox';
+import { hasMapboxToken, turnOffMapboxTelemetryOnce } from './mapbox';
 import { logGlobeReady, markGlobeMounted } from './perfLog';
 import { resolveTap, type TapHits } from './resolveTap';
 import { SystemScrims } from './SystemScrims';
@@ -65,6 +65,15 @@ const ESTIMATED_CARD_HEIGHT = 184;
 
 /** How long after "map loaded" the globe counts as ready if Mapbox never goes idle. */
 const GLOBE_READY_FALLBACK_MS = 5000;
+
+/** How long the coarse borders stay at every zoom if the map doesn't go idle after the detailed ones mount. */
+const DETAILED_DRAWN_FALLBACK_MS = 3000;
+
+/** The touch event's own time (ms), falling back to the JS clock. */
+function touchTime(event: GestureResponderEvent): number {
+  const { timestamp } = event.nativeEvent as { timestamp?: number };
+  return typeof timestamp === 'number' && timestamp > 0 ? timestamp : Date.now();
+}
 
 /** End-to-end tests (Maestro) build with EXPO_PUBLIC_E2E=1: a still globe at a fixed view. */
 const E2E = process.env.EXPO_PUBLIC_E2E === '1';
@@ -105,11 +114,15 @@ export function GlobeScreen() {
   const expired = auth.state.status === 'signedOut' && auth.state.expired;
   const sheetOpen = accountSheetOpen || expired;
   const consentShown = auth.state.status === 'needsConsent';
-  // Until Mapbox has loaded the map, getCenter() answers [0, 0] rather than
-  // the default camera, so rotation would jump the globe to 0°,0° (seen on device).
-  const [mapLoaded, setMapLoaded] = useState(false);
+  // The first frame is drawn (first idle, or the fallback below). Before
+  // that getCenter() answers [0, 0] rather than the default camera, so
+  // rotation would jump the globe to 0°,0° (seen on device).
+  const [globeReady, setGlobeReady] = useState(false);
   // AC-13a: the detailed borders never compete with the first frame.
-  const detailedCountries = useDetailedCountriesAsset(mapLoaded);
+  const detailedCountries = useDetailedCountriesAsset(globeReady);
+  // The coarse borders stop at zoom 3 only once the detailed ones are drawn:
+  // the first idle after they mount, or a fallback (review finding 1).
+  const [detailedDrawn, setDetailedDrawn] = useState(false);
   // Start "idle" so the globe begins turning (after the ramp) as soon as it appears.
   const [lastInteractionAt, setLastInteractionAt] = useState(
     () => Date.now() - motion.autoRotateResumeDelay,
@@ -133,7 +146,7 @@ export function GlobeScreen() {
   // start a ramp it would have to stop a moment later.
   const rotationAllowed =
     !E2E &&
-    mapLoaded &&
+    globeReady &&
     reduceMotion === false &&
     !selectedAdm0 &&
     !selection.flying &&
@@ -192,7 +205,7 @@ export function GlobeScreen() {
       if (touchDown.current) touchDown.current.multiTouch = true;
       return;
     }
-    touchDown.current = { x: pageX, y: pageY, at: Date.now(), multiTouch: false };
+    touchDown.current = { x: pageX, y: pageY, at: touchTime(event), multiTouch: false };
   }, []);
   const onTouchEnd = useCallback((event: GestureResponderEvent) => {
     const { touches, pageX, pageY } = event.nativeEvent;
@@ -201,7 +214,7 @@ export function GlobeScreen() {
     setLastInteractionAt(Date.now());
     const down = touchDown.current;
     touchDown.current = null;
-    if (down && isTap(down, { x: pageX, y: pageY, at: Date.now() })) {
+    if (down && isTap(down, { x: pageX, y: pageY, at: touchTime(event) })) {
       handleTapRef.current([pageX, pageY]);
     }
   }, []);
@@ -328,20 +341,24 @@ export function GlobeScreen() {
       // A tap doesn't move the camera, so Mapbox doesn't cancel a running
       // rotation segment by itself; stop it so the globe holds still.
       if (rotationAllowedRef.current) stopRotation();
-      const firstAdm0 = async (layer: string) => {
-        const result = await map.queryRenderedFeaturesAtPoint(point, [], [layer]);
+      const firstAdm0 = async (layers: string[]) => {
+        const result = await map.queryRenderedFeaturesAtPoint(point, [], layers);
         return result?.features[0]?.properties as
           { adm0?: string; code?: string | null } | undefined;
       };
 
-      // Only one border level is drawn at any zoom, so at most one of these answers.
-      const [wide, tight, coarse, detailed] = await Promise.all([
-        firstAdm0(LAYER.smallHitWide),
-        firstAdm0(LAYER.smallHitTight),
-        firstAdm0(LAYER.countriesCoarseHit),
-        firstAdm0(LAYER.countriesDetailedHit),
-      ]);
-      const country = detailed ?? coarse;
+      let wide, tight, country;
+      try {
+        // Both border levels in one query: only one is drawn at any zoom.
+        [wide, tight, country] = await Promise.all([
+          firstAdm0([LAYER.smallHitWide]),
+          firstAdm0([LAYER.smallHitTight]),
+          firstAdm0([LAYER.countriesCoarseHit, LAYER.countriesDetailedHit]),
+        ]);
+      } catch (error) {
+        console.error('[globe] tap query failed', error);
+        return;
+      }
       const hits: TapHits = {
         smallWide: wide?.adm0,
         smallTight: tight?.adm0,
@@ -370,14 +387,31 @@ export function GlobeScreen() {
   // (onDidFinishRenderingMapFully is never sent on Android in @rnmapbox/maps 10.3.)
   useEffect(markGlobeMounted, []);
   const mapReady = Boolean(countries.url || countries.error);
-  const globeReady = useRef(false);
+  const globeReadySent = useRef(false);
   const onGlobeReady = useCallback((reason: 'idle' | 'fallback') => {
-    if (globeReady.current) return;
-    globeReady.current = true;
+    if (globeReadySent.current) return;
+    globeReadySent.current = true;
     logGlobeReady(reason);
-    setMapLoaded(true);
+    setGlobeReady(true);
   }, []);
-  const onMapIdle = useCallback(() => onGlobeReady('idle'), [onGlobeReady]);
+  const detailedMounted = Boolean(detailedCountries.url);
+  const onMapIdle = useCallback(() => {
+    onGlobeReady('idle');
+    // Idle after the detailed source mounted means it is parsed and drawn.
+    if (detailedMounted) setDetailedDrawn(true);
+  }, [onGlobeReady, detailedMounted]);
+  useEffect(() => {
+    if (!detailedMounted || detailedDrawn) return;
+    // The map may not go idle again soon (a flight, rotation); don't wait forever.
+    const timer = setTimeout(() => setDetailedDrawn(true), DETAILED_DRAWN_FALLBACK_MS);
+    return () => clearTimeout(timer);
+  }, [detailedMounted, detailedDrawn]);
+
+  // AC-14: Mapbox usage telemetry off. On Android this builds a throwaway
+  // map view, so it waits for the globe to be up (review finding 6).
+  useEffect(() => {
+    if (globeReady) turnOffMapboxTelemetryOnce();
+  }, [globeReady]);
   const fallbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const onMapLoaded = useCallback(() => {
     fallbackTimer.current = setTimeout(() => onGlobeReady('fallback'), GLOBE_READY_FALLBACK_MS);
@@ -445,6 +479,7 @@ export function GlobeScreen() {
             <GlobeLayers
               countriesUrl={countries.url}
               detailedCountriesUrl={detailedCountries.url}
+              detailedDrawn={detailedDrawn}
               oceanMaskUrl={oceanMask.url}
               highlightedAdm0={selectedAdm0}
               reduceMotion={reduceMotion === true}
