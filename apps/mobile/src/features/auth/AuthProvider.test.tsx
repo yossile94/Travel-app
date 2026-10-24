@@ -5,18 +5,21 @@ import type { ReactNode } from 'react';
 import { AuthProvider, useAuth } from './AuthProvider';
 import type { LegalDocument } from './consentStatus';
 
-const mockSupabase = {
+type Listener = (event: string) => void;
+const mockState = {
   session: null as null | { user: object },
-  listeners: [] as ((event: string) => void)[],
+  listeners: [] as Listener[],
+};
+const mockSupabase = {
   auth: {
-    getSession: jest.fn(async () => ({ data: { session: mockSupabase.session } })),
-    onAuthStateChange: jest.fn((listener: (event: string) => void) => {
-      mockSupabase.listeners.push(listener);
+    getSession: jest.fn(async () => ({ data: { session: mockState.session } })),
+    onAuthStateChange: jest.fn((listener: Listener) => {
+      mockState.listeners.push(listener);
       return { data: { subscription: { unsubscribe: jest.fn() } } };
     }),
     signInWithIdToken: jest.fn(),
     signOut: jest.fn(async () => {
-      mockSupabase.listeners.forEach((listener) => listener('SIGNED_OUT'));
+      mockState.listeners.forEach((listener: Listener) => listener('SIGNED_OUT'));
       return { error: null };
     }),
   },
@@ -65,8 +68,8 @@ const wrapper = ({ children }: { children: ReactNode }) => <AuthProvider>{childr
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockSupabase.session = null;
-  mockSupabase.listeners = [];
+  mockState.session = null;
+  mockState.listeners = [];
   mockSupabase.auth.signInWithIdToken.mockResolvedValue({
     data: { user: googleUser },
     error: null,
@@ -207,7 +210,7 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
   });
 
   it('opens with consent at launch when the device has no record, even offline (AC-18a)', async () => {
-    mockSupabase.session = { user: googleUser };
+    mockState.session = { user: googleUser };
     mockStore.current = null;
     const { result } = await renderHook(() => useAuth(), { wrapper });
     await waitFor(() =>
@@ -219,7 +222,7 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
   });
 
   it('stays signed in offline once consent is on record (AC-19)', async () => {
-    mockSupabase.session = { user: googleUser };
+    mockState.session = { user: googleUser };
     mockStore.local = { terms: 0, privacy: 0 };
     mockStore.current = null;
     const { result } = await renderHook(() => useAuth(), { wrapper });
@@ -227,13 +230,15 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
   });
 
   it('tells "expired" apart from a sign-out the user chose (AC-20)', async () => {
-    mockSupabase.session = { user: googleUser };
+    mockState.session = { user: googleUser };
     mockStore.local = { terms: 0, privacy: 0 };
     const { result } = await renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
 
     // supabase-js signs out by itself when the refresh token is rejected.
-    await act(async () => mockSupabase.listeners.forEach((listener) => listener('SIGNED_OUT')));
+    await act(async () =>
+      mockState.listeners.forEach((listener: Listener) => listener('SIGNED_OUT')),
+    );
     expect(result.current.state).toEqual({ status: 'signedOut', expired: true });
 
     await act(async () => result.current.acknowledgeExpiry());
@@ -241,7 +246,7 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
   });
 
   it('signs out locally (works offline) and confirms with a toast', async () => {
-    mockSupabase.session = { user: googleUser };
+    mockState.session = { user: googleUser };
     mockStore.local = { terms: 0, privacy: 0 };
     const { result } = await renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
