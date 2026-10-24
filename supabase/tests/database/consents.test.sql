@@ -187,12 +187,17 @@ select throws_ok(
   null,
   'a published version cannot be re-dated'
 );
+-- The insert trigger refuses unknown versions first (22023); switched off
+-- here so the foreign key itself is shown to hold (rolled back at the end).
+alter table public.consents disable trigger consents_before_insert;
 select throws_ok(
   $$ insert into public.consents (user_id, doc_type, doc_version, action, platform, app_version)
      values ('00000000-0000-4000-8000-00000000000a', 'privacy', 7, 'granted', 'android', '0.2.0') $$,
+  '23503',
   null,
-  'a consent to a version that does not exist is refused'
+  'a consent to a version that does not exist is refused (foreign key)'
 );
+alter table public.consents enable trigger consents_before_insert;
 
 select * from finish();
 rollback;
