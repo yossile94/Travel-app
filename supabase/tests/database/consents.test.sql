@@ -3,7 +3,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(30);
 
 -- Two users. Only the columns a Google sign-in fills matter here.
 insert into auth.users (id, email)
@@ -26,7 +26,33 @@ select ok(
   'RLS is on for legal_documents'
 );
 select has_index('public', 'consents', 'consents_user_type_time', 'consents are indexed for "my latest decision"');
-select hasnt_fk('public', 'consents', 'consents outlive a deleted account (no foreign key)');
+select ok(
+  not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.consents'::regclass and contype = 'f'
+      and confrelid = 'auth.users'::regclass
+  ),
+  'consents outlive a deleted account (no foreign key to auth.users)'
+);
+select fk_ok(
+  'public', 'consents', array['doc_type', 'doc_version'],
+  'public', 'legal_documents', array['doc_type', 'version'],
+  'a consent names a document version that exists'
+);
+
+-- ------------------------------------------------------------------- grants
+select table_privs_are('public', 'consents', 'anon', array[]::text[],
+  'signed-out clients have no privileges on consents');
+select table_privs_are('public', 'consents', 'authenticated', array['SELECT', 'INSERT'],
+  'signed-in users can only read and add consents');
+select table_privs_are('public', 'legal_documents', 'anon', array['SELECT'],
+  'legal documents are read-only for signed-out clients');
+select table_privs_are('public', 'legal_documents', 'authenticated', array['SELECT'],
+  'legal documents are read-only for users');
+select table_privs_are('public', 'current_legal_documents', 'anon', array['SELECT'],
+  'the current-documents view is read-only');
+select sequence_privs_are('public', 'consents_id_seq', 'authenticated', array[]::text[],
+  'users have no direct use of the consents sequence');
 
 -- -------------------------------------------------------- signed out (anon)
 set local role anon;
@@ -144,6 +170,28 @@ select throws_ok(
   '22023',
   null,
   'consent to the superseded version is refused (the app must ask again, AC-18)'
+);
+
+-- ----------------------------------------- published documents are evidence
+reset role;
+select throws_ok(
+  $$ delete from public.legal_documents where doc_type = 'privacy' and version = 0 $$,
+  '55000',
+  null,
+  'a published version cannot be deleted'
+);
+select throws_ok(
+  $$ update public.legal_documents set published_at = now() + interval '1 year'
+     where doc_type = 'privacy' and version = 0 $$,
+  '55000',
+  null,
+  'a published version cannot be re-dated'
+);
+select throws_ok(
+  $$ insert into public.consents (user_id, doc_type, doc_version, action, platform, app_version)
+     values ('00000000-0000-4000-8000-00000000000a', 'privacy', 7, 'granted', 'android', '0.2.0') $$,
+  null,
+  'a consent to a version that does not exist is refused'
 );
 
 select * from finish();

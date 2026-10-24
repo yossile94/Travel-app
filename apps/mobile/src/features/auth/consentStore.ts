@@ -57,6 +57,7 @@ export async function fetchAgreementFromLog(): Promise<AgreedVersions | null> {
     .select('doc_type, doc_version, action')
     .in('doc_type', ['terms', 'privacy'])
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(20);
   if (error || !data) return null;
   return agreedFromLog(
