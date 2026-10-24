@@ -23,7 +23,6 @@ const mockMap = {
   loads: true,
   /** Mapbox goes idle once the visible tiles are drawn (the globe-ready point). */
   idles: true,
-  onPress: null as null | ((feature: unknown) => Promise<void>),
   /** Last style and filter each circle layer was rendered with, by layer id. */
   circles: {} as Record<string, { style: Record<string, unknown>; filter?: unknown }>,
 };
@@ -50,7 +49,6 @@ jest.mock('@rnmapbox/maps', () => {
 
   const MapView = React.forwardRef(function MapView(
     props: {
-      onPress: (feature: unknown) => Promise<void>;
       onDidFinishLoadingMap?: () => void;
       onMapIdle?: () => void;
       children?: React.ReactNode;
@@ -68,7 +66,6 @@ jest.mock('@rnmapbox/maps', () => {
       onDidFinishLoadingMap?.();
       if (mockMap.idles) onMapIdle?.();
     }, [onDidFinishLoadingMap, onMapIdle]);
-    mockMap.onPress = props.onPress;
     return React.createElement(View, { testID: 'map' }, props.children);
   });
   const Camera = React.forwardRef(function Camera(_props, ref) {
@@ -129,10 +126,14 @@ const BANGKOK_TAP: Hits = { country: { adm0: 'THA', code: 'TH' } };
 // data; 5 s was once not enough on this machine (sprint 1 review, finding 12d).
 jest.setTimeout(15_000);
 
+/** A real tap: finger down and up on the same spot, quickly (AC-10: recognised on lift). */
 async function tap(hits: Hits) {
   mockMap.hits = hits;
+  const surface = screen.getByTestId('globe-touch-surface');
+  const at = { pageX: 100, pageY: 200 };
+  await fireEvent(surface, 'touchStart', { nativeEvent: { touches: [at], ...at } });
   await act(async () => {
-    await mockMap.onPress!({ properties: { screenPointX: 100, screenPointY: 200 } });
+    await fireEvent(surface, 'touchEnd', { nativeEvent: { touches: [], ...at } });
   });
   // Let the flight effect read the camera centre and issue its move.
   await act(async () => {
@@ -513,6 +514,38 @@ describe('GlobeScreen', () => {
       });
     }
     expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(true);
+  });
+
+  it('selects as the finger lifts, but not after a drag or a long press (AC-10)', async () => {
+    await render(<GlobeScreen />);
+    mockMap.hits = BANGKOK_TAP;
+    const surface = screen.getByTestId('globe-touch-surface');
+
+    // A drag across the globe.
+    await fireEvent(surface, 'touchStart', {
+      nativeEvent: { touches: [{}], pageX: 100, pageY: 200 },
+    });
+    await act(async () => {
+      await fireEvent(surface, 'touchEnd', {
+        nativeEvent: { touches: [], pageX: 180, pageY: 200 },
+      });
+    });
+    expect(screen.queryByTestId('country-card')).toBeNull();
+
+    // A long press.
+    await fireEvent(surface, 'touchStart', {
+      nativeEvent: { touches: [{}], pageX: 100, pageY: 200 },
+    });
+    await act(async () => jest.advanceTimersByTime(600));
+    await act(async () => {
+      await fireEvent(surface, 'touchEnd', {
+        nativeEvent: { touches: [], pageX: 100, pageY: 200 },
+      });
+    });
+    expect(screen.queryByTestId('country-card')).toBeNull();
+
+    await tap(BANGKOK_TAP);
+    expect(screen.getByTestId('country-card')).toBeOnTheScreen();
   });
 
   it('uses the layer ids the tap logic queries', () => {

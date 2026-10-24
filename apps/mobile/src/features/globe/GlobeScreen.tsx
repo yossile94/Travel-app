@@ -40,6 +40,7 @@ import { hasMapboxToken } from './mapbox';
 import { logGlobeReady, markGlobeMounted } from './perfLog';
 import { resolveTap, type TapHits } from './resolveTap';
 import { SystemScrims } from './SystemScrims';
+import { isTap, type TouchDown } from './tapGesture';
 import { handlesBack, initialSelection, selectionReducer } from './selection';
 import { useAutoRotation } from './useAutoRotation';
 import {
@@ -69,7 +70,6 @@ const VEIL_FADE_OUT = { duration: motion.reduceFadeOut, reduceMotion: ReduceMoti
 const VEIL_FADE_IN = { duration: motion.reduceFadeIn, reduceMotion: ReduceMotion.Never };
 
 type CameraHandle = ComponentRef<typeof Camera>;
-type PressFeature = GeoJSON.Feature<GeoJSON.Point, { screenPointX: number; screenPointY: number }>;
 
 /** Home screen globe (sprint 0, F-001) with country search (sprint 1, F-002). */
 export function GlobeScreen() {
@@ -161,14 +161,33 @@ export function GlobeScreen() {
   // stops before lifting the finger would leave rotation off for good. The
   // count comes from each event rather than a running tally, so a lost
   // end/cancel event can't leave it stuck.
-  const onTouch = useCallback((event: GestureResponderEvent) => {
-    const down = event.nativeEvent.touches.length > 0;
-    setFingerDown(down);
-    if (!down) setLastInteractionAt(Date.now());
+  // The same events also recognise taps (AC-10, see tapGesture.ts).
+  const touchDown = useRef<TouchDown | null>(null);
+  const handleTapRef = useRef<(point: [number, number]) => void>(() => {});
+  const onTouchStart = useCallback((event: GestureResponderEvent) => {
+    const { touches, pageX, pageY } = event.nativeEvent;
+    setFingerDown(true);
+    if (touches.length > 1) {
+      if (touchDown.current) touchDown.current.multiTouch = true;
+      return;
+    }
+    touchDown.current = { x: pageX, y: pageY, at: Date.now(), multiTouch: false };
+  }, []);
+  const onTouchEnd = useCallback((event: GestureResponderEvent) => {
+    const { touches, pageX, pageY } = event.nativeEvent;
+    if (touches.length > 0) return;
+    setFingerDown(false);
+    setLastInteractionAt(Date.now());
+    const down = touchDown.current;
+    touchDown.current = null;
+    if (down && isTap(down, { x: pageX, y: pageY, at: Date.now() })) {
+      handleTapRef.current([pageX, pageY]);
+    }
   }, []);
   // A cancel means the gesture ended for us; the finger may still be on the
   // glass, but no end event will follow, so treat it as lifted.
   const onTouchCancel = useCallback(() => {
+    touchDown.current = null;
     setFingerDown(false);
     setLastInteractionAt(Date.now());
   }, []);
@@ -281,17 +300,13 @@ export function GlobeScreen() {
     if (countryByAdm0(adm0)) dispatch({ type: 'countryTapped', country: { adm0 } });
   }, []);
 
-  const onPress = useCallback(
-    async (feature: PressFeature) => {
+  const handleTap = useCallback(
+    async (point: [number, number]) => {
       const map = mapRef.current;
       if (!map) return;
       // A tap doesn't move the camera, so Mapbox doesn't cancel a running
       // rotation segment by itself; stop it so the globe holds still.
       if (rotationAllowedRef.current) stopRotation();
-      const point: [number, number] = [
-        feature.properties.screenPointX,
-        feature.properties.screenPointY,
-      ];
       const firstAdm0 = async (layer: string) => {
         const result = await map.queryRenderedFeaturesAtPoint(point, [], [layer]);
         return result?.features[0]?.properties as
@@ -321,6 +336,9 @@ export function GlobeScreen() {
     },
     [stopRotation],
   );
+  useEffect(() => {
+    handleTapRef.current = (point) => void handleTap(point);
+  }, [handleTap]);
 
   // AC-1: the map mounts once the borders file is ready (a fast local copy).
   // The end point is the first time Mapbox is idle — every visible tile,
@@ -375,8 +393,8 @@ export function GlobeScreen() {
       <NavigationBar style="light" />
       <View
         style={StyleSheet.absoluteFill}
-        onTouchStart={onTouch}
-        onTouchEnd={onTouch}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchCancel}
         importantForAccessibility={searchOpen ? 'no-hide-descendants' : 'auto'}
         testID="globe-touch-surface"
@@ -387,7 +405,6 @@ export function GlobeScreen() {
             style={StyleSheet.absoluteFill}
             projection="globe"
             styleJSON={STYLE_JSON}
-            onPress={onPress}
             onDidFinishLoadingMap={onMapLoaded}
             onMapIdle={onMapIdle}
             scaleBarEnabled={false}
