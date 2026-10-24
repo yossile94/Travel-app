@@ -16,12 +16,12 @@ export function markGlobeMounted() {
   mountedAt.mono = performance.now();
 }
 
-export function logGlobeReady() {
+export function logGlobeReady(reason: 'idle' | 'fallback' = 'idle') {
   if (!enabled) return;
   const startup = (performance as { rnStartupTiming?: { startTime?: number } }).rnStartupTiming;
   const sinceMount = mountedAt.mono ? Math.round(performance.now() - mountedAt.mono) : -1;
   console.log(
-    `[perf] globe-ready wallClockMs=${Date.now()} sinceScreenMountMs=${sinceMount}` +
+    `[perf] globe-ready wallClockMs=${Date.now()} sinceScreenMountMs=${sinceMount} reason=${reason}` +
       (startup?.startTime ? ` rnStartupStart=${Math.round(startup.startTime)}` : ''),
   );
 }

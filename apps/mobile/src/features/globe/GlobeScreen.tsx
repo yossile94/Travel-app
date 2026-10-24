@@ -57,6 +57,9 @@ const DEFAULT_CAMERA = { centerCoordinate: HOME_CENTER, zoomLevel: HOME_ZOOM };
 /** Card height before it has been measured, for the first flight's camera padding. */
 const ESTIMATED_CARD_HEIGHT = 184;
 
+/** How long after "map loaded" the globe counts as ready if Mapbox never goes idle. */
+const GLOBE_READY_FALLBACK_MS = 5000;
+
 /** End-to-end tests (Maestro) build with EXPO_PUBLIC_E2E=1: a still globe at a fixed view. */
 const E2E = process.env.EXPO_PUBLIC_E2E === '1';
 
@@ -319,16 +322,28 @@ export function GlobeScreen() {
     [stopRotation],
   );
 
-  // AC-1: the map mounts once the borders file is ready (a fast local copy),
-  // so Mapbox's "map loaded" event — style, visible tiles and the borders
-  // drawn — is the end point. It fires once. (onDidFinishRenderingMapFully is
-  // never sent on Android in @rnmapbox/maps 10.3.)
+  // AC-1: the map mounts once the borders file is ready (a fast local copy).
+  // The end point is the first time Mapbox is idle — every visible tile,
+  // satellite imagery included, loaded and drawn (sprint 1 AC-14a: on an empty
+  // cache "map loaded" fired before the imagery). Rotation and the detailed
+  // borders wait for it too. If the map never settles, a fallback after
+  // "map loaded" keeps the globe from waiting forever.
+  // (onDidFinishRenderingMapFully is never sent on Android in @rnmapbox/maps 10.3.)
   useEffect(markGlobeMounted, []);
   const mapReady = Boolean(countries.url || countries.error);
-  const onMapLoaded = useCallback(() => {
-    logGlobeReady();
+  const globeReady = useRef(false);
+  const onGlobeReady = useCallback((reason: 'idle' | 'fallback') => {
+    if (globeReady.current) return;
+    globeReady.current = true;
+    logGlobeReady(reason);
     setMapLoaded(true);
   }, []);
+  const onMapIdle = useCallback(() => onGlobeReady('idle'), [onGlobeReady]);
+  const fallbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const onMapLoaded = useCallback(() => {
+    fallbackTimer.current = setTimeout(() => onGlobeReady('fallback'), GLOBE_READY_FALLBACK_MS);
+  }, [onGlobeReady]);
+  useEffect(() => () => clearTimeout(fallbackTimer.current), []);
 
   // The Mapbox logo and credits keep their own strip above the controls (sprint 1 design 1).
   const logoPosition = useMemo(
@@ -374,6 +389,7 @@ export function GlobeScreen() {
             styleJSON={STYLE_JSON}
             onPress={onPress}
             onDidFinishLoadingMap={onMapLoaded}
+            onMapIdle={onMapIdle}
             scaleBarEnabled={false}
             compassEnabled={false}
             pitchEnabled={false}

@@ -21,6 +21,8 @@ const mockMap = {
   center: [34.8, 22] as [number, number],
   setCamera: jest.fn(),
   loads: true,
+  /** Mapbox goes idle once the visible tiles are drawn (the globe-ready point). */
+  idles: true,
   onPress: null as null | ((feature: unknown) => Promise<void>),
   /** Last style and filter each circle layer was rendered with, by layer id. */
   circles: {} as Record<string, { style: Record<string, unknown>; filter?: unknown }>,
@@ -50,6 +52,7 @@ jest.mock('@rnmapbox/maps', () => {
     props: {
       onPress: (feature: unknown) => Promise<void>;
       onDidFinishLoadingMap?: () => void;
+      onMapIdle?: () => void;
       children?: React.ReactNode;
     },
     ref,
@@ -59,10 +62,12 @@ jest.mock('@rnmapbox/maps', () => {
         featuresFor(layers[0]!),
       getCenter: async () => mockMap.center,
     }));
-    const { onDidFinishLoadingMap } = props;
+    const { onDidFinishLoadingMap, onMapIdle } = props;
     React.useEffect(() => {
-      if (mockMap.loads) onDidFinishLoadingMap?.();
-    }, [onDidFinishLoadingMap]);
+      if (!mockMap.loads) return;
+      onDidFinishLoadingMap?.();
+      if (mockMap.idles) onMapIdle?.();
+    }, [onDidFinishLoadingMap, onMapIdle]);
     mockMap.onPress = props.onPress;
     return React.createElement(View, { testID: 'map' }, props.children);
   });
@@ -158,6 +163,7 @@ beforeEach(() => {
   mockMap.setCamera.mockClear();
   mockMap.hits = {};
   mockMap.loads = true;
+  mockMap.idles = true;
   mockReduceMotion = false;
 });
 afterEach(() => jest.useRealTimers());
@@ -485,6 +491,25 @@ describe('GlobeScreen', () => {
     await render(<GlobeScreen />);
     await tap({ country: { adm0: 'GRC', code: 'GR' } });
     expect(screen.getByText('יוון')).toBeOnTheScreen();
+  });
+
+  it('still starts if Mapbox never settles after loading (globe-ready fallback)', async () => {
+    mockMap.idles = false;
+    await render(<GlobeScreen />);
+    await act(async () => {
+      jest.advanceTimersByTime(4_000);
+      await Promise.resolve();
+    });
+    expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(false);
+    // The fallback fires at 5 s; rotation then starts on its next timers.
+    await act(async () => jest.advanceTimersByTime(1_100));
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        jest.advanceTimersByTime(10);
+        await Promise.resolve();
+      });
+    }
+    expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(true);
   });
 
   it('uses the layer ids the tap logic queries', () => {

@@ -65,8 +65,8 @@ function Gradient({
     <Svg width="100%" height={height}>
       <Defs>
         <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          {stops.map(([offset, opacity]) => (
-            <Stop key={offset} offset={offset} stopColor={color} stopOpacity={opacity} />
+          {stops.map(([offset, opacity], index) => (
+            <Stop key={index} offset={offset} stopColor={color} stopOpacity={opacity} />
           ))}
         </LinearGradient>
       </Defs>
