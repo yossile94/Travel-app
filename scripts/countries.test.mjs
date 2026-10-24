@@ -159,3 +159,45 @@ describe('bundled country borders', () => {
     });
   }
 });
+
+describe('detailed borders and ocean mask (sprint 1 F-001.1)', () => {
+  const geoDir = dirname(file);
+  const detailedBytes = readFileSync(join(geoDir, 'countries-detailed.geojson'));
+  const oceanBytes = readFileSync(join(geoDir, 'ocean-mask.geojson'));
+  const detailed = JSON.parse(detailedBytes.toString('utf8')).features;
+  const ocean = JSON.parse(oceanBytes.toString('utf8')).features;
+
+  it('has the same areas, with the same properties, at both levels', () => {
+    assert.deepEqual(
+      detailed.map((f) => f.properties),
+      features.map((f) => f.properties),
+    );
+  });
+
+  it('keeps more of each coastline in the detailed level', () => {
+    const vertices = (f) => JSON.stringify(f.geometry.coordinates).split('],[').length;
+    // Greece: a long, broken coastline (small countries such as Israel keep every vertex at both levels).
+    const greece = (list) => list.find((f) => f.properties.adm0 === 'GRC');
+    assert.ok(vertices(greece(detailed)) > vertices(greece(features)) * 2);
+  });
+
+  it('fits the 5 MB budget for the detailed borders plus the ocean mask (AC-13a)', () => {
+    assert.ok(detailedBytes.length + oceanBytes.length <= 5 * 1024 * 1024);
+  });
+
+  it('is one sea polygon with the land as holes, and lakes tinted too (AC-8)', () => {
+    assert.equal(ocean.length, 1);
+    const { type, coordinates } = ocean[0].geometry;
+    assert.equal(type, 'MultiPolygon');
+    const [[world, ...landHoles], ...lakes] = coordinates;
+    assert.deepEqual(world[0], [-180, -90]);
+    assert.ok(landHoles.length > 100, `land rings: ${landHoles.length}`);
+    assert.ok(lakes.length > 0, 'lakes');
+    // Mid-Atlantic is sea: inside the world ring and in no land ring.
+    const atlantic = [-30, 20];
+    assert.ok(inRing(atlantic, world));
+    assert.ok(!landHoles.some((ring) => inRing(atlantic, ring)));
+    // Central Africa is land.
+    assert.ok(landHoles.some((ring) => inRing([20, 5], ring)));
+  });
+});

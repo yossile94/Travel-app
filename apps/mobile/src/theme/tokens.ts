@@ -38,7 +38,20 @@ export type ColorScheme = keyof typeof colors;
 export const highlightColor = '#FF7A57';
 
 export const globe = {
-  raster: { saturation: 0.35, contrast: 0.12, fadeDuration: 300 },
+  // Sprint 1 AC-8: no contrast (it crushed the dark ocean to black) and calmer
+  // deserts; nothing is fully black or blinding (design 6.2).
+  raster: {
+    saturation: 0.12,
+    contrast: 0,
+    brightnessMin: 0.02,
+    brightnessMax: 0.96,
+    fadeDuration: 300,
+  },
+  /** Navy over the sea at the whole-globe view, gone by zoom 4 (AC-8). */
+  oceanTint: '#1561BC',
+  oceanTintOpacity: 0.4,
+  oceanTintFadeStartZoom: 2,
+  oceanTintFadeEndZoom: 4,
   atmosphere: {
     color: '#9FD0FF',
     highColor: '#2F7BE0',
@@ -50,7 +63,11 @@ export const globe = {
   baseOcean: '#0A1A3C',
   border: 'rgba(243,246,252,0.42)',
   borderWidthZ0: 0.5,
+  borderWidthZ3: 0.75,
   borderWidthZ5: 1,
+  borderWidthZ8: 1.6,
+  /** Detailed borders replace the coarse ones from this zoom (AC-13a). */
+  borderDetailMinZoom: 3,
   highlight: {
     fillOpacity: 0.3,
     glowWidth: 8,

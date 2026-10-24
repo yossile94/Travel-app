@@ -42,7 +42,11 @@ import { resolveTap, type TapHits } from './resolveTap';
 import { SystemScrims } from './SystemScrims';
 import { handlesBack, initialSelection, selectionReducer } from './selection';
 import { useAutoRotation } from './useAutoRotation';
-import { useCountriesAsset } from './useCountriesAsset';
+import {
+  useCountriesAsset,
+  useDetailedCountriesAsset,
+  useOceanMaskAsset,
+} from './useCountriesAsset';
 import { useReduceMotion } from './useReduceMotion';
 
 /** An empty style: every layer is ours, so nothing depends on a remote style's layer ids. */
@@ -71,6 +75,7 @@ export function GlobeScreen() {
   const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const reduceMotion = useReduceMotion();
   const countries = useCountriesAsset();
+  const oceanMask = useOceanMaskAsset();
 
   const mapRef = useRef<MapView>(null);
   const cameraRef = useRef<CameraHandle>(null);
@@ -82,6 +87,8 @@ export function GlobeScreen() {
   // Until Mapbox has loaded the map, getCenter() answers [0, 0] rather than
   // the default camera, so rotation would jump the globe to 0°,0° (seen on device).
   const [mapLoaded, setMapLoaded] = useState(false);
+  // AC-13a: the detailed borders never compete with the first frame.
+  const detailedCountries = useDetailedCountriesAsset(mapLoaded);
   // Start "idle" so the globe begins turning (after the ramp) as soon as it appears.
   const [lastInteractionAt, setLastInteractionAt] = useState(
     () => Date.now() - motion.autoRotateResumeDelay,
@@ -288,11 +295,14 @@ export function GlobeScreen() {
           { adm0?: string; code?: string | null } | undefined;
       };
 
-      const [wide, tight, country] = await Promise.all([
+      // Only one border level is drawn at any zoom, so at most one of these answers.
+      const [wide, tight, coarse, detailed] = await Promise.all([
         firstAdm0(LAYER.smallHitWide),
         firstAdm0(LAYER.smallHitTight),
-        firstAdm0(LAYER.countriesHit),
+        firstAdm0(LAYER.countriesCoarseHit),
+        firstAdm0(LAYER.countriesDetailedHit),
       ]);
+      const country = detailed ?? coarse;
       const hits: TapHits = {
         smallWide: wide?.adm0,
         smallTight: tight?.adm0,
@@ -380,6 +390,8 @@ export function GlobeScreen() {
             />
             <GlobeLayers
               countriesUrl={countries.url}
+              detailedCountriesUrl={detailedCountries.url}
+              oceanMaskUrl={oceanMask.url}
               highlightedAdm0={selectedAdm0}
               reduceMotion={reduceMotion === true}
             />

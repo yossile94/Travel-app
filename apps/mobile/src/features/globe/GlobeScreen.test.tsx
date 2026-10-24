@@ -26,6 +26,8 @@ const mockMap = {
   circles: {} as Record<string, { style: Record<string, unknown>; filter?: unknown }>,
 };
 let mockReduceMotion: boolean | null = false;
+/** Every value the screen passed to useDetailedCountriesAsset. */
+const mockDetailedRequests: boolean[] = [];
 
 jest.mock('@rnmapbox/maps', () => {
   const React = jest.requireActual<typeof import('react')>('react');
@@ -38,7 +40,7 @@ jest.mock('@rnmapbox/maps', () => {
         ? { adm0: hits.wide }
         : layer === 'small-countries-hit-tight' && hits.tight
           ? { adm0: hits.tight }
-          : layer === 'countries-hit' && hits.country
+          : (layer === 'countries-coarse-hit' || layer === 'countries-detailed-hit') && hits.country
             ? hits.country
             : null;
     return { type: 'FeatureCollection', features: props ? [{ properties: props }] : [] };
@@ -105,6 +107,14 @@ jest.mock(
 jest.mock('./mapbox', () => ({ hasMapboxToken: true }));
 jest.mock('./useCountriesAsset', () => ({
   useCountriesAsset: () => ({ url: 'file:///countries.geojson', error: null }),
+  useOceanMaskAsset: () => ({ url: 'file:///ocean-mask.geojson', error: null }),
+  useDetailedCountriesAsset: (enabled: boolean) => (
+    mockDetailedRequests.push(enabled),
+    {
+      url: enabled ? 'file:///countries-detailed.geojson' : null,
+      error: null,
+    }
+  ),
 }));
 jest.mock('./useReduceMotion', () => ({ useReduceMotion: () => mockReduceMotion }));
 
@@ -463,9 +473,24 @@ describe('GlobeScreen', () => {
     expect(screen.getByTestId('scrim-bottom')).toBeOnTheScreen();
   });
 
+  it('loads the detailed borders only once the globe is ready (AC-13a)', async () => {
+    mockMap.loads = false;
+    mockDetailedRequests.length = 0;
+    await render(<GlobeScreen />);
+    expect(mockDetailedRequests.length).toBeGreaterThan(0);
+    expect(mockDetailedRequests.every((enabled) => !enabled)).toBe(true);
+  });
+
+  it('selects from the detailed borders when they answer the tap', async () => {
+    await render(<GlobeScreen />);
+    await tap({ country: { adm0: 'GRC', code: 'GR' } });
+    expect(screen.getByText('יוון')).toBeOnTheScreen();
+  });
+
   it('uses the layer ids the tap logic queries', () => {
     expect(LAYER).toEqual({
-      countriesHit: 'countries-hit',
+      countriesCoarseHit: 'countries-coarse-hit',
+      countriesDetailedHit: 'countries-detailed-hit',
       smallHitWide: 'small-countries-hit-wide',
       smallHitTight: 'small-countries-hit-tight',
     });

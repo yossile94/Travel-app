@@ -7,6 +7,8 @@ import {
   RasterLayer,
   RasterSource,
   ShapeSource,
+  type FillLayerStyle,
+  type LineLayerStyle,
 } from '@rnmapbox/maps';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -15,7 +17,9 @@ import { globe, highlightColor, motion } from '@/theme/tokens';
 import { smallCountryPoints } from './countryData';
 
 export const LAYER = {
-  countriesHit: 'countries-hit',
+  /** Invisible country fills for taps, one per border level; at any zoom only one is drawn. */
+  countriesCoarseHit: 'countries-coarse-hit',
+  countriesDetailedHit: 'countries-detailed-hit',
   /** 22 pt radius: a 44 pt target for small areas, used over the sea (AC-5). */
   smallHitWide: 'small-countries-hit-wide',
   /** 3–10 pt radius by zoom: the only small-area target that counts over land (see resolveTap). */
@@ -25,11 +29,51 @@ export const LAYER = {
 const RASTER_STYLE = {
   rasterSaturation: globe.raster.saturation,
   rasterContrast: globe.raster.contrast,
+  rasterBrightnessMin: globe.raster.brightnessMin,
+  rasterBrightnessMax: globe.raster.brightnessMax,
   rasterFadeDuration: globe.raster.fadeDuration,
+};
+
+// Sprint 1 AC-8: navy over the sea at the whole-globe view, fading out as the
+// imagery itself becomes good enough (design 6.2).
+const OCEAN_TINT_STYLE: FillLayerStyle = {
+  fillColor: globe.oceanTint,
+  fillOpacity: [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    globe.oceanTintFadeStartZoom,
+    globe.oceanTintOpacity,
+    globe.oceanTintFadeEndZoom,
+    0,
+  ],
+  fillAntialias: false,
+};
+
+const BORDER_STYLE: LineLayerStyle = {
+  lineColor: globe.border,
+  lineWidth: [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    0,
+    globe.borderWidthZ0,
+    3,
+    globe.borderWidthZ3,
+    5,
+    globe.borderWidthZ5,
+    8,
+    globe.borderWidthZ8,
+  ],
+  lineJoin: 'round',
+  lineCap: 'round',
 };
 
 interface Props {
   countriesUrl: string | null;
+  /** Mounted only after the globe is ready (AC-13a); until then the coarse borders show at every zoom. */
+  detailedCountriesUrl: string | null;
+  oceanMaskUrl: string | null;
   highlightedAdm0: string | null;
   reduceMotion: boolean;
 }
@@ -42,6 +86,8 @@ interface Props {
  */
 export const GlobeLayers = memo(function GlobeLayers({
   countriesUrl,
+  detailedCountriesUrl,
+  oceanMaskUrl,
   highlightedAdm0,
   reduceMotion,
 }: Props) {
@@ -131,61 +177,104 @@ export const GlobeLayers = memo(function GlobeLayers({
         />
       </ShapeSource>
 
-      {/* The borders arrive asynchronously; keep them under the small-area ring. */}
-      {countriesUrl && (
-        <ShapeSource id="countries" url={countriesUrl} maxZoomLevel={6}>
-          {/* Invisible fill: the hit-test surface for taps on countries. */}
+      {oceanMaskUrl && (
+        <ShapeSource id="ocean-mask" url={oceanMaskUrl} maxZoomLevel={4}>
           <FillLayer
-            id={LAYER.countriesHit}
-            belowLayerID={LAYER.smallHitWide}
-            style={{ fillColor: '#000000', fillOpacity: 0 }}
-          />
-          <LineLayer
-            id="countries-border"
-            belowLayerID={LAYER.smallHitWide}
-            style={{
-              lineColor: globe.border,
-              lineWidth: [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                0,
-                globe.borderWidthZ0,
-                5,
-                globe.borderWidthZ5,
-              ],
-              lineJoin: 'round',
-            }}
-          />
-          <FillLayer
-            id="highlight-fill"
-            belowLayerID={LAYER.smallHitWide}
-            filter={highlightStyles.filter}
-            style={highlightStyles.fill}
-          />
-          <LineLayer
-            id="highlight-glow"
-            belowLayerID={LAYER.smallHitWide}
-            filter={highlightStyles.filter}
-            style={highlightStyles.glow}
-          />
-          <LineLayer
-            id="highlight-underlay"
-            belowLayerID={LAYER.smallHitWide}
-            filter={highlightStyles.filter}
-            style={highlightStyles.underlay}
-          />
-          <LineLayer
-            id="highlight-outline"
-            belowLayerID={LAYER.smallHitWide}
-            filter={highlightStyles.filter}
-            style={highlightStyles.outline}
+            id="ocean-tint"
+            aboveLayerID="satellite"
+            maxZoomLevel={globe.oceanTintFadeEndZoom}
+            style={OCEAN_TINT_STYLE}
           />
         </ShapeSource>
+      )}
+
+      {/* The borders arrive asynchronously; keep them under the small-area ring. */}
+      {countriesUrl && (
+        <BorderLevel
+          level="coarse"
+          url={countriesUrl}
+          // Coarse vertices gain nothing from deeper tiles.
+          sourceMaxZoom={3}
+          maxZoom={detailedCountriesUrl ? globe.borderDetailMinZoom : undefined}
+          highlight={highlightStyles}
+        />
+      )}
+      {detailedCountriesUrl && (
+        <BorderLevel
+          level="detailed"
+          url={detailedCountriesUrl}
+          sourceMaxZoom={8}
+          minZoom={globe.borderDetailMinZoom}
+          highlight={highlightStyles}
+        />
       )}
     </>
   );
 });
+
+interface BorderLevelProps {
+  level: 'coarse' | 'detailed';
+  url: string;
+  sourceMaxZoom: number;
+  minZoom?: number;
+  maxZoom?: number;
+  highlight: {
+    filter: readonly unknown[];
+    fill: object;
+    glow: object;
+    underlay: object;
+    outline: object;
+  };
+}
+
+/**
+ * One level of country borders (AC-13a): its own source and layer ids,
+ * including the tap surface and the selection highlight, so what is drawn at
+ * a zoom is exactly what a tap there hits.
+ */
+function BorderLevel({ level, url, sourceMaxZoom, minZoom, maxZoom, highlight }: BorderLevelProps) {
+  const layerProps = {
+    belowLayerID: LAYER.smallHitWide,
+    minZoomLevel: minZoom,
+    maxZoomLevel: maxZoom,
+  };
+  const filter = highlight.filter as never;
+  return (
+    <ShapeSource id={`countries-${level}`} url={url} maxZoomLevel={sourceMaxZoom}>
+      {/* Invisible fill: the hit-test surface for taps on countries. */}
+      <FillLayer
+        id={level === 'coarse' ? LAYER.countriesCoarseHit : LAYER.countriesDetailedHit}
+        {...layerProps}
+        style={{ fillColor: '#000000', fillOpacity: 0 }}
+      />
+      <LineLayer id={`countries-${level}-border`} {...layerProps} style={BORDER_STYLE} />
+      <FillLayer
+        id={`highlight-${level}-fill`}
+        {...layerProps}
+        filter={filter}
+        style={highlight.fill}
+      />
+      <LineLayer
+        id={`highlight-${level}-glow`}
+        {...layerProps}
+        filter={filter}
+        style={highlight.glow}
+      />
+      <LineLayer
+        id={`highlight-${level}-underlay`}
+        {...layerProps}
+        filter={filter}
+        style={highlight.underlay}
+      />
+      <LineLayer
+        id={`highlight-${level}-outline`}
+        {...layerProps}
+        filter={filter}
+        style={highlight.outline}
+      />
+    </ShapeSource>
+  );
+}
 
 /**
  * Mapbox doesn't animate filter changes, so the highlight fades the old

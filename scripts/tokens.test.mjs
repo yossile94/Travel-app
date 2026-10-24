@@ -28,6 +28,15 @@ describe('design tokens in the app', () => {
     expectValue('saturation', 'globe.final.raster.saturation');
     expectValue('contrast', 'globe.final.raster.contrast');
     expectValue('fadeDuration', 'globe.final.raster.fadeDuration');
+    expectValue('brightnessMin', 'globe.final.raster.brightnessMin');
+    expectValue('brightnessMax', 'globe.final.raster.brightnessMax');
+    expectValue('oceanTint', 'globe.final.oceanTint');
+    expectValue('oceanTintOpacity', 'globe.final.oceanTintOpacity');
+    expectValue('oceanTintFadeStartZoom', 'globe.final.oceanTintFadeStartZoom');
+    expectValue('oceanTintFadeEndZoom', 'globe.final.oceanTintFadeEndZoom');
+    expectValue('borderWidthZ3', 'globe.final.borderWidthZ3');
+    expectValue('borderWidthZ8', 'globe.final.borderWidthZ8');
+    expectValue('borderDetailMinZoom', 'globe.final.borderDetailMinZoom');
     expectValue('color', 'globe.final.atmosphere.color');
     expectValue('highColor', 'globe.final.atmosphere.highColor');
     expectValue('horizonBlend', 'globe.final.atmosphere.horizonBlend');

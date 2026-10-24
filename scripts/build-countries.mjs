@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 /**
- * Builds the country borders bundled with the app (sprint 0 F-001).
+ * Builds the country borders bundled with the app (sprint 0 F-001), at two
+ * levels of detail, and the ocean mask that tints the sea (sprint 1 F-001.1):
+ *
+ * - countries.geojson: "coarse", KEEP_FRACTION of the vertices, shown up to zoom 3.
+ * - countries-detailed.geojson: "detailed", DETAIL_KEEP_FRACTION, from zoom 3,
+ *   loaded only after the globe is ready (AC-13a, design 6.5).
+ * - ocean-mask.geojson: the whole world minus the coarse land, so the tint's
+ *   coastline matches the borders exactly (AC-8, design 6.2).
  *
  * Source: Natural Earth admin-0 countries, Israeli point of view, pinned to a
  * fixed commit and verified by SHA-256 so every build produces the same file.
@@ -29,13 +36,20 @@ const SOURCE = {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cacheFile = join(root, '.cache', 'natural-earth', SOURCE.commit, 'countries_isr.geojson');
-// .geojson so Metro ships it as an asset loaded by URL, not compiled into the JS bundle.
-const outFile = join(root, 'apps', 'mobile', 'assets', 'geo', 'countries.geojson');
+// .geojson so Metro ships these as assets loaded by URL, not compiled into the JS bundle.
+const geoDir = join(root, 'apps', 'mobile', 'assets', 'geo');
+const outFile = join(geoDir, 'countries.geojson');
+const detailedFile = join(geoDir, 'countries-detailed.geojson');
+const oceanFile = join(geoDir, 'ocean-mask.geojson');
 
 const keepArg = process.argv.find((arg) => arg.startsWith('--keep='));
 // Fraction of vertices to keep, ranked by visual importance (topojson-simplify's
 // quantile is taken over weights in descending order). Lower = simpler shapes.
 const KEEP_FRACTION = keepArg ? Number(keepArg.split('=')[1]) : 0.05;
+// Detailed level (sprint 1 AC-13a): tuned against the 5 MB budget for this
+// file plus the ocean mask, and against the A73 screenshot at zoom 6.
+const detailArg = process.argv.find((arg) => arg.startsWith('--detail-keep='));
+const DETAIL_KEEP_FRACTION = detailArg ? Number(detailArg.split('=')[1]) : 0.25;
 // ~11 m precision; finer is invisible on a phone-sized globe.
 const COORDINATE_DECIMALS = 4;
 
@@ -218,20 +232,8 @@ function roundCoordinates(coordinates) {
     : coordinates.map(roundCoordinates);
 }
 
-async function main() {
-  const source = await loadSource();
-
-  const prepared = applyBorderPolicy(source.features);
-
-  const topo = presimplify(
-    topology({ countries: { type: 'FeatureCollection', features: prepared } }, 1e6),
-    sphericalTriangleArea,
-  );
-  // Without this, a single global threshold erases microstates (Vatican,
-  // Monaco, ...) entirely: every one of their triangles is "small".
-  const protectedCount = protectSmallCountries(topo, prepared);
-  const simplified = simplify(topo, quantile(topo, KEEP_FRACTION));
-
+/** One feature per area at a simplification level; Judea and Samaria merged into Israel. */
+function countriesAt(simplified) {
   const geometries = simplified.objects.countries.geometries;
   const result = {
     type: 'FeatureCollection',
@@ -248,15 +250,76 @@ async function main() {
         };
       }),
   };
-
   for (const f of result.features) {
     if (f.geometry) f.geometry.coordinates = roundCoordinates(f.geometry.coordinates);
   }
+  return result;
+}
 
-  await mkdir(dirname(outFile), { recursive: true });
+/**
+ * The sea, as one polygon: the whole world with every land ring as a hole.
+ * Lakes inside the land (the Caspian, the Great Lakes...) come back as their
+ * own polygons, so they get the same tint as the sea.
+ */
+function oceanMask(simplified) {
+  const land = merge(simplified, simplified.objects.countries.geometries);
+  const world = [
+    [-180, -90],
+    [180, -90],
+    [180, 90],
+    [-180, 90],
+    [-180, -90],
+  ];
+  const landRings = land.coordinates.map(([outer]) => outer);
+  const lakes = land.coordinates.flatMap(([, ...holes]) => holes.map((hole) => [hole]));
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'MultiPolygon',
+          coordinates: roundCoordinates([[world, ...landRings], ...lakes]),
+        },
+      },
+    ],
+  };
+}
+
+async function main() {
+  const source = await loadSource();
+
+  const prepared = applyBorderPolicy(source.features);
+
+  const topo = presimplify(
+    topology({ countries: { type: 'FeatureCollection', features: prepared } }, 1e6),
+    sphericalTriangleArea,
+  );
+  // Without this, a single global threshold erases microstates (Vatican,
+  // Monaco, ...) entirely: every one of their triangles is "small".
+  const protectedCount = protectSmallCountries(topo, prepared);
+  const simplified = simplify(topo, quantile(topo, KEEP_FRACTION));
+  const result = countriesAt(simplified);
+
+  await mkdir(geoDir, { recursive: true });
   await writeFile(outFile, JSON.stringify(result));
 
+  const detailed = countriesAt(simplify(topo, quantile(topo, DETAIL_KEEP_FRACTION)));
+  await writeFile(detailedFile, JSON.stringify(detailed));
+  const ocean = oceanMask(simplified);
+  await writeFile(oceanFile, JSON.stringify(ocean));
+
   const { size } = await stat(outFile);
+  const { size: detailedSize } = await stat(detailedFile);
+  const { size: oceanSize } = await stat(oceanFile);
+  console.log(
+    `Wrote ${detailedFile}: ${(DETAIL_KEEP_FRACTION * 100).toFixed(1)}% of vertices, ${(detailedSize / 1024).toFixed(0)} KB`,
+  );
+  console.log(`Wrote ${oceanFile}: ${(oceanSize / 1024).toFixed(0)} KB`);
+  console.log(
+    `  detailed + ocean mask: ${((detailedSize + oceanSize) / 1024 / 1024).toFixed(2)} MB (budget 5 MB, AC-13a)`,
+  );
   const missingCode = result.features.filter((f) => !f.properties.code);
   const missingHebrew = result.features.filter((f) => !f.properties.nameHe);
   const missingGeometry = result.features.filter((f) => !f.geometry);
