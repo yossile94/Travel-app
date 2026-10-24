@@ -120,6 +120,19 @@ jest.mock('./useCountriesAsset', () => ({
 }));
 jest.mock('./useReduceMotion', () => ({ useReduceMotion: () => mockReduceMotion }));
 
+/** Sign-in state as the screen sees it; the provider itself is tested on its own. */
+const mockAuth = {
+  state: { status: 'unavailable' } as Record<string, unknown>,
+  notice: null as null | { kind: string; name?: string },
+  signInWithGoogle: jest.fn(async () => 'cancelled'),
+  abandonSignIn: jest.fn(),
+  submitConsent: jest.fn(async () => 'done'),
+  signOut: jest.fn(async () => {}),
+  clearNotice: jest.fn(),
+  acknowledgeExpiry: jest.fn(),
+};
+jest.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => mockAuth }));
+
 const BANGKOK_TAP: Hits = { country: { adm0: 'THA', code: 'TH' } };
 
 // The first test of a cold run also pays for transforming the screen and its
@@ -166,6 +179,8 @@ beforeEach(() => {
   mockMap.loads = true;
   mockMap.idles = true;
   mockReduceMotion = false;
+  mockAuth.state = { status: 'unavailable' };
+  mockAuth.notice = null;
 });
 afterEach(() => jest.useRealTimers());
 
@@ -546,6 +561,105 @@ describe('GlobeScreen', () => {
 
     await tap(BANGKOK_TAP);
     expect(screen.getByTestId('country-card')).toBeOnTheScreen();
+  });
+
+  describe('account (sprint 1 F-003a)', () => {
+    const user = { id: 'u1', name: 'יוסי לוי', email: 'yossi@example.test' };
+
+    it('shows no account button while sign-in is unavailable or loading', async () => {
+      await render(<GlobeScreen />);
+      expect(screen.queryByTestId('account-button')).toBeNull();
+      mockAuth.state = { status: 'loading' };
+      await render(<GlobeScreen />);
+      expect(screen.queryByTestId('account-button')).toBeNull();
+    });
+
+    it('opens the Google sheet from the account button when signed out (AC-15)', async () => {
+      mockAuth.state = { status: 'signedOut', expired: false };
+      await render(<GlobeScreen />);
+      expect(screen.getByLabelText('התחברות לחשבון')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByTestId('account-button'));
+      expect(screen.getByTestId('google-sign-in')).toBeOnTheScreen();
+      expect(screen.getByText('המשך עם ⁦Google⁩')).toBeOnTheScreen();
+    });
+
+    it('opens the sign-in sheet by itself when the session expired (AC-20)', async () => {
+      mockAuth.state = { status: 'signedOut', expired: true };
+      await render(<GlobeScreen />);
+      expect(screen.getByText('פג תוקף ההתחברות. צריך להתחבר שוב.')).toBeOnTheScreen();
+    });
+
+    it('shows the initial, never a photo, and signs out from the account sheet (AC-19)', async () => {
+      mockAuth.state = { status: 'signedIn', user };
+      await render(<GlobeScreen />);
+      expect(screen.getByLabelText('החשבון של יוסי לוי')).toBeOnTheScreen();
+      expect(screen.getByText('י')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByTestId('account-button'));
+      await fireEvent.press(screen.getByTestId('sign-out'));
+      expect(mockAuth.signOut).toHaveBeenCalled();
+    });
+
+    it('blocks with the consent screen and keeps the globe still (AC-16, design 5.1)', async () => {
+      mockAuth.state = {
+        status: 'needsConsent',
+        user,
+        need: { kind: 'first' },
+        documents: [
+          { docType: 'terms', version: 0, url: null, publishedAt: '2026-10-24T00:00:00Z' },
+          { docType: 'privacy', version: 0, url: null, publishedAt: '2026-10-24T00:00:00Z' },
+        ],
+      };
+      await render(<GlobeScreen />);
+      expect(screen.getByText('לפני שממשיכים')).toBeOnTheScreen();
+      expect(screen.getByText('גרסה 0 · טיוטה')).toBeOnTheScreen();
+      expect(screen.queryByTestId('account-button')).toBeNull();
+
+      // "Continue" stays locked until the mandatory box is ticked; no age statement.
+      expect(screen.getByTestId('consent-continue')).toBeDisabled();
+      expect(screen.queryByText(/18/)).toBeNull();
+      await fireEvent.press(screen.getByTestId('consent-agree'));
+      expect(screen.getByTestId('consent-continue')).toBeEnabled();
+      await fireEvent.press(screen.getByTestId('consent-marketing'));
+      await act(async () => {
+        await fireEvent.press(screen.getByTestId('consent-continue'));
+      });
+      expect(mockAuth.submitConsent).toHaveBeenCalledWith({ marketing: true, analytics: false });
+
+      mockMap.setCamera.mockClear();
+      await act(async () => {
+        jest.advanceTimersByTime(30_000);
+        await Promise.resolve();
+      });
+      expect(cameraMoves().some((m) => m.animationMode === 'linearTo')).toBe(false);
+    });
+
+    it('asks again only for the changed document, without the optional choices (AC-18)', async () => {
+      mockAuth.state = {
+        status: 'needsConsent',
+        user,
+        need: { kind: 'updated', docs: ['privacy'] },
+        documents: [
+          { docType: 'terms', version: 1, url: null, publishedAt: '2026-11-01T00:00:00Z' },
+          { docType: 'privacy', version: 2, url: null, publishedAt: '2026-11-01T00:00:00Z' },
+        ],
+      };
+      await render(<GlobeScreen />);
+      expect(screen.getByText('עדכנו את מדיניות הפרטיות')).toBeOnTheScreen();
+      expect(screen.getByText('חדש')).toBeOnTheScreen();
+      expect(screen.queryByTestId('consent-marketing')).toBeNull();
+      await fireEvent.press(screen.getByTestId('consent-agree'));
+      await act(async () => {
+        await fireEvent.press(screen.getByTestId('consent-continue'));
+      });
+      expect(mockAuth.submitConsent).toHaveBeenCalledWith({});
+    });
+
+    it('confirms with a toast after signing in (design 5.2)', async () => {
+      mockAuth.state = { status: 'signedIn', user };
+      mockAuth.notice = { kind: 'signedIn', name: 'יוסי לוי' };
+      await render(<GlobeScreen />);
+      expect(screen.getByText('התחברת בתור יוסי לוי')).toBeOnTheScreen();
+    });
   });
 
   it('uses the layer ids the tap logic queries', () => {

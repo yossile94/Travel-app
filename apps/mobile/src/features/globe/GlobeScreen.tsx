@@ -29,6 +29,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Toast } from '@/components/formControls';
+import { AccountButton } from '@/features/auth/AccountButton';
+import { AccountSheet, SignInSheet } from '@/features/auth/AccountSheets';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { ConsentScreen } from '@/features/auth/ConsentScreen';
 import { SearchBar } from '@/features/search/SearchBar';
 import { globe, layout, motion } from '@/theme/tokens';
 
@@ -87,6 +92,12 @@ export function GlobeScreen() {
   const [selection, dispatch] = useReducer(selectionReducer, initialSelection);
   const [fingerDown, setFingerDown] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const auth = useAuth();
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  // An expired session opens the sign-in sheet by itself (design 4.2).
+  const expired = auth.state.status === 'signedOut' && auth.state.expired;
+  const sheetOpen = accountSheetOpen || expired;
+  const consentShown = auth.state.status === 'needsConsent';
   // Until Mapbox has loaded the map, getCenter() answers [0, 0] rather than
   // the default camera, so rotation would jump the globe to 0°,0° (seen on device).
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -120,7 +131,10 @@ export function GlobeScreen() {
     !selectedAdm0 &&
     !selection.flying &&
     !fingerDown &&
-    !searchOpen;
+    !searchOpen &&
+    // Design 5.1: the globe holds still behind the consent screen and sheets.
+    !sheetOpen &&
+    !consentShown;
   useAutoRotation({ cameraRef, getCenter, allowed: rotationAllowed, lastInteractionAt });
 
   /** Cancels a native rotation segment in flight (a zero-length move stops every animator). */
@@ -458,6 +472,69 @@ export function GlobeScreen() {
           onHeight={(height) => {
             cardHeight.current = height;
           }}
+        />
+      )}
+
+      {(auth.state.status === 'signedOut' || auth.state.status === 'signedIn') && !searchOpen && (
+        <AccountButton
+          user={auth.state.status === 'signedIn' ? auth.state.user : null}
+          colorScheme={colorScheme}
+          top={insets.top + layout.chromeRowTop}
+          onPress={() => {
+            if (rotationAllowedRef.current) stopRotation();
+            setAccountSheetOpen(true);
+          }}
+        />
+      )}
+
+      {auth.state.status === 'signedIn' ? (
+        <AccountSheet
+          visible={accountSheetOpen}
+          user={auth.state.user}
+          colorScheme={colorScheme}
+          reduceMotion={reduceMotion === true}
+          insetsBottom={insets.bottom}
+          onClose={() => {
+            setAccountSheetOpen(false);
+            setLastInteractionAt(Date.now());
+          }}
+        />
+      ) : auth.state.status === 'signedOut' ? (
+        <SignInSheet
+          key={expired ? 'expired' : 'signIn'}
+          visible={sheetOpen}
+          expired={expired}
+          colorScheme={colorScheme}
+          reduceMotion={reduceMotion === true}
+          insetsBottom={insets.bottom}
+          onClose={() => {
+            setAccountSheetOpen(false);
+            auth.acknowledgeExpiry();
+            setLastInteractionAt(Date.now());
+          }}
+        />
+      ) : null}
+
+      {auth.state.status === 'needsConsent' && (
+        <ConsentScreen
+          need={auth.state.need}
+          documents={auth.state.documents}
+          colorScheme={colorScheme}
+          reduceMotion={reduceMotion === true}
+          insetsTop={insets.top}
+          insetsBottom={insets.bottom}
+        />
+      )}
+
+      {auth.notice && (
+        <Toast
+          text={
+            auth.notice.kind === 'signedIn'
+              ? t('account.signedInAs', { name: auth.notice.name })
+              : t('account.signedOut')
+          }
+          top={insets.top + layout.overlayTop}
+          onDone={auth.clearNotice}
         />
       )}
 

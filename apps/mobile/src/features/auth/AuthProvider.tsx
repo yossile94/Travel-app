@@ -75,6 +75,8 @@ interface AuthContextValue {
   submitConsent: (choices: { marketing?: boolean; analytics?: boolean }) => Promise<ConsentOutcome>;
   signOut: () => Promise<void>;
   clearNotice: () => void;
+  /** The "sign-in expired" sheet was seen and closed. */
+  acknowledgeExpiry: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -90,11 +92,9 @@ function toAuthUser(user: User): AuthUser {
   return { id: user.id, name: meta?.full_name ?? meta?.name ?? null, email: user.email ?? null };
 }
 
-const available = Boolean(supabase) && hasGoogleConfig;
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>(
-    available ? { status: 'loading' } : { status: 'unavailable' },
+  const [state, setState] = useState<AuthState>(() =>
+    supabase && hasGoogleConfig ? { status: 'loading' } : { status: 'unavailable' },
   );
   const [notice, setNotice] = useState<AuthNotice>(null);
   const signingOut = useRef(false);
@@ -238,6 +238,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const clearNotice = useCallback(() => setNotice(null), []);
+  const acknowledgeExpiry = useCallback(() => {
+    setState((current) =>
+      current.status === 'signedOut' && current.expired
+        ? { status: 'signedOut', expired: false }
+        : current,
+    );
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -248,8 +255,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       submitConsent,
       signOut,
       clearNotice,
+      acknowledgeExpiry,
     }),
-    [state, notice, signInWithGoogle, abandonSignIn, submitConsent, signOut, clearNotice],
+    [
+      state,
+      notice,
+      signInWithGoogle,
+      abandonSignIn,
+      submitConsent,
+      signOut,
+      clearNotice,
+      acknowledgeExpiry,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
