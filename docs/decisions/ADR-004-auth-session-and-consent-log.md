@@ -35,7 +35,7 @@
 - `revoke execute` על פונקציות trigger.
 - בדיקות pgTAP של `table_privs_are` שנועלות את זה.
 
-**5. העלאת migrations:** בספרינט 1 ההעלאה ל-staging ידנית ומתועדת (`supabase db push` אחרי מיזוג ל-main). אוטומציה מ-CI ל-staging, כמו שהאפיון (8) מתאר, נכנסת כשיהיו כמה migrations בחודש. ה-CI כבר מריץ על כל PR את כל ה-migrations על מסד נקי, בדיקות pgTAP ו-`db lint`.
+**5. העלאת migrations:** בספרינט 1 ההעלאה ל-staging ידנית ומתועדת. ל-staging מעלים **אחרי הסקירה של דודי ולפני QA**, כי דנה בודקת מול staging. ל-production מעלים רק אחרי מיזוג ל-main. שם הקובץ ב-`supabase/migrations` נושא את אותה גרסה שנרשמה ב-staging, כדי שההיסטוריה תהיה זהה. (2026-10-25: שתי ה-migrations של F-003a הועלו ל-`travel-app-dev`, והמייעץ של Supabase לא מצא בעיות אבטחה.) אוטומציה מ-CI ל-staging, כמו שהאפיון (8) מתאר, נכנסת כשיהיו כמה migrations בחודש. ה-CI כבר מריץ על כל PR את כל ה-migrations על מסד נקי, בדיקות pgTAP ו-`db lint`.
 
 **6. גרסה 0 של המסמכים:** נכנסת ב-migration לכל הסביבות, כי מסך ההסכמות לא עובד בלעדיה. **פרסום גרסה 1, אחרי עו"ד, חוסם את ההעלאה ל-production.** יש בדיקה ברשימה שלפני ההשקה.
 
