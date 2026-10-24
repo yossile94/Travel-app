@@ -185,19 +185,45 @@ describe('detailed borders and ocean mask (sprint 1 F-001.1)', () => {
     assert.ok(detailedBytes.length + oceanBytes.length <= 5 * 1024 * 1024);
   });
 
-  it('is one sea polygon with the land as holes, and lakes tinted too (AC-8)', () => {
+  it('is one sea polygon with the land as holes, and only real water tinted inland (AC-8)', () => {
     assert.equal(ocean.length, 1);
     const { type, coordinates } = ocean[0].geometry;
     assert.equal(type, 'MultiPolygon');
     const [[world, ...landHoles], ...lakes] = coordinates;
     assert.deepEqual(world[0], [-180, -90]);
     assert.ok(landHoles.length > 100, `land rings: ${landHoles.length}`);
-    assert.ok(lakes.length > 0, 'lakes');
     // Mid-Atlantic is sea: inside the world ring and in no land ring.
     const atlantic = [-30, 20];
     assert.ok(inRing(atlantic, world));
     assert.ok(!landHoles.some((ring) => inRing(atlantic, ring)));
     // Central Africa is land.
     assert.ok(landHoles.some((ring) => inRing([20, 5], ring)));
+    // Inland: the Caspian is tinted; gaps between countries are not water.
+    assert.equal(lakes.length, 1);
+    assert.ok(inRing([51.2, 42.2], lakes[0][0]), 'Caspian Sea');
+    for (const [name, point] of [
+      ['Ilemi triangle', [35.3, 4.7]],
+      ['Southern Patagonian Ice Field', [-73.3, -49.4]],
+      ['Abyei', [28.4, 9.7]],
+    ]) {
+      assert.ok(!lakes.some(([ring]) => inRing(point, ring)), `${name} is not water`);
+    }
+  });
+
+  it('winds rings as GeoJSON expects and drops flat ones (Mapbox classifies by winding)', () => {
+    const area = (ring) => {
+      let sum = 0;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        sum += ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1];
+      }
+      return sum / 2;
+    };
+    const [[world, ...holes], ...lakes] = ocean[0].geometry.coordinates;
+    assert.ok(area(world) > 0, 'world ring counter-clockwise');
+    for (const hole of holes) assert.ok(area(hole) < 0, 'land holes clockwise');
+    for (const [lake] of lakes) assert.ok(area(lake) > 0, 'lake polygons counter-clockwise');
+    for (const ring of [...holes, ...lakes.map(([lake]) => lake)]) {
+      assert.ok(new Set(ring.map(String)).size >= 3, 'no ring with fewer than three points');
+    }
   });
 });

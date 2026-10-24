@@ -14,7 +14,14 @@ import { HOME_ZOOM } from './camera';
 import { GlobeScreen } from './GlobeScreen';
 import { LAYER } from './GlobeLayers';
 
-type Hits = { wide?: string; tight?: string; country?: { adm0: string; code: string | null } };
+type Hits = {
+  wide?: string;
+  tight?: string;
+  /** Under the coarse borders' hit layer. */
+  country?: { adm0: string; code: string | null };
+  /** Under the detailed borders' hit layer, when it answers differently. */
+  detailed?: { adm0: string; code: string | null };
+};
 
 const mockMap = {
   hits: {} as Hits,
@@ -22,7 +29,10 @@ const mockMap = {
   setCamera: jest.fn(),
   loads: true,
   /** Mapbox goes idle once the visible tiles are drawn (the globe-ready point). */
-  idles: true,
+  /** How many more times Mapbox will go idle (each mount effect uses one). */
+  idles: Infinity,
+  /** min/max zoom each fill layer was rendered with, by layer id. */
+  fills: {} as Record<string, { minZoomLevel?: number; maxZoomLevel?: number }>,
   /** Last style and filter each circle layer was rendered with, by layer id. */
   circles: {} as Record<string, { style: Record<string, unknown>; filter?: unknown }>,
 };
@@ -34,16 +44,20 @@ jest.mock('@rnmapbox/maps', () => {
   const React = jest.requireActual<typeof import('react')>('react');
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
 
-  const featuresFor = (layer: string) => {
+  // Answers per layer, in the order the layers were asked for, like Mapbox.
+  const featuresFor = (layers: string[]) => {
     const { hits } = mockMap;
-    const props =
+    const answer = (layer: string) =>
       layer === 'small-countries-hit-wide' && hits.wide
         ? { adm0: hits.wide }
         : layer === 'small-countries-hit-tight' && hits.tight
           ? { adm0: hits.tight }
-          : (layer === 'countries-coarse-hit' || layer === 'countries-detailed-hit') && hits.country
-            ? hits.country
-            : null;
+          : layer === 'countries-detailed-hit'
+            ? (hits.detailed ?? null)
+            : layer === 'countries-coarse-hit'
+              ? (hits.country ?? null)
+              : null;
+    const props = layers.map(answer).find(Boolean) ?? null;
     return { type: 'FeatureCollection', features: props ? [{ properties: props }] : [] };
   };
 
@@ -57,14 +71,14 @@ jest.mock('@rnmapbox/maps', () => {
   ) {
     React.useImperativeHandle(ref, () => ({
       queryRenderedFeaturesAtPoint: async (_point: unknown, _filter: unknown, layers: string[]) =>
-        featuresFor(layers[0]!),
+        featuresFor(layers),
       getCenter: async () => mockMap.center,
     }));
     const { onDidFinishLoadingMap, onMapIdle } = props;
     React.useEffect(() => {
       if (!mockMap.loads) return;
       onDidFinishLoadingMap?.();
-      if (mockMap.idles) onMapIdle?.();
+      if (mockMap.idles-- > 0) onMapIdle?.();
     }, [onDidFinishLoadingMap, onMapIdle]);
     return React.createElement(View, { testID: 'map' }, props.children);
   });
@@ -86,7 +100,18 @@ jest.mock('@rnmapbox/maps', () => {
     RasterSource: Children,
     RasterLayer: Nothing,
     ShapeSource: Children,
-    FillLayer: Nothing,
+    FillLayer: ({
+      id,
+      minZoomLevel,
+      maxZoomLevel,
+    }: Record<string, never> & {
+      id: string;
+      minZoomLevel?: number;
+      maxZoomLevel?: number;
+    }) => {
+      mockMap.fills[id] = { minZoomLevel, maxZoomLevel };
+      return null;
+    },
     LineLayer: Nothing,
     CircleLayer: ({
       id,
@@ -106,7 +131,7 @@ jest.mock(
   'react-native-safe-area-context',
   () => jest.requireActual<{ default: object }>('react-native-safe-area-context/jest/mock').default,
 );
-jest.mock('./mapbox', () => ({ hasMapboxToken: true }));
+jest.mock('./mapbox', () => ({ hasMapboxToken: true, turnOffMapboxTelemetryOnce: jest.fn() }));
 jest.mock('./useCountriesAsset', () => ({
   useCountriesAsset: () => ({ url: 'file:///countries.geojson', error: null }),
   useOceanMaskAsset: () => ({ url: 'file:///ocean-mask.geojson', error: null }),
@@ -164,7 +189,8 @@ beforeEach(() => {
   mockMap.setCamera.mockClear();
   mockMap.hits = {};
   mockMap.loads = true;
-  mockMap.idles = true;
+  mockMap.idles = Infinity;
+  mockMap.fills = {};
   mockReduceMotion = false;
 });
 afterEach(() => jest.useRealTimers());
@@ -501,16 +527,48 @@ describe('GlobeScreen', () => {
     await render(<GlobeScreen />);
     expect(mockDetailedRequests.length).toBeGreaterThan(0);
     expect(mockDetailedRequests.every((enabled) => !enabled)).toBe(true);
+
+    mockMap.loads = true;
+    mockDetailedRequests.length = 0;
+    await render(<GlobeScreen />);
+    expect(mockDetailedRequests.at(-1)).toBe(true);
   });
 
-  it('selects from the detailed borders when they answer the tap', async () => {
+  it('asks both border levels and takes the one that is drawn (AC-13a)', async () => {
     await render(<GlobeScreen />);
-    await tap({ country: { adm0: 'GRC', code: 'GR' } });
+    // Zoomed in: only the detailed layer is drawn, so only it answers.
+    await tap({ detailed: { adm0: 'GRC', code: 'GR' } });
     expect(screen.getByText('יוון')).toBeOnTheScreen();
   });
 
+  it('keeps the coarse borders at every zoom until the detailed ones are drawn (AC-13a)', async () => {
+    // Mapbox goes idle once (globe ready), then not again for a while.
+    mockMap.idles = 1;
+    await render(<GlobeScreen />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mockMap.fills['countries-detailed-hit']).toEqual({
+      minZoomLevel: 3,
+      maxZoomLevel: undefined,
+    });
+    expect(mockMap.fills['countries-coarse-hit']!.maxZoomLevel).toBeUndefined();
+
+    // No idle came: the fallback hands zoom 3+ over to the detailed borders.
+    await act(async () => jest.advanceTimersByTime(3_000));
+    expect(mockMap.fills['countries-coarse-hit']!.maxZoomLevel).toBe(3);
+  });
+
+  it('switches the coarse borders off above zoom 3 at the first idle after the detailed ones mount', async () => {
+    await render(<GlobeScreen />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mockMap.fills['countries-coarse-hit']!.maxZoomLevel).toBe(3);
+  });
+
   it('still starts if Mapbox never settles after loading (globe-ready fallback)', async () => {
-    mockMap.idles = false;
+    mockMap.idles = 0;
     await render(<GlobeScreen />);
     await act(async () => {
       jest.advanceTimersByTime(4_000);

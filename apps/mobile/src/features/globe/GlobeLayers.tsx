@@ -73,6 +73,8 @@ interface Props {
   countriesUrl: string | null;
   /** Mounted only after the globe is ready (AC-13a); until then the coarse borders show at every zoom. */
   detailedCountriesUrl: string | null;
+  /** The detailed borders are parsed and drawn; only then do the coarse ones stop at zoom 3. */
+  detailedDrawn: boolean;
   oceanMaskUrl: string | null;
   highlightedAdm0: string | null;
   reduceMotion: boolean;
@@ -87,6 +89,7 @@ interface Props {
 export const GlobeLayers = memo(function GlobeLayers({
   countriesUrl,
   detailedCountriesUrl,
+  detailedDrawn,
   oceanMaskUrl,
   highlightedAdm0,
   reduceMotion,
@@ -195,7 +198,7 @@ export const GlobeLayers = memo(function GlobeLayers({
           url={countriesUrl}
           // Coarse vertices gain nothing from deeper tiles.
           sourceMaxZoom={3}
-          maxZoom={detailedCountriesUrl ? globe.borderDetailMinZoom : undefined}
+          maxZoom={detailedCountriesUrl && detailedDrawn ? globe.borderDetailMinZoom : undefined}
           highlight={highlightStyles}
         />
       )}
