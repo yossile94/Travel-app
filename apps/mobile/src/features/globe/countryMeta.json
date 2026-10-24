@@ -4,6 +4,7 @@
     "nameEn": "Aruba",
     "label": [-69.9728, 12.5174],
     "span": 0.21,
+    "parent": "NLD",
     "small": true,
     "timeZone": "America/Puerto_Rico",
     "currency": {
@@ -41,6 +42,7 @@
     "nameEn": "Anguilla",
     "label": [-63.0264, 18.243],
     "span": 0.19,
+    "parent": "GBR",
     "small": true,
     "timeZone": "America/Puerto_Rico",
     "currency": {
@@ -66,6 +68,7 @@
     "nameEn": "Åland",
     "label": [19.8697, 60.1565],
     "span": 0.36,
+    "parent": "FIN",
     "small": true,
     "timeZone": "Europe/Helsinki",
     "currency": {
@@ -128,6 +131,7 @@
     "nameEn": "American Samoa",
     "label": [-170.7472, -14.3267],
     "span": 0.26,
+    "parent": "USA",
     "small": true,
     "timeZone": "Pacific/Pago_Pago",
     "currency": {
@@ -147,6 +151,7 @@
     "nameEn": "Ashmore and Cartier Islands",
     "label": [123.5864, -12.4326],
     "span": 0.02,
+    "parent": "AUS",
     "small": true
   },
   "ATF": {
@@ -154,6 +159,7 @@
     "nameEn": "French Southern and Antarctic Lands",
     "label": [69.1221, -49.3037],
     "span": 1.19,
+    "parent": "FRA",
     "timeZone": "Indian/Kerguelen",
     "city": "קרגלן",
     "currency": {
@@ -326,6 +332,7 @@
     "nameEn": "Saint Barthélemy",
     "label": [-62.8332, 17.902],
     "span": 0.07,
+    "parent": "FRA",
     "small": true,
     "timeZone": "America/Puerto_Rico",
     "currency": {
@@ -363,6 +370,7 @@
     "nameEn": "Bermuda",
     "label": [-64.7636, 32.2966],
     "span": 0.2,
+    "parent": "GBR",
     "small": true,
     "timeZone": "Atlantic/Bermuda",
     "currency": {
@@ -539,6 +547,7 @@
     "nameEn": "Clipperton Island",
     "label": [-109.2204, 10.2973],
     "span": 0.03,
+    "parent": "FRA",
     "small": true
   },
   "CMR": {
@@ -583,6 +592,7 @@
     "nameEn": "Cook Islands",
     "label": [-159.7857, -21.216],
     "span": 0.1,
+    "parent": "NZL",
     "small": true,
     "timeZone": "Pacific/Rarotonga",
     "currency": {
@@ -646,6 +656,7 @@
     "nameEn": "Coral Sea Islands",
     "label": [154.3906, -21.0293],
     "span": 0,
+    "parent": "AUS",
     "small": true
   },
   "CUB": {
@@ -665,6 +676,7 @@
     "nameEn": "Curaçao",
     "label": [-68.9206, 12.145],
     "span": 0.42,
+    "parent": "NLD",
     "small": true,
     "timeZone": "America/Puerto_Rico",
     "currency": {
@@ -678,6 +690,7 @@
     "nameEn": "Cayman Islands",
     "label": [-81.2405, 19.3199],
     "span": 0.31,
+    "parent": "GBR",
     "small": true,
     "timeZone": "America/Panama",
     "currency": {
@@ -886,6 +899,7 @@
     "nameEn": "Falkland Islands",
     "label": [-58.7386, -51.6089],
     "span": 1.23,
+    "parent": "GBR",
     "timeZone": "Atlantic/Stanley",
     "currency": {
       "code": "FKP",
@@ -910,6 +924,7 @@
     "nameEn": "Faroe Islands",
     "label": [-7.0584, 62.1856],
     "span": 0.38,
+    "parent": "DNK",
     "small": true,
     "timeZone": "Atlantic/Faroe",
     "currency": {
@@ -973,6 +988,7 @@
     "nameEn": "Guernsey",
     "label": [-2.5617, 49.4635],
     "span": 0.11,
+    "parent": "GBR",
     "small": true,
     "timeZone": "Europe/London",
     "currency": {
@@ -998,6 +1014,7 @@
     "nameEn": "Gibraltar",
     "label": [-5.3467, 36.1294],
     "span": 0.03,
+    "parent": "GBR",
     "small": true,
     "timeZone": "Europe/Gibraltar",
     "currency": {
@@ -1084,6 +1101,7 @@
     "nameEn": "Greenland",
     "label": [-39.3353, 74.3194],
     "span": 23.63,
+    "parent": "DNK",
     "timeZone": "America/Nuuk",
     "city": "נואוק",
     "currency": {
@@ -1109,6 +1127,7 @@
     "nameEn": "Guam",
     "label": [144.7036, 13.3542],
     "span": 0.41,
+    "parent": "USA",
     "small": true,
     "timeZone": "Pacific/Guam",
     "currency": {
@@ -1134,6 +1153,7 @@
     "nameEn": "Hong Kong",
     "label": [114.0978, 22.4488],
     "span": 0.47,
+    "parent": "CHN",
     "small": true,
     "timeZone": "Asia/Hong_Kong",
     "currency": {
@@ -1147,6 +1167,7 @@
     "nameEn": "Heard Island and McDonald Islands",
     "label": [73.5052, -53.1035],
     "span": 0.35,
+    "parent": "AUS",
     "small": true
   },
   "HND": {
@@ -1215,6 +1236,7 @@
     "nameEn": "Isle of Man",
     "label": [-4.5301, 54.2208],
     "span": 0.36,
+    "parent": "GBR",
     "small": true,
     "timeZone": "Europe/London",
     "currency": {
@@ -1240,6 +1262,7 @@
     "nameEn": "Australian Indian Ocean Territories",
     "label": [105.6726, -10.4908],
     "span": 0.14,
+    "parent": "AUS",
     "small": true,
     "timeZone": "Indian/Christmas",
     "city": "אי חג המולד",
@@ -1254,6 +1277,7 @@
     "nameEn": "British Indian Ocean Territory",
     "label": [71.3483, -6.1908],
     "span": 0.03,
+    "parent": "GBR",
     "small": true,
     "timeZone": "Indian/Chagos",
     "currency": {
@@ -1351,6 +1375,7 @@
     "nameEn": "Jersey",
     "label": [-2.0901, 49.2208],
     "span": 0.15,
+    "parent": "GBR",
     "small": true,
     "timeZone": "Europe/London",
     "currency": {
@@ -1634,6 +1659,7 @@
     "nameEn": "Macau",
     "label": [113.556, 22.1297],
     "span": 0.06,
+    "parent": "CHN",
     "small": true,
     "timeZone": "Asia/Macau",
     "currency": {
@@ -1647,6 +1673,7 @@
     "nameEn": "Saint Martin",
     "label": [-63.0494, 18.0813],
     "span": 0.13,
+    "parent": "FRA",
     "small": true,
     "timeZone": "America/Puerto_Rico",
     "currency": {
@@ -1822,6 +1849,7 @@
     "nameEn": "Northern Mariana Islands",
     "label": [145.7344, 15.1882],
     "span": 0.18,
+    "parent": "USA",
     "small": true,
     "timeZone": "Pacific/Guam",
     "currency": {
@@ -1859,6 +1887,7 @@
     "nameEn": "Montserrat",
     "label": [-62.1883, 16.7372],
     "span": 0.14,
+    "parent": "GBR",
     "small": true,
     "timeZone": "America/Puerto_Rico",
     "currency": {
@@ -1921,6 +1950,7 @@
     "nameEn": "New Caledonia",
     "label": [165.084, -21.0647],
     "span": 2.84,
+    "parent": "FRA",
     "timeZone": "Pacific/Noumea",
     "currency": {
       "code": "XPF",
@@ -1945,6 +1975,7 @@
     "nameEn": "Norfolk Island",
     "label": [167.9545, -29.033],
     "span": 0.08,
+    "parent": "AUS",
     "small": true,
     "timeZone": "Pacific/Norfolk",
     "currency": {
@@ -1982,6 +2013,7 @@
     "nameEn": "Niue",
     "label": [-169.8626, -19.046],
     "span": 0.18,
+    "parent": "NZL",
     "small": true,
     "timeZone": "Pacific/Niue",
     "currency": {
@@ -2093,6 +2125,7 @@
     "nameEn": "Pitcairn Islands",
     "label": [-128.3175, -24.3646],
     "span": 0.09,
+    "parent": "GBR",
     "small": true,
     "timeZone": "Pacific/Pitcairn",
     "currency": {
@@ -2168,6 +2201,7 @@
     "nameEn": "Puerto Rico",
     "label": [-66.4811, 18.2347],
     "span": 1.59,
+    "parent": "USA",
     "timeZone": "America/Puerto_Rico",
     "currency": {
       "code": "USD",
@@ -2217,6 +2251,7 @@
     "nameEn": "French Polynesia",
     "label": [-149.4616, -17.6281],
     "span": 0.47,
+    "parent": "FRA",
     "small": true,
     "timeZone": "Pacific/Tahiti",
     "city": "פאפטה",
@@ -2353,6 +2388,7 @@
     "nameEn": "South Georgia and the South Sandwich Islands",
     "label": [-31.0632, -55.6834],
     "span": 1.31,
+    "parent": "GBR",
     "small": true,
     "timeZone": "Atlantic/South_Georgia",
     "currency": {
@@ -2366,6 +2402,7 @@
     "nameEn": "Saint Helena",
     "label": [-5.7126, -15.9505],
     "span": 0.13,
+    "parent": "GBR",
     "small": true,
     "timeZone": "Africa/Abidjan",
     "currency": {
@@ -2440,6 +2477,7 @@
     "nameEn": "Saint Pierre and Miquelon",
     "label": [-56.3324, 47.0403],
     "span": 0.36,
+    "parent": "FRA",
     "small": true,
     "timeZone": "America/Miquelon",
     "currency": {
@@ -2538,6 +2576,7 @@
     "nameEn": "Sint Maarten",
     "label": [-63.0701, 18.0409],
     "span": 0.1,
+    "parent": "NLD",
     "small": true,
     "timeZone": "America/Puerto_Rico",
     "currency": {
@@ -2576,6 +2615,7 @@
     "nameEn": "Turks and Caicos Islands",
     "label": [-71.7527, 21.8166],
     "span": 0.2,
+    "parent": "GBR",
     "small": true,
     "timeZone": "America/Grand_Turk",
     "currency": {
@@ -2773,6 +2813,7 @@
     "nameEn": "United States Minor Outlying Islands",
     "label": [166.6445, 19.2857],
     "span": 0.03,
+    "parent": "USA",
     "small": true
   },
   "URY": {
@@ -2855,6 +2896,7 @@
     "nameEn": "British Virgin Islands",
     "label": [-64.6366, 18.4266],
     "span": 0.19,
+    "parent": "GBR",
     "small": true,
     "timeZone": "America/Puerto_Rico",
     "currency": {
@@ -2868,6 +2910,7 @@
     "nameEn": "United States Virgin Islands",
     "label": [-64.7792, 17.7467],
     "span": 0.32,
+    "parent": "USA",
     "small": true,
     "timeZone": "America/Puerto_Rico",
     "currency": {
@@ -2905,6 +2948,7 @@
     "nameEn": "Wallis and Futuna",
     "label": [-178.1374, -14.2864],
     "span": 0.13,
+    "parent": "FRA",
     "small": true,
     "timeZone": "Pacific/Tarawa",
     "currency": {

@@ -8,18 +8,19 @@
     "react": "19.3.0"
   },
   "engines": {
-    "node": "^22.13.0 || ^24.3.0"
+    "node": "^24.3.0"
   },
   "scripts": {
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "node --test \"scripts/**/*.test.mjs\" && npm run test --workspaces --if-present",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"scripts/**/*.test.mjs\" && npm run test --workspaces --if-present",
     "build:countries": "node scripts/build-countries.mjs",
     "build:country-meta": "node scripts/build-country-meta.mjs",
-    "build:geo": "npm run build:countries && npm run build:country-meta",
+    "build:geo": "npm run build:countries && npm run build:country-meta && npm run build:search",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
+    "build:search": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-search-index.mjs"
   },
   "allowScripts": {
     "@parcel/watcher": false,

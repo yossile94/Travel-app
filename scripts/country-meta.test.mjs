@@ -120,6 +120,18 @@ describe('globe card data', () => {
     }
   });
 
+  it('links each territory to its sovereign, for search results', () => {
+    assert.equal(meta.GIB.parent, 'GBR');
+    assert.equal(meta.GUM.parent, 'USA');
+    assert.equal(meta.IOA.parent, 'AUS');
+    assert.equal(meta.HKG.parent, 'CHN');
+    for (const adm0 of ['FRA', 'GBR', 'ISR', 'USA'])
+      assert.equal(meta[adm0].parent, undefined, adm0);
+    for (const [adm0, entry] of Object.entries(meta)) {
+      if (entry.parent) assert.ok(meta[entry.parent], `${adm0} → ${entry.parent}`);
+    }
+  });
+
   it('keeps Kosovo on Belgrade time', () => {
     assert.equal(meta.KOS.timeZone, 'Europe/Belgrade');
   });

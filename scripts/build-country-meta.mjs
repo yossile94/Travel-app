@@ -247,6 +247,7 @@ async function main() {
       label: properties.label,
       span,
     };
+    if (properties.parent) entry.parent = properties.parent;
     if (landArea(geometry) < SMALL_LAND_AREA) entry.small = true;
     if (zone.timeZone) entry.timeZone = zone.timeZone;
     if (zone.city) entry.city = zone.city;

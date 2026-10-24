@@ -80,7 +80,21 @@ const NAME_FIXES = {
   PGA: { nameEn: 'Spratly Islands', nameHe: 'איי ספרטלי' },
 };
 
-function slimProperties(props) {
+/**
+ * The main area of each sovereign state, by SOV_A3: the one whose ADMIN is the
+ * sovereign itself (GBR for GB1). Every other area of that state is one of its
+ * territories (Gibraltar, Guam, the Cocos Islands...).
+ */
+function mainAreaBySovereign(features) {
+  const main = {};
+  for (const { properties: props } of features) {
+    if (props.ADMIN === props.SOVEREIGNT) main[props.SOV_A3] = props.ADM0_A3;
+  }
+  return main;
+}
+
+function slimProperties(props, mainBySovereign) {
+  const parent = mainBySovereign[props.SOV_A3];
   return {
     code: countryCode(props),
     adm0: props.ADM0_A3,
@@ -89,6 +103,8 @@ function slimProperties(props) {
     // Natural Earth's label point: inside the country even for odd shapes.
     // Used as the fly-to target and the enlarged tap target for small countries.
     label: [round(props.LABEL_X), round(props.LABEL_Y)],
+    // A territory's sovereign, shown next to its name in search results.
+    ...(parent && parent !== props.ADM0_A3 ? { parent } : {}),
   };
 }
 
@@ -120,12 +136,13 @@ function applyBorderPolicy(features) {
     throw new Error('Could not tell Gaza from Judea and Samaria in the PSX feature.');
   }
 
+  const mainBySovereign = mainAreaBySovereign(features);
   return features.flatMap((f) => {
-    if (f !== psx) return [{ ...f, properties: slimProperties(f.properties) }];
+    if (f !== psx) return [{ ...f, properties: slimProperties(f.properties, mainBySovereign) }];
     return [
       {
         type: 'Feature',
-        properties: { ...slimProperties(israel.properties), mergeInto: 'ISR' },
+        properties: { ...slimProperties(israel.properties, mainBySovereign), mergeInto: 'ISR' },
         geometry: { type: 'Polygon', coordinates: judeaSamaria[0] },
       },
       {
