@@ -101,6 +101,8 @@ export const layout = {
   mapboxLogoTop: 12,
   mapboxLogoLeft: 12,
   mapboxAttributionLeft: 100,
+  /** A country name longer than this steps down from title1 to title2 (sprint 1 AC-11). */
+  cardNameStepDownChars: 16,
 } as const;
 
 export const radius = { xs: 4, lg: 16, sheet: 28, pill: 999, flap: 4 } as const;

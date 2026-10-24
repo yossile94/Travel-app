@@ -17,7 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Line, Path, Rect } from 'react-native-svg';
 
-import { colors, fonts, highlightColor, motion, type ColorScheme } from '@/theme/tokens';
+import { colors, fonts, highlightColor, layout, motion, type ColorScheme } from '@/theme/tokens';
 
 import { boardingPassPath } from './boardingPassPath';
 import type { CountryInfo } from './countryData';
@@ -125,13 +125,30 @@ export function BoardingPassCard({
           <Text style={[styles.label, { color: palette.textSecondary }]}>
             {t('card.destination')}
           </Text>
+          {/* AC-11: at most two lines; long names step down a size, and the
+              full name stays in the label for the screen reader. */}
           <Text
-            style={[styles.nameHe, styles.clearOfClose, { color: palette.textPrimary }]}
+            style={[
+              styles.nameHe,
+              country.nameHe.length > layout.cardNameStepDownChars && styles.nameHeLong,
+              styles.clearOfClose,
+              { color: palette.textPrimary },
+            ]}
             accessibilityRole="header"
+            accessibilityLabel={country.nameHe}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+            maxFontSizeMultiplier={1.6}
+            testID="card-name"
           >
             {country.nameHe}
           </Text>
-          <Text style={[styles.nameEn, styles.clearOfClose, { color: palette.textSecondary }]}>
+          <Text
+            style={[styles.nameEn, styles.clearOfClose, { color: palette.textSecondary }]}
+            accessibilityLabel={country.nameEn}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {country.nameEn}
           </Text>
 
@@ -187,7 +204,6 @@ export function BoardingPassCard({
         style={styles.close}
         accessibilityRole="button"
         accessibilityLabel={t('card.close')}
-        hitSlop={4}
         testID="card-close"
       >
         <Svg width={20} height={20} viewBox="0 0 24 24">
@@ -283,6 +299,7 @@ const styles = StyleSheet.create({
   },
   label: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, textAlign: 'left' },
   nameHe: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, marginTop: 4, textAlign: 'left' },
+  nameHeLong: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
   nameEn: {
     fontFamily: fonts.medium,
     fontSize: 14,
@@ -292,19 +309,20 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     writingDirection: 'ltr',
   },
-  fields: { flexDirection: 'row', gap: 20, marginTop: 12 },
+  // At 130% font scale the currency drops to its own line rather than squeezing the time.
+  fields: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginTop: 12 },
   clock: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 26, fontVariant: ['tabular-nums'] },
   value: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 20, textAlign: 'left' },
   sub: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, textAlign: 'left' },
-  // The 44 pt close button sits at the end of the title row; long names wrap before it.
-  clearOfClose: { paddingEnd: 44 },
+  // The close button sits at the end of the title row; long names wrap before it.
+  clearOfClose: { paddingEnd: layout.touchTargetMin },
   barcode: { marginTop: 'auto' },
   close: {
     position: 'absolute',
     top: 6,
     end: STUB_WIDTH + 6,
-    width: 44,
-    height: 44,
+    width: layout.touchTargetMin,
+    height: layout.touchTargetMin,
     alignItems: 'center',
     justifyContent: 'center',
   },

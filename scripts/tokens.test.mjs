@@ -84,6 +84,7 @@ describe('design tokens in the app', () => {
     expectValue('mapboxLogoTop', 'layout.mapbox.logoTop');
     expectValue('mapboxLogoLeft', 'layout.mapbox.logoLeft');
     expectValue('mapboxAttributionLeft', 'layout.mapbox.attributionLeft');
+    expectValue('cardNameStepDownChars', 'layout.card.nameStepDownChars');
     const light = app.slice(app.indexOf('light: {'), app.indexOf('dark: {'));
     const dark = app.slice(app.indexOf('dark: {'), app.indexOf('} as const;'));
     for (const [scheme, block] of [

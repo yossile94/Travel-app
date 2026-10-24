@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { withTiming } from 'react-native-reanimated';
+import { StyleSheet } from 'react-native';
 
 import '@/i18n';
 import { motion } from '@/theme/tokens';
@@ -74,6 +75,24 @@ describe('BoardingPassCard', () => {
   it('shows the code alone where there is no other symbol (Switzerland)', async () => {
     await renderCard('CHE');
     expect(screen.getByText(isolateLtr('CHF'))).toBeOnTheScreen();
+  });
+
+  it('keeps a long name to two smaller lines, with the full name for the screen reader (AC-11)', async () => {
+    await renderCard('SGS');
+    const name = screen.getByTestId('card-name');
+    expect(name.props.numberOfLines).toBe(2);
+    expect(name.props.accessibilityLabel).toBe(countryByAdm0('SGS')!.nameHe);
+    expect(StyleSheet.flatten(name.props.style).fontSize).toBe(22);
+
+    await renderCard('THA');
+    expect(StyleSheet.flatten(screen.getByTestId('card-name').props.style).fontSize).toBe(28);
+  });
+
+  it('gives the close button a 48 pt target', async () => {
+    await renderCard('THA');
+    const close = StyleSheet.flatten(screen.getByTestId('card-close').props.style);
+    expect(close.width).toBe(48);
+    expect(close.height).toBe(48);
   });
 
   it('hides time and currency where there are none (Antarctica)', async () => {
