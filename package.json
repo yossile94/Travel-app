@@ -29,6 +29,7 @@
   "devDependencies": {
     "countries-and-timezones": "3.10.0",
     "country-to-currency": "3.0.1",
+    "supabase": "2.122.0",
     "topojson-client": "3.1.0",
     "topojson-server": "3.0.1",
     "topojson-simplify": "3.0.3"

@@ -43,6 +43,32 @@ jobs:
       - name: Dependency audit
         run: npm audit --audit-level=critical
 
+  database:
+    name: Database (migrations and RLS tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Read by supabase/config.toml; Google sign-in isn't exercised here.
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # Applies every migration in supabase/migrations to a fresh database.
+      - name: Start the database
+        run: npx supabase db start
+
+      # pgTAP: RLS and the consent log rules (sprint 1 AC-17).
+      - name: RLS and schema tests
+        run: npx supabase test db
+
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest
