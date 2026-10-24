@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  AccessibilityInfo,
   BackHandler,
   Dimensions,
   FlatList,
@@ -158,8 +159,13 @@ export function SearchBar({
 
   const clear = useCallback(() => {
     setQuery('');
-    // The clear button disappears with the text, so focus goes back to the field.
+    // The clear button disappears with the text, so focus goes back to the
+    // field: keyboard focus at once, and the screen reader's focus once the
+    // button is gone (focus() alone leaves TalkBack on a vanished element).
     inputRef.current?.focus();
+    requestAnimationFrame(() => {
+      if (inputRef.current) AccessibilityInfo.sendAccessibilityEvent(inputRef.current, 'focus');
+    });
   }, []);
 
   const close = useCallback(() => {
