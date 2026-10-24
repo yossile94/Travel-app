@@ -4,20 +4,14 @@
     "nameHe": "אוגנדה",
     "nameEn": "Uganda",
     "sortKey": "אוגנדה",
-    "names": [
-      "אוגנדה",
-      "uganda"
-    ]
+    "names": ["אוגנדה", "uganda"]
   },
   {
     "adm0": "UZB",
     "nameHe": "אוזבקיסטן",
     "nameEn": "Uzbekistan",
     "sortKey": "אוזבקיסטנ",
-    "names": [
-      "אוזבקיסטנ",
-      "uzbekistan"
-    ]
+    "names": ["אוזבקיסטנ", "uzbekistan"]
   },
   {
     "adm0": "ALD",
@@ -25,103 +19,65 @@
     "nameEn": "Åland",
     "parentHe": "פינלנד",
     "sortKey": "אולנד",
-    "names": [
-      "אולנד",
-      "aland"
-    ]
+    "names": ["אולנד", "aland"]
   },
   {
     "adm0": "AUT",
     "nameHe": "אוסטריה",
     "nameEn": "Austria",
     "sortKey": "אוסטריה",
-    "names": [
-      "אוסטריה",
-      "austria"
-    ],
-    "aliases": [
-      "osterreich"
-    ]
+    "names": ["אוסטריה", "austria"],
+    "aliases": ["osterreich"]
   },
   {
     "adm0": "AUS",
     "nameHe": "אוסטרליה",
     "nameEn": "Australia",
     "sortKey": "אוסטרליה",
-    "names": [
-      "אוסטרליה",
-      "australia"
-    ]
+    "names": ["אוסטרליה", "australia"]
   },
   {
     "adm0": "UKR",
     "nameHe": "אוקראינה",
     "nameEn": "Ukraine",
     "sortKey": "אוקראינה",
-    "names": [
-      "אוקראינה",
-      "ukraine"
-    ]
+    "names": ["אוקראינה", "ukraine"]
   },
   {
     "adm0": "URY",
     "nameHe": "אורוגוואי",
     "nameEn": "Uruguay",
     "sortKey": "אורוגוואי",
-    "names": [
-      "אורוגוואי",
-      "uruguay"
-    ]
+    "names": ["אורוגוואי", "uruguay"]
   },
   {
     "adm0": "AZE",
     "nameHe": "אזרבייג'ן",
     "nameEn": "Azerbaijan",
     "sortKey": "אזרבייגנ",
-    "names": [
-      "אזרבייגנ",
-      "azerbaijan"
-    ]
+    "names": ["אזרבייגנ", "azerbaijan"]
   },
   {
     "adm0": "BRI",
     "nameHe": "אי ברזילאי",
     "nameEn": "Brazilian Island",
     "sortKey": "אי ברזילאי",
-    "names": [
-      "אי ברזילאי",
-      "ברזילאי",
-      "brazilian island"
-    ]
+    "names": ["אי ברזילאי", "ברזילאי", "brazilian island"]
   },
   {
     "adm0": "ARE",
     "nameHe": "איחוד האמירויות הערביות",
     "nameEn": "United Arab Emirates",
     "sortKey": "איחוד האמירויות הערביות",
-    "names": [
-      "איחוד האמירויות הערביות",
-      "איחוד אמירויות ערביות",
-      "united arab emirates"
-    ],
-    "aliases": [
-      "איחוד האמירויות",
-      "איחוד אמירויות",
-      "האמירויות",
-      "אמירויות",
-      "uae",
-      "emirates"
-    ]
+    "names": ["איחוד האמירויות הערביות", "איחוד אמירויות ערביות", "united arab emirates"],
+    "aliases": ["איחוד האמירויות", "איחוד אמירויות", "האמירויות", "אמירויות", "uae", "emirates"]
   },
   {
     "adm0": "ITA",
     "nameHe": "איטליה",
     "nameEn": "Italy",
     "sortKey": "איטליה",
-    "names": [
-      "איטליה",
-      "italy"
-    ]
+    "names": ["איטליה", "italy"]
   },
   {
     "adm0": "ATC",
@@ -129,22 +85,14 @@
     "nameEn": "Ashmore and Cartier Islands",
     "parentHe": "אוסטרליה",
     "sortKey": "איי אשמור וקרטייה",
-    "names": [
-      "איי אשמור וקרטייה",
-      "אשמור וקרטייה",
-      "ashmore and cartier islands"
-    ]
+    "names": ["איי אשמור וקרטייה", "אשמור וקרטייה", "ashmore and cartier islands"]
   },
   {
     "adm0": "BHS",
     "nameHe": "איי בהאמה",
     "nameEn": "The Bahamas",
     "sortKey": "איי בהאמה",
-    "names": [
-      "איי בהאמה",
-      "בהאמה",
-      "the bahamas"
-    ]
+    "names": ["איי בהאמה", "בהאמה", "the bahamas"]
   },
   {
     "adm0": "SGS",
@@ -193,11 +141,7 @@
     "nameEn": "Turks and Caicos Islands",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "איי טרקס וקייקוס",
-    "names": [
-      "איי טרקס וקייקוס",
-      "טרקס וקייקוס",
-      "turks and caicos islands"
-    ]
+    "names": ["איי טרקס וקייקוס", "טרקס וקייקוס", "turks and caicos islands"]
   },
   {
     "adm0": "MNP",
@@ -218,11 +162,7 @@
     "nameHe": "איי מרשל",
     "nameEn": "Marshall Islands",
     "sortKey": "איי מרשל",
-    "names": [
-      "איי מרשל",
-      "מרשל",
-      "marshall islands"
-    ]
+    "names": ["איי מרשל", "מרשל", "marshall islands"]
   },
   {
     "adm0": "FRO",
@@ -230,11 +170,7 @@
     "nameEn": "Faroe Islands",
     "parentHe": "דנמרק",
     "sortKey": "איי פארו",
-    "names": [
-      "איי פארו",
-      "פארו",
-      "faroe islands"
-    ]
+    "names": ["איי פארו", "פארו", "faroe islands"]
   },
   {
     "adm0": "FLK",
@@ -242,11 +178,7 @@
     "nameEn": "Falkland Islands",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "איי פוקלנד",
-    "names": [
-      "איי פוקלנד",
-      "פוקלנד",
-      "falkland islands"
-    ]
+    "names": ["איי פוקלנד", "פוקלנד", "falkland islands"]
   },
   {
     "adm0": "COK",
@@ -254,11 +186,7 @@
     "nameEn": "Cook Islands",
     "parentHe": "ניו זילנד",
     "sortKey": "איי קוק",
-    "names": [
-      "איי קוק",
-      "קוק",
-      "cook islands"
-    ]
+    "names": ["איי קוק", "קוק", "cook islands"]
   },
   {
     "adm0": "CYM",
@@ -266,92 +194,63 @@
     "nameEn": "Cayman Islands",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "איי קיימנ",
-    "names": [
-      "איי קיימנ",
-      "קיימנ",
-      "cayman islands"
-    ]
+    "names": ["איי קיימנ", "קיימנ", "cayman islands"]
   },
   {
     "adm0": "SLB",
     "nameHe": "איי שלמה",
     "nameEn": "Solomon Islands",
     "sortKey": "איי שלמה",
-    "names": [
-      "איי שלמה",
-      "שלמה",
-      "solomon islands"
-    ]
+    "names": ["איי שלמה", "שלמה", "solomon islands"]
   },
   {
     "adm0": "IDN",
     "nameHe": "אינדונזיה",
     "nameEn": "Indonesia",
     "sortKey": "אינדונזיה",
-    "names": [
-      "אינדונזיה",
-      "indonesia"
-    ]
+    "names": ["אינדונזיה", "indonesia"]
   },
   {
     "adm0": "ISL",
     "nameHe": "איסלנד",
     "nameEn": "Iceland",
     "sortKey": "איסלנד",
-    "names": [
-      "איסלנד",
-      "iceland"
-    ]
+    "names": ["איסלנד", "iceland"]
   },
   {
     "adm0": "IRN",
     "nameHe": "איראן",
     "nameEn": "Iran",
     "sortKey": "איראנ",
-    "names": [
-      "איראנ",
-      "iran"
-    ]
+    "names": ["איראנ", "iran"]
   },
   {
     "adm0": "IRL",
     "nameHe": "אירלנד",
     "nameEn": "Ireland",
     "sortKey": "אירלנד",
-    "names": [
-      "אירלנד",
-      "ireland"
-    ]
+    "names": ["אירלנד", "ireland"]
   },
   {
     "adm0": "SLV",
     "nameHe": "אל סלוודור",
     "nameEn": "El Salvador",
     "sortKey": "אל סלוודור",
-    "names": [
-      "אל סלוודור",
-      "el salvador"
-    ]
+    "names": ["אל סלוודור", "el salvador"]
   },
   {
     "adm0": "ALB",
     "nameHe": "אלבניה",
     "nameEn": "Albania",
     "sortKey": "אלבניה",
-    "names": [
-      "אלבניה",
-      "albania"
-    ]
+    "names": ["אלבניה", "albania"]
   },
   {
     "adm0": "DZA",
     "nameHe": "אלג'יריה",
     "nameEn": "Algeria",
     "sortKey": "אלגיריה",
-    "names": [
-      "אלגיריה",
-      "algeria"
-    ]
+    "names": ["אלגיריה", "algeria"]
   },
   {
     "adm0": "AIA",
@@ -359,104 +258,71 @@
     "nameEn": "Anguilla",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "אנגווילה",
-    "names": [
-      "אנגווילה",
-      "anguilla"
-    ]
+    "names": ["אנגווילה", "anguilla"]
   },
   {
     "adm0": "AGO",
     "nameHe": "אנגולה",
     "nameEn": "Angola",
     "sortKey": "אנגולה",
-    "names": [
-      "אנגולה",
-      "angola"
-    ]
+    "names": ["אנגולה", "angola"]
   },
   {
     "adm0": "AND",
     "nameHe": "אנדורה",
     "nameEn": "Andorra",
     "sortKey": "אנדורה",
-    "names": [
-      "אנדורה",
-      "andorra"
-    ]
+    "names": ["אנדורה", "andorra"]
   },
   {
     "adm0": "ATA",
     "nameHe": "אנטארקטיקה",
     "nameEn": "Antarctica",
     "sortKey": "אנטארקטיקה",
-    "names": [
-      "אנטארקטיקה",
-      "antarctica"
-    ]
+    "names": ["אנטארקטיקה", "antarctica"]
   },
   {
     "adm0": "ATG",
     "nameHe": "אנטיגואה וברבודה",
     "nameEn": "Antigua and Barbuda",
     "sortKey": "אנטיגואה וברבודה",
-    "names": [
-      "אנטיגואה וברבודה",
-      "antigua and barbuda"
-    ]
+    "names": ["אנטיגואה וברבודה", "antigua and barbuda"]
   },
   {
     "adm0": "SWZ",
     "nameHe": "אסוואטיני",
     "nameEn": "Eswatini",
     "sortKey": "אסוואטיני",
-    "names": [
-      "אסוואטיני",
-      "eswatini"
-    ],
-    "aliases": [
-      "סווזילנד",
-      "swaziland"
-    ]
+    "names": ["אסוואטיני", "eswatini"],
+    "aliases": ["סווזילנד", "swaziland"]
   },
   {
     "adm0": "EST",
     "nameHe": "אסטוניה",
     "nameEn": "Estonia",
     "sortKey": "אסטוניה",
-    "names": [
-      "אסטוניה",
-      "estonia"
-    ]
+    "names": ["אסטוניה", "estonia"]
   },
   {
     "adm0": "AFG",
     "nameHe": "אפגניסטן",
     "nameEn": "Afghanistan",
     "sortKey": "אפגניסטנ",
-    "names": [
-      "אפגניסטנ",
-      "afghanistan"
-    ]
+    "names": ["אפגניסטנ", "afghanistan"]
   },
   {
     "adm0": "ECU",
     "nameHe": "אקוודור",
     "nameEn": "Ecuador",
     "sortKey": "אקוודור",
-    "names": [
-      "אקוודור",
-      "ecuador"
-    ]
+    "names": ["אקוודור", "ecuador"]
   },
   {
     "adm0": "ARG",
     "nameHe": "ארגנטינה",
     "nameEn": "Argentina",
     "sortKey": "ארגנטינה",
-    "names": [
-      "ארגנטינה",
-      "argentina"
-    ]
+    "names": ["ארגנטינה", "argentina"]
   },
   {
     "adm0": "ABW",
@@ -464,41 +330,28 @@
     "nameEn": "Aruba",
     "parentHe": "הולנד",
     "sortKey": "ארובה",
-    "names": [
-      "ארובה",
-      "aruba"
-    ]
+    "names": ["ארובה", "aruba"]
   },
   {
     "adm0": "ERI",
     "nameHe": "אריתריאה",
     "nameEn": "Eritrea",
     "sortKey": "אריתריאה",
-    "names": [
-      "אריתריאה",
-      "eritrea"
-    ]
+    "names": ["אריתריאה", "eritrea"]
   },
   {
     "adm0": "ARM",
     "nameHe": "ארמניה",
     "nameEn": "Armenia",
     "sortKey": "ארמניה",
-    "names": [
-      "ארמניה",
-      "armenia"
-    ]
+    "names": ["ארמניה", "armenia"]
   },
   {
     "adm0": "USA",
     "nameHe": "ארצות הברית",
     "nameEn": "United States of America",
     "sortKey": "ארצות הברית",
-    "names": [
-      "ארצות הברית",
-      "ארצות ברית",
-      "united states of america"
-    ],
+    "names": ["ארצות הברית", "ארצות ברית", "united states of america"],
     "aliases": [
       "ארהב",
       "ארצות הברית של אמריקה",
@@ -515,181 +368,122 @@
     "nameHe": "אתיופיה",
     "nameEn": "Ethiopia",
     "sortKey": "אתיופיה",
-    "names": [
-      "אתיופיה",
-      "ethiopia"
-    ]
+    "names": ["אתיופיה", "ethiopia"]
   },
   {
     "adm0": "BTN",
     "nameHe": "בהוטן",
     "nameEn": "Bhutan",
     "sortKey": "בהוטנ",
-    "names": [
-      "בהוטנ",
-      "bhutan"
-    ]
+    "names": ["בהוטנ", "bhutan"]
   },
   {
     "adm0": "BWA",
     "nameHe": "בוטסואנה",
     "nameEn": "Botswana",
     "sortKey": "בוטסואנה",
-    "names": [
-      "בוטסואנה",
-      "botswana"
-    ]
+    "names": ["בוטסואנה", "botswana"]
   },
   {
     "adm0": "BGR",
     "nameHe": "בולגריה",
     "nameEn": "Bulgaria",
     "sortKey": "בולגריה",
-    "names": [
-      "בולגריה",
-      "bulgaria"
-    ]
+    "names": ["בולגריה", "bulgaria"]
   },
   {
     "adm0": "BOL",
     "nameHe": "בוליביה",
     "nameEn": "Bolivia",
     "sortKey": "בוליביה",
-    "names": [
-      "בוליביה",
-      "bolivia"
-    ]
+    "names": ["בוליביה", "bolivia"]
   },
   {
     "adm0": "BIH",
     "nameHe": "בוסניה והרצגובינה",
     "nameEn": "Bosnia and Herzegovina",
     "sortKey": "בוסניה והרצגובינה",
-    "names": [
-      "בוסניה והרצגובינה",
-      "bosnia and herzegovina"
-    ],
-    "aliases": [
-      "בוסניה",
-      "bosnia"
-    ]
+    "names": ["בוסניה והרצגובינה", "bosnia and herzegovina"],
+    "aliases": ["בוסניה", "bosnia"]
   },
   {
     "adm0": "BDI",
     "nameHe": "בורונדי",
     "nameEn": "Burundi",
     "sortKey": "בורונדי",
-    "names": [
-      "בורונדי",
-      "burundi"
-    ]
+    "names": ["בורונדי", "burundi"]
   },
   {
     "adm0": "BFA",
     "nameHe": "בורקינה פאסו",
     "nameEn": "Burkina Faso",
     "sortKey": "בורקינה פאסו",
-    "names": [
-      "בורקינה פאסו",
-      "burkina faso"
-    ]
+    "names": ["בורקינה פאסו", "burkina faso"]
   },
   {
     "adm0": "BHR",
     "nameHe": "בחריין",
     "nameEn": "Bahrain",
     "sortKey": "בחריינ",
-    "names": [
-      "בחריינ",
-      "bahrain"
-    ]
+    "names": ["בחריינ", "bahrain"]
   },
   {
     "adm0": "BLR",
     "nameHe": "בלארוס",
     "nameEn": "Belarus",
     "sortKey": "בלארוס",
-    "names": [
-      "בלארוס",
-      "belarus"
-    ],
-    "aliases": [
-      "בלרוס",
-      "belorussia"
-    ]
+    "names": ["בלארוס", "belarus"],
+    "aliases": ["בלרוס", "belorussia"]
   },
   {
     "adm0": "BEL",
     "nameHe": "בלגיה",
     "nameEn": "Belgium",
     "sortKey": "בלגיה",
-    "names": [
-      "בלגיה",
-      "belgium"
-    ]
+    "names": ["בלגיה", "belgium"]
   },
   {
     "adm0": "BLZ",
     "nameHe": "בליז",
     "nameEn": "Belize",
     "sortKey": "בליז",
-    "names": [
-      "בליז",
-      "belize"
-    ]
+    "names": ["בליז", "belize"]
   },
   {
     "adm0": "BGD",
     "nameHe": "בנגלדש",
     "nameEn": "Bangladesh",
     "sortKey": "בנגלדש",
-    "names": [
-      "בנגלדש",
-      "bangladesh"
-    ]
+    "names": ["בנגלדש", "bangladesh"]
   },
   {
     "adm0": "BEN",
     "nameHe": "בנין",
     "nameEn": "Benin",
     "sortKey": "בנינ",
-    "names": [
-      "בנינ",
-      "benin"
-    ]
+    "names": ["בנינ", "benin"]
   },
   {
     "adm0": "BRB",
     "nameHe": "ברבדוס",
     "nameEn": "Barbados",
     "sortKey": "ברבדוס",
-    "names": [
-      "ברבדוס",
-      "barbados"
-    ]
+    "names": ["ברבדוס", "barbados"]
   },
   {
     "adm0": "BRN",
     "nameHe": "ברוניי",
     "nameEn": "Brunei",
     "sortKey": "ברוניי",
-    "names": [
-      "ברוניי",
-      "brunei"
-    ]
+    "names": ["ברוניי", "brunei"]
   },
   {
     "adm0": "BRA",
     "nameHe": "ברזיל",
     "nameEn": "Brazil",
     "sortKey": "ברזיל",
-    "names": [
-      "ברזיל",
-      "brazil"
-    ],
-    "aliases": [
-      "brasil"
-    ]
+    "names": ["ברזיל", "brazil"],
+    "aliases": ["brasil"]
   },
   {
     "adm0": "BMU",
@@ -697,53 +491,36 @@
     "nameEn": "Bermuda",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "ברמודה",
-    "names": [
-      "ברמודה",
-      "bermuda"
-    ]
+    "names": ["ברמודה", "bermuda"]
   },
   {
     "adm0": "GEO",
     "nameHe": "גאורגיה",
     "nameEn": "Georgia",
     "sortKey": "גאורגיה",
-    "names": [
-      "גאורגיה",
-      "georgia"
-    ],
-    "aliases": [
-      "גרוזיה"
-    ]
+    "names": ["גאורגיה", "georgia"],
+    "aliases": ["גרוזיה"]
   },
   {
     "adm0": "GHA",
     "nameHe": "גאנה",
     "nameEn": "Ghana",
     "sortKey": "גאנה",
-    "names": [
-      "גאנה",
-      "ghana"
-    ]
+    "names": ["גאנה", "ghana"]
   },
   {
     "adm0": "GAB",
     "nameHe": "גבון",
     "nameEn": "Gabon",
     "sortKey": "גבונ",
-    "names": [
-      "גבונ",
-      "gabon"
-    ]
+    "names": ["גבונ", "gabon"]
   },
   {
     "adm0": "GTM",
     "nameHe": "גואטמלה",
     "nameEn": "Guatemala",
     "sortKey": "גואטמלה",
-    "names": [
-      "גואטמלה",
-      "guatemala"
-    ]
+    "names": ["גואטמלה", "guatemala"]
   },
   {
     "adm0": "GUM",
@@ -751,30 +528,21 @@
     "nameEn": "Guam",
     "parentHe": "ארצות הברית",
     "sortKey": "גואמ",
-    "names": [
-      "גואמ",
-      "guam"
-    ]
+    "names": ["גואמ", "guam"]
   },
   {
     "adm0": "GUY",
     "nameHe": "גיאנה",
     "nameEn": "Guyana",
     "sortKey": "גיאנה",
-    "names": [
-      "גיאנה",
-      "guyana"
-    ]
+    "names": ["גיאנה", "guyana"]
   },
   {
     "adm0": "DJI",
     "nameHe": "ג'יבוטי",
     "nameEn": "Djibouti",
     "sortKey": "גיבוטי",
-    "names": [
-      "גיבוטי",
-      "djibouti"
-    ]
+    "names": ["גיבוטי", "djibouti"]
   },
   {
     "adm0": "GIB",
@@ -782,61 +550,42 @@
     "nameEn": "Gibraltar",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "גיברלטר",
-    "names": [
-      "גיברלטר",
-      "gibraltar"
-    ]
+    "names": ["גיברלטר", "gibraltar"]
   },
   {
     "adm0": "GIN",
     "nameHe": "גינאה",
     "nameEn": "Guinea",
     "sortKey": "גינאה",
-    "names": [
-      "גינאה",
-      "guinea"
-    ]
+    "names": ["גינאה", "guinea"]
   },
   {
     "adm0": "GNB",
     "nameHe": "גינאה ביסאו",
     "nameEn": "Guinea-Bissau",
     "sortKey": "גינאה ביסאו",
-    "names": [
-      "גינאה ביסאו",
-      "guinea bissau"
-    ]
+    "names": ["גינאה ביסאו", "guinea bissau"]
   },
   {
     "adm0": "GNQ",
     "nameHe": "גינאה המשוונית",
     "nameEn": "Equatorial Guinea",
     "sortKey": "גינאה המשוונית",
-    "names": [
-      "גינאה המשוונית",
-      "גינאה משוונית",
-      "equatorial guinea"
-    ]
+    "names": ["גינאה המשוונית", "גינאה משוונית", "equatorial guinea"]
   },
   {
     "adm0": "GMB",
     "nameHe": "גמביה",
     "nameEn": "The Gambia",
     "sortKey": "גמביה",
-    "names": [
-      "גמביה",
-      "the gambia"
-    ]
+    "names": ["גמביה", "the gambia"]
   },
   {
     "adm0": "JAM",
     "nameHe": "ג'מייקה",
     "nameEn": "Jamaica",
     "sortKey": "גמייקה",
-    "names": [
-      "גמייקה",
-      "jamaica"
-    ]
+    "names": ["גמייקה", "jamaica"]
   },
   {
     "adm0": "JEY",
@@ -844,10 +593,7 @@
     "nameEn": "Jersey",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "גרזי",
-    "names": [
-      "גרזי",
-      "jersey"
-    ]
+    "names": ["גרזי", "jersey"]
   },
   {
     "adm0": "GRL",
@@ -855,33 +601,22 @@
     "nameEn": "Greenland",
     "parentHe": "דנמרק",
     "sortKey": "גרינלנד",
-    "names": [
-      "גרינלנד",
-      "greenland"
-    ]
+    "names": ["גרינלנד", "greenland"]
   },
   {
     "adm0": "DEU",
     "nameHe": "גרמניה",
     "nameEn": "Germany",
     "sortKey": "גרמניה",
-    "names": [
-      "גרמניה",
-      "germany"
-    ],
-    "aliases": [
-      "deutschland"
-    ]
+    "names": ["גרמניה", "germany"],
+    "aliases": ["deutschland"]
   },
   {
     "adm0": "GRD",
     "nameHe": "גרנדה",
     "nameEn": "Grenada",
     "sortKey": "גרנדה",
-    "names": [
-      "גרנדה",
-      "grenada"
-    ]
+    "names": ["גרנדה", "grenada"]
   },
   {
     "adm0": "GGY",
@@ -889,50 +624,35 @@
     "nameEn": "Guernsey",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "גרנזי",
-    "names": [
-      "גרנזי",
-      "guernsey"
-    ]
+    "names": ["גרנזי", "guernsey"]
   },
   {
     "adm0": "DMA",
     "nameHe": "דומיניקה",
     "nameEn": "Dominica",
     "sortKey": "דומיניקה",
-    "names": [
-      "דומיניקה",
-      "dominica"
-    ]
+    "names": ["דומיניקה", "dominica"]
   },
   {
     "adm0": "DNK",
     "nameHe": "דנמרק",
     "nameEn": "Denmark",
     "sortKey": "דנמרק",
-    "names": [
-      "דנמרק",
-      "denmark"
-    ]
+    "names": ["דנמרק", "denmark"]
   },
   {
     "adm0": "ZAF",
     "nameHe": "דרום אפריקה",
     "nameEn": "South Africa",
     "sortKey": "דרומ אפריקה",
-    "names": [
-      "דרומ אפריקה",
-      "south africa"
-    ]
+    "names": ["דרומ אפריקה", "south africa"]
   },
   {
     "adm0": "SDS",
     "nameHe": "דרום סודאן",
     "nameEn": "South Sudan",
     "sortKey": "דרומ סודאנ",
-    "names": [
-      "דרומ סודאנ",
-      "south sudan"
-    ]
+    "names": ["דרומ סודאנ", "south sudan"]
   },
   {
     "adm0": "HMD",
@@ -954,23 +674,14 @@
     "nameEn": "Isle of Man",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "האי מאנ",
-    "names": [
-      "האי מאנ",
-      "אי מאנ",
-      "מאנ",
-      "isle of man"
-    ]
+    "names": ["האי מאנ", "אי מאנ", "מאנ", "isle of man"]
   },
   {
     "adm0": "HTI",
     "nameHe": "האיטי",
     "nameEn": "Haiti",
     "sortKey": "האיטי",
-    "names": [
-      "האיטי",
-      "איטי",
-      "haiti"
-    ]
+    "names": ["האיטי", "איטי", "haiti"]
   },
   {
     "adm0": "UMI",
@@ -990,17 +701,8 @@
     "nameHe": "האיים המלדיביים",
     "nameEn": "Maldives",
     "sortKey": "האיימ המלדיביימ",
-    "names": [
-      "האיימ המלדיביימ",
-      "איימ מלדיביימ",
-      "המלדיביימ",
-      "מלדיביימ",
-      "maldives"
-    ],
-    "aliases": [
-      "מלדיבימ",
-      "המלדיבימ"
-    ]
+    "names": ["האיימ המלדיביימ", "איימ מלדיביימ", "המלדיביימ", "מלדיביימ", "maldives"],
+    "aliases": ["מלדיבימ", "המלדיבימ"]
   },
   {
     "adm0": "ATF",
@@ -1018,25 +720,15 @@
     "nameHe": "הודו",
     "nameEn": "India",
     "sortKey": "הודו",
-    "names": [
-      "הודו",
-      "ודו",
-      "india"
-    ]
+    "names": ["הודו", "ודו", "india"]
   },
   {
     "adm0": "NLD",
     "nameHe": "הולנד",
     "nameEn": "Netherlands",
     "sortKey": "הולנד",
-    "names": [
-      "הולנד",
-      "ולנד",
-      "netherlands"
-    ],
-    "aliases": [
-      "holland"
-    ]
+    "names": ["הולנד", "ולנד", "netherlands"],
+    "aliases": ["holland"]
   },
   {
     "adm0": "HKG",
@@ -1044,33 +736,21 @@
     "nameEn": "Hong Kong",
     "parentHe": "סין",
     "sortKey": "הונג קונג",
-    "names": [
-      "הונג קונג",
-      "ונג קונג",
-      "hong kong"
-    ]
+    "names": ["הונג קונג", "ונג קונג", "hong kong"]
   },
   {
     "adm0": "HUN",
     "nameHe": "הונגריה",
     "nameEn": "Hungary",
     "sortKey": "הונגריה",
-    "names": [
-      "הונגריה",
-      "ונגריה",
-      "hungary"
-    ]
+    "names": ["הונגריה", "ונגריה", "hungary"]
   },
   {
     "adm0": "HND",
     "nameHe": "הונדורס",
     "nameEn": "Honduras",
     "sortKey": "הונדורס",
-    "names": [
-      "הונדורס",
-      "ונדורס",
-      "honduras"
-    ]
+    "names": ["הונדורס", "ונדורס", "honduras"]
   },
   {
     "adm0": "IOT",
@@ -1089,11 +769,7 @@
     "nameHe": "הממלכה המאוחדת",
     "nameEn": "United Kingdom",
     "sortKey": "הממלכה המאוחדת",
-    "names": [
-      "הממלכה המאוחדת",
-      "ממלכה מאוחדת",
-      "united kingdom"
-    ],
+    "names": ["הממלכה המאוחדת", "ממלכה מאוחדת", "united kingdom"],
     "aliases": [
       "בריטניה",
       "אנגליה",
@@ -1112,27 +788,15 @@
     "nameHe": "הפיליפינים",
     "nameEn": "Philippines",
     "sortKey": "הפיליפינימ",
-    "names": [
-      "הפיליפינימ",
-      "פיליפינימ",
-      "philippines"
-    ]
+    "names": ["הפיליפינימ", "פיליפינימ", "philippines"]
   },
   {
     "adm0": "DOM",
     "nameHe": "הרפובליקה הדומיניקנית",
     "nameEn": "Dominican Republic",
     "sortKey": "הרפובליקה הדומיניקנית",
-    "names": [
-      "הרפובליקה הדומיניקנית",
-      "רפובליקה דומיניקנית",
-      "dominican republic"
-    ],
-    "aliases": [
-      "הדומיניקנית",
-      "דומיניקנית",
-      "dominicana"
-    ]
+    "names": ["הרפובליקה הדומיניקנית", "רפובליקה דומיניקנית", "dominican republic"],
+    "aliases": ["הדומיניקנית", "דומיניקנית", "dominicana"]
   },
   {
     "adm0": "COD",
@@ -1144,53 +808,30 @@
       "רפובליקה דמוקרטית של קונגו",
       "democratic republic of the congo"
     ],
-    "aliases": [
-      "קונגו קינשאסה",
-      "dr congo",
-      "drc",
-      "congo kinshasa"
-    ]
+    "aliases": ["קונגו קינשאסה", "dr congo", "drc", "congo kinshasa"]
   },
   {
     "adm0": "CAF",
     "nameHe": "הרפובליקה המרכז-אפריקאית",
     "nameEn": "Central African Republic",
     "sortKey": "הרפובליקה המרכז אפריקאית",
-    "names": [
-      "הרפובליקה המרכז אפריקאית",
-      "רפובליקה מרכז אפריקאית",
-      "central african republic"
-    ]
+    "names": ["הרפובליקה המרכז אפריקאית", "רפובליקה מרכז אפריקאית", "central african republic"]
   },
   {
     "adm0": "CHN",
     "nameHe": "הרפובליקה העממית של סין",
     "nameEn": "People's Republic of China",
     "sortKey": "הרפובליקה העממית של סינ",
-    "names": [
-      "הרפובליקה העממית של סינ",
-      "רפובליקה עממית של סינ",
-      "peoples republic of china"
-    ],
-    "aliases": [
-      "סינ",
-      "china"
-    ]
+    "names": ["הרפובליקה העממית של סינ", "רפובליקה עממית של סינ", "peoples republic of china"],
+    "aliases": ["סינ", "china"]
   },
   {
     "adm0": "COG",
     "nameHe": "הרפובליקה של קונגו",
     "nameEn": "Republic of the Congo",
     "sortKey": "הרפובליקה של קונגו",
-    "names": [
-      "הרפובליקה של קונגו",
-      "רפובליקה של קונגו",
-      "republic of the congo"
-    ],
-    "aliases": [
-      "קונגו ברזוויל",
-      "congo brazzaville"
-    ]
+    "names": ["הרפובליקה של קונגו", "רפובליקה של קונגו", "republic of the congo"],
+    "aliases": ["קונגו ברזוויל", "congo brazzaville"]
   },
   {
     "adm0": "WLF",
@@ -1198,161 +839,108 @@
     "nameEn": "Wallis and Futuna",
     "parentHe": "צרפת",
     "sortKey": "ואליס ופוטונה",
-    "names": [
-      "ואליס ופוטונה",
-      "wallis and futuna"
-    ]
+    "names": ["ואליס ופוטונה", "wallis and futuna"]
   },
   {
     "adm0": "VNM",
     "nameHe": "וייטנאם",
     "nameEn": "Vietnam",
     "sortKey": "וייטנאמ",
-    "names": [
-      "וייטנאמ",
-      "vietnam"
-    ]
+    "names": ["וייטנאמ", "vietnam"]
   },
   {
     "adm0": "VUT",
     "nameHe": "ונואטו",
     "nameEn": "Vanuatu",
     "sortKey": "ונואטו",
-    "names": [
-      "ונואטו",
-      "vanuatu"
-    ]
+    "names": ["ונואטו", "vanuatu"]
   },
   {
     "adm0": "VEN",
     "nameHe": "ונצואלה",
     "nameEn": "Venezuela",
     "sortKey": "ונצואלה",
-    "names": [
-      "ונצואלה",
-      "venezuela"
-    ]
+    "names": ["ונצואלה", "venezuela"]
   },
   {
     "adm0": "ZWE",
     "nameHe": "זימבבואה",
     "nameEn": "Zimbabwe",
     "sortKey": "זימבבואה",
-    "names": [
-      "זימבבואה",
-      "zimbabwe"
-    ]
+    "names": ["זימבבואה", "zimbabwe"]
   },
   {
     "adm0": "ZMB",
     "nameHe": "זמביה",
     "nameEn": "Zambia",
     "sortKey": "זמביה",
-    "names": [
-      "זמביה",
-      "zambia"
-    ]
+    "names": ["זמביה", "zambia"]
   },
   {
     "adm0": "CIV",
     "nameHe": "חוף השנהב",
     "nameEn": "Ivory Coast",
     "sortKey": "חופ השנהב",
-    "names": [
-      "חופ השנהב",
-      "חופ שנהב",
-      "ivory coast"
-    ],
-    "aliases": [
-      "קוט דיבואר",
-      "cote divoire"
-    ]
+    "names": ["חופ השנהב", "חופ שנהב", "ivory coast"],
+    "aliases": ["קוט דיבואר", "cote divoire"]
   },
   {
     "adm0": "TWN",
     "nameHe": "טאיוואן",
     "nameEn": "Taiwan",
     "sortKey": "טאיוואנ",
-    "names": [
-      "טאיוואנ",
-      "taiwan"
-    ],
-    "aliases": [
-      "טייוואנ"
-    ]
+    "names": ["טאיוואנ", "taiwan"],
+    "aliases": ["טייוואנ"]
   },
   {
     "adm0": "TJK",
     "nameHe": "טג׳יקיסטן",
     "nameEn": "Tajikistan",
     "sortKey": "טגיקיסטנ",
-    "names": [
-      "טגיקיסטנ",
-      "tajikistan"
-    ]
+    "names": ["טגיקיסטנ", "tajikistan"]
   },
   {
     "adm0": "TUV",
     "nameHe": "טובאלו",
     "nameEn": "Tuvalu",
     "sortKey": "טובאלו",
-    "names": [
-      "טובאלו",
-      "tuvalu"
-    ]
+    "names": ["טובאלו", "tuvalu"]
   },
   {
     "adm0": "TGO",
     "nameHe": "טוגו",
     "nameEn": "Togo",
     "sortKey": "טוגו",
-    "names": [
-      "טוגו",
-      "togo"
-    ]
+    "names": ["טוגו", "togo"]
   },
   {
     "adm0": "TON",
     "nameHe": "טונגה",
     "nameEn": "Tonga",
     "sortKey": "טונגה",
-    "names": [
-      "טונגה",
-      "tonga"
-    ]
+    "names": ["טונגה", "tonga"]
   },
   {
     "adm0": "TUR",
     "nameHe": "טורקיה",
     "nameEn": "Turkey",
     "sortKey": "טורקיה",
-    "names": [
-      "טורקיה",
-      "turkey"
-    ],
-    "aliases": [
-      "turkiye"
-    ]
+    "names": ["טורקיה", "turkey"],
+    "aliases": ["turkiye"]
   },
   {
     "adm0": "TKM",
     "nameHe": "טורקמניסטן",
     "nameEn": "Turkmenistan",
     "sortKey": "טורקמניסטנ",
-    "names": [
-      "טורקמניסטנ",
-      "turkmenistan"
-    ]
+    "names": ["טורקמניסטנ", "turkmenistan"]
   },
   {
     "adm0": "TZA",
     "nameHe": "טנזניה",
     "nameEn": "Tanzania",
     "sortKey": "טנזניה",
-    "names": [
-      "טנזניה",
-      "tanzania"
-    ]
+    "names": ["טנזניה", "tanzania"]
   },
   {
     "adm0": "IOA",
@@ -1383,254 +971,176 @@
     "nameEn": "Coral Sea Islands",
     "parentHe": "אוסטרליה",
     "sortKey": "טריטוריית איי ימ האלמוגימ",
-    "names": [
-      "טריטוריית איי ימ האלמוגימ",
-      "טריטוריית איי ימ אלמוגימ",
-      "coral sea islands"
-    ]
+    "names": ["טריטוריית איי ימ האלמוגימ", "טריטוריית איי ימ אלמוגימ", "coral sea islands"]
   },
   {
     "adm0": "TTO",
     "nameHe": "טרינידד וטובגו",
     "nameEn": "Trinidad and Tobago",
     "sortKey": "טרינידד וטובגו",
-    "names": [
-      "טרינידד וטובגו",
-      "trinidad and tobago"
-    ]
+    "names": ["טרינידד וטובגו", "trinidad and tobago"]
   },
   {
     "adm0": "GRC",
     "nameHe": "יוון",
     "nameEn": "Greece",
     "sortKey": "יוונ",
-    "names": [
-      "יוונ",
-      "greece"
-    ],
-    "aliases": [
-      "hellas"
-    ]
+    "names": ["יוונ", "greece"],
+    "aliases": ["hellas"]
   },
   {
     "adm0": "JPN",
     "nameHe": "יפן",
     "nameEn": "Japan",
     "sortKey": "יפנ",
-    "names": [
-      "יפנ",
-      "japan"
-    ]
+    "names": ["יפנ", "japan"]
   },
   {
     "adm0": "JOR",
     "nameHe": "ירדן",
     "nameEn": "Jordan",
     "sortKey": "ירדנ",
-    "names": [
-      "ירדנ",
-      "jordan"
-    ]
+    "names": ["ירדנ", "jordan"]
   },
   {
     "adm0": "ISR",
     "nameHe": "ישראל",
     "nameEn": "Israel",
     "sortKey": "ישראל",
-    "names": [
-      "ישראל",
-      "israel"
-    ]
+    "names": ["ישראל", "israel"]
   },
   {
     "adm0": "KWT",
     "nameHe": "כווית",
     "nameEn": "Kuwait",
     "sortKey": "כווית",
-    "names": [
-      "כווית",
-      "kuwait"
-    ]
+    "names": ["כווית", "kuwait"]
   },
   {
     "adm0": "CPV",
     "nameHe": "כף ורדה",
     "nameEn": "Cape Verde",
     "sortKey": "כפ ורדה",
-    "names": [
-      "כפ ורדה",
-      "cape verde"
-    ]
+    "names": ["כפ ורדה", "cape verde"]
   },
   {
     "adm0": "LAO",
     "nameHe": "לאוס",
     "nameEn": "Laos",
     "sortKey": "לאוס",
-    "names": [
-      "לאוס",
-      "laos"
-    ]
+    "names": ["לאוס", "laos"]
   },
   {
     "adm0": "LBN",
     "nameHe": "לבנון",
     "nameEn": "Lebanon",
     "sortKey": "לבנונ",
-    "names": [
-      "לבנונ",
-      "lebanon"
-    ]
+    "names": ["לבנונ", "lebanon"]
   },
   {
     "adm0": "LBY",
     "nameHe": "לוב",
     "nameEn": "Libya",
     "sortKey": "לוב",
-    "names": [
-      "לוב",
-      "libya"
-    ]
+    "names": ["לוב", "libya"]
   },
   {
     "adm0": "LUX",
     "nameHe": "לוקסמבורג",
     "nameEn": "Luxembourg",
     "sortKey": "לוקסמבורג",
-    "names": [
-      "לוקסמבורג",
-      "luxembourg"
-    ]
+    "names": ["לוקסמבורג", "luxembourg"]
   },
   {
     "adm0": "LVA",
     "nameHe": "לטביה",
     "nameEn": "Latvia",
     "sortKey": "לטביה",
-    "names": [
-      "לטביה",
-      "latvia"
-    ]
+    "names": ["לטביה", "latvia"]
   },
   {
     "adm0": "LBR",
     "nameHe": "ליבריה",
     "nameEn": "Liberia",
     "sortKey": "ליבריה",
-    "names": [
-      "ליבריה",
-      "liberia"
-    ]
+    "names": ["ליבריה", "liberia"]
   },
   {
     "adm0": "LTU",
     "nameHe": "ליטא",
     "nameEn": "Lithuania",
     "sortKey": "ליטא",
-    "names": [
-      "ליטא",
-      "lithuania"
-    ]
+    "names": ["ליטא", "lithuania"]
   },
   {
     "adm0": "LIE",
     "nameHe": "ליכטנשטיין",
     "nameEn": "Liechtenstein",
     "sortKey": "ליכטנשטיינ",
-    "names": [
-      "ליכטנשטיינ",
-      "liechtenstein"
-    ]
+    "names": ["ליכטנשטיינ", "liechtenstein"]
   },
   {
     "adm0": "LSO",
     "nameHe": "לסוטו",
     "nameEn": "Lesotho",
     "sortKey": "לסוטו",
-    "names": [
-      "לסוטו",
-      "lesotho"
-    ]
+    "names": ["לסוטו", "lesotho"]
   },
   {
     "adm0": "MRT",
     "nameHe": "מאוריטניה",
     "nameEn": "Mauritania",
     "sortKey": "מאוריטניה",
-    "names": [
-      "מאוריטניה",
-      "mauritania"
-    ]
+    "names": ["מאוריטניה", "mauritania"]
   },
   {
     "adm0": "MUS",
     "nameHe": "מאוריציוס",
     "nameEn": "Mauritius",
     "sortKey": "מאוריציוס",
-    "names": [
-      "מאוריציוס",
-      "mauritius"
-    ]
+    "names": ["מאוריציוס", "mauritius"]
   },
   {
     "adm0": "MLI",
     "nameHe": "מאלי",
     "nameEn": "Mali",
     "sortKey": "מאלי",
-    "names": [
-      "מאלי",
-      "mali"
-    ]
+    "names": ["מאלי", "mali"]
   },
   {
     "adm0": "MDG",
     "nameHe": "מדגסקר",
     "nameEn": "Madagascar",
     "sortKey": "מדגסקר",
-    "names": [
-      "מדגסקר",
-      "madagascar"
-    ]
+    "names": ["מדגסקר", "madagascar"]
   },
   {
     "adm0": "MOZ",
     "nameHe": "מוזמביק",
     "nameEn": "Mozambique",
     "sortKey": "מוזמביק",
-    "names": [
-      "מוזמביק",
-      "mozambique"
-    ]
+    "names": ["מוזמביק", "mozambique"]
   },
   {
     "adm0": "MDA",
     "nameHe": "מולדובה",
     "nameEn": "Moldova",
     "sortKey": "מולדובה",
-    "names": [
-      "מולדובה",
-      "moldova"
-    ]
+    "names": ["מולדובה", "moldova"]
   },
   {
     "adm0": "MNG",
     "nameHe": "מונגוליה",
     "nameEn": "Mongolia",
     "sortKey": "מונגוליה",
-    "names": [
-      "מונגוליה",
-      "mongolia"
-    ]
+    "names": ["מונגוליה", "mongolia"]
   },
   {
     "adm0": "MNE",
     "nameHe": "מונטנגרו",
     "nameEn": "Montenegro",
     "sortKey": "מונטנגרו",
-    "names": [
-      "מונטנגרו",
-      "montenegro"
-    ]
+    "names": ["מונטנגרו", "montenegro"]
   },
   {
     "adm0": "MSR",
@@ -1638,99 +1148,65 @@
     "nameEn": "Montserrat",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "מונטסראט",
-    "names": [
-      "מונטסראט",
-      "montserrat"
-    ]
+    "names": ["מונטסראט", "montserrat"]
   },
   {
     "adm0": "MCO",
     "nameHe": "מונקו",
     "nameEn": "Monaco",
     "sortKey": "מונקו",
-    "names": [
-      "מונקו",
-      "monaco"
-    ]
+    "names": ["מונקו", "monaco"]
   },
   {
     "adm0": "TLS",
     "nameHe": "מזרח טימור",
     "nameEn": "East Timor",
     "sortKey": "מזרח טימור",
-    "names": [
-      "מזרח טימור",
-      "east timor"
-    ],
-    "aliases": [
-      "טימור",
-      "טימור לסטה",
-      "timor leste"
-    ]
+    "names": ["מזרח טימור", "east timor"],
+    "aliases": ["טימור", "טימור לסטה", "timor leste"]
   },
   {
     "adm0": "MMR",
     "nameHe": "מיאנמר",
     "nameEn": "Myanmar",
     "sortKey": "מיאנמר",
-    "names": [
-      "מיאנמר",
-      "myanmar"
-    ],
-    "aliases": [
-      "בורמה",
-      "burma"
-    ]
+    "names": ["מיאנמר", "myanmar"],
+    "aliases": ["בורמה", "burma"]
   },
   {
     "adm0": "FSM",
     "nameHe": "מיקרונזיה",
     "nameEn": "Federated States of Micronesia",
     "sortKey": "מיקרונזיה",
-    "names": [
-      "מיקרונזיה",
-      "federated states of micronesia"
-    ]
+    "names": ["מיקרונזיה", "federated states of micronesia"]
   },
   {
     "adm0": "MWI",
     "nameHe": "מלאווי",
     "nameEn": "Malawi",
     "sortKey": "מלאווי",
-    "names": [
-      "מלאווי",
-      "malawi"
-    ]
+    "names": ["מלאווי", "malawi"]
   },
   {
     "adm0": "MYS",
     "nameHe": "מלזיה",
     "nameEn": "Malaysia",
     "sortKey": "מלזיה",
-    "names": [
-      "מלזיה",
-      "malaysia"
-    ]
+    "names": ["מלזיה", "malaysia"]
   },
   {
     "adm0": "MLT",
     "nameHe": "מלטה",
     "nameEn": "Malta",
     "sortKey": "מלטה",
-    "names": [
-      "מלטה",
-      "malta"
-    ]
+    "names": ["מלטה", "malta"]
   },
   {
     "adm0": "EGY",
     "nameHe": "מצרים",
     "nameEn": "Egypt",
     "sortKey": "מצרימ",
-    "names": [
-      "מצרימ",
-      "egypt"
-    ]
+    "names": ["מצרימ", "egypt"]
   },
   {
     "adm0": "MAC",
@@ -1738,65 +1214,43 @@
     "nameEn": "Macau",
     "parentHe": "סין",
     "sortKey": "מקאו",
-    "names": [
-      "מקאו",
-      "macau"
-    ]
+    "names": ["מקאו", "macau"]
   },
   {
     "adm0": "MKD",
     "nameHe": "מקדוניה הצפונית",
     "nameEn": "North Macedonia",
     "sortKey": "מקדוניה הצפונית",
-    "names": [
-      "מקדוניה הצפונית",
-      "מקדוניה צפונית",
-      "north macedonia"
-    ],
-    "aliases": [
-      "מקדוניה",
-      "macedonia"
-    ]
+    "names": ["מקדוניה הצפונית", "מקדוניה צפונית", "north macedonia"],
+    "aliases": ["מקדוניה", "macedonia"]
   },
   {
     "adm0": "MEX",
     "nameHe": "מקסיקו",
     "nameEn": "Mexico",
     "sortKey": "מקסיקו",
-    "names": [
-      "מקסיקו",
-      "mexico"
-    ]
+    "names": ["מקסיקו", "mexico"]
   },
   {
     "adm0": "MAR",
     "nameHe": "מרוקו",
     "nameEn": "Morocco",
     "sortKey": "מרוקו",
-    "names": [
-      "מרוקו",
-      "morocco"
-    ]
+    "names": ["מרוקו", "morocco"]
   },
   {
     "adm0": "NRU",
     "nameHe": "נאורו",
     "nameEn": "Nauru",
     "sortKey": "נאורו",
-    "names": [
-      "נאורו",
-      "nauru"
-    ]
+    "names": ["נאורו", "nauru"]
   },
   {
     "adm0": "NOR",
     "nameHe": "נורווגיה",
     "nameEn": "Norway",
     "sortKey": "נורווגיה",
-    "names": [
-      "נורווגיה",
-      "norway"
-    ]
+    "names": ["נורווגיה", "norway"]
   },
   {
     "adm0": "NFK",
@@ -1804,30 +1258,21 @@
     "nameEn": "Norfolk Island",
     "parentHe": "אוסטרליה",
     "sortKey": "נורפוק",
-    "names": [
-      "נורפוק",
-      "norfolk island"
-    ]
+    "names": ["נורפוק", "norfolk island"]
   },
   {
     "adm0": "NGA",
     "nameHe": "ניגריה",
     "nameEn": "Nigeria",
     "sortKey": "ניגריה",
-    "names": [
-      "ניגריה",
-      "nigeria"
-    ]
+    "names": ["ניגריה", "nigeria"]
   },
   {
     "adm0": "NZL",
     "nameHe": "ניו זילנד",
     "nameEn": "New Zealand",
     "sortKey": "ניו זילנד",
-    "names": [
-      "ניו זילנד",
-      "new zealand"
-    ]
+    "names": ["ניו זילנד", "new zealand"]
   },
   {
     "adm0": "NIU",
@@ -1835,171 +1280,119 @@
     "nameEn": "Niue",
     "parentHe": "ניו זילנד",
     "sortKey": "ניואה",
-    "names": [
-      "ניואה",
-      "niue"
-    ]
+    "names": ["ניואה", "niue"]
   },
   {
     "adm0": "NER",
     "nameHe": "ניז'ר",
     "nameEn": "Niger",
     "sortKey": "ניזר",
-    "names": [
-      "ניזר",
-      "niger"
-    ]
+    "names": ["ניזר", "niger"]
   },
   {
     "adm0": "NIC",
     "nameHe": "ניקרגואה",
     "nameEn": "Nicaragua",
     "sortKey": "ניקרגואה",
-    "names": [
-      "ניקרגואה",
-      "nicaragua"
-    ]
+    "names": ["ניקרגואה", "nicaragua"]
   },
   {
     "adm0": "NAM",
     "nameHe": "נמיביה",
     "nameEn": "Namibia",
     "sortKey": "נמיביה",
-    "names": [
-      "נמיביה",
-      "namibia"
-    ]
+    "names": ["נמיביה", "namibia"]
   },
   {
     "adm0": "NPL",
     "nameHe": "נפאל",
     "nameEn": "Nepal",
     "sortKey": "נפאל",
-    "names": [
-      "נפאל",
-      "nepal"
-    ]
+    "names": ["נפאל", "nepal"]
   },
   {
     "adm0": "STP",
     "nameHe": "סאו טומה ופרינסיפה",
     "nameEn": "São Tomé and Príncipe",
     "sortKey": "סאו טומה ופרינסיפה",
-    "names": [
-      "סאו טומה ופרינסיפה",
-      "sao tome and principe"
-    ]
+    "names": ["סאו טומה ופרינסיפה", "sao tome and principe"]
   },
   {
     "adm0": "SAH",
     "nameHe": "סהרה המערבית",
     "nameEn": "Western Sahara",
     "sortKey": "סהרה המערבית",
-    "names": [
-      "סהרה המערבית",
-      "סהרה מערבית",
-      "western sahara"
-    ]
+    "names": ["סהרה המערבית", "סהרה מערבית", "western sahara"]
   },
   {
     "adm0": "SDN",
     "nameHe": "סודאן",
     "nameEn": "Sudan",
     "sortKey": "סודאנ",
-    "names": [
-      "סודאנ",
-      "sudan"
-    ]
+    "names": ["סודאנ", "sudan"]
   },
   {
     "adm0": "SOM",
     "nameHe": "סומליה",
     "nameEn": "Somalia",
     "sortKey": "סומליה",
-    "names": [
-      "סומליה",
-      "somalia"
-    ]
+    "names": ["סומליה", "somalia"]
   },
   {
     "adm0": "SYR",
     "nameHe": "סוריה",
     "nameEn": "Syria",
     "sortKey": "סוריה",
-    "names": [
-      "סוריה",
-      "syria"
-    ]
+    "names": ["סוריה", "syria"]
   },
   {
     "adm0": "SUR",
     "nameHe": "סורינאם",
     "nameEn": "Suriname",
     "sortKey": "סורינאמ",
-    "names": [
-      "סורינאמ",
-      "suriname"
-    ]
+    "names": ["סורינאמ", "suriname"]
   },
   {
     "adm0": "SLE",
     "nameHe": "סיירה לאון",
     "nameEn": "Sierra Leone",
     "sortKey": "סיירה לאונ",
-    "names": [
-      "סיירה לאונ",
-      "sierra leone"
-    ]
+    "names": ["סיירה לאונ", "sierra leone"]
   },
   {
     "adm0": "SYC",
     "nameHe": "סיישל",
     "nameEn": "Seychelles",
     "sortKey": "סיישל",
-    "names": [
-      "סיישל",
-      "seychelles"
-    ]
+    "names": ["סיישל", "seychelles"]
   },
   {
     "adm0": "SGP",
     "nameHe": "סינגפור",
     "nameEn": "Singapore",
     "sortKey": "סינגפור",
-    "names": [
-      "סינגפור",
-      "singapore"
-    ]
+    "names": ["סינגפור", "singapore"]
   },
   {
     "adm0": "SVN",
     "nameHe": "סלובניה",
     "nameEn": "Slovenia",
     "sortKey": "סלובניה",
-    "names": [
-      "סלובניה",
-      "slovenia"
-    ]
+    "names": ["סלובניה", "slovenia"]
   },
   {
     "adm0": "SVK",
     "nameHe": "סלובקיה",
     "nameEn": "Slovakia",
     "sortKey": "סלובקיה",
-    "names": [
-      "סלובקיה",
-      "slovakia"
-    ]
+    "names": ["סלובקיה", "slovakia"]
   },
   {
     "adm0": "WSM",
     "nameHe": "סמואה",
     "nameEn": "Samoa",
     "sortKey": "סמואה",
-    "names": [
-      "סמואה",
-      "samoa"
-    ]
+    "names": ["סמואה", "samoa"]
   },
   {
     "adm0": "ASM",
@@ -2007,11 +1400,7 @@
     "nameEn": "American Samoa",
     "parentHe": "ארצות הברית",
     "sortKey": "סמואה האמריקנית",
-    "names": [
-      "סמואה האמריקנית",
-      "סמואה אמריקנית",
-      "american samoa"
-    ]
+    "names": ["סמואה האמריקנית", "סמואה אמריקנית", "american samoa"]
   },
   {
     "adm0": "BLM",
@@ -2019,10 +1408,7 @@
     "nameEn": "Saint Barthélemy",
     "parentHe": "צרפת",
     "sortKey": "סנ ברתלמי",
-    "names": [
-      "סנ ברתלמי",
-      "saint barthelemy"
-    ]
+    "names": ["סנ ברתלמי", "saint barthelemy"]
   },
   {
     "adm0": "MAF",
@@ -2030,20 +1416,14 @@
     "nameEn": "Saint Martin",
     "parentHe": "צרפת",
     "sortKey": "סנ מרטנ",
-    "names": [
-      "סנ מרטנ",
-      "saint martin"
-    ]
+    "names": ["סנ מרטנ", "saint martin"]
   },
   {
     "adm0": "SMR",
     "nameHe": "סן מרינו",
     "nameEn": "San Marino",
     "sortKey": "סנ מרינו",
-    "names": [
-      "סנ מרינו",
-      "san marino"
-    ]
+    "names": ["סנ מרינו", "san marino"]
   },
   {
     "adm0": "SPM",
@@ -2051,20 +1431,14 @@
     "nameEn": "Saint Pierre and Miquelon",
     "parentHe": "צרפת",
     "sortKey": "סנ פייר ומיקלונ",
-    "names": [
-      "סנ פייר ומיקלונ",
-      "saint pierre and miquelon"
-    ]
+    "names": ["סנ פייר ומיקלונ", "saint pierre and miquelon"]
   },
   {
     "adm0": "SEN",
     "nameHe": "סנגל",
     "nameEn": "Senegal",
     "sortKey": "סנגל",
-    "names": [
-      "סנגל",
-      "senegal"
-    ]
+    "names": ["סנגל", "senegal"]
   },
   {
     "adm0": "SHN",
@@ -2072,31 +1446,21 @@
     "nameEn": "Saint Helena",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "סנט הלנה",
-    "names": [
-      "סנט הלנה",
-      "סנט לנה",
-      "saint helena"
-    ]
+    "names": ["סנט הלנה", "סנט לנה", "saint helena"]
   },
   {
     "adm0": "VCT",
     "nameHe": "סנט וינסנט והגרנדינים",
     "nameEn": "Saint Vincent and the Grenadines",
     "sortKey": "סנט וינסנט והגרנדינימ",
-    "names": [
-      "סנט וינסנט והגרנדינימ",
-      "saint vincent and the grenadines"
-    ]
+    "names": ["סנט וינסנט והגרנדינימ", "saint vincent and the grenadines"]
   },
   {
     "adm0": "LCA",
     "nameHe": "סנט לוסיה",
     "nameEn": "Saint Lucia",
     "sortKey": "סנט לוסיה",
-    "names": [
-      "סנט לוסיה",
-      "saint lucia"
-    ]
+    "names": ["סנט לוסיה", "saint lucia"]
   },
   {
     "adm0": "SXM",
@@ -2104,84 +1468,57 @@
     "nameEn": "Sint Maarten",
     "parentHe": "הולנד",
     "sortKey": "סנט מארטנ",
-    "names": [
-      "סנט מארטנ",
-      "sint maarten"
-    ]
+    "names": ["סנט מארטנ", "sint maarten"]
   },
   {
     "adm0": "KNA",
     "nameHe": "סנט קיטס ונוויס",
     "nameEn": "Saint Kitts and Nevis",
     "sortKey": "סנט קיטס ונוויס",
-    "names": [
-      "סנט קיטס ונוויס",
-      "saint kitts and nevis"
-    ]
+    "names": ["סנט קיטס ונוויס", "saint kitts and nevis"]
   },
   {
     "adm0": "ESP",
     "nameHe": "ספרד",
     "nameEn": "Spain",
     "sortKey": "ספרד",
-    "names": [
-      "ספרד",
-      "spain"
-    ],
-    "aliases": [
-      "espana"
-    ]
+    "names": ["ספרד", "spain"],
+    "aliases": ["espana"]
   },
   {
     "adm0": "SRB",
     "nameHe": "סרביה",
     "nameEn": "Serbia",
     "sortKey": "סרביה",
-    "names": [
-      "סרביה",
-      "serbia"
-    ]
+    "names": ["סרביה", "serbia"]
   },
   {
     "adm0": "LKA",
     "nameHe": "סרי לנקה",
     "nameEn": "Sri Lanka",
     "sortKey": "סרי לנקה",
-    "names": [
-      "סרי לנקה",
-      "sri lanka"
-    ]
+    "names": ["סרי לנקה", "sri lanka"]
   },
   {
     "adm0": "OMN",
     "nameHe": "עומאן",
     "nameEn": "Oman",
     "sortKey": "עומאנ",
-    "names": [
-      "עומאנ",
-      "oman"
-    ]
+    "names": ["עומאנ", "oman"]
   },
   {
     "adm0": "IRQ",
     "nameHe": "עיראק",
     "nameEn": "Iraq",
     "sortKey": "עיראק",
-    "names": [
-      "עיראק",
-      "iraq"
-    ]
+    "names": ["עיראק", "iraq"]
   },
   {
     "adm0": "SAU",
     "nameHe": "ערב הסעודית",
     "nameEn": "Saudi Arabia",
     "sortKey": "ערב הסעודית",
-    "names": [
-      "ערב הסעודית",
-      "ערב סעודית",
-      "saudi arabia"
-    ]
+    "names": ["ערב הסעודית", "ערב סעודית", "saudi arabia"]
   },
   {
     "adm0": "PRI",
@@ -2189,20 +1526,14 @@
     "nameEn": "Puerto Rico",
     "parentHe": "ארצות הברית",
     "sortKey": "פוארטו ריקו",
-    "names": [
-      "פוארטו ריקו",
-      "puerto rico"
-    ]
+    "names": ["פוארטו ריקו", "puerto rico"]
   },
   {
     "adm0": "POL",
     "nameHe": "פולין",
     "nameEn": "Poland",
     "sortKey": "פולינ",
-    "names": [
-      "פולינ",
-      "poland"
-    ]
+    "names": ["פולינ", "poland"]
   },
   {
     "adm0": "PYF",
@@ -2210,31 +1541,21 @@
     "nameEn": "French Polynesia",
     "parentHe": "צרפת",
     "sortKey": "פולינזיה הצרפתית",
-    "names": [
-      "פולינזיה הצרפתית",
-      "פולינזיה צרפתית",
-      "french polynesia"
-    ]
+    "names": ["פולינזיה הצרפתית", "פולינזיה צרפתית", "french polynesia"]
   },
   {
     "adm0": "PRT",
     "nameHe": "פורטוגל",
     "nameEn": "Portugal",
     "sortKey": "פורטוגל",
-    "names": [
-      "פורטוגל",
-      "portugal"
-    ]
+    "names": ["פורטוגל", "portugal"]
   },
   {
     "adm0": "FJI",
     "nameHe": "פיג'י",
     "nameEn": "Fiji",
     "sortKey": "פיגי",
-    "names": [
-      "פיגי",
-      "fiji"
-    ]
+    "names": ["פיגי", "fiji"]
   },
   {
     "adm0": "PCN",
@@ -2242,174 +1563,120 @@
     "nameEn": "Pitcairn Islands",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "פיטקרנ",
-    "names": [
-      "פיטקרנ",
-      "pitcairn islands"
-    ]
+    "names": ["פיטקרנ", "pitcairn islands"]
   },
   {
     "adm0": "FIN",
     "nameHe": "פינלנד",
     "nameEn": "Finland",
     "sortKey": "פינלנד",
-    "names": [
-      "פינלנד",
-      "finland"
-    ]
+    "names": ["פינלנד", "finland"]
   },
   {
     "adm0": "PLW",
     "nameHe": "פלאו",
     "nameEn": "Palau",
     "sortKey": "פלאו",
-    "names": [
-      "פלאו",
-      "palau"
-    ]
+    "names": ["פלאו", "palau"]
   },
   {
     "adm0": "PAN",
     "nameHe": "פנמה",
     "nameEn": "Panama",
     "sortKey": "פנמה",
-    "names": [
-      "פנמה",
-      "panama"
-    ]
+    "names": ["פנמה", "panama"]
   },
   {
     "adm0": "PNG",
     "nameHe": "פפואה גינאה החדשה",
     "nameEn": "Papua New Guinea",
     "sortKey": "פפואה גינאה החדשה",
-    "names": [
-      "פפואה גינאה החדשה",
-      "פפואה גינאה חדשה",
-      "papua new guinea"
-    ]
+    "names": ["פפואה גינאה החדשה", "פפואה גינאה חדשה", "papua new guinea"]
   },
   {
     "adm0": "PAK",
     "nameHe": "פקיסטן",
     "nameEn": "Pakistan",
     "sortKey": "פקיסטנ",
-    "names": [
-      "פקיסטנ",
-      "pakistan"
-    ]
+    "names": ["פקיסטנ", "pakistan"]
   },
   {
     "adm0": "PRY",
     "nameHe": "פרגוואי",
     "nameEn": "Paraguay",
     "sortKey": "פרגוואי",
-    "names": [
-      "פרגוואי",
-      "paraguay"
-    ]
+    "names": ["פרגוואי", "paraguay"]
   },
   {
     "adm0": "PER",
     "nameHe": "פרו",
     "nameEn": "Peru",
     "sortKey": "פרו",
-    "names": [
-      "פרו",
-      "peru"
-    ]
+    "names": ["פרו", "peru"]
   },
   {
     "adm0": "TCD",
     "nameHe": "צ'אד",
     "nameEn": "Chad",
     "sortKey": "צאד",
-    "names": [
-      "צאד",
-      "chad"
-    ]
+    "names": ["צאד", "chad"]
   },
   {
     "adm0": "CHL",
     "nameHe": "צ'ילה",
     "nameEn": "Chile",
     "sortKey": "צילה",
-    "names": [
-      "צילה",
-      "chile"
-    ]
+    "names": ["צילה", "chile"]
   },
   {
     "adm0": "CZE",
     "nameHe": "צ'כיה",
     "nameEn": "Czech Republic",
     "sortKey": "צכיה",
-    "names": [
-      "צכיה",
-      "czech republic"
-    ],
-    "aliases": [
-      "czechia"
-    ]
+    "names": ["צכיה", "czech republic"],
+    "aliases": ["czechia"]
   },
   {
     "adm0": "FRA",
     "nameHe": "צרפת",
     "nameEn": "France",
     "sortKey": "צרפת",
-    "names": [
-      "צרפת",
-      "france"
-    ]
+    "names": ["צרפת", "france"]
   },
   {
     "adm0": "CUB",
     "nameHe": "קובה",
     "nameEn": "Cuba",
     "sortKey": "קובה",
-    "names": [
-      "קובה",
-      "cuba"
-    ]
+    "names": ["קובה", "cuba"]
   },
   {
     "adm0": "COL",
     "nameHe": "קולומביה",
     "nameEn": "Colombia",
     "sortKey": "קולומביה",
-    "names": [
-      "קולומביה",
-      "colombia"
-    ]
+    "names": ["קולומביה", "colombia"]
   },
   {
     "adm0": "COM",
     "nameHe": "קומורו",
     "nameEn": "Comoros",
     "sortKey": "קומורו",
-    "names": [
-      "קומורו",
-      "comoros"
-    ]
+    "names": ["קומורו", "comoros"]
   },
   {
     "adm0": "KOS",
     "nameHe": "קוסובו",
     "nameEn": "Kosovo",
     "sortKey": "קוסובו",
-    "names": [
-      "קוסובו",
-      "kosovo"
-    ]
+    "names": ["קוסובו", "kosovo"]
   },
   {
     "adm0": "CRI",
     "nameHe": "קוסטה ריקה",
     "nameEn": "Costa Rica",
     "sortKey": "קוסטה ריקה",
-    "names": [
-      "קוסטה ריקה",
-      "costa rica"
-    ]
+    "names": ["קוסטה ריקה", "costa rica"]
   },
   {
     "adm0": "CUW",
@@ -2417,81 +1684,51 @@
     "nameEn": "Curaçao",
     "parentHe": "הולנד",
     "sortKey": "קוראסאו",
-    "names": [
-      "קוראסאו",
-      "curacao"
-    ]
+    "names": ["קוראסאו", "curacao"]
   },
   {
     "adm0": "KOR",
     "nameHe": "קוריאה הדרומית",
     "nameEn": "South Korea",
     "sortKey": "קוריאה הדרומית",
-    "names": [
-      "קוריאה הדרומית",
-      "קוריאה דרומית",
-      "south korea"
-    ],
-    "aliases": [
-      "דרומ קוריאה",
-      "קוריאה",
-      "korea"
-    ]
+    "names": ["קוריאה הדרומית", "קוריאה דרומית", "south korea"],
+    "aliases": ["דרומ קוריאה", "קוריאה", "korea"]
   },
   {
     "adm0": "PRK",
     "nameHe": "קוריאה הצפונית",
     "nameEn": "North Korea",
     "sortKey": "קוריאה הצפונית",
-    "names": [
-      "קוריאה הצפונית",
-      "קוריאה צפונית",
-      "north korea"
-    ],
-    "aliases": [
-      "צפונ קוריאה",
-      "dprk"
-    ]
+    "names": ["קוריאה הצפונית", "קוריאה צפונית", "north korea"],
+    "aliases": ["צפונ קוריאה", "dprk"]
   },
   {
     "adm0": "KAZ",
     "nameHe": "קזחסטן",
     "nameEn": "Kazakhstan",
     "sortKey": "קזחסטנ",
-    "names": [
-      "קזחסטנ",
-      "kazakhstan"
-    ]
+    "names": ["קזחסטנ", "kazakhstan"]
   },
   {
     "adm0": "QAT",
     "nameHe": "קטר",
     "nameEn": "Qatar",
     "sortKey": "קטר",
-    "names": [
-      "קטר",
-      "qatar"
-    ]
+    "names": ["קטר", "qatar"]
   },
   {
     "adm0": "KGZ",
     "nameHe": "קירגיזסטן",
     "nameEn": "Kyrgyzstan",
     "sortKey": "קירגיזסטנ",
-    "names": [
-      "קירגיזסטנ",
-      "kyrgyzstan"
-    ]
+    "names": ["קירגיזסטנ", "kyrgyzstan"]
   },
   {
     "adm0": "KIR",
     "nameHe": "קיריבטי",
     "nameEn": "Kiribati",
     "sortKey": "קיריבטי",
-    "names": [
-      "קיריבטי",
-      "kiribati"
-    ]
+    "names": ["קיריבטי", "kiribati"]
   },
   {
     "adm0": "NCL",
@@ -2499,11 +1736,7 @@
     "nameEn": "New Caledonia",
     "parentHe": "צרפת",
     "sortKey": "קלדוניה החדשה",
-    "names": [
-      "קלדוניה החדשה",
-      "קלדוניה חדשה",
-      "new caledonia"
-    ]
+    "names": ["קלדוניה החדשה", "קלדוניה חדשה", "new caledonia"]
   },
   {
     "adm0": "CLP",
@@ -2511,172 +1744,113 @@
     "nameEn": "Clipperton Island",
     "parentHe": "צרפת",
     "sortKey": "קליפרטונ",
-    "names": [
-      "קליפרטונ",
-      "clipperton island"
-    ]
+    "names": ["קליפרטונ", "clipperton island"]
   },
   {
     "adm0": "KHM",
     "nameHe": "קמבודיה",
     "nameEn": "Cambodia",
     "sortKey": "קמבודיה",
-    "names": [
-      "קמבודיה",
-      "cambodia"
-    ]
+    "names": ["קמבודיה", "cambodia"]
   },
   {
     "adm0": "CMR",
     "nameHe": "קמרון",
     "nameEn": "Cameroon",
     "sortKey": "קמרונ",
-    "names": [
-      "קמרונ",
-      "cameroon"
-    ]
+    "names": ["קמרונ", "cameroon"]
   },
   {
     "adm0": "CAN",
     "nameHe": "קנדה",
     "nameEn": "Canada",
     "sortKey": "קנדה",
-    "names": [
-      "קנדה",
-      "canada"
-    ]
+    "names": ["קנדה", "canada"]
   },
   {
     "adm0": "KEN",
     "nameHe": "קניה",
     "nameEn": "Kenya",
     "sortKey": "קניה",
-    "names": [
-      "קניה",
-      "kenya"
-    ]
+    "names": ["קניה", "kenya"]
   },
   {
     "adm0": "CYP",
     "nameHe": "קפריסין",
     "nameEn": "Cyprus",
     "sortKey": "קפריסינ",
-    "names": [
-      "קפריסינ",
-      "cyprus"
-    ]
+    "names": ["קפריסינ", "cyprus"]
   },
   {
     "adm0": "HRV",
     "nameHe": "קרואטיה",
     "nameEn": "Croatia",
     "sortKey": "קרואטיה",
-    "names": [
-      "קרואטיה",
-      "croatia"
-    ]
+    "names": ["קרואטיה", "croatia"]
   },
   {
     "adm0": "VAT",
     "nameHe": "קריית הוותיקן",
     "nameEn": "Vatican City",
     "sortKey": "קריית הוותיקנ",
-    "names": [
-      "קריית הוותיקנ",
-      "קריית וותיקנ",
-      "vatican city"
-    ],
-    "aliases": [
-      "הוותיקנ",
-      "וותיקנ",
-      "ותיקנ",
-      "הותיקנ",
-      "vatican"
-    ]
+    "names": ["קריית הוותיקנ", "קריית וותיקנ", "vatican city"],
+    "aliases": ["הוותיקנ", "וותיקנ", "ותיקנ", "הותיקנ", "vatican"]
   },
   {
     "adm0": "RWA",
     "nameHe": "רואנדה",
     "nameEn": "Rwanda",
     "sortKey": "רואנדה",
-    "names": [
-      "רואנדה",
-      "rwanda"
-    ]
+    "names": ["רואנדה", "rwanda"]
   },
   {
     "adm0": "ROU",
     "nameHe": "רומניה",
     "nameEn": "Romania",
     "sortKey": "רומניה",
-    "names": [
-      "רומניה",
-      "romania"
-    ]
+    "names": ["רומניה", "romania"]
   },
   {
     "adm0": "RUS",
     "nameHe": "רוסיה",
     "nameEn": "Russia",
     "sortKey": "רוסיה",
-    "names": [
-      "רוסיה",
-      "russia"
-    ]
+    "names": ["רוסיה", "russia"]
   },
   {
     "adm0": "SWE",
     "nameHe": "שוודיה",
     "nameEn": "Sweden",
     "sortKey": "שוודיה",
-    "names": [
-      "שוודיה",
-      "sweden"
-    ]
+    "names": ["שוודיה", "sweden"]
   },
   {
     "adm0": "CHE",
     "nameHe": "שווייץ",
     "nameEn": "Switzerland",
     "sortKey": "שווייצ",
-    "names": [
-      "שווייצ",
-      "switzerland"
-    ],
-    "aliases": [
-      "שוויצ",
-      "swiss",
-      "schweiz"
-    ]
+    "names": ["שווייצ", "switzerland"],
+    "aliases": ["שוויצ", "swiss", "schweiz"]
   },
   {
     "adm0": "THA",
     "nameHe": "תאילנד",
     "nameEn": "Thailand",
     "sortKey": "תאילנד",
-    "names": [
-      "תאילנד",
-      "thailand"
-    ]
+    "names": ["תאילנד", "thailand"]
   },
   {
     "adm0": "TUN",
     "nameHe": "תוניסיה",
     "nameEn": "Tunisia",
     "sortKey": "תוניסיה",
-    "names": [
-      "תוניסיה",
-      "tunisia"
-    ]
+    "names": ["תוניסיה", "tunisia"]
   },
   {
     "adm0": "YEM",
     "nameHe": "תימן",
     "nameEn": "Yemen",
     "sortKey": "תימנ",
-    "names": [
-      "תימנ",
-      "yemen"
-    ]
+    "names": ["תימנ", "yemen"]
   }
 ]
