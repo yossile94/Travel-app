@@ -4,7 +4,7 @@
  * gestures themselves are checked on the device (Maestro).
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { BackHandler } from 'react-native';
+import { AccessibilityInfo, BackHandler } from 'react-native';
 import { withTiming } from 'react-native-reanimated';
 
 import '@/i18n';
@@ -466,6 +466,18 @@ describe('GlobeScreen', () => {
       expect(screen.queryByText('נמצאה מדינה אחת')).toBeNull();
       await act(async () => jest.advanceTimersByTime(600));
       expect(screen.getByText('נמצאו 2 מדינות')).toBeOnTheScreen();
+    });
+
+    it('gives the screen reader focus back to the field after clear (AC-6)', async () => {
+      const focus = jest
+        .spyOn(AccessibilityInfo, 'sendAccessibilityEvent')
+        .mockImplementation(() => {});
+      await render(<GlobeScreen />);
+      await search('fr');
+      await fireEvent.press(screen.getByTestId('search-clear'));
+      await act(async () => jest.advanceTimersByTime(20));
+      expect(focus).toHaveBeenCalledWith(expect.anything(), 'focus');
+      focus.mockRestore();
     });
 
     it('labels a territory with its sovereign (AC-4)', async () => {
