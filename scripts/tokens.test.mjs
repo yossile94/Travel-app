@@ -91,6 +91,17 @@ describe('design tokens in the app', () => {
     expectValue('micro', 'motion.duration.micro');
     expectValue('medium', 'motion.duration.medium');
     expectValue('searchAnnounceDelay', 'motion.search.announceDelay');
+    expectValue('toastVisible', 'motion.toast.visible');
+    for (const scheme of ['light', 'dark']) {
+      const block = app.slice(app.indexOf(`${scheme}: { bg:`));
+      for (const part of ['bg', 'border', 'fg']) {
+        const value = design[`brand.google.${scheme}.${part}`];
+        assert.ok(
+          block.startsWith(`${scheme}: { bg:`) && block.includes(`${part}: '${value}'`),
+          `google ${scheme} ${part}`,
+        );
+      }
+    }
     expectValue('touchTargetMin', 'size.touchTarget.min');
     expectValue('listRowMin', 'size.listRow.min');
     expectValue('chromeEdge', 'layout.chrome.edge');
@@ -113,6 +124,18 @@ describe('design tokens in the app', () => {
         ['chromeBg', 'chrome.bg'],
         ['chromeFg', 'chrome.fg'],
         ['chromeBorder', 'chrome.border'],
+        ['canvas', 'bg.canvas'],
+        ['scrim', 'bg.scrim'],
+        ['primary', 'action.primary.bg'],
+        ['onPrimary', 'action.primary.fg'],
+        ['secondaryBg', 'action.secondary.bg'],
+        ['secondaryFg', 'action.secondary.fg'],
+        ['disabledBg', 'action.disabled.bg'],
+        ['disabledFg', 'action.disabled.fg'],
+        ['infoBg', 'status.info.subtleBg'],
+        ['infoFg', 'status.info.subtleFg'],
+        ['link', 'text.link'],
+        ['borderControl', 'border.control'],
       ]) {
         const value = design[`color.${scheme}.${key}`];
         assert.ok(block.includes(`${name}: '${value}'`), `${scheme} ${name} should be ${value}`);
