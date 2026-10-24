@@ -22,8 +22,8 @@ const mockMap = {
   setCamera: jest.fn(),
   loads: true,
   onPress: null as null | ((feature: unknown) => Promise<void>),
-  /** Last style each circle layer was rendered with, by layer id. */
-  circles: {} as Record<string, { circleRadius?: unknown }>,
+  /** Last style and filter each circle layer was rendered with, by layer id. */
+  circles: {} as Record<string, { style: Record<string, unknown>; filter?: unknown }>,
 };
 let mockReduceMotion: boolean | null = false;
 
@@ -84,8 +84,16 @@ jest.mock('@rnmapbox/maps', () => {
     ShapeSource: Children,
     FillLayer: Nothing,
     LineLayer: Nothing,
-    CircleLayer: ({ id, style }: { id: string; style: { circleRadius?: unknown } }) => {
-      mockMap.circles[id] = style;
+    CircleLayer: ({
+      id,
+      style,
+      filter,
+    }: {
+      id: string;
+      style: Record<string, unknown>;
+      filter?: unknown;
+    }) => {
+      mockMap.circles[id] = { style, filter };
       return null;
     },
   };
@@ -241,18 +249,19 @@ describe('GlobeScreen', () => {
     for (const [, config] of fades) expect(config?.reduceMotion).toBe('never');
   });
 
-  it('shrinks a small island’s dot back when its card closes', async () => {
+  it('rings a selected small island and removes the ring when its card closes (AC-7)', async () => {
     await render(<GlobeScreen />);
-    const enlarged = () =>
-      JSON.stringify(mockMap.circles['small-countries-dot']?.circleRadius).includes('"MDV"');
+    expect(mockMap.circles['small-countries-dot']).toBeUndefined();
+    const ring = () => mockMap.circles['small-countries-ring']!;
 
     await tap({ wide: 'MDV' });
     await act(async () => jest.advanceTimersByTime(1_000));
-    expect(enlarged()).toBe(true);
+    expect(JSON.stringify(ring().filter)).toContain('"MDV"');
+    expect(ring().style.circleStrokeOpacity).toBe(1);
 
     await tap({});
     await act(async () => jest.advanceTimersByTime(1_000));
-    expect(enlarged()).toBe(false);
+    expect(ring().style.circleStrokeOpacity).toBe(0);
   });
 
   it('does not auto-rotate while a card is open (AC-2)', async () => {

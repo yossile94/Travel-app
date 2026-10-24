@@ -58,6 +58,15 @@ export const globe = {
     outline: '#F3F6FC',
     outlineWidth: 1.6,
   },
+  /** Around a selected small country, which is too small to see highlighted (sprint 1 AC-7). */
+  selectionRing: {
+    radius: 10,
+    width: 2,
+    color: '#F3F6FC',
+    underlayWidth: 4,
+    underlayColor: '#03060F',
+    underlayOpacity: 0.6,
+  },
   /** Dims the globe behind open search (sprint 1 design 2.1). */
   searchScrim: 'rgba(3,6,15,0.40)',
 } as const;

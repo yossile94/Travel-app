@@ -60,6 +60,19 @@ describe('design tokens in the app', () => {
 
   it('match the sprint 1 search and chrome tokens', () => {
     expectValue('searchScrim', 'globe.final.searchScrim');
+    const ring = app.slice(app.indexOf('selectionRing: {'), app.indexOf('searchScrim'));
+    for (const [name, key] of [
+      ['radius', 'radius'],
+      ['width', 'width'],
+      ['color', 'color'],
+      ['underlayWidth', 'underlayWidth'],
+      ['underlayColor', 'underlayColor'],
+      ['underlayOpacity', 'underlayOpacity'],
+    ]) {
+      const value = design[`globe.final.selectionRing.${key}`];
+      const literal = typeof value === 'string' ? `'${value}'` : String(value);
+      assert.ok(ring.includes(`${name}: ${literal}`), `selectionRing.${name} should be ${literal}`);
+    }
     expectValue('micro', 'motion.duration.micro');
     expectValue('medium', 'motion.duration.medium');
     expectValue('searchAnnounceDelay', 'motion.search.announceDelay');

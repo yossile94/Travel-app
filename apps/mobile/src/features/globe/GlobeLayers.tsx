@@ -36,7 +36,7 @@ interface Props {
 
 /**
  * Everything drawn on the globe: base ocean, satellite imagery, atmosphere,
- * country borders, the selection highlight and the small-area dots. Memoised
+ * country borders, the selection highlight and the small-area ring. Memoised
  * so that touches and timers in the screen don't resend every layer's style
  * to the native map.
  */
@@ -50,7 +50,6 @@ export const GlobeLayers = memo(function GlobeLayers({
   const highlightStyles = useMemo(() => {
     const fade = { duration: reduceMotion ? 0 : motion.highlight, delay: 0 };
     const shown = highlight.visible ? 1 : 0;
-    const shownAdm0 = highlight.visible ? (highlight.adm0 ?? '') : '';
     return {
       filter: ['==', ['get', 'adm0'], highlight.adm0 ?? ''] as const,
       fill: {
@@ -79,13 +78,23 @@ export const GlobeLayers = memo(function GlobeLayers({
         lineOpacityTransition: fade,
         lineJoin: 'round' as const,
       },
-      // Follows the highlight's visibility, so the dot shrinks back when the card closes.
-      dot: {
-        circleRadius: ['case', ['==', ['get', 'adm0'], shownAdm0], 6, 3] as const,
-        circleColor: highlightColor,
-        circleOpacity: 0.9,
-        circleStrokeWidth: 1,
-        circleStrokeColor: globe.highlight.outline,
+      // Sprint 1 AC-7: no dots any more; a selected small country gets a white
+      // ring instead, with a dark underlay so it reads over ice and desert.
+      ringUnderlay: {
+        circleRadius: globe.selectionRing.radius,
+        circleOpacity: 0,
+        circleStrokeWidth: globe.selectionRing.underlayWidth,
+        circleStrokeColor: globe.selectionRing.underlayColor,
+        circleStrokeOpacity: globe.selectionRing.underlayOpacity * shown,
+        circleStrokeOpacityTransition: fade,
+      },
+      ring: {
+        circleRadius: globe.selectionRing.radius,
+        circleOpacity: 0,
+        circleStrokeWidth: globe.selectionRing.width,
+        circleStrokeColor: globe.selectionRing.color,
+        circleStrokeOpacity: shown,
+        circleStrokeOpacityTransition: fade,
       },
     };
   }, [highlight.adm0, highlight.visible, reduceMotion]);
@@ -110,10 +119,19 @@ export const GlobeLayers = memo(function GlobeLayers({
             circleOpacity: 0,
           }}
         />
-        <CircleLayer id="small-countries-dot" style={highlightStyles.dot} />
+        <CircleLayer
+          id="small-countries-ring-underlay"
+          filter={highlightStyles.filter}
+          style={highlightStyles.ringUnderlay}
+        />
+        <CircleLayer
+          id="small-countries-ring"
+          filter={highlightStyles.filter}
+          style={highlightStyles.ring}
+        />
       </ShapeSource>
 
-      {/* The borders arrive asynchronously; keep them under the small-area dots. */}
+      {/* The borders arrive asynchronously; keep them under the small-area ring. */}
       {countriesUrl && (
         <ShapeSource id="countries" url={countriesUrl} maxZoomLevel={6}>
           {/* Invisible fill: the hit-test surface for taps on countries. */}
