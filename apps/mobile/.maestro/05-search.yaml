@@ -1,0 +1,52 @@
+appId: com.travelapp.companion
+name: Country search finds, selects and closes (sprint 1 F-002, AC-2 to AC-4)
+tags: [sprint-1, f-002]
+---
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+
+# Latin input, ignoring diacritics: "cote" finds Côte d'Ivoire (AC-2).
+- tapOn:
+    id: search-open
+- inputText: cote
+- assertVisible:
+    id: search-result-CIV
+
+# "usa" lists the United States first; choosing it opens its card (AC-3).
+- tapOn:
+    id: search-clear
+- inputText: usa
+- tapOn:
+    id: search-result-USA
+- extendedWaitUntil:
+    visible:
+      id: country-card
+    timeout: 4000
+- assertNotVisible:
+    id: search-input
+
+# Hebrew, with the leading ה optional: "מלד" finds the Maldives (AC-2).
+- tapOn:
+    id: search-open
+- assertNotVisible:
+    id: country-card
+- inputText: מלד
+- assertVisible:
+    id: search-result-MDV
+
+# Nothing matches a non-destination (AC-4).
+- tapOn:
+    id: search-clear
+- inputText: gaza
+- assertVisible:
+    id: search-empty
+
+# Back, back: the first closes the keyboard, the second closes search, and
+# the card chosen earlier comes back (AC-4, design 2.3).
+- back
+- back
+- assertNotVisible:
+    id: search-input
+- assertVisible:
+    id: country-card

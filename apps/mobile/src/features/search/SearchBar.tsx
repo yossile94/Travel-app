@@ -346,9 +346,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     paddingVertical: 0,
-    // Like the card's text: 'left' is swapped to an absolute right in the RTL
-    // layout, so Latin input ("usa") stays on the right too (design 2.5).
-    textAlign: 'left',
+    // Unlike Text, Android's EditText takes textAlign literally (seen on the
+    // A73: 'left' put Hebrew on the left), so the start edge in Hebrew is
+    // 'right'; it also keeps Latin input ("usa") on the right (design 2.5).
+    textAlign: 'right',
   },
   results: {
     position: 'absolute',
