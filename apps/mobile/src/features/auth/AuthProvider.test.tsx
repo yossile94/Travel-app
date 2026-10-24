@@ -1,4 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import { AuthRetryableFetchError } from '@supabase/supabase-js';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 
@@ -12,7 +14,10 @@ const mockState = {
 };
 const mockSupabase = {
   auth: {
-    getSession: jest.fn(async () => ({ data: { session: mockState.session } })),
+    getSession: jest.fn(async (): Promise<{ data: { session: unknown }; error: unknown }> => ({
+      data: { session: mockState.session },
+      error: null,
+    })),
     onAuthStateChange: jest.fn((listener: Listener) => {
       mockState.listeners.push(listener);
       return { data: { subscription: { unsubscribe: jest.fn() } } };
@@ -66,8 +71,13 @@ const googleUser = {
 
 const wrapper = ({ children }: { children: ReactNode }) => <AuthProvider>{children}</AuthProvider>;
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
+  await AsyncStorage.clear();
+  mockSupabase.auth.getSession.mockImplementation(async () => ({
+    data: { session: mockState.session },
+    error: null,
+  }));
   mockState.session = null;
   mockState.listeners = [];
   mockSupabase.auth.signInWithIdToken.mockResolvedValue({
@@ -256,5 +266,94 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
     expect(mockSupabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
     expect(result.current.notice).toEqual({ kind: 'signedOut' });
+  });
+
+  describe('tech-lead review round 1', () => {
+    const offline = () => new AuthRetryableFetchError('Network request failed', 0);
+
+    it("stays signed in when an expired token can't be refreshed offline (AC-19)", async () => {
+      await AsyncStorage.setItem(
+        'auth.lastUser.v1',
+        JSON.stringify({ id: 'user-1', name: 'דנה כהן', email: 'dana@example.test' }),
+      );
+      mockStore.local = { terms: 0, privacy: 0 };
+      mockStore.current = null;
+      mockSupabase.auth.getSession.mockResolvedValue({ data: { session: null }, error: offline() });
+      const { result } = await renderHook(() => useAuth(), { wrapper });
+      await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
+    });
+
+    it('still blocks with consent offline in that case when nothing is on record (AC-18a)', async () => {
+      await AsyncStorage.setItem('auth.lastUser.v1', JSON.stringify({ id: 'user-1' }));
+      mockStore.current = null;
+      mockSupabase.auth.getSession.mockResolvedValue({ data: { session: null }, error: offline() });
+      const { result } = await renderHook(() => useAuth(), { wrapper });
+      await waitFor(() => expect(result.current.state.status).toBe('needsConsent'));
+    });
+
+    it('keeps "expired" when it arrives before getSession answers (AC-20)', async () => {
+      mockSupabase.auth.getSession.mockImplementation(async () => {
+        // supabase-js finishes initialising (and signs out) before getSession resolves.
+        await Promise.resolve();
+        mockState.listeners.forEach((listener: Listener) => listener('SIGNED_OUT'));
+        return { data: { session: null }, error: null };
+      });
+      const { result } = await renderHook(() => useAuth(), { wrapper });
+      await waitFor(() =>
+        expect(result.current.state).toEqual({ status: 'signedOut', expired: true }),
+      );
+    });
+
+    it('never brings back "signed in" from work that finishes after a sign-out', async () => {
+      const { result } = await signedOutHook();
+      let release: () => void = () => {};
+      jest
+        .mocked(jest.requireMock('./consentStore').fetchCurrentDocuments)
+        .mockImplementationOnce(() => new Promise((resolve) => (release = () => resolve(docs))));
+      let signIn: Promise<string> = Promise.resolve('');
+      await act(async () => {
+        signIn = result.current.signInWithGoogle(() => {});
+        await Promise.resolve();
+      });
+      await act(async () => {
+        await result.current.signOut();
+      });
+      await act(async () => {
+        release();
+        await signIn;
+      });
+      expect(result.current.state.status).toBe('signedOut');
+    });
+
+    it('says "offline" when the network drops between Google and Supabase (AC-20)', async () => {
+      mockSupabase.auth.signInWithIdToken.mockResolvedValue({
+        data: { user: null },
+        error: offline(),
+      });
+      const { result } = await signedOutHook();
+      let outcome = '';
+      await act(async () => {
+        outcome = await result.current.signInWithGoogle(() => {});
+      });
+      expect(outcome).toBe('offline');
+    });
+
+    it('shows the real documents before recording consent made on the offline screen (AC-16)', async () => {
+      mockStore.current = null;
+      const { result } = await signedOutHook();
+      await act(async () => {
+        await result.current.signInWithGoogle(() => {});
+      });
+      expect(result.current.state).toMatchObject({ status: 'needsConsent', documents: null });
+
+      mockStore.current = docs;
+      let outcome = '';
+      await act(async () => {
+        outcome = await result.current.submitConsent({});
+      });
+      expect(outcome).toBe('stale');
+      expect(jest.requireMock('./consentStore').recordConsent).not.toHaveBeenCalled();
+      expect(result.current.state).toMatchObject({ status: 'needsConsent', documents: docs });
+    });
   });
 });

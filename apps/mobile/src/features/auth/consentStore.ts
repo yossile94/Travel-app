@@ -41,12 +41,15 @@ export async function fetchCurrentDocuments(): Promise<LegalDocument[] | null> {
     .from('current_legal_documents')
     .select('doc_type, version, url, published_at');
   if (error || !data) return null;
-  return data.map((row) => ({
+  const documents = data.map((row) => ({
     docType: row.doc_type as LegalDocType,
     version: row.version as number,
     url: (row.url as string | null) ?? null,
     publishedAt: row.published_at as string,
   }));
+  // Both documents or nothing: half a list would let a consent go unrecorded.
+  const has = (type: LegalDocType) => documents.some((doc) => doc.docType === type);
+  return has('terms') && has('privacy') ? documents : null;
 }
 
 /** What the server's log says this user agreed to (a returning user on a new device). */

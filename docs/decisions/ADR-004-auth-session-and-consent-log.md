@@ -15,11 +15,14 @@
 ## ההחלטה
 
 **1. התחברות:** Google Sign-In נייטיב (`@react-native-google-signin/google-signin`) מחזיר ID token שהקהל שלו הוא לקוח ה-Web, ו-`supabase.auth.signInWithIdToken` ממיר אותו ל-session. ה-secret של לקוח ה-Web נמצא רק בדשבורד של Supabase.
+- **nonce:** הספרייה הנייטיב לא שולחת nonce, ו-Supabase (`skip_nonce_check = false`) דוחה רק אי-התאמה, לכן ההתחברות עובדת. אין הגנה מפני שימוש חוזר ב-ID token גנוב, שתקף כשעה ומיועד רק ללקוח ה-Web שלנו. מקובל בספרינט 1. בוחנים שוב במעבר ל-Credential Manager, שתומך ב-nonce.
 
 **2. ה-session מוצפן במכשיר:** session של Supabase גדול מדי ל-SecureStore. לכן:
 - הוא נשמר ב-AsyncStorage, מוצפן ב-AES-256-CTR (`aes-js`).
-- לכל ערך יש מפתח אקראי משלו (`expo-crypto`), ורק המפתח נשמר ב-SecureStore (Android Keystore).
+- **מפתח אחד יציב** לכל מפתח אחסון, שנוצר פעם אחת (`expo-crypto`) ונשמר ב-SecureStore (Android Keystore). בכל כתיבה רק ה-counter חדש ואקראי. כך קריאה שחופפת לכתיבה עדיין מפענחת, וקריסה בין שתי כתיבות לא מאבדת את ה-session (תוקן אחרי הסקירה של רז: בגרסה הראשונה היה מפתח חדש לכל כתיבה).
 - מי שקורא רק את AsyncStorage לא רואה כלום.
+- **בלי MAC (CTR ולא GCM):** האיום שמטפלים בו הוא קריאה, מגיבוי או מ-AsyncStorage. כדי לשנות את הטקסט המוצפן צריך גישת כתיבה לארגז החול של האפליקציה, וגם אז כל שינוי בטוקנים נכשל בשרת (חתימת ה-JWT, refresh token אטום).
+- **בלי רשת עם access token שפג:** `getSession` מחזיר אז "אין session" עם שגיאת רשת, למרות שה-session עדיין שמור. לכן המכשיר שומר גם את מזהה המשתמש ושמו (`auth.lastUser.v1`), כדי שהמשתמש יישאר מחובר (AC-19). כשהרשת חוזרת, ה-session מתרענן.
 - הקוד ב-`apps/mobile/src/lib/secureSessionStorage.ts`.
 
 **3. יומן ההסכמות הוא ראיה:**

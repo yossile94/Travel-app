@@ -666,6 +666,23 @@ describe('GlobeScreen', () => {
       expect(mockAuth.submitConsent).toHaveBeenCalledWith({});
     });
 
+    it('closes the sheet when the account state changes (design 4.2, 5.2)', async () => {
+      mockAuth.state = { status: 'signedOut', expired: false };
+      const view = await render(<GlobeScreen />);
+      await fireEvent.press(screen.getByTestId('account-button'));
+      expect(screen.getByTestId('google-sign-in')).toBeOnTheScreen();
+
+      // Signed in and already up to date: no sheet, just the globe (and a toast).
+      mockAuth.state = { status: 'signedIn', user };
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByTestId('account-sheet')).toBeNull();
+
+      // Signed out again from the consent screen: the globe, not the sign-in sheet.
+      mockAuth.state = { status: 'signedOut', expired: false };
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByTestId('google-sign-in')).toBeNull();
+    });
+
     it('confirms with a toast after signing in (design 5.2)', async () => {
       mockAuth.state = { status: 'signedIn', user };
       mockAuth.notice = { kind: 'signedIn', name: 'יוסי לוי' };

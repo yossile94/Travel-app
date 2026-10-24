@@ -33,6 +33,12 @@ export function SignInSheet({ visible, expired, ...sheet }: SheetProps & { expir
   // Design 5.5: once Google has answered, the sheet can't be dismissed.
   const [exchanging, setExchanging] = useState(false);
   const [message, setMessage] = useState<SignInMessage>(expired ? 'expired' : null);
+  // Each opening starts without the last attempt's message.
+  const [openedAs, setOpenedAs] = useState(visible);
+  if (openedAs !== visible) {
+    setOpenedAs(visible);
+    if (visible) setMessage(expired ? 'expired' : null);
+  }
 
   // "No network" is shown as soon as the sheet opens, and clears when it's back.
   useEffect(() => {
@@ -91,7 +97,8 @@ export function SignInSheet({ visible, expired, ...sheet }: SheetProps & { expir
         <GoogleButton
           colorScheme={sheet.colorScheme}
           busy={busy}
-          disabled={message === 'playServicesUnavailable'}
+          // Never locked: a press checks Play Services again, so an update counts at once.
+          disabled={false}
           onPress={() => void onGoogle()}
         />
       </View>

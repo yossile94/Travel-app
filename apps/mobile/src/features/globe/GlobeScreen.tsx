@@ -94,6 +94,13 @@ export function GlobeScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const auth = useAuth();
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  // Signing in, out or into the consent screen closes whatever sheet led there
+  // (design 4.2, 5.2): the next screen is the globe, the consent screen or a toast.
+  const [sheetForStatus, setSheetForStatus] = useState(auth.state.status);
+  if (sheetForStatus !== auth.state.status) {
+    setSheetForStatus(auth.state.status);
+    setAccountSheetOpen(false);
+  }
   // An expired session opens the sign-in sheet by itself (design 4.2).
   const expired = auth.state.status === 'signedOut' && auth.state.expired;
   const sheetOpen = accountSheetOpen || expired;

@@ -6,9 +6,14 @@
  * States: loading → unavailable (not configured) | signedOut | needsConsent |
  * signedIn. A signed-in user without consent on record only ever sees the
  * consent screen, whose one exit is signing out (AC-18a).
+ *
+ * Every async flow captures a generation number and drops its result if a
+ * sign-out happened meanwhile, so a late answer can never bring back a
+ * signed-in state without a session.
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import type { User } from '@supabase/supabase-js';
+import { isAuthRetryableFetchError, type User } from '@supabase/supabase-js';
 import {
   createContext,
   useCallback,
@@ -47,6 +52,7 @@ export type AuthState =
       status: 'needsConsent';
       user: AuthUser;
       need: Exclude<ConsentNeed, { kind: 'none' }>;
+      /** Null offline: the screen shows the bundled texts and asks again once online. */
       documents: LegalDocument[] | null;
     }
   | { status: 'signedIn'; user: AuthUser };
@@ -92,23 +98,57 @@ function toAuthUser(user: User): AuthUser {
   return { id: user.id, name: meta?.full_name ?? meta?.name ?? null, email: user.email ?? null };
 }
 
+/**
+ * The signed-in user's name and id, kept on the device. Offline, an expired
+ * access token can't be refreshed and getSession() answers with no session,
+ * though the stored session is intact: this keeps the user signed in (AC-19).
+ */
+const LAST_USER_KEY = 'auth.lastUser.v1';
+
+async function readLastUser(): Promise<AuthUser | null> {
+  try {
+    const stored = await AsyncStorage.getItem(LAST_USER_KEY);
+    const parsed = stored ? (JSON.parse(stored) as Partial<AuthUser>) : null;
+    return typeof parsed?.id === 'string'
+      ? { id: parsed.id, name: parsed.name ?? null, email: parsed.email ?? null }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** AC-18 re-checks on returning to the app, at most this often (one request per user per window). */
+const DOCUMENT_RECHECK_MS = 15 * 60 * 1000;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(() =>
     supabase && hasGoogleConfig ? { status: 'loading' } : { status: 'unavailable' },
   );
   const [notice, setNotice] = useState<AuthNotice>(null);
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+  /** Bumped by every sign-out; async results from an older generation are dropped. */
+  const generation = useRef(0);
   const signingOut = useRef(false);
+  const signInInFlight = useRef(false);
   const abandoned = useRef(false);
+  const lastDocumentCheck = useRef(0);
 
   /** Decides between the consent screen and the globe for a signed-in user. */
-  const settle = useCallback(async (user: AuthUser) => {
+  const settle = useCallback(async (user: AuthUser): Promise<boolean> => {
+    const gen = generation.current;
+    void AsyncStorage.setItem(LAST_USER_KEY, JSON.stringify(user)).catch(() => {});
     let agreed = await readLocalAgreement(user.id);
     const documents = await fetchCurrentDocuments();
+    if (documents) lastDocumentCheck.current = Date.now();
     if (!agreed && documents) {
       // A returning user on a new device: the server's log already has it.
       agreed = await fetchAgreementFromLog();
       if (agreed) await writeLocalAgreement(user.id, agreed);
     }
+    if (gen !== generation.current) return false;
     const need = consentNeed(agreed, documents);
     setState(
       need.kind === 'none'
@@ -118,38 +158,85 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return need.kind === 'none';
   }, []);
 
-  // The stored session at launch, and sign-outs that the user didn't ask for.
+  /** Ends every in-flight flow and forgets the user on this device. */
+  const forgetUser = useCallback(() => {
+    generation.current += 1;
+    void AsyncStorage.removeItem(LAST_USER_KEY).catch(() => {});
+  }, []);
+
+  // The stored session at launch, and session changes the user didn't make here.
   useEffect(() => {
     if (!supabase) return;
     let active = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      if (data.session) void settle(toAuthUser(data.session.user));
-      else setState({ status: 'signedOut', expired: false });
-    });
-    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
+    // Listen first, so a sign-out during initialisation is never missed.
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       // supabase-js signs out by itself when the refresh token is rejected
       // (invalid_grant): that is "expired", unlike a sign-out the user chose.
       // Network failures don't sign out, so offline launches stay signed in (AC-19).
       if (event === 'SIGNED_OUT' && !signingOut.current) {
+        forgetUser();
         setState({ status: 'signedOut', expired: true });
+        return;
       }
+      // A session that came back by itself (refreshed once the network
+      // returned) while the app showed "signed out".
+      if (
+        (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') &&
+        session &&
+        !signInInFlight.current &&
+        stateRef.current.status === 'signedOut' &&
+        !stateRef.current.expired
+      ) {
+        void settle(toAuthUser(session.user));
+      }
+    });
+    void supabase.auth.getSession().then(async ({ data, error }) => {
+      if (!active) return;
+      if (data.session) {
+        await settle(toAuthUser(data.session.user));
+        return;
+      }
+      // Offline with an expired access token: the session is still stored.
+      if (error && isAuthRetryableFetchError(error)) {
+        const lastUser = await readLastUser();
+        if (lastUser) {
+          await settle(lastUser);
+          return;
+        }
+      }
+      // An "expired" sign-out may already have arrived during initialisation (AC-20).
+      setState((current) =>
+        current.status === 'signedOut' ? current : { status: 'signedOut', expired: false },
+      );
     });
     return () => {
       active = false;
       subscription.subscription.unsubscribe();
     };
-  }, [settle]);
+  }, [settle, forgetUser]);
 
-  // AC-18: a newer document is noticed at launch and on returning to the app.
+  // AC-18: a newer document is noticed on returning to the app (throttled).
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (appState) => {
-      if (appState === 'active' && state.status === 'signedIn') void settle(state.user);
+      const current = stateRef.current;
+      if (appState !== 'active' || current.status !== 'signedIn') return;
+      if (Date.now() - lastDocumentCheck.current < DOCUMENT_RECHECK_MS) return;
+      void settle(current.user);
     });
     return () => subscription.remove();
+  }, [settle]);
+
+  // Offline consent screen: once the network is back, show the real documents.
+  useEffect(() => {
+    if (state.status !== 'needsConsent' || state.documents) return;
+    const user = state.user;
+    return NetInfo.addEventListener((net) => {
+      if (net.isConnected) void settle(user);
+    });
   }, [state, settle]);
 
   const signOut = useCallback(async () => {
+    forgetUser();
     signingOut.current = true;
     try {
       // Local scope works offline; revoking on the server is best effort.
@@ -160,7 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setState({ status: 'signedOut', expired: false });
     setNotice({ kind: 'signedOut' });
-  }, []);
+  }, [forgetUser]);
 
   const signInWithGoogle = useCallback(
     async (onExchangeStarted: () => void): Promise<SignInOutcome> => {
@@ -179,27 +266,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       onExchangeStarted();
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token: google.idToken,
-      });
-      if (error || !data.user) {
-        console.error('[auth] Supabase sign-in failed', error);
-        return 'error';
+      signInInFlight.current = true;
+      try {
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: google.idToken,
+        });
+        if (error && isAuthRetryableFetchError(error)) return 'offline';
+        if (error || !data.user) {
+          console.error('[auth] Supabase sign-in failed', error);
+          return 'error';
+        }
+        // Design 4.2: never a signed-in user who didn't see the consent screen.
+        if (abandoned.current) {
+          forgetUser();
+          signingOut.current = true;
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+            await googleSignOut();
+          } finally {
+            signingOut.current = false;
+          }
+          return 'abandoned';
+        }
+        const user = toAuthUser(data.user);
+        const upToDate = await settle(user);
+        if (upToDate) setNotice({ kind: 'signedIn', name: user.name ?? user.email ?? '' });
+        return 'done';
+      } finally {
+        signInInFlight.current = false;
       }
-      // Design 4.2: never a signed-in user who didn't see the consent screen.
-      if (abandoned.current) {
-        signingOut.current = true;
-        await supabase.auth.signOut({ scope: 'local' });
-        signingOut.current = false;
-        return 'abandoned';
-      }
-      const user = toAuthUser(data.user);
-      const upToDate = await settle(user);
-      if (upToDate) setNotice({ kind: 'signedIn', name: user.name ?? user.email ?? '' });
-      return 'done';
     },
-    [settle],
+    [settle, forgetUser],
   );
 
   const abandonSignIn = useCallback(() => {
@@ -208,33 +306,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const submitConsent = useCallback(
     async (choices: { marketing?: boolean; analytics?: boolean }): Promise<ConsentOutcome> => {
-      if (state.status !== 'needsConsent') return 'error';
+      const current = stateRef.current;
+      if (current.status !== 'needsConsent') return 'error';
+      const gen = generation.current;
       const net = await NetInfo.fetch();
       if (net.isConnected === false) return 'offline';
-      const documents = state.documents ?? (await fetchCurrentDocuments());
-      if (!documents) return 'offline';
+      // The screen was showing the bundled texts (offline): show the real
+      // documents first, and let the user confirm what they have now seen (AC-16).
+      if (!current.documents) {
+        await settle(current.user);
+        return 'stale';
+      }
+      const documents = current.documents;
 
       const result = await recordConsent({ documents, ...choices });
+      if (gen !== generation.current) return 'error';
       if (!result.ok) {
+        if (isAuthRetryableFetchError(result.error)) return 'offline';
         // A version published while the screen was open: show the new one.
         const code = (result.error as { code?: string } | null)?.code;
         if (code === '22023') {
-          await settle(state.user);
+          await settle(current.user);
           return 'stale';
         }
         console.error('[auth] could not record consent', result.error);
         return 'error';
       }
-      const agreed = {
-        terms: documents.find((d) => d.docType === 'terms')!.version,
-        privacy: documents.find((d) => d.docType === 'privacy')!.version,
-      };
-      await writeLocalAgreement(state.user.id, agreed);
-      setState({ status: 'signedIn', user: state.user });
-      setNotice({ kind: 'signedIn', name: state.user.name ?? state.user.email ?? '' });
+      const terms = documents.find((d) => d.docType === 'terms');
+      const privacy = documents.find((d) => d.docType === 'privacy');
+      if (!terms || !privacy) return 'error';
+      await writeLocalAgreement(current.user.id, {
+        terms: terms.version,
+        privacy: privacy.version,
+      });
+      if (gen !== generation.current) return 'error';
+      setState({ status: 'signedIn', user: current.user });
+      setNotice({ kind: 'signedIn', name: current.user.name ?? current.user.email ?? '' });
       return 'done';
     },
-    [state, settle],
+    [settle],
   );
 
   const clearNotice = useCallback(() => setNotice(null), []);

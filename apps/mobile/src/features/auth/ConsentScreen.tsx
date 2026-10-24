@@ -4,9 +4,19 @@
  * a newer document version, and at launch when this device has no record of
  * consent, even offline (AC-18a).
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Alert,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { BottomSheet } from '@/components/BottomSheet';
 import { CheckboxRow, InlineNotice } from '@/components/formControls';
@@ -28,9 +38,16 @@ interface Props {
 /** DD.MM.YYYY, written out by hand: Hermes has no Intl formatToParts. */
 function shortDate(iso: string): string {
   const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso.slice(0, 10);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
 }
+
+/** Offline (no documents fetched): links to the texts the app ships with. */
+const OFFLINE_DOCUMENTS: { docType: LegalDocType; url: null }[] = [
+  { docType: 'terms', url: null },
+  { docType: 'privacy', url: null },
+];
 
 export function ConsentScreen({
   need,
@@ -49,6 +66,15 @@ export function ConsentScreen({
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<Exclude<ConsentOutcome, 'done'> | null>(null);
   const [reading, setReading] = useState<LegalDocType | null>(null);
+
+  // Design 5.2: the screen reader starts on the title.
+  const titleRef = useRef<ComponentRef<typeof Text>>(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (titleRef.current) AccessibilityInfo.sendAccessibilityEvent(titleRef.current, 'focus');
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const updated = need.kind === 'updated' ? need.docs : [];
   const firstTime = need.kind === 'first';
@@ -79,9 +105,11 @@ export function ConsentScreen({
     if (outcome !== 'done') setProblem(outcome);
   };
 
-  const openDocument = (doc: LegalDocument) => {
-    if (doc.url) void Linking.openURL(doc.url);
-    else setReading(doc.docType);
+  const openDocument = (doc: { docType: LegalDocType; url: string | null }) => {
+    if (doc.url) {
+      // TODO(sprint 2): an in-app Custom Tab (expo-web-browser) once version 1 is hosted.
+      Linking.openURL(doc.url).catch(() => setReading(doc.docType));
+    } else setReading(doc.docType);
   };
 
   return (
@@ -101,7 +129,11 @@ export function ConsentScreen({
               </Text>
             </View>
           ) : null}
-          <Text style={[styles.title, { color: palette.textPrimary }]} accessibilityRole="header">
+          <Text
+            ref={titleRef}
+            style={[styles.title, { color: palette.textPrimary }]}
+            accessibilityRole="header"
+          >
             {title}
           </Text>
           <Text style={[styles.body, { color: palette.textSecondary }]}>
@@ -119,7 +151,7 @@ export function ConsentScreen({
               testID="consent-agree"
             />
             <View style={[styles.divider, { backgroundColor: palette.borderSubtle }]} />
-            {(documents ?? []).map((doc) => (
+            {(documents ?? OFFLINE_DOCUMENTS).map((doc) => (
               <Pressable
                 key={doc.docType}
                 accessibilityRole="link"
@@ -131,12 +163,14 @@ export function ConsentScreen({
                   <Text style={[styles.docTitle, { color: palette.link }]}>
                     {t(doc.docType === 'terms' ? 'consent.terms' : 'consent.privacy')}
                   </Text>
-                  <Text style={[styles.footnote, { color: palette.textSecondary }]}>
-                    {t('consent.docMeta', {
-                      version: doc.version,
-                      date: shortDate(doc.publishedAt),
-                    })}
-                  </Text>
+                  {'publishedAt' in doc ? (
+                    <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+                      {t('consent.docMeta', {
+                        version: doc.version,
+                        date: shortDate(doc.publishedAt),
+                      })}
+                    </Text>
+                  ) : null}
                 </View>
                 {updated.includes(doc.docType) ? (
                   <View style={[styles.badge, { backgroundColor: palette.infoBg }]}>
