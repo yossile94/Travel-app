@@ -24,6 +24,21 @@ const outFile = join(root, 'apps', 'mobile', 'src', 'features', 'search', 'searc
 
 const unique = (values) => [...new Set(values)];
 
+/** Shorter names for sovereigns shown in brackets: "הונג קונג (סין)". */
+const SHORT_SOVEREIGN = { CHN: 'סין' };
+
+/**
+ * The sovereign shown after a territory's name, unless the name already says
+ * it ("איי הבתולה של ארצות הברית", "...הקטנים של ארה"ב").
+ */
+function parentLabel(entry, meta, aliases) {
+  if (!entry.parent) return undefined;
+  const label = SHORT_SOVEREIGN[entry.parent] ?? meta[entry.parent].nameHe;
+  const name = ` ${fold(entry.nameHe)} `;
+  const parentNames = [label, meta[entry.parent].nameHe, ...(aliases[entry.parent] ?? [])];
+  return parentNames.some((n) => name.includes(` ${fold(n)} `)) ? undefined : label;
+}
+
 async function main() {
   const meta = JSON.parse(await readFile(metaFile, 'utf8'));
   const { _comment, ...aliases } = JSON.parse(await readFile(aliasesFile, 'utf8'));
@@ -49,7 +64,9 @@ async function main() {
         adm0,
         nameHe: entry.nameHe,
         nameEn: entry.nameEn,
-        ...(entry.parent ? { parentHe: meta[entry.parent].nameHe } : {}),
+        ...(parentLabel(entry, meta, aliases)
+          ? { parentHe: parentLabel(entry, meta, aliases) }
+          : {}),
         // Folded Hebrew name: the alphabetical tie-break, compared as plain strings.
         sortKey: fold(entry.nameHe),
         names,

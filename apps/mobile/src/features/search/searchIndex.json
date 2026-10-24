@@ -62,7 +62,7 @@
     "nameHe": "אי ברזילאי",
     "nameEn": "Brazilian Island",
     "sortKey": "אי ברזילאי",
-    "names": ["אי ברזילאי", "brazilian island"]
+    "names": ["אי ברזילאי", "ברזילאי", "brazilian island"]
   },
   {
     "adm0": "ARE",
@@ -85,14 +85,14 @@
     "nameEn": "Ashmore and Cartier Islands",
     "parentHe": "אוסטרליה",
     "sortKey": "איי אשמור וקרטייה",
-    "names": ["איי אשמור וקרטייה", "ashmore and cartier islands"]
+    "names": ["איי אשמור וקרטייה", "אשמור וקרטייה", "ashmore and cartier islands"]
   },
   {
     "adm0": "BHS",
     "nameHe": "איי בהאמה",
     "nameEn": "The Bahamas",
     "sortKey": "איי בהאמה",
-    "names": ["איי בהאמה", "the bahamas"]
+    "names": ["איי בהאמה", "בהאמה", "the bahamas"]
   },
   {
     "adm0": "SGS",
@@ -103,6 +103,8 @@
     "names": [
       "איי גורגיה הדרומית ואיי סנדוויצ הדרומיימ",
       "איי גורגיה דרומית ואיי סנדוויצ דרומיימ",
+      "גורגיה הדרומית ואיי סנדוויצ הדרומיימ",
+      "גורגיה דרומית ואיי סנדוויצ דרומיימ",
       "south georgia and the south sandwich islands"
     ]
   },
@@ -112,17 +114,24 @@
     "nameEn": "British Virgin Islands",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "איי הבתולה הבריטיימ",
-    "names": ["איי הבתולה הבריטיימ", "איי בתולה בריטיימ", "british virgin islands"]
+    "names": [
+      "איי הבתולה הבריטיימ",
+      "איי בתולה בריטיימ",
+      "הבתולה הבריטיימ",
+      "בתולה בריטיימ",
+      "british virgin islands"
+    ]
   },
   {
     "adm0": "VIR",
     "nameHe": "איי הבתולה של ארצות הברית",
     "nameEn": "United States Virgin Islands",
-    "parentHe": "ארצות הברית",
     "sortKey": "איי הבתולה של ארצות הברית",
     "names": [
       "איי הבתולה של ארצות הברית",
       "איי בתולה של ארצות ברית",
+      "הבתולה של ארצות הברית",
+      "בתולה של ארצות ברית",
       "united states virgin islands"
     ]
   },
@@ -132,7 +141,7 @@
     "nameEn": "Turks and Caicos Islands",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "איי טרקס וקייקוס",
-    "names": ["איי טרקס וקייקוס", "turks and caicos islands"]
+    "names": ["איי טרקס וקייקוס", "טרקס וקייקוס", "turks and caicos islands"]
   },
   {
     "adm0": "MNP",
@@ -140,14 +149,20 @@
     "nameEn": "Northern Mariana Islands",
     "parentHe": "ארצות הברית",
     "sortKey": "איי מריאנה הצפוניימ",
-    "names": ["איי מריאנה הצפוניימ", "איי מריאנה צפוניימ", "northern mariana islands"]
+    "names": [
+      "איי מריאנה הצפוניימ",
+      "איי מריאנה צפוניימ",
+      "מריאנה הצפוניימ",
+      "מריאנה צפוניימ",
+      "northern mariana islands"
+    ]
   },
   {
     "adm0": "MHL",
     "nameHe": "איי מרשל",
     "nameEn": "Marshall Islands",
     "sortKey": "איי מרשל",
-    "names": ["איי מרשל", "marshall islands"]
+    "names": ["איי מרשל", "מרשל", "marshall islands"]
   },
   {
     "adm0": "FRO",
@@ -155,7 +170,7 @@
     "nameEn": "Faroe Islands",
     "parentHe": "דנמרק",
     "sortKey": "איי פארו",
-    "names": ["איי פארו", "faroe islands"]
+    "names": ["איי פארו", "פארו", "faroe islands"]
   },
   {
     "adm0": "FLK",
@@ -163,7 +178,7 @@
     "nameEn": "Falkland Islands",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "איי פוקלנד",
-    "names": ["איי פוקלנד", "falkland islands"]
+    "names": ["איי פוקלנד", "פוקלנד", "falkland islands"]
   },
   {
     "adm0": "COK",
@@ -171,7 +186,7 @@
     "nameEn": "Cook Islands",
     "parentHe": "ניו זילנד",
     "sortKey": "איי קוק",
-    "names": ["איי קוק", "cook islands"]
+    "names": ["איי קוק", "קוק", "cook islands"]
   },
   {
     "adm0": "CYM",
@@ -179,14 +194,14 @@
     "nameEn": "Cayman Islands",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "איי קיימנ",
-    "names": ["איי קיימנ", "cayman islands"]
+    "names": ["איי קיימנ", "קיימנ", "cayman islands"]
   },
   {
     "adm0": "SLB",
     "nameHe": "איי שלמה",
     "nameEn": "Solomon Islands",
     "sortKey": "איי שלמה",
-    "names": ["איי שלמה", "solomon islands"]
+    "names": ["איי שלמה", "שלמה", "solomon islands"]
   },
   {
     "adm0": "IDN",
@@ -417,7 +432,8 @@
     "nameHe": "בלארוס",
     "nameEn": "Belarus",
     "sortKey": "בלארוס",
-    "names": ["בלארוס", "belarus"]
+    "names": ["בלארוס", "belarus"],
+    "aliases": ["בלרוס", "belorussia"]
   },
   {
     "adm0": "BEL",
@@ -482,7 +498,8 @@
     "nameHe": "גאורגיה",
     "nameEn": "Georgia",
     "sortKey": "גאורגיה",
-    "names": ["גאורגיה", "georgia"]
+    "names": ["גאורגיה", "georgia"],
+    "aliases": ["גרוזיה"]
   },
   {
     "adm0": "GHA",
@@ -643,7 +660,13 @@
     "nameEn": "Heard Island and McDonald Islands",
     "parentHe": "אוסטרליה",
     "sortKey": "האי הרד ואיי מקדונלד",
-    "names": ["האי הרד ואיי מקדונלד", "אי רד ואיי מקדונלד", "heard island and mcdonald islands"]
+    "names": [
+      "האי הרד ואיי מקדונלד",
+      "אי רד ואיי מקדונלד",
+      "הרד ואיי מקדונלד",
+      "רד ואיי מקדונלד",
+      "heard island and mcdonald islands"
+    ]
   },
   {
     "adm0": "IMN",
@@ -651,7 +674,7 @@
     "nameEn": "Isle of Man",
     "parentHe": "הממלכה המאוחדת",
     "sortKey": "האי מאנ",
-    "names": ["האי מאנ", "אי מאנ", "isle of man"]
+    "names": ["האי מאנ", "אי מאנ", "מאנ", "isle of man"]
   },
   {
     "adm0": "HTI",
@@ -664,11 +687,12 @@
     "adm0": "UMI",
     "nameHe": "האיים החיצוניים הקטנים של ארה\"ב",
     "nameEn": "United States Minor Outlying Islands",
-    "parentHe": "ארצות הברית",
     "sortKey": "האיימ החיצוניימ הקטנימ של ארהב",
     "names": [
       "האיימ החיצוניימ הקטנימ של ארהב",
       "איימ חיצוניימ קטנימ של ארהב",
+      "החיצוניימ הקטנימ של ארהב",
+      "חיצוניימ קטנימ של ארהב",
       "united states minor outlying islands"
     ]
   },
@@ -677,14 +701,13 @@
     "nameHe": "האיים המלדיביים",
     "nameEn": "Maldives",
     "sortKey": "האיימ המלדיביימ",
-    "names": ["האיימ המלדיביימ", "איימ מלדיביימ", "maldives"],
+    "names": ["האיימ המלדיביימ", "איימ מלדיביימ", "המלדיביימ", "מלדיביימ", "maldives"],
     "aliases": ["מלדיבימ", "המלדיבימ"]
   },
   {
     "adm0": "ATF",
     "nameHe": "הארצות הדרומיות והאנטארקטיות של צרפת",
     "nameEn": "French Southern and Antarctic Lands",
-    "parentHe": "צרפת",
     "sortKey": "הארצות הדרומיות והאנטארקטיות של צרפת",
     "names": [
       "הארצות הדרומיות והאנטארקטיות של צרפת",
@@ -711,7 +734,7 @@
     "adm0": "HKG",
     "nameHe": "הונג קונג",
     "nameEn": "Hong Kong",
-    "parentHe": "הרפובליקה העממית של סין",
+    "parentHe": "סין",
     "sortKey": "הונג קונג",
     "names": ["הונג קונג", "ונג קונג", "hong kong"]
   },
@@ -799,7 +822,8 @@
     "nameHe": "הרפובליקה העממית של סין",
     "nameEn": "People's Republic of China",
     "sortKey": "הרפובליקה העממית של סינ",
-    "names": ["הרפובליקה העממית של סינ", "רפובליקה עממית של סינ", "peoples republic of china"]
+    "names": ["הרפובליקה העממית של סינ", "רפובליקה עממית של סינ", "peoples republic of china"],
+    "aliases": ["סינ", "china"]
   },
   {
     "adm0": "COG",
@@ -865,7 +889,8 @@
     "nameHe": "טאיוואן",
     "nameEn": "Taiwan",
     "sortKey": "טאיוואנ",
-    "names": ["טאיוואנ", "taiwan"]
+    "names": ["טאיוואנ", "taiwan"],
+    "aliases": ["טייוואנ"]
   },
   {
     "adm0": "TJK",
@@ -927,6 +952,17 @@
       "טריטוריה של האוקיינוס ההודי",
       "טריטוריה של אוקיינוס הודי",
       "australian indian ocean territories"
+    ],
+    "aliases": [
+      "איי קוקוס",
+      "קוקוס",
+      "אי חג המולד",
+      "אי חג מולד",
+      "חג המולד",
+      "חג מולד",
+      "cocos islands",
+      "cocos keeling islands",
+      "christmas island"
     ]
   },
   {
@@ -1176,7 +1212,7 @@
     "adm0": "MAC",
     "nameHe": "מקאו",
     "nameEn": "Macau",
-    "parentHe": "הרפובליקה העממית של סין",
+    "parentHe": "סין",
     "sortKey": "מקאו",
     "names": ["מקאו", "macau"]
   },
@@ -1656,7 +1692,7 @@
     "nameEn": "South Korea",
     "sortKey": "קוריאה הדרומית",
     "names": ["קוריאה הדרומית", "קוריאה דרומית", "south korea"],
-    "aliases": ["קוריאה", "korea"]
+    "aliases": ["דרומ קוריאה", "קוריאה", "korea"]
   },
   {
     "adm0": "PRK",
@@ -1664,7 +1700,7 @@
     "nameEn": "North Korea",
     "sortKey": "קוריאה הצפונית",
     "names": ["קוריאה הצפונית", "קוריאה צפונית", "north korea"],
-    "aliases": ["dprk"]
+    "aliases": ["צפונ קוריאה"]
   },
   {
     "adm0": "KAZ",

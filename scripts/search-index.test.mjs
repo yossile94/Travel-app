@@ -42,13 +42,18 @@ describe('country search index', () => {
     }
   });
 
-  it('names the sovereign of each territory, and only of territories', () => {
+  it('names the sovereign of a territory, only of territories, and not twice', () => {
+    const parentOf = (adm0) => index.find((e) => e.adm0 === adm0).parentHe;
     for (const entry of index) {
-      const parent = meta[entry.adm0].parent;
-      assert.equal(entry.parentHe, parent ? meta[parent].nameHe : undefined, entry.adm0);
+      if (!meta[entry.adm0].parent) assert.equal(entry.parentHe, undefined, entry.adm0);
     }
-    assert.equal(index.find((e) => e.adm0 === 'GIB').parentHe, 'הממלכה המאוחדת');
-    assert.equal(index.find((e) => e.adm0 === 'FRA').parentHe, undefined);
+    assert.equal(parentOf('GIB'), 'הממלכה המאוחדת');
+    assert.equal(parentOf('IOA'), 'אוסטרליה');
+    // A short name for China; none where the name already says it.
+    assert.equal(parentOf('HKG'), 'סין');
+    assert.equal(parentOf('VIR'), undefined);
+    assert.equal(parentOf('UMI'), undefined);
+    assert.equal(parentOf('FRA'), undefined);
   });
 
   it('is sorted by the folded Hebrew name', () => {

@@ -3,7 +3,7 @@
  * section 2): a magnifier button that opens a full-width field, with results
  * that behave exactly like a tap on the globe.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BackHandler,
@@ -16,7 +16,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  ReduceMotion,
+  useAnimatedKeyboard,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { ChromeButton } from '@/components/ChromeButton';
 import { BackIcon, ClearIcon, SearchIcon } from '@/components/icons';
@@ -29,6 +36,7 @@ import { searchCountries, type SearchEntry } from './search';
 interface Props {
   open: boolean;
   colorScheme: ColorScheme;
+  reduceMotion: boolean;
   insetsTop: number;
   insetsBottom: number;
   onOpen: () => void;
@@ -40,9 +48,13 @@ interface Props {
 /** Results start 8dp below the 48dp field row. */
 const RESULTS_OFFSET = layout.chromeRowTop + layout.touchTargetMin + 8;
 
+const STANDARD = Easing.bezier(0.2, 0, 0, 1);
+const DECELERATE = Easing.bezier(0.05, 0.7, 0.1, 1);
+
 export function SearchBar({
   open,
   colorScheme,
+  reduceMotion,
   insetsTop,
   insetsBottom,
   onOpen,
@@ -51,8 +63,80 @@ export function SearchBar({
 }: Props) {
   const { t } = useTranslation();
   const palette = colors[colorScheme];
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [query, setQuery] = useState('');
+  const [focused, setFocused] = useState(false);
   const { results, more } = useMemo(() => searchCountries(query), [query]);
+
+  // The field stays on screen while it folds back into the button (design 2.4).
+  const [closing, setClosing] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    setClosing(!open);
+  }
+  useEffect(() => {
+    if (!closing) return;
+    const timer = setTimeout(() => setClosing(false), motion.medium);
+    return () => clearTimeout(timer);
+  }, [closing]);
+
+  // Design 2.4: the button widens into the field and the globe dims. With
+  // reduced motion it is a crossfade with no change of width. The reduced
+  // version must still run, so it opts out of Reanimated's system default.
+  const progress = useSharedValue(0);
+  const scrim = useSharedValue(0);
+  const resultsIn = useSharedValue(0);
+  useEffect(() => {
+    progress.set(
+      withTiming(open ? 1 : 0, {
+        duration: reduceMotion ? motion.short : motion.medium,
+        easing: reduceMotion ? Easing.linear : STANDARD,
+        reduceMotion: ReduceMotion.Never,
+      }),
+    );
+    scrim.set(
+      withTiming(open ? 1 : 0, {
+        duration: motion.short,
+        easing: Easing.linear,
+        reduceMotion: ReduceMotion.Never,
+      }),
+    );
+    if (!open) resultsIn.set(0);
+  }, [open, reduceMotion, progress, scrim, resultsIn]);
+
+  const hasQuery = query.length > 0;
+  useEffect(() => {
+    if (!hasQuery) {
+      resultsIn.set(0);
+      return;
+    }
+    // The first results of an opening slide in once; later keystrokes swap them instantly (AC-1).
+    resultsIn.set(
+      withTiming(1, {
+        duration: 150,
+        easing: DECELERATE,
+        reduceMotion: ReduceMotion.Never,
+      }),
+    );
+  }, [hasQuery, resultsIn]);
+
+  const screenWidth = Dimensions.get('screen').width;
+  const collapsedEnd = screenWidth - layout.chromeEdge - layout.touchTargetMin;
+  const fieldStyle = useAnimatedStyle(() =>
+    reduceMotion
+      ? { opacity: progress.value, end: layout.chromeEdge }
+      : {
+          opacity: Math.min(1, progress.value * 3),
+          end: layout.chromeEdge + (1 - progress.value) * (collapsedEnd - layout.chromeEdge),
+        },
+  );
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: scrim.value }));
+  const resultsStyle = useAnimatedStyle(() =>
+    reduceMotion
+      ? { opacity: resultsIn.value }
+      : { opacity: resultsIn.value, transform: [{ translateY: (resultsIn.value - 1) * 8 }] },
+  );
 
   // AC-1: from the keystroke to the frame that shows its results.
   const typedAt = useRef(0);
@@ -70,6 +154,12 @@ export function SearchBar({
   const onChangeText = useCallback((text: string) => {
     typedAt.current = performance.now();
     setQuery(text);
+  }, []);
+
+  const clear = useCallback(() => {
+    setQuery('');
+    // The clear button disappears with the text, so focus goes back to the field.
+    inputRef.current?.focus();
   }, []);
 
   const close = useCallback(() => {
@@ -125,7 +215,7 @@ export function SearchBar({
     return { maxHeight: Math.max(layout.listRowMin, screenHeight - top - bottomGap) };
   });
 
-  if (!open) {
+  if (!open && !closing) {
     return (
       <ChromeButton
         colorScheme={colorScheme}
@@ -147,20 +237,29 @@ export function SearchBar({
   };
 
   return (
-    <>
-      <Pressable
-        style={[styles.scrim, { top: insetsTop + RESULTS_OFFSET }]}
-        onPress={onScrimPress}
-        accessible={false}
-        importantForAccessibility="no"
-        testID="search-scrim"
-      />
+    <View
+      style={StyleSheet.absoluteFill}
+      pointerEvents={open ? 'box-none' : 'none'}
+      testID={open ? 'search-panel' : 'search-panel-closing'}
+    >
+      <Animated.View style={[styles.scrim, { top }, scrimStyle]}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onScrimPress}
+          accessible={false}
+          importantForAccessibility="no"
+          testID="search-scrim"
+        />
+      </Animated.View>
 
-      <View
+      <Animated.View
         style={[
           styles.field,
           surface,
-          { top: insetsTop + layout.chromeRowTop, borderColor: palette.focusRing, borderWidth: 2 },
+          { top: insetsTop + layout.chromeRowTop },
+          // Design 2.1: the focus ring replaces the outline only while the field has focus.
+          focused && { borderColor: palette.focusRing, borderWidth: 2 },
+          fieldStyle,
         ]}
       >
         <Pressable
@@ -173,11 +272,16 @@ export function SearchBar({
           <BackIcon color={palette.textPrimary} />
         </Pressable>
         <TextInput
+          ref={inputRef}
           value={query}
           onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           onSubmitEditing={() => {
             if (results[0]) select(results[0]);
           }}
+          // Design 2.3: with no results the search key does nothing, keyboard included.
+          submitBehavior={results[0] ? 'blurAndSubmit' : 'submit'}
           placeholder={t('search.placeholder')}
           placeholderTextColor={palette.textTertiary}
           accessibilityLabel={t('search.placeholder')}
@@ -195,17 +299,17 @@ export function SearchBar({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('search.clear')}
-            onPress={() => setQuery('')}
+            onPress={clear}
             style={styles.iconButton}
             testID="search-clear"
           >
             <ClearIcon color={palette.textSecondary} />
           </Pressable>
         ) : null}
-      </View>
+      </Animated.View>
 
       {query ? (
-        <Animated.View style={[styles.results, surface, { top }, listMaxHeight]}>
+        <Animated.View style={[styles.results, surface, { top }, listMaxHeight, resultsStyle]}>
           {results.length === 0 ? (
             <View style={styles.empty} testID="search-empty">
               <Text style={[styles.name, { color: palette.textPrimary }]}>
@@ -243,7 +347,7 @@ export function SearchBar({
       <Text accessibilityLiveRegion="polite" style={styles.visuallyHidden}>
         {announcement}
       </Text>
-    </>
+    </View>
   );
 }
 
@@ -292,10 +396,14 @@ function ResultRow({
   );
 }
 
-/** The live-region text, updated only after typing pauses and only when it changes. */
+/**
+ * The live-region text: set only after typing pauses, and cleared as soon as
+ * the field is, so a new search never starts by reading out the old count.
+ */
 function useAnnouncement(query: string, count: number, more: boolean) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
+  if (!query && text) setText('');
   useEffect(() => {
     if (!query) return;
     const timer = setTimeout(() => {
@@ -311,7 +419,6 @@ function useAnnouncement(query: string, count: number, more: boolean) {
     }, motion.searchAnnounceDelay);
     return () => clearTimeout(timer);
   }, [query, count, more, t]);
-  // An empty field announces nothing, even before the timer has caught up.
   return query ? text : '';
 }
 
@@ -327,11 +434,11 @@ const styles = StyleSheet.create({
   field: {
     position: 'absolute',
     start: layout.chromeEdge,
-    end: layout.chromeEdge,
     minHeight: layout.touchTargetMin,
     borderRadius: radius.pill,
     flexDirection: 'row',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   iconButton: {
     width: layout.touchTargetMin,

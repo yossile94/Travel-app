@@ -102,6 +102,10 @@ jest.mock('./useReduceMotion', () => ({ useReduceMotion: () => mockReduceMotion 
 
 const BANGKOK_TAP: Hits = { country: { adm0: 'THA', code: 'TH' } };
 
+// The first test of a cold run also pays for transforming the screen and its
+// data; 5 s was once not enough on this machine (sprint 1 review, finding 12d).
+jest.setTimeout(15_000);
+
 async function tap(hits: Hits) {
   mockMap.hits = hits;
   await act(async () => {
@@ -306,6 +310,10 @@ describe('GlobeScreen', () => {
       await fireEvent.press(screen.getByTestId('search-open'));
       await fireEvent.changeText(screen.getByTestId('search-input'), text);
     }
+    /** The field folds back into the button over motion.medium (design 2.4). */
+    async function finishClosing() {
+      await act(async () => jest.advanceTimersByTime(300));
+    }
 
     it('flies to a chosen result and opens its card, like a tap (AC-3)', async () => {
       await render(<GlobeScreen />);
@@ -317,7 +325,9 @@ describe('GlobeScreen', () => {
         await Promise.resolve();
       });
 
+      await finishClosing();
       expect(screen.queryByTestId('search-input')).toBeNull();
+      expect(screen.getByTestId('search-open')).toBeOnTheScreen();
       expect(screen.getByText('תאילנד')).toBeOnTheScreen();
       expect(lastMoveWhere((m) => m.animationMode === 'flyTo').centerCoordinate).toEqual([
         101.0732, 15.4597,
@@ -329,6 +339,32 @@ describe('GlobeScreen', () => {
       await search('ותיק');
       await fireEvent(screen.getByTestId('search-input'), 'submitEditing');
       expect(screen.getByText('קריית הוותיקן')).toBeOnTheScreen();
+    });
+
+    it('keeps the keyboard up when the search key has nothing to pick (design 2.3)', async () => {
+      await render(<GlobeScreen />);
+      await search('ותיק');
+      expect(screen.getByTestId('search-input').props.submitBehavior).toBe('blurAndSubmit');
+      await fireEvent.changeText(screen.getByTestId('search-input'), 'qqqq');
+      expect(screen.getByTestId('search-input').props.submitBehavior).toBe('submit');
+      await fireEvent(screen.getByTestId('search-input'), 'submitEditing');
+      expect(screen.getByTestId('search-input')).toBeOnTheScreen();
+    });
+
+    it('replaces the country being flown to when a result is chosen mid-flight (AC-3)', async () => {
+      await render(<GlobeScreen />);
+      await tap(BANGKOK_TAP);
+      await search('יפן');
+      await fireEvent.press(screen.getByTestId('search-result-JPN'));
+      await act(async () => {
+        await Promise.resolve();
+      });
+      await finishClosing();
+
+      expect(screen.getByText('יפן')).toBeOnTheScreen();
+      expect(screen.queryByText('תאילנד')).toBeNull();
+      const flight = lastMoveWhere((m) => m.animationMode === 'flyTo');
+      expect(flight.centerCoordinate).not.toEqual([101.0732, 15.4597]);
     });
 
     it('shows no list for an empty field, and says when nothing matches (AC-4)', async () => {
@@ -359,9 +395,15 @@ describe('GlobeScreen', () => {
       await act(async () => {
         handlers.at(-1)!();
       });
+      await finishClosing();
       expect(screen.queryByTestId('search-input')).toBeNull();
-      // Closed without choosing: the card comes back.
+      // Closed without choosing: the card comes back, and back is the card's again.
       expect(screen.getByTestId('country-card')).toBeOnTheScreen();
+      expect(handlers).toHaveLength(1);
+      await act(async () => {
+        handlers.at(-1)!();
+      });
+      expect(screen.queryByTestId('country-card')).toBeNull();
       spy.mockRestore();
     });
 
@@ -380,6 +422,19 @@ describe('GlobeScreen', () => {
       await render(<GlobeScreen />);
       await search('קוריאה');
       expect(screen.queryByText('נמצאו 2 מדינות')).toBeNull();
+      await act(async () => jest.advanceTimersByTime(600));
+      expect(screen.getByText('נמצאו 2 מדינות')).toBeOnTheScreen();
+    });
+
+    it('never announces the previous count at the start of a new search (AC-6)', async () => {
+      await render(<GlobeScreen />);
+      await search('ותיק');
+      await act(async () => jest.advanceTimersByTime(600));
+      expect(screen.getByText('נמצאה מדינה אחת')).toBeOnTheScreen();
+
+      await fireEvent.press(screen.getByTestId('search-clear'));
+      await fireEvent.changeText(screen.getByTestId('search-input'), 'קוריאה');
+      expect(screen.queryByText('נמצאה מדינה אחת')).toBeNull();
       await act(async () => jest.advanceTimersByTime(600));
       expect(screen.getByText('נמצאו 2 מדינות')).toBeOnTheScreen();
     });

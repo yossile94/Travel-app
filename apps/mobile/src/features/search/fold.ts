@@ -36,24 +36,35 @@ const HEBREW_FINALS: Record<string, string> = { ך: 'כ', ם: 'מ', ן: 'נ', ף
 /** Geresh, gershayim and every quote mark people type for them are removed, not replaced. */
 const DROPPED = /['׳`’‘"״“”„]/g;
 
+/**
+ * Maqaf (U+05BE), the Hebrew hyphen: "גינאה־ביסאו" is two words. It lies
+ * inside the niqqud range, so it is turned into a space first.
+ */
+const MAQAF = /־/g;
+
 /** Hebrew points and cantillation marks (U+0591–U+05C7). */
 const NIQQUD = /[֑-ׇ]/g;
 
 /** Anything that separates words: whitespace, hyphens, dots, commas, brackets, slashes. */
 const SEPARATORS = /[\s\-‐-―.,()[\]/&+:;]+/g;
 
+/** Leading words a search may leave out (AC-2): "קוקוס" is a name prefix of "איי קוקוס". */
+const OPTIONAL_LEADING = ['איי', 'איימ', 'האיימ', 'אי', 'האי'];
+
 /** Lowercases, removes quotes and niqqud, folds Latin diacritics and Hebrew finals, and collapses separators to one space. */
 export function fold(text: string): string {
   let out = '';
-  for (const ch of text.toLowerCase().replace(DROPPED, '').replace(NIQQUD, '')) {
+  const cleaned = text.toLowerCase().replace(DROPPED, '').replace(MAQAF, ' ').replace(NIQQUD, '');
+  for (const ch of cleaned) {
     out += LATIN[ch] ?? HEBREW_FINALS[ch] ?? ch;
   }
   return out.replace(SEPARATORS, ' ').trim();
 }
 
 /**
- * The searchable forms of a name: the folded name, plus a form with the
- * leading ה dropped from each Hebrew word, so "מלד" finds "האיים המלדיביים".
+ * The searchable forms of a name: the folded name, a form with the leading ה
+ * dropped from each Hebrew word ("מלד" finds "האיים המלדיביים"), and forms
+ * without a leading "איי"/"האיים", so the rest of the name ranks as a prefix.
  */
 export function searchForms(name: string): string[] {
   const folded = fold(name);
@@ -61,5 +72,10 @@ export function searchForms(name: string): string[] {
     .split(' ')
     .map((word) => (word.length > 2 && word.startsWith('ה') ? word.slice(1) : word))
     .join(' ');
-  return withoutArticle === folded ? [folded] : [folded, withoutArticle];
+  const forms = [folded, withoutArticle];
+  for (const form of [folded, withoutArticle]) {
+    const [first, ...rest] = form.split(' ');
+    if (rest.length && first && OPTIONAL_LEADING.includes(first)) forms.push(rest.join(' '));
+  }
+  return [...new Set(forms)];
 }

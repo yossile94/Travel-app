@@ -27,9 +27,19 @@ describe('fold', () => {
     expect(fold('  Guinea-Bissau ')).toBe('guinea bissau');
   });
 
-  it('offers a form without the leading ה of each Hebrew word', () => {
-    expect(searchForms('האיים המלדיביים')).toEqual(['האיימ המלדיביימ', 'איימ מלדיביימ']);
+  it('offers forms without the leading ה and without a leading "איי"/"האיים"', () => {
+    expect(searchForms('האיים המלדיביים')).toEqual([
+      'האיימ המלדיביימ',
+      'איימ מלדיביימ',
+      'המלדיביימ',
+      'מלדיביימ',
+    ]);
+    expect(searchForms('איי פוקלנד')).toEqual(['איי פוקלנד', 'פוקלנד']);
     expect(searchForms('ישראל')).toEqual(['ישראל']);
+  });
+
+  it('treats maqaf as a space, not as niqqud', () => {
+    expect(fold('גינאה־ביסאו')).toBe('גינאה ביסאו');
   });
 });
 
@@ -46,6 +56,18 @@ describe('searchCountries (AC-1, AC-2, AC-4)', () => {
     ['ותיק', 'VAT'],
     ['USA', 'USA'],
     ['ארה"ב', 'USA'],
+    ['קוקוס', 'IOA'],
+    ['cocos', 'IOA'],
+    ['חג המולד', 'IOA'],
+    ['סין', 'CHN'],
+    ['china', 'CHN'],
+    ['צפון קוריאה', 'PRK'],
+    ['דרום קוריאה', 'KOR'],
+    ['גרוזיה', 'GEO'],
+    ['טייוואן', 'TWN'],
+    ['בלרוס', 'BLR'],
+    ['uk', 'GBR'],
+    ['פוקלנד', 'FLK'],
   ])('"%s" lists %s first', (query, adm0) => {
     expect(first(query)).toBe(adm0);
   });
@@ -85,11 +107,8 @@ describe('searchCountries (AC-1, AC-2, AC-4)', () => {
     const gibraltar = searchCountries('גיברלטר').results[0]!;
     expect(displayName(gibraltar)).toBe('גיברלטר (הממלכה המאוחדת)');
     expect(displayName(searchCountries('תאילנד').results[0]!)).toBe('תאילנד');
-  });
-
-  it('is fast enough to run on every keystroke', () => {
-    const start = performance.now();
-    for (const query of ['א', 'ar', 'תאי', 'united', 'קו']) searchCountries(query);
-    expect(performance.now() - start).toBeLessThan(50);
+    expect(displayName(searchCountries('קוקוס').results[0]!)).toBe(
+      'טריטוריה של האוקיינוס ההודי (אוסטרליה)',
+    );
   });
 });

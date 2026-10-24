@@ -413,6 +413,7 @@ export function GlobeScreen() {
       <SearchBar
         open={searchOpen}
         colorScheme={colorScheme}
+        reduceMotion={reduceMotion === true}
         insetsTop={insets.top}
         insetsBottom={insets.bottom}
         onOpen={openSearch}
