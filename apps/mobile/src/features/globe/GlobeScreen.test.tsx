@@ -414,7 +414,10 @@ describe('GlobeScreen', () => {
       await tap(BANGKOK_TAP);
       await search('יפ');
 
-      // The card steps aside while searching (design 2.2).
+      // The card steps aside while searching (design 2.2): no touches, not read out.
+      const hiddenCard = screen.getByTestId('country-card', { includeHiddenElements: true });
+      expect(hiddenCard.props.pointerEvents).toBe('none');
+      expect(hiddenCard.props.accessibilityElementsHidden).toBe(true);
       expect(screen.queryByTestId('country-card')).toBeNull();
       expect(handlers).toHaveLength(1);
       await act(async () => {
@@ -423,7 +426,7 @@ describe('GlobeScreen', () => {
       await finishClosing();
       expect(screen.queryByTestId('search-input')).toBeNull();
       // Closed without choosing: the card comes back, and back is the card's again.
-      expect(screen.getByTestId('country-card')).toBeOnTheScreen();
+      expect(screen.getByTestId('country-card').props.pointerEvents).toBe('auto');
       expect(handlers).toHaveLength(1);
       await act(async () => {
         handlers.at(-1)!();

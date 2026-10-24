@@ -429,8 +429,9 @@ export function GlobeScreen() {
       )}
 
       {/* The card steps aside while searching and comes back if nothing is chosen. */}
-      {selectedCountry && !searchOpen && (
+      {selectedCountry && (
         <BoardingPassCard
+          hidden={searchOpen}
           key={selectedCountry.adm0}
           country={selectedCountry}
           colorScheme={colorScheme}
