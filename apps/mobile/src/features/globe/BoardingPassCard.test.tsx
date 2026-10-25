@@ -88,6 +88,20 @@ describe('BoardingPassCard', () => {
     expect(StyleSheet.flatten(screen.getByTestId('card-name').props.style).fontSize).toBe(28);
   });
 
+  it('ellipsizes a long English name at its end, clear of the close button (sprint 1 QA)', async () => {
+    await renderCard('SGS');
+    const nameEn = screen.getByTestId('card-name-en');
+    expect(nameEn.props.numberOfLines).toBe(1);
+    expect(nameEn.props.ellipsizeMode).toBe('tail');
+    // A left-to-right row, inside a view that keeps the app's direction and
+    // the padding on the close button's side.
+    const row = nameEn.parent!;
+    expect(StyleSheet.flatten(row.props.style).direction).toBe('ltr');
+    const outer = row.parent!;
+    expect(StyleSheet.flatten(outer.props.style).direction).toBeUndefined();
+    expect(StyleSheet.flatten(outer.props.style).paddingEnd).toBe(48);
+  });
+
   it('gives the close button a 48 pt target', async () => {
     await renderCard('THA');
     const close = StyleSheet.flatten(screen.getByTestId('card-close').props.style);

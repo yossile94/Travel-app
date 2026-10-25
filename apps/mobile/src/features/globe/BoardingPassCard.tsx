@@ -161,19 +161,22 @@ export function BoardingPassCard({
           >
             {country.nameHe}
           </Text>
-          {/* Laid out left to right even in Hebrew: in an RTL layout Android
-              ellipsized the English name from the wrong end ("H GEORGIA …",
-              sprint 1 QA). It stays aligned with the Hebrew name above. */}
-          <View style={[styles.nameEnRow, styles.clearOfClose]}>
-            <Text
-              style={[styles.nameEn, { color: palette.textSecondary }]}
-              accessibilityLabel={country.nameEn}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              testID="card-name-en"
-            >
-              {country.nameEn}
-            </Text>
+          {/* The inner row is laid out left to right even in Hebrew: in an
+              RTL layout Android ellipsized the English name from the wrong end
+              ("H GEORGIA …", sprint 1 QA). The outer view keeps the app's
+              direction, so the space for the close button stays on its side. */}
+          <View style={styles.clearOfClose}>
+            <View style={styles.nameEnRow}>
+              <Text
+                style={[styles.nameEn, { color: palette.textSecondary }]}
+                accessibilityLabel={country.nameEn}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                testID="card-name-en"
+              >
+                {country.nameEn}
+              </Text>
+            </View>
           </View>
 
           <View style={styles.fields}>

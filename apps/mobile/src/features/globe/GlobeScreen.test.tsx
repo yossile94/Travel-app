@@ -37,6 +37,8 @@ const mockMap = {
   fills: {} as Record<string, { minZoomLevel?: number; maxZoomLevel?: number }>,
   /** Last style and filter each circle layer was rendered with, by layer id. */
   circles: {} as Record<string, { style: Record<string, unknown>; filter?: unknown }>,
+  /** The filter each line layer was rendered with, by layer id. */
+  lines: {} as Record<string, unknown>,
 };
 let mockReduceMotion: boolean | null = false;
 /** Every value the screen passed to useDetailedCountriesAsset. */
@@ -116,7 +118,10 @@ jest.mock('@rnmapbox/maps', () => {
       mockMap.fills[id] = { minZoomLevel, maxZoomLevel };
       return null;
     },
-    LineLayer: Nothing,
+    LineLayer: ({ id, filter }: { id: string; filter?: unknown }) => {
+      mockMap.lines[id] = filter;
+      return null;
+    },
     CircleLayer: ({
       id,
       style,
@@ -208,6 +213,7 @@ beforeEach(() => {
   mockMap.loads = true;
   mockMap.idles = Infinity;
   mockMap.fills = {};
+  mockMap.lines = {};
   mockReduceMotion = false;
   mockAuth.state = { status: 'unavailable' };
   mockAuth.notice = null;
@@ -551,6 +557,18 @@ describe('GlobeScreen', () => {
     mockDetailedRequests.length = 0;
     await render(<GlobeScreen />);
     expect(mockDetailedRequests.at(-1)).toBe(true);
+  });
+
+  it("draws Antarctica's lines from its outline, never along the 180° cut (sprint 1 QA)", async () => {
+    await render(<GlobeScreen />);
+    const lines = ['any', ['has', 'outline'], ['!=', ['get', 'adm0'], 'ATA']];
+    expect(mockMap.lines['countries-coarse-border']).toEqual(lines);
+    expect(mockMap.lines['countries-detailed-border']).toEqual(lines);
+    for (const part of ['glow', 'underlay', 'outline']) {
+      const filter = mockMap.lines[`highlight-coarse-${part}`] as unknown[];
+      expect(filter[0]).toBe('all');
+      expect(filter).toContainEqual(lines);
+    }
   });
 
   it('zooms by pinch only: no double-tap or quick zoom (AC-10)', async () => {
