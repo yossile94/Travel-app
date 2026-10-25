@@ -161,6 +161,12 @@ async function readLastUser(): Promise<AuthUser | null> {
   }
 }
 
+/** An error's code or name only: details can hold the user's data (sprint 2 design 3.3). */
+function errorCode(error: unknown): string {
+  const { code, name } = (error ?? {}) as { code?: unknown; name?: unknown };
+  return typeof code === 'string' ? code : typeof name === 'string' ? name : 'no code';
+}
+
 /** AC-18 re-checks on returning to the app, at most this often (one request per user per window). */
 const DOCUMENT_RECHECK_MS = 15 * 60 * 1000;
 
@@ -190,6 +196,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * sign-out the user didn't make while it's on means the account is gone.
    */
   const deletingAccount = useRef(false);
+  /** The wipe started by a sign-out during a deletion; deleteAccount waits for it (review). */
+  const deletionFinishing = useRef<Promise<void> | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
 
   /** Decides between the consent screen and the globe for a signed-in user. */
@@ -274,12 +282,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_OUT' && !signingOut.current) {
         // Sprint 2 design 11.2: during a deletion this means it happened.
         if (deletingAccount.current) {
-          void finishDeletion(true);
+          deletionFinishing.current = finishDeletion(true);
           return;
         }
         // AC-8, AC-16: the account may have been deleted on another device;
-        // either way nothing of this user stays here.
-        void wipeDevice(userIdNow());
+        // either way nothing of this user stays here. Still loading, the
+        // user is the one last signed in here.
+        const signedOutId = userIdNow();
+        void (signedOutId
+          ? wipeDevice(signedOutId)
+          : readLastUser().then((last) => wipeDevice(last?.id ?? null)));
         forgetUser();
         setDisplayName(null);
         setState({ status: 'signedOut', expired: true });
@@ -389,6 +401,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [waitingForDocuments, settle]);
 
   const signOut = useCallback(async () => {
+    // Data minimisation (review): nothing of this user stays on the device;
+    // the next sign-in reads the consent log again.
+    void wipeDevice(userIdNow());
     forgetUser();
     deletingAccount.current = false;
     setDisplayName(null);
@@ -416,7 +431,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (google.kind === 'network') return 'offline';
       if (google.kind === 'playServicesUnavailable') return 'playServicesUnavailable';
       if (google.kind === 'error') {
-        console.error('[auth] Google sign-in failed', google.error);
+        console.error('[auth] Google sign-in failed', errorCode(google.error));
         return 'error';
       }
 
@@ -429,7 +444,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (error && isAuthRetryableFetchError(error)) return 'offline';
         if (error || !data.user) {
-          console.error('[auth] Supabase sign-in failed', error);
+          console.error('[auth] Supabase sign-in failed', errorCode(error));
           // Forget the picked Google account, so a retry shows the chooser again (QA bug 2).
           await googleSignOut();
           return 'error';
@@ -489,7 +504,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await settle(current.user);
           return 'stale';
         }
-        console.error('[auth] could not record consent', result.error);
+        console.error('[auth] could not record consent', errorCode(result.error));
         return 'error';
       }
       const terms = documents.find((d) => d.docType === 'terms');
@@ -552,7 +567,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // signs out means the account is gone (handled by the listener).
         const { error } = await supabase.auth.refreshSession();
         if (!error) answer = await requestDeletion(google.idToken);
-        else if (signedOutNow()) return 'deleted';
+      }
+      // A sign-out meanwhile (the refresh found the user gone) means it happened.
+      if (deletionFinishing.current) {
+        await deletionFinishing.current;
+        deletionFinishing.current = null;
+        return 'deleted';
       }
       if (signedOutNow()) return 'deleted';
       switch (answer) {

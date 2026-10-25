@@ -116,21 +116,25 @@ export async function removeLocalChoices(userId: string): Promise<void> {
 /** The latest decision per optional choice, from the server's log; never asked: false. */
 export async function fetchChoices(): Promise<OptionalChoices | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase
-    .from('consents')
-    .select('doc_type, action')
-    .in('doc_type', ['marketing', 'analytics'])
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(20);
-  if (error || !data) {
-    if (error) logFailure('load choices', error);
-    return null;
-  }
-  const latest = (type: OptionalChoice) =>
-    (data as { doc_type: string; action: string }[]).find((row) => row.doc_type === type)
-      ?.action === 'granted';
-  return { marketing: latest('marketing'), analytics: latest('analytics') };
+  // One exact read per choice (index consents_user_type_time): a long run of
+  // changes to one choice can't push the other out of a shared page (review).
+  const latest = async (type: OptionalChoice) => {
+    const { data, error } = await supabase!
+      .from('consents')
+      .select('action')
+      .eq('doc_type', type)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(1);
+    if (error || !data) {
+      if (error) logFailure('load choices', error);
+      return null;
+    }
+    return (data as { action: string }[])[0]?.action === 'granted';
+  };
+  const [marketing, analytics] = await Promise.all([latest('marketing'), latest('analytics')]);
+  if (marketing === null || analytics === null) return null;
+  return { marketing, analytics };
 }
 
 /** One tap = one new row in the log (AC-13); the local copy changes only after it. */
@@ -153,6 +157,8 @@ export async function recordChoice(
     logFailure('record choice', error);
     return 'error';
   }
-  await writeLocalChoices(userId, { ...current, [type]: granted });
+  // Merged into what is stored now, so two choices saving at once both land.
+  const stored = (await readLocalChoices(userId)) ?? current;
+  await writeLocalChoices(userId, { ...stored, [type]: granted });
   return 'ok';
 }

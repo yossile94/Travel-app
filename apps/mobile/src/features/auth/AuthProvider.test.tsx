@@ -559,6 +559,22 @@ describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
     expect(result.current.state.status).toBe('signedIn');
   });
 
+  it('401, and the refresh signs out because the user is gone: "deleted" only, never "expired" too', async () => {
+    const { result } = await signedInHook();
+    mockDeletion.answers = ['unauthorized'];
+    mockSupabase.auth.refreshSession.mockImplementationOnce(async () => {
+      mockState.listeners.forEach((listener) => listener('SIGNED_OUT'));
+      return { error: { name: 'AuthApiError' } };
+    });
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.deleteAccount(() => {});
+    });
+    expect(outcome).toBe('deleted');
+    expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
+    expect(result.current.notice).toEqual({ kind: 'deleted' });
+  });
+
   it('offline: nothing is asked of Google or the server (AC-15)', async () => {
     const { result } = await signedInHook();
     jest.clearAllMocks();

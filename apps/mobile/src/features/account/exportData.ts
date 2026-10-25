@@ -37,13 +37,20 @@ class Aborted extends Error {}
 async function readAll<T extends { id: string | number }>(
   table: 'trips' | 'consents',
   columns: string,
+  userId: string,
   signal: AbortSignal,
 ): Promise<T[]> {
   const rows: T[] = [];
   let last: string | number | null = null;
   for (;;) {
     if (signal.aborted) throw new Aborted();
-    let query = supabase!.from(table).select(columns).order('id', { ascending: true }).limit(PAGE);
+    // The user filter besides RLS lets the planner use the (user_id, …) indexes (review).
+    let query = supabase!
+      .from(table)
+      .select(columns)
+      .eq('user_id', userId)
+      .order('id', { ascending: true })
+      .limit(PAGE);
     if (last !== null) query = query.gt('id', last);
     const { data, error } = await query;
     if (error || !data) throw error ?? new Error('no data');
@@ -74,11 +81,13 @@ export async function buildExport(
   const trips = await readAll<{ id: string }>(
     'trips',
     'id, country_adm0, title, start_date, end_date, notes, created_at, updated_at',
+    user.id,
     signal,
   );
   const consents = await readAll<{ id: number }>(
     'consents',
     'id, doc_type, doc_version, action, platform, app_version, created_at',
+    user.id,
     signal,
   );
   return {
