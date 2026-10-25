@@ -670,8 +670,9 @@ function tRangeA11y(lo, hi) { return lo === hi ? tA11y(lo) : t('climate.rangeA11
 /* =================== cities: names + search (README 5.3) =================== */
 const cityText = c => lang === 'he' ? (c.he || c.en) : c.en;
 const cityHtml = c => (lang === 'he' && !c.he) ? ltr(c.en) : esc(cityText(c));
-function tripCityText(x) { const c = x.gid && cityById[x.gid]; return c ? cityText(c) : x.snap; } // README 18 q2: name by id in current language, snapshot as fallback
-function tripCityHtml(x) { const c = x.gid && cityById[x.gid]; return c ? cityHtml(c) : auto(x.snap); }
+// Raz Q2: always the saved snapshot; no lookup by geonames_id (the id is used only for the climate cell)
+function tripCityText(x) { return x.snap; }
+function tripCityHtml(x) { return auto(x.snap); }
 const SPECIAL = { 'ð': 'd', 'þ': 'th', 'æ': 'ae', 'ø': 'o', 'ß': 'ss', 'ł': 'l', 'đ': 'd', 'ı': 'i', 'ħ': 'h', 'œ': 'oe' };
 const FINALS = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
 function norm(s) {
@@ -824,8 +825,12 @@ function drawPin(now) {
   const c = byAdm0[tr.adm0], p = project(c.lon, c.lat); if (!p.vis) return; // far side: hidden, camera not moved
   if (pulseOn()) {
     if (pulseT0 == null) pulseT0 = now;
-    const ph = ((now - pulseT0) % 1600) / 1200; // 1200 expand + 400 rest = 0.625 Hz
-    if (ph <= 1) { const e = easeMapbox(ph); ctx.globalAlpha = 0.7 * (1 - e); ctx.beginPath(); ctx.arc(p.x, p.y, 7 + 13 * e, 0, Math.PI * 2); ctx.strokeStyle = '#4FCFBE'; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1; }
+    // Raz R1: t=0 opacity 0.7 (0) + radius 7->20 (1200); t=100 opacity ->0 (1100); t=1200 radius ->7 (0); repeat every 1600 (0.625 Hz)
+    const ms = (now - pulseT0) % 1600;
+    if (ms < 1200) {
+      const r = 7 + 13 * easeMapbox(ms / 1200), op = ms < 100 ? 0.7 : 0.7 * (1 - easeMapbox((ms - 100) / 1100));
+      ctx.globalAlpha = op; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.strokeStyle = '#4FCFBE'; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
+    }
   } else pulseT0 = null; // paused: the ripple disappears at once
   let dy = 0, a = 1;
   if (st.pinDrop != null) { const k = Math.min(1, (now - st.pinDrop) / 400), e = easeMapbox(k); dy = -12 * (1 - e); a = e; if (k >= 1) st.pinDrop = null; }
@@ -837,7 +842,8 @@ function loadPinAndHighlights() {
   if (!st.signedIn || !st.online) return;
   st.hl = new Set(st.trips.map(x => x.adm0)); st.hlLoaded = true;
   st.pinVisible = true;
-  if (!st.pinSeen) { st.pinSeen = true; st.pinDrop = st.reduce ? null : performance.now(); } // one-time drop-in per session
+  // one-time drop-in per session: required in the static fallback; a proposal in the pulsing design (Raz R6), so off there
+  if (!st.pinSeen) { st.pinSeen = true; st.pinDrop = (st.reduce || st.pinVariant === 'pulse') ? null : performance.now(); }
 }
 function pinHit(x, y) {
   const tr = pinTrip(); if (!tr) return null; const c = byAdm0[tr.adm0], p = project(c.lon, c.lat);
@@ -876,8 +882,11 @@ function selectCountry(adm0, opts = {}) {
   st.selected = adm0; st.expanded = opts.expand || null;
   st.card.status = st.signedIn ? (st.online ? 'ready' : 'offline') : 'signedout'; st.card.notice = null;
   renderCard(); $('#card').classList.add('open'); $('#card').setAttribute('aria-hidden', 'false');
-  renderChrome(); flyTo(byAdm0[adm0]); say(t('globe.selected', { name: cname(byAdm0[adm0]) }));
-  if (opts.expand) { const tr = st.trips.find(x => x.id === opts.expand); if (tr) { say(opts.auto ? t('activeTrip.opened', { name: tr.name }) : t('trips.opened', { name: tr.name })); scrollToTrip(tr.id); } }
+  renderChrome(); flyTo(byAdm0[adm0]);
+  const tr = opts.expand ? st.trips.find(x => x.id === opts.expand) : null;
+  if (opts.auto && tr) say(t('activeTrip.opened', { name: tr.name })); // AC-8: one announcement only (Raz R5)
+  else { say(t('globe.selected', { name: cname(byAdm0[adm0]) })); if (tr) say(t('trips.opened', { name: tr.name })); }
+  if (tr) scrollToTrip(tr.id);
   setTimeout(() => { const h = document.querySelector('#card .c-name'); h && h.focus({ preventScroll: true }); }, 340);
 }
 function scrollToTrip(id) { setTimeout(() => { const el = document.querySelector(`[data-wrap="${id}"]`); el && el.scrollIntoView({ block: 'nearest', behavior: st.reduce ? 'auto' : 'smooth' }); }, 360); }
@@ -1013,7 +1022,10 @@ function closeSheet() {
 function renderSheet() {
   const el = $('#sheet'); el.classList.toggle('trips', st.sheet === 'trips');
   const close = `<button class="x" data-act="closeSheet" aria-label="${t('sheet.close')}">${I.x}</button>`;
-  if (st.sheet === 'sources') { el.innerHTML = `<div class="handle"></div>${close}<h2 tabindex="-1">${t('sources.title')}</h2><p class="src">${esc(t('sources.cities'))}</p><p class="src">${esc(t('sources.climate'))}</p>`; return; }
+  if (st.sheet === 'sources') { // Raz R7: licence names are links (Linking.openURL in the app); wording unchanged
+    const LIC = [['CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/'], ['Open Government Licence v3.0', 'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/']];
+    const linkify = s => LIC.reduce((h, [n, u]) => h.replace(esc(n), `<a href="${u}" target="_blank" rel="noopener" style="color:var(--link)">${esc(n)}</a>`), esc(s));
+    el.innerHTML = `<div class="handle"></div>${close}<h2 tabindex="-1">${t('sources.title')}</h2><p class="src">${linkify(t('sources.cities'))}</p><p class="src">${linkify(t('sources.climate'))}</p>`; return; }
   if (st.sheet !== 'trips') return;
   const L = st.listSnap; let body;
   if (!L) body = `<div class="mt-state" role="status">${I.cloudOffBig}<h3>${t('myTrips.offline')}</h3><p>${t('myTrips.offlineBody')}</p></div>`;

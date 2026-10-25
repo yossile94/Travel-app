@@ -1,7 +1,7 @@
 {
   "$meta.name": "Travel app design tokens - sprint 3 additions",
   "$meta.version": "0.4.0 (proposed)",
-  "$meta.status": "Proposal by Sharona, pending Raz approval. DELTA ONLY: every key below is new; no existing 0.3.0 value changes. Merge into docs/design/tokens.json and apps/mobile/src/theme/tokens.ts in the same PR that first uses them (docs/design/sprint-03/README.md section 15). Keys starting with '$check.' are contrast documentation only and are not merged into tokens.ts.",
+  "$meta.status": "Approved by Raz with changes (2026-10-26); changes applied. DELTA ONLY: every key below is new; no existing 0.3.0 value changes. Merge into docs/design/tokens.json and apps/mobile/src/theme/tokens.ts in the same PR that first uses them (docs/design/sprint-03/README.md section 15). Keys starting with '$check.' are contrast documentation only and are not merged into tokens.ts.",
   "$meta.source": "docs/design/sprint-03/README.md",
 
   "color.light.status.planned.bg": "#EEF6FF",
@@ -33,14 +33,19 @@
   "globe.final.nextTrip.pulse.opacityTo": 0,
   "globe.final.nextTrip.hit.radius": 32,
   "globe.final.nextTrip.dropIn.offsetY": -12,
-  "globe.final.nextTrip.layers": "Source next-trip (one Point at the region label point, properties adm0 + tripId; empty FeatureCollection when there is no pin). Layers above small-selection-ring: next-trip-pulse (CircleLayer, stroke only, pitch alignment + scale 'viewport'), next-trip-pin (SymbolLayer, iconAnchor bottom, allowOverlap + ignorePlacement, pitch + rotation alignment 'viewport'), next-trip-hit (CircleLayer radius 32, opacity 0, queried before the country hit layers). README 9.2.",
+  "globe.final.nextTrip.layers": "Own memoised component NextTripPin (owns the pulse timer and drop-in state; pulse state never passes through GlobeLayers props). Source next-trip mounts on the first render with an empty FeatureCollection and aboveLayerID 'small-countries-ring'; with data, one Point at the region label point, properties adm0 + tripId. Layers: next-trip-pulse (CircleLayer, stroke only, pitch alignment + scale 'viewport'), next-trip-pin (SymbolLayer, iconAnchor bottom, allowOverlap + ignorePlacement, pitch + rotation alignment 'viewport', created hidden: iconOpacity 0, iconTranslate [0,-12]), next-trip-hit (CircleLayer radius 32, circleOpacity 0, no stroke, queried before the country hit layers). Far-side fallback: hemisphere test with a threshold measured at HOME_ZOOM and ±0.02 hysteresis, centre from the onCameraChanged payload throttled to 100 ms, subscribed only while a pin exists and the fallback is on; hiding empties the source, so the hit layer hides too; the camera never moves. README 9.2.",
+  "globe.final.nextTrip.farSide.hysteresis": 0.02,
+  "globe.final.nextTrip.farSide.throttle": 100,
   "globe.final.nextTrip.note": "Lagoon 300 like the trip highlight, not Sunset, because Sunset is the selection and a Sunset pin disappears into the selected country's glow (README 9.1). Shown only when signed in and the query succeeded online; kept in memory if the network drops later; removed instantly on sign-out. Moves instantly when the next trip changes.",
 
   "motion.pin.pulsePeriod": 1600,
   "motion.pin.pulseExpand": 1200,
+  "motion.pin.pulseFadeDelay": 100,
+  "motion.pin.pulseFade": 1100,
+  "motion.pin.pulseResetAt": 1200,
   "motion.pin.pulseMaxHz": 1,
   "motion.pin.dropIn": 400,
-  "motion.pin.note": "0.625 Hz, under the 1 Hz limit of AC-7 / WCAG 2.3.1. Driven by Mapbox style transitions: two style updates per cycle, never per frame (README 9.3). Paused whenever the globe is not idle (any card, search, sheet, form, full screen, or the app in the background). Reduce motion: static pin, no drop-in. Fallback (AC-7): static pin with the one-time drop-in.",
+  "motion.pin.note": "0.625 Hz, under the 1 Hz limit of AC-7 / WCAG 2.3.1. Driven by Mapbox style transitions, never per frame, and never relying on 'the next frame' (Raz R1): t=0 circleStrokeOpacity 0.7 (duration 0) + circleRadius 20 (duration 1200); t=100 circleStrokeOpacity 0 (duration 1100); t=1200 circleRadius 7 (duration 0) while invisible; the timer repeats every 1600 ms. Pause = circleStrokeOpacity 0 (duration 0) and stop the timer. pulseAllowed = the rotationAllowed conditions in GlobeScreen.tsx, without the 5 s delay, and !E2E. Reduce motion: static pin, no drop-in. Drop-in: required in the static fallback (AC-7); in the pulsing design it is a proposal. It is race-free: the feature and the shown values (iconOpacity 1, iconTranslate [0,0], 400 ms) are set in one update; later moves are instant; sign-out empties the source and resets to hidden with duration 0.",
 
   "timing.activeTrip.openWindow": 3000,
   "timing.activeTrip.note": "AC-8: the next-trip data must arrive within this window after globe-ready, on a cold start, before any user interaction. Once per launch.",
@@ -50,7 +55,8 @@
   "limits.traveler.nameCounterFrom": 30,
   "limits.cities.max": 10,
   "limits.city.freeTextMax": 60,
-  "limits.city.freeTextMax.note": "Proposed, pending Raz (README 18 question 1). The scope does not set a maximum for free-text cities.",
+  "limits.city.freeTextMax.note": "Decided by Raz: 1–60 code points after trim; DB check char_length 1–60 on trip_cities.name; the build fails if any catalogue name is longer than 60.",
+  "limits.text.forbidden": "Traveler names and free-text cities reject bidi controls (U+202A–U+202E, U+2066–U+2069) and C0/C1 control characters, in the client and in save_trip.",
   "limits.sprint3.note": "Counted in Unicode code points after trim, like limits.note. 'Me' is not stored and not counted in limits.travelers.max; the displayed traveler count includes 'Me' and is shown from 2.",
 
   "search.cities.emptyQueryTop": 20,
@@ -68,6 +74,7 @@
   "format.temp.isolateEnd": "U+2069",
   "format.temp.degree": "U+00B0",
   "format.temp.rounding": "half away from zero, once, at display; -0 shows as 0",
+  "format.temp.storage": "The build stores hundredths of a degree as int16 (2537 = 25.37), never tenths. Display divides by 100 and rounds once.",
   "format.temp.note": "Every value is LRI + (U+2212 + digits | digits) + U+00B0 + PDI, never a '+' sign. Range (4+ months): 'בין {{low}} ל-{{high}}' when high >= 0, 'בין {{low}} ובין {{high}}' when high < 0, a single value when low == high. Screen readers get words ('מינוס 3 מעלות'), never the visible string (README 2).",
 
   "$check.contrast.method": "WCAG 2.x relative luminance, (L1+0.05)/(L2+0.05), on the hex values in tokens.json 0.3.0. Text needs 4.5:1, graphics 3:1 (1.4.11).",
@@ -112,6 +119,10 @@
   "$check.contrast.pin.body-on-selection-over-forest (#FF7A57 0.3 on #284220)": "3.82",
   "$check.contrast.pin.outline-on-selection-over-desert": "7.81",
   "$check.contrast.pin.outline-on-selection-over-ice": "12.70",
+  "$check.contrast.pin.body-on-own-trip-highlight-over-forest": "3.77",
+  "$check.contrast.pin.outline-on-own-trip-highlight-over-desert": "8.20",
+  "$check.contrast.pin.outline-on-own-trip-highlight-over-ice": "14.43",
+  "$check.contrast.pin.body-on-own-trip-highlight-over-ocean": "3.84",
   "$check.contrast.pin.dot-on-body": "10.61",
   "$check.contrast.pin.pulse": "Decorative, not required to meet 1.4.11; the pin carries the information."
 }
