@@ -8,8 +8,10 @@ describe('initialOf (account button, sprint 1 QA)', () => {
     expect(initialOf(user('Dana Ruth Cohen'))).toBe('DC');
   });
 
-  it('uses one letter for a one-word name', () => {
-    expect(initialOf(user('  dana  '))).toBe('D');
+  it('uses the first two letters of a one-word name (one "י" reads as an apostrophe)', () => {
+    expect(initialOf(user('יוסי'))).toBe('יו');
+    expect(initialOf(user('  dana  '))).toBe('Da');
+    expect(initialOf(user('X'))).toBe('X');
   });
 
   it("falls back to the email's first letter, then to nothing", () => {

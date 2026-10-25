@@ -140,6 +140,13 @@ jest.mock(
   'react-native-safe-area-context',
   () => jest.requireActual<{ default: object }>('react-native-safe-area-context/jest/mock').default,
 );
+const mockStatusBar = { style: null as string | null };
+jest.mock('expo-status-bar', () => ({
+  StatusBar: ({ style }: { style: string }) => {
+    mockStatusBar.style = style;
+    return null;
+  },
+}));
 jest.mock('./mapbox', () => ({ hasMapboxToken: true, turnOffMapboxTelemetryOnce: jest.fn() }));
 jest.mock('./useCountriesAsset', () => ({
   useCountriesAsset: () => ({ url: 'file:///countries.geojson', error: null }),
@@ -712,6 +719,10 @@ describe('GlobeScreen', () => {
         ],
       };
       await render(<GlobeScreen />);
+      // Dark status bar icons over the light consent screen (sprint 1 QA).
+      expect(mockStatusBar.style).toBe('dark');
+      // The consent Modal opens one tick after mounting (status bar first).
+      await act(async () => jest.advanceTimersByTime(0));
       expect(screen.getByText('לפני שממשיכים')).toBeOnTheScreen();
       expect(screen.getByText('גרסה 0 · טיוטה')).toBeOnTheScreen();
       expect(screen.queryByTestId('account-button')).toBeNull();
@@ -746,6 +757,8 @@ describe('GlobeScreen', () => {
         ],
       };
       await render(<GlobeScreen />);
+      // The consent Modal opens one tick after mounting (status bar first).
+      await act(async () => jest.advanceTimersByTime(0));
       expect(screen.getByText('עדכנו את מדיניות הפרטיות')).toBeOnTheScreen();
       expect(screen.getByText('חדש')).toBeOnTheScreen();
       expect(screen.queryByTestId('consent-marketing')).toBeNull();

@@ -14,14 +14,19 @@ import type { AuthUser } from './AuthProvider';
 
 /**
  * The first letters of the first and last words of the name ("יוסי לוי" →
- * "יל"), or the email's first letter. One Hebrew letter alone can read as an
+ * "יל"), the first two letters of a one-word name ("יוסי" → "יו"), or the
+ * email's first letter. One Hebrew letter alone can read as an
  * apostrophe ("י", sprint 1 QA).
  */
 export function initialOf(user: AuthUser): string | null {
   const words = (user.name ?? '').trim().split(/\s+/).filter(Boolean);
   if (words.length > 0) {
-    const letters = words.length > 1 ? [words[0]!, words.at(-1)!] : [words[0]!];
-    return letters.map((word) => [...word][0]!.toLocaleUpperCase()).join('');
+    if (words.length > 1) {
+      return [words[0]!, words.at(-1)!].map((word) => [...word][0]!.toLocaleUpperCase()).join('');
+    }
+    // One word (Google often gives just a first name): its first two letters.
+    const [first, second = ''] = [...words[0]!];
+    return first!.toLocaleUpperCase() + second;
   }
   const email = (user.email ?? '').trim();
   return email ? [...email][0]!.toLocaleUpperCase() : null;
