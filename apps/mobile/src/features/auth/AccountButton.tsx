@@ -12,9 +12,24 @@ import { colors, fonts, type ColorScheme } from '@/theme/tokens';
 
 import type { AuthUser } from './AuthProvider';
 
+/**
+ * The first letters of the first and last words of the name ("יוסי לוי" →
+ * "יל"), the first two letters of a one-word name ("יוסי" → "יו"), or the
+ * email's first letter. One Hebrew letter alone can read as an
+ * apostrophe ("י", sprint 1 QA).
+ */
 export function initialOf(user: AuthUser): string | null {
-  const source = (user.name ?? user.email ?? '').trim();
-  return source ? source[0]!.toLocaleUpperCase() : null;
+  const words = (user.name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (words.length > 0) {
+    if (words.length > 1) {
+      return [words[0]!, words.at(-1)!].map((word) => [...word][0]!.toLocaleUpperCase()).join('');
+    }
+    // One word (Google often gives just a first name): its first two letters.
+    const [first, second = ''] = [...words[0]!];
+    return first!.toLocaleUpperCase() + second;
+  }
+  const email = (user.email ?? '').trim();
+  return email ? [...email][0]!.toLocaleUpperCase() : null;
 }
 
 export function AccountButton({
@@ -43,7 +58,15 @@ export function AccountButton({
     >
       {initial ? (
         <View style={[styles.avatar, { backgroundColor: palette.primary }]}>
-          <Text style={[styles.initial, { color: palette.onPrimary }]}>{initial}</Text>
+          <Text
+            style={[
+              styles.initial,
+              initial.length > 1 && styles.initials,
+              { color: palette.onPrimary },
+            ]}
+          >
+            {initial}
+          </Text>
         </View>
       ) : (
         <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -71,4 +94,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   initial: { fontFamily: fonts.semibold, fontSize: 18, lineHeight: 24 },
+  initials: { fontSize: 15, lineHeight: 20 },
 });

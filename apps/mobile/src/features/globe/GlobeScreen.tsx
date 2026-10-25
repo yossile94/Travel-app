@@ -455,7 +455,8 @@ export function GlobeScreen() {
   return (
     <View style={styles.screen}>
       {/* The scene is always space, so the system bars keep light icons (AC-7, AC-9). */}
-      <StatusBar style="light" />
+      {/* Dark icons over the light consent screen (WCAG 1.4.11, sprint 1 QA). */}
+      <StatusBar style={consentShown && colorScheme === 'light' ? 'dark' : 'light'} />
       <NavigationBar style="light" />
       <View
         style={StyleSheet.absoluteFill}

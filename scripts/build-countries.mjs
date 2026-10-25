@@ -6,8 +6,16 @@
  * - countries.geojson: "coarse", KEEP_FRACTION of the vertices, shown up to zoom 3.
  * - countries-detailed.geojson: "detailed", DETAIL_KEEP_FRACTION, from zoom 3,
  *   loaded only after the globe is ready (AC-13a, design 6.5).
- * - ocean-mask.geojson: the whole world minus the coarse land, so the tint's
- *   coastline matches the borders exactly (AC-8, design 6.2).
+ * - ocean-mask.geojson: the whole world minus the coarse land and the
+ *   Antarctic ice shelves, so the tint's coastline matches the borders
+ *   (AC-8, design 6.2) and the ice is never tinted as sea.
+ *
+ * Natural Earth cuts areas that cross the 180° meridian (Russia, Fiji, the
+ * US...) into pieces at ±180°. Drawn on the globe, the cut is a straight line
+ * through the land, so those pieces are joined again, with longitudes past
+ * 180°. Antarctica, which surrounds the pole, can't be joined: its outline
+ * is added as a line feature ({ outline: true }) without the cut, and the app
+ * draws Antarctica's lines from that feature (sprint 1 QA).
  *
  * Source: Natural Earth admin-0 countries, Israeli point of view, pinned to a
  * fixed commit and verified by SHA-256 so every build produces the same file.
@@ -22,6 +30,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import polygonClipping from 'polygon-clipping';
 import { feature, merge } from 'topojson-client';
 import { topology } from 'topojson-server';
 import { presimplify, quantile, simplify, sphericalTriangleArea } from 'topojson-simplify';
@@ -34,8 +43,14 @@ const SOURCE = {
   sha256: '45e43bd18bb0d97290ec1751c8b669c7e99a69ca0413b7a0d3196505fc42d4aa',
 };
 
+// Same Natural Earth version. Reviewed on 2026-10-25: 561,580 bytes.
+const ICE_SHELVES = {
+  path: 'geojson/ne_10m_antarctic_ice_shelves_polys.geojson',
+  sha256: '8f9bf62368695f5664b5fcd9bc0e2baea66da295aea014ce0e9cf510f209898d',
+};
+
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const cacheFile = join(root, '.cache', 'natural-earth', SOURCE.commit, 'countries_isr.geojson');
+const cacheDir = join(root, '.cache', 'natural-earth', SOURCE.commit);
 // .geojson so Metro ships these as assets loaded by URL, not compiled into the JS bundle.
 const geoDir = join(root, 'apps', 'mobile', 'assets', 'geo');
 const outFile = join(geoDir, 'countries.geojson');
@@ -53,12 +68,14 @@ const DETAIL_KEEP_FRACTION = detailArg ? Number(detailArg.split('=')[1]) : 0.25;
 // ~11 m precision; finer is invisible on a phone-sized globe.
 const COORDINATE_DECIMALS = 4;
 
-async function loadSource() {
+/** A Natural Earth file at the pinned commit, from the cache or GitHub, verified by SHA-256. */
+async function loadSource({ path, sha256 } = SOURCE) {
+  const cacheFile = join(cacheDir, path.split('/').pop());
   let bytes;
   try {
     bytes = await readFile(cacheFile);
   } catch {
-    const url = `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/${SOURCE.commit}/${SOURCE.path}`;
+    const url = `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/${SOURCE.commit}/${path}`;
     console.log(`Downloading ${url}`);
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Download failed: HTTP ${response.status}`);
@@ -68,10 +85,10 @@ async function loadSource() {
   }
 
   const hash = createHash('sha256').update(bytes).digest('hex');
-  if (hash !== SOURCE.sha256) {
+  if (hash !== sha256) {
     throw new Error(
-      `SHA-256 mismatch for the Natural Earth source.\n  expected ${SOURCE.sha256}\n  actual   ${hash}\n` +
-        'If this is the first download, review the file and pin the actual hash in SOURCE.sha256.',
+      `SHA-256 mismatch for ${path}.\n  expected ${sha256}\n  actual   ${hash}\n` +
+        'If this is the first download, review the file and pin the actual hash.',
     );
   }
   return JSON.parse(bytes.toString('utf8'));
@@ -251,9 +268,111 @@ function countriesAt(simplified) {
       }),
   };
   for (const f of result.features) {
+    if (f.geometry && f.properties.adm0 === 'ATA') {
+      f.geometry.coordinates = polygonsOf(f.geometry).map(([outer, ...holes]) => [
+        closeAroundSouthPole(outer),
+        ...holes,
+      ]);
+      if (f.geometry.type === 'Polygon') f.geometry.coordinates = f.geometry.coordinates[0];
+    }
+    const original = f.geometry;
+    if (f.geometry) f.geometry = joinAcrossAntimeridian(f.geometry, f.properties.adm0);
     if (f.geometry) f.geometry.coordinates = roundCoordinates(f.geometry.coordinates);
+    // A joined area reaches past 180°; its bbox from the cut pieces would be wrong.
+    if (f.geometry && f.geometry !== original) f.bbox = boundingBox(f.geometry);
   }
+  const antarctica = result.features.find((f) => f.properties.adm0 === 'ATA');
+  if (!antarctica?.geometry) throw new Error('Antarctica is missing from the borders.');
+  result.features.push({
+    type: 'Feature',
+    properties: { adm0: 'ATA', outline: true },
+    geometry: { type: 'MultiLineString', coordinates: outlineWithoutCuts(antarctica.geometry) },
+  });
   return result;
+}
+
+const polygonsOf = (geometry) =>
+  geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+
+function boundingBox(geometry) {
+  const points = polygonsOf(geometry).flat(2);
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
+
+/** A point on the 180° cut: Natural Earth puts cut vertices exactly at ±180. */
+const onCut = ([x]) => Math.abs(x) === 180;
+
+/**
+ * Joins the pieces of an area that Natural Earth cut at ±180°: pieces west of
+ * the cut move east by 360° (Chukotka at -175° becomes 185°) and are unioned
+ * with their neighbours, so no edge runs along the cut. Mapbox wraps
+ * longitudes past 180° on its own.
+ */
+export function joinAcrossAntimeridian(geometry, adm0) {
+  if (!geometry || adm0 === 'ATA') return geometry;
+  const polygons = polygonsOf(geometry);
+  if (!polygons.some(([outer]) => outer.some(onCut))) return geometry;
+  const moved = polygons.map((polygon) =>
+    polygon[0].every(([x]) => x <= 0) && polygon[0].some(([x]) => x === -180)
+      ? polygon.map((ring) => ring.map(([x, y]) => [x + 360, y]))
+      : polygon,
+  );
+  const joined = polygonClipping.union(...moved);
+  return joined.length === 1
+    ? { type: 'Polygon', coordinates: joined[0] }
+    : { type: 'MultiPolygon', coordinates: joined };
+}
+
+/**
+ * Closes a ring that goes around the South Pole. Simplification drops the
+ * vertices along the 180° cut and the pole (their triangles have no area), so
+ * Antarctica's ring jumps straight from ~180° to ~-180°: Mapbox then fills
+ * the wrong side and the tint covers the pole (sprint 1 QA, the disc). This
+ * puts the cut and the pole back where the ring crosses 180°.
+ */
+export function closeAroundSouthPole(ring) {
+  // Already closed (the pole survived simplification), or nothing to close.
+  if (ring.some(([, y]) => y <= -89.99)) return ring;
+  const i = ring.findIndex((point, k) => k > 0 && Math.abs(point[0] - ring[k - 1][0]) > 180);
+  if (i === -1) return ring;
+  const [a, b] = [ring[i - 1], ring[i]];
+  const side = Math.sign(a[0]);
+  // Latitude where the coast meets 180°, between a and b (b moved next to a).
+  const bx = b[0] + 360 * side;
+  const y = a[1] + ((b[1] - a[1]) * (180 * side - a[0])) / (bx - a[0]);
+  if (!Number.isFinite(y)) throw new Error(`Cannot close the ring at ${a} → ${b}.`);
+  return [
+    ...ring.slice(0, i),
+    [180 * side, y],
+    [180 * side, -90],
+    [-180 * side, -90],
+    [-180 * side, y],
+    ...ring.slice(i),
+  ];
+}
+
+/**
+ * An area's rings as lines, without the segments Natural Earth added to close
+ * them: along the 180° cut, and along the pole for Antarctica.
+ */
+export function outlineWithoutCuts(geometry) {
+  const artificial = (a, b) => (onCut(a) && onCut(b)) || (a[1] <= -89.99 && b[1] <= -89.99);
+  const lines = [];
+  for (const ring of polygonsOf(geometry).flat()) {
+    let line = [ring[0]];
+    for (let i = 1; i < ring.length; i++) {
+      if (artificial(ring[i - 1], ring[i])) {
+        if (line.length > 1) lines.push(line);
+        line = [ring[i]];
+      } else {
+        line.push(ring[i]);
+      }
+    }
+    if (line.length > 1) lines.push(line);
+  }
+  return lines;
 }
 
 /**
@@ -299,7 +418,7 @@ function pointInRing([x, y], ring) {
  * plus the listed inland water as polygons of their own. Built from the same
  * coarse topology as the borders, so the tint's coast matches exactly.
  */
-function oceanMask(simplified) {
+function oceanMask(simplified, iceShelves) {
   const land = merge(simplified, simplified.objects.countries.geometries);
   const world = [
     [-180, -90],
@@ -308,7 +427,16 @@ function oceanMask(simplified) {
     [-180, 90],
     [-180, -90],
   ];
-  const landRings = roundCoordinates(land.coordinates.map(([outer]) => outer))
+  // Antarctica and the islands near it, unioned with the ice shelves: the
+  // satellite shows the shelves as white ice, so they are land here.
+  const southern = (ring) => ring.every(([, y]) => y < -60);
+  const outers = land.coordinates.map(([outer]) =>
+    southern(outer) ? closeAroundSouthPole(outer) : outer,
+  );
+  const antarctic = polygonClipping
+    .union(...outers.filter(southern).map((ring) => [ring]), ...iceShelves)
+    .map(([outer]) => outer);
+  const landRings = roundCoordinates([...outers.filter((ring) => !southern(ring)), ...antarctic])
     .filter(usableRing)
     .map((ring) => wound(ring, false));
   const lakes = roundCoordinates(land.coordinates.flatMap(([, ...holes]) => holes))
@@ -333,8 +461,21 @@ function oceanMask(simplified) {
   };
 }
 
+/** The Antarctic ice shelves, simplified like the coarse borders. */
+function simplifiedIceShelves(source) {
+  const topo = presimplify(topology({ shelves: source }, 1e6), sphericalTriangleArea);
+  const simplified = simplify(topo, quantile(topo, KEEP_FRACTION));
+  const shelves = feature(simplified, simplified.objects.shelves);
+  return shelves.features
+    .filter((f) => f.geometry)
+    .flatMap((f) => polygonsOf(f.geometry))
+    .map((polygon) => polygon.filter(usableRing))
+    .filter((polygon) => polygon.length > 0);
+}
+
 async function main() {
   const source = await loadSource();
+  const iceShelves = simplifiedIceShelves(await loadSource(ICE_SHELVES));
 
   const prepared = applyBorderPolicy(source.features);
 
@@ -353,7 +494,7 @@ async function main() {
 
   const detailed = countriesAt(simplify(topo, quantile(topo, DETAIL_KEEP_FRACTION)));
   await writeFile(detailedFile, JSON.stringify(detailed));
-  const ocean = oceanMask(simplified);
+  const ocean = oceanMask(simplified, iceShelves);
   await writeFile(oceanFile, JSON.stringify(ocean));
 
   const { size } = await stat(outFile);
@@ -366,12 +507,14 @@ async function main() {
   console.log(
     `  detailed + ocean mask: ${((detailedSize + oceanSize) / 1024 / 1024).toFixed(2)} MB (budget 5 MB, AC-13a)`,
   );
-  const missingCode = result.features.filter((f) => !f.properties.code);
-  const missingHebrew = result.features.filter((f) => !f.properties.nameHe);
-  const missingGeometry = result.features.filter((f) => !f.geometry);
+  // Statistics are about areas; Antarctica's outline line feature is not one.
+  const areas = result.features.filter((f) => !f.properties.outline);
+  const missingCode = areas.filter((f) => !f.properties.code);
+  const missingHebrew = areas.filter((f) => !f.properties.nameHe);
+  const missingGeometry = areas.filter((f) => !f.geometry);
 
   console.log(`Wrote ${outFile}`);
-  console.log(`  features: ${result.features.length}, size: ${(size / 1024).toFixed(0)} KB`);
+  console.log(`  areas: ${areas.length}, size: ${(size / 1024).toFixed(0)} KB`);
   console.log(
     `  vertices kept: ${(KEEP_FRACTION * 100).toFixed(1)}%, small countries kept whole: ${protectedCount}`,
   );
@@ -391,7 +534,7 @@ async function main() {
     const key = f.properties.mergeInto ?? f.properties.adm0;
     areaBefore.set(key, (areaBefore.get(key) ?? 0) + approximateArea(f.geometry));
   }
-  const drift = result.features
+  const drift = areas
     .map((f) => {
       const before = areaBefore.get(f.properties.adm0) ?? 0;
       const after = approximateArea(f.geometry);
@@ -405,7 +548,10 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
-});
+// Imported by the tests for the geometry helpers; only builds when run directly.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}

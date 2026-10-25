@@ -60,6 +60,15 @@ export function ConsentScreen({
   const { t } = useTranslation();
   const { submitConsent, signOut } = useAuth();
   const palette = colors[colorScheme];
+  // Opens one tick after mounting. The parent switches the status bar to dark
+  // icons in the same render (the globe's light icons vanish on the cream
+  // canvas, sprint 1 QA), and Android copies the status bar's appearance to
+  // the Modal's own window only when it opens.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setOpen(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
   const [agreed, setAgreed] = useState(false);
   const [marketing, setMarketing] = useState(false);
   const [analytics, setAnalytics] = useState(false);
@@ -114,7 +123,7 @@ export function ConsentScreen({
 
   return (
     <Modal
-      visible
+      visible={open}
       animationType={reduceMotion ? 'fade' : 'slide'}
       statusBarTranslucent
       navigationBarTranslucent

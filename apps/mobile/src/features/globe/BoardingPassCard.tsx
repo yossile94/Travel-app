@@ -161,14 +161,23 @@ export function BoardingPassCard({
           >
             {country.nameHe}
           </Text>
-          <Text
-            style={[styles.nameEn, styles.clearOfClose, { color: palette.textSecondary }]}
-            accessibilityLabel={country.nameEn}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {country.nameEn}
-          </Text>
+          {/* The inner row is laid out left to right even in Hebrew: in an
+              RTL layout Android ellipsized the English name from the wrong end
+              ("H GEORGIA …", sprint 1 QA). The outer view keeps the app's
+              direction, so the space for the close button stays on its side. */}
+          <View style={styles.clearOfClose}>
+            <View style={styles.nameEnRow}>
+              <Text
+                style={[styles.nameEn, { color: palette.textSecondary }]}
+                accessibilityLabel={country.nameEn}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                testID="card-name-en"
+              >
+                {country.nameEn}
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.fields}>
             {country.timeZone && <LocalTime country={country} colorScheme={colorScheme} />}
@@ -318,13 +327,15 @@ const styles = StyleSheet.create({
   label: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, textAlign: 'left' },
   nameHe: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, marginTop: 4, textAlign: 'left' },
   nameHeLong: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
+  nameEnRow: { direction: 'ltr' },
   nameEn: {
     fontFamily: fonts.medium,
     fontSize: 14,
     lineHeight: 20,
     letterSpacing: 2,
     textTransform: 'uppercase',
-    textAlign: 'left',
+    // Inside the LTR row, so these are physical sides: the reading start of the card.
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
     writingDirection: 'ltr',
   },
   // At 130% font scale the currency drops to its own line rather than squeezing the time.

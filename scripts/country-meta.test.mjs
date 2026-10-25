@@ -122,6 +122,8 @@ describe('globe card data', () => {
 
   it('names every currency once, without a repeated word (AFN was "אפגני אפגני")', () => {
     assert.equal(meta.AFG.currency.nameHe, 'אפגני');
+    // The currency uses the country's own word, not CLDR's "הנסיכויות" (sprint 1 QA).
+    assert.equal(meta.ARE.currency.nameHe, 'דירהם של איחוד האמירויות הערביות');
     for (const [adm0, { currency }] of Object.entries(meta)) {
       if (!currency) continue;
       const words = currency.nameHe.split(' ');
