@@ -10,7 +10,7 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
 | companions | user_id, display_name, birth_year | בעלים בלבד |
 | countries | iso2, name_he, name_en, name_local, aliases[], languages[], emergency_numbers | קריאה לכולם, כתיבה לאדמין |
 | missions | country_iso2, type, address, phones, hours, lat/lng, covers[], verified_at, source_url | קריאה לכולם, כתיבה לאדמין |
-| trips | id (UUID שנוצר במכשיר), user_id (on delete cascade), country_iso2, title, start_date, end_date, notes; status מספרינט 3 | בעלים בלבד. יצירה ועריכה רק עם הסכמה לגרסה הנוכחית; מחיקה תמיד (ספרינט 2) |
+| trips | id (UUID שנוצר במכשיר), user_id (on delete cascade), country_adm0 (קוד האזור בגלובוס, למשל THA; לא ISO, כי שטחים חולקים קוד ISO עם המדינה הריבונית), title, start_date, end_date, notes; status מספרינט 3 | בעלים בלבד. יצירה ועריכה רק עם הסכמה לגרסה הנוכחית; מחיקה תמיד (ספרינט 2) |
 | account_deletions | user_id, deleted_at, reason (user_request / no_consent_30d) | בלי גישה ללקוח. כתיבה רק בפונקציית המחיקה בשרת. ממנה נספרת תקופת השמירה של consents (ספרינט 2) |
 | trip_travelers | trip_id, companion_id | דרך הבעלות על trip |
 | flights | trip_id, flight_number, flight_date, pnr, seat, watch_key | דרך הבעלות על trip |

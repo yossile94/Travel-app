@@ -49,7 +49,7 @@ select table_privs_are('public', 'trips', 'authenticated', array['SELECT', 'DELE
   'users insert and update trips only through column grants');
 select ok(
   not has_column_privilege('authenticated', 'public.trips', 'user_id', 'UPDATE')
-  and not has_column_privilege('authenticated', 'public.trips', 'country_iso2', 'UPDATE')
+  and not has_column_privilege('authenticated', 'public.trips', 'country_adm0', 'UPDATE')
   and not has_column_privilege('authenticated', 'public.trips', 'user_id', 'INSERT'),
   'the owner and the country never change, and the owner is set by the server'
 );
@@ -59,8 +59,8 @@ select function_privs_are('public', 'my_trip_countries', array[]::text[], 'anon'
 -- -------------------------------------------------------- signed out (anon)
 set local role anon;
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('TH', 'x', '2027-08-01', '2027-08-10') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('THA', 'x', '2027-08-01', '2027-08-10') $$,
   '42501',
   null,
   'a signed-out client cannot add a trip'
@@ -70,10 +70,10 @@ reset role;
 -- ------------------------------------------------------------------ user A
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000002a');
 select lives_ok(
-  $$ insert into public.trips (id, country_iso2, title, start_date, end_date, notes) values
-     ('00000000-0000-4000-8000-0000000000a1', 'TH', 'תאילנד אוגוסט 2027', '2027-08-01', '2027-08-20', 'בנגקוק'),
-     ('00000000-0000-4000-8000-0000000000a2', 'TH', 'תאילנד 2025', '2025-02-01', '2025-02-10', null),
-     ('00000000-0000-4000-8000-0000000000a3', 'GR', 'יוון', '2026-11-01', '2026-11-05', null) $$,
+  $$ insert into public.trips (id, country_adm0, title, start_date, end_date, notes) values
+     ('00000000-0000-4000-8000-0000000000a1', 'THA', 'תאילנד אוגוסט 2027', '2027-08-01', '2027-08-20', 'בנגקוק'),
+     ('00000000-0000-4000-8000-0000000000a2', 'THA', 'תאילנד 2025', '2025-02-01', '2025-02-10', null),
+     ('00000000-0000-4000-8000-0000000000a3', 'GRC', 'יוון', '2026-11-01', '2026-11-05', null) $$,
   'a user with consent adds trips'
 );
 select is(
@@ -82,69 +82,69 @@ select is(
   'the server sets the owner'
 );
 select throws_ok(
-  $$ insert into public.trips (id, country_iso2, title, start_date, end_date)
-     values ('00000000-0000-4000-8000-0000000000a1', 'TH', 'again', '2027-08-01', '2027-08-20') $$,
+  $$ insert into public.trips (id, country_adm0, title, start_date, end_date)
+     values ('00000000-0000-4000-8000-0000000000a1', 'THA', 'again', '2027-08-01', '2027-08-20') $$,
   '23505',
   null,
   'saving the same trip id again does not make a second trip (AC-3)'
 );
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('TH', 'x', '2027-08-10', '2027-08-01') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('THA', 'x', '2027-08-10', '2027-08-01') $$,
   '23514',
   null,
   'a return before the departure is refused'
 );
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('TH', ' x', '2027-08-01', '2027-08-02') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('THA', ' x', '2027-08-01', '2027-08-02') $$,
   '23514',
   null,
   'a name with surrounding spaces is refused'
 );
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('TH', repeat('א', 81), '2027-08-01', '2027-08-02') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('THA', repeat('א', 81), '2027-08-01', '2027-08-02') $$,
   '23514',
   null,
   'a name longer than 80 characters is refused'
 );
 select lives_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('TH', repeat('א', 80), '2027-09-01', '2027-09-02') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('THA', repeat('א', 80), '2027-09-01', '2027-09-02') $$,
   'a name of exactly 80 characters is accepted'
 );
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date, notes)
-     values ('TH', 'x', '2027-08-01', '2027-08-02', repeat('a', 2001)) $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date, notes)
+     values ('THA', 'x', '2027-08-01', '2027-08-02', repeat('a', 2001)) $$,
   '23514',
   null,
   'notes longer than 2,000 characters are refused'
 );
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('th', 'x', '2027-08-01', '2027-08-02') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('tha', 'x', '2027-08-01', '2027-08-02') $$,
   '23514',
   null,
-  'the country is an ISO code in capitals'
+  'the country is an area code (three capitals)'
 );
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('TH', E'x\n', '2027-08-01', '2027-08-02') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('THA', E'x\n', '2027-08-01', '2027-08-02') $$,
   '23514',
   null,
   'a name ending in a newline is refused'
 );
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date, notes)
-     values ('TH', 'x', '2027-08-01', '2027-08-02', '') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date, notes)
+     values ('THA', 'x', '2027-08-01', '2027-08-02', '') $$,
   '23514',
   null,
   'empty notes are null, never an empty string'
 );
 select results_eq(
   $$ select * from public.my_trip_countries() order by 1 $$,
-  $$ values ('GR'::text), ('TH'::text) $$,
+  $$ values ('GRC'::text), ('THA'::text) $$,
   'the globe highlight gets each country once (AC-10)'
 );
 select lives_ok(
@@ -157,7 +157,7 @@ select ok(
   'the server keeps the update time'
 );
 select throws_ok(
-  $$ update public.trips set country_iso2 = 'FR' where id = '00000000-0000-4000-8000-0000000000a1' $$,
+  $$ update public.trips set country_adm0 = 'FRA' where id = '00000000-0000-4000-8000-0000000000a1' $$,
   '42501',
   null,
   'the country cannot be changed (AC-2)'
@@ -194,8 +194,8 @@ reset role;
 -- ------------------------------------------------------- C, without consent
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000002c');
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('TH', 'x', '2027-08-01', '2027-08-02') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('THA', 'x', '2027-08-01', '2027-08-02') $$,
   '42501',
   null,
   'a user who never consented cannot add a trip (decision 4)'
@@ -207,8 +207,8 @@ select pg_temp.sign_in('00000000-0000-4000-8000-00000000002d');
 insert into public.consents (doc_type, doc_version, action, platform, app_version)
 values ('terms', 0, 'granted', 'android', '0.3.0');
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('TH', 'x', '2027-08-01', '2027-08-02') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('THA', 'x', '2027-08-01', '2027-08-02') $$,
   '42501',
   null,
   'consent to the terms alone is not enough'
@@ -220,8 +220,8 @@ select pg_temp.sign_in('00000000-0000-4000-8000-00000000002b');
 insert into public.consents (doc_type, doc_version, action, platform, app_version)
 values ('terms', 0, 'withdrawn', 'android', '0.3.0');
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('TH', 'x', '2027-08-01', '2027-08-02') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('THA', 'x', '2027-08-01', '2027-08-02') $$,
   '42501',
   null,
   'after withdrawing the terms, writing is refused'
@@ -238,8 +238,8 @@ select throws_ok(
   'after new terms are published, edits fail with 42501, not "no rows" (re-consent)'
 );
 select throws_ok(
-  $$ insert into public.trips (country_iso2, title, start_date, end_date)
-     values ('TH', 'x', '2027-08-01', '2027-08-02') $$,
+  $$ insert into public.trips (country_adm0, title, start_date, end_date)
+     values ('THA', 'x', '2027-08-01', '2027-08-02') $$,
   '42501',
   null,
   'after new terms are published, adding needs consent again'

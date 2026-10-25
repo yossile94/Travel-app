@@ -29,8 +29,8 @@ $$;
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000003a');
 insert into public.consents (doc_type, doc_version, action, platform, app_version)
 values ('terms', 0, 'granted', 'android', '0.3.0'), ('privacy', 0, 'granted', 'android', '0.3.0');
-insert into public.trips (country_iso2, title, start_date, end_date)
-values ('TH', 'תאילנד', '2027-08-01', '2027-08-10');
+insert into public.trips (country_adm0, title, start_date, end_date)
+values ('THA', 'תאילנד', '2027-08-01', '2027-08-10');
 reset role;
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000003b');
 insert into public.consents (doc_type, doc_version, action, platform, app_version)
