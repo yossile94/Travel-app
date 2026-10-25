@@ -386,7 +386,8 @@ authorization_url_path = "/oauth/consent"
 allow_dynamic_registration = false
 
 [edge_runtime]
-# No edge functions in sprint 1.
+# Off locally: delete-account is tested with Deno (CI job "functions") and
+# against staging; no function needs to run inside supabase start.
 enabled = false
 # Supported request policies: `oneshot`, `per_worker`.
 # `per_worker` (default) — enables hot reload during local development.
@@ -399,6 +400,13 @@ deno_version = 2
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
+
+# Sprint 2 AC-15 to AC-18 (ADR-006). The platform's JWT check only understands
+# the legacy keys; the function checks the session itself with auth.getUser.
+[functions.delete-account]
+verify_jwt = false
+# Shared import map with pinned versions; deno.lock beside it pins their hashes.
+import_map = "./functions/deno.json"
 
 [analytics]
 # The local log pipeline (vector) keeps restarting on Windows; logs aren't needed locally.

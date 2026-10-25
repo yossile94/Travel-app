@@ -12,3 +12,5 @@ apps/mobile/ios/
 apps/mobile/.expo/
 apps/mobile/expo-env.d.ts
 coverage/
+# Written by Deno; pins the Edge Functions' imports by hash.
+supabase/functions/deno.lock

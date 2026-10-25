@@ -1,7 +1,7 @@
 # ADR-006: מחיקת חשבון, הפרופיל והנסיעות בבסיס הנתונים
 
 **תאריך:** 2026-10-25
-**סטטוס:** בתהליך (ספרינט 2). חלק בסיס הנתונים: דודי סקר. ה-Edge Function `delete-account` ובדיקות ה-Deno שלה יתווספו לכאן כשייכתבו, ויעברו סקירה נפרדת.
+**סטטוס:** בתהליך (ספרינט 2). חלק בסיס הנתונים: דודי סקר והוחל ב-staging. ה-Edge Function `delete-account` (סעיף 7) ממתינה לסקירה של דודי ורז.
 
 ## הקשר
 
@@ -33,6 +33,15 @@
 - **יצירה:** trigger על `auth.users` יוצר את הפרופיל. כל שגיאה בתוכו נבלעת, כך שהרשמה לא נכשלת בגללו, והאפליקציה יוצרת פרופיל חסר בעצמה.
 - **upsert:** ל-UPDATE על `id` יש הרשאה, כי ה-upsert של supabase-js כותב את כל העמודות ששלח. WITH CHECK והמפתח הזר שומרים שה-`id` יישאר של המשתמש עצמו.
 - **פרופיל חסר:** יצירה עם `ignoreDuplicates` (`DO NOTHING`), כדי לא לדרוס שם שהמשתמש כבר שינה.
+
+**7. ה-Edge Function `delete-account`** (`supabase/functions/delete-account/`):
+- **זהות:** נקבעת רק מה-session שבכותרת `Authorization`, דרך `auth.getUser` (שגם מוודא שה-session עדיין קיים בשרת). שום שדה בגוף הבקשה לא קובע את מי מוחקים.
+- **אימות מחדש:** ה-ID token החדש של Google נבדק עם המפתחות של Google: חתימה RS256, `iss`, `aud` (לקוח ה-Web) ו-`exp`, ו-`iat` מ-5 הדקות האחרונות. ה-`sub` חייב להיות של זהות Google של אותו משתמש. חשבון Google אחר מקבל 403 `wrong_account`.
+- **`verify_jwt` כבוי:** בדיקת ה-JWT של הפלטפורמה מכירה רק את מפתחות ה-JWT הישנים, ואנחנו עובדים עם `sb_publishable`/`sb_secret` (לפי התיעוד של Supabase). הבדיקה בקוד חזקה יותר, כי `getUser` פונה לשרת ה-Auth.
+- **מפתח השירות:** נקרא רק מהסביבה (`SUPABASE_SECRET_KEYS`, ובסביבה המקומית `SUPABASE_SERVICE_ROLE_KEY`). `GOOGLE_WEB_CLIENT_ID` מוגדר כ-secret של הפונקציה.
+- **תשובות:** 200 `{ deleted: true }`; 200 `{ deleted: false }` כשהמשתמש כבר לא קיים; 401 בלי session תקף; 400 בלי token; 403 `reauth_failed` או `wrong_account`; 500. בלוגים נרשמים רק שם השגיאה והקוד שלה, בלי מזהים, tokens או הודעות.
+- **בדיקות:** Deno (`deno test`) לכל מסלול ב-handler עם תלויות מזויפות, ולאימות ה-token עם מפתחות שנוצרים בבדיקה. ב-CI יש job בשם `functions` עם Deno 2.9.6: lint, check ו-test עם `--frozen`. הגרסאות קבועות ב-`supabase/functions/deno.json`, וה-hash שלהן ב-`deno.lock`.
+- **פרסום:** ידני ומתועד, כמו ה-migrations (ADR-004): ל-staging אחרי הסקירות ולפני QA. אחר כך מגדירים את `GOOGLE_WEB_CLIENT_ID` ומוודאים קריאה עם session תקף ועם session לא תקף.
 
 **6. העלאה לסביבות:** לפי ADR-004. staging אחרי הסקירה של דודי ולפני QA, עם הבדיקות שלפני ההעלאה:
 - ל-postgres יש הרשאות על `auth.users`.
