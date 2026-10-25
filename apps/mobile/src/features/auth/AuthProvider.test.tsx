@@ -575,6 +575,44 @@ describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
     expect(result.current.notice).toEqual({ kind: 'deleted' });
   });
 
+  it('a second tap while deleting starts nothing (review)', async () => {
+    const { result } = await signedInHook();
+    googleAuth.googleIdToken!.mockClear();
+    let release: () => void = () => {};
+    deletion.requestDeletion!.mockImplementationOnce(
+      () => new Promise((resolve) => (release = () => resolve('deleted'))),
+    );
+    let first: Promise<string> = Promise.resolve('');
+    let second = '';
+    await act(async () => {
+      first = result.current.deleteAccount(() => {});
+      second = await result.current.deleteAccount(() => {});
+    });
+    expect(second).toBe('inProgress');
+    await act(async () => {
+      release();
+      expect(await first).toBe('deleted');
+    });
+    expect(googleAuth.googleIdToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('the answer and a sign-out both finishing a deletion wipe once (review)', async () => {
+    const { result } = await signedInHook();
+    jest.clearAllMocks();
+    deletion.requestDeletion!.mockImplementationOnce(async () => {
+      // Auto-refresh found the user gone while the answer was on its way.
+      mockState.listeners.forEach((listener) => listener('SIGNED_OUT'));
+      return 'deleted';
+    });
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.deleteAccount(() => {});
+    });
+    expect(outcome).toBe('deleted');
+    expect(googleAuth.googleRevoke).toHaveBeenCalledTimes(1);
+    expect(result.current.notice).toEqual({ kind: 'deleted' });
+  });
+
   it('offline: nothing is asked of Google or the server (AC-15)', async () => {
     const { result } = await signedInHook();
     jest.clearAllMocks();

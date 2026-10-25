@@ -165,7 +165,7 @@ export function BoardingPassCard({
               notchRadius: NOTCH_RADIUS,
               couponY: coupon && passHeight > 0 ? passHeight : undefined,
             })}
-            fill={palette.surface}
+            fill={palette.surfaceRaised}
             stroke={dark ? 'rgba(163,179,219,0.16)' : 'transparent'}
           />
           <Line

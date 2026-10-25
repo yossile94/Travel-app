@@ -98,6 +98,8 @@ export type DeleteOutcome =
   | 'noAnswer'
   /** The session is no longer valid (401) and couldn't be refreshed. */
   | 'expired'
+  /** A deletion is already running (a second tap); nothing new started. */
+  | 'inProgress'
   | 'error';
 
 interface AuthContextValue {
@@ -198,6 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deletingAccount = useRef(false);
   /** The wipe started by a sign-out during a deletion; deleteAccount waits for it (review). */
   const deletionFinishing = useRef<Promise<void> | null>(null);
+  /** A deletion is running: a second tap waits for it instead of starting another (review). */
+  const deleteInFlight = useRef(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
 
   /** Decides between the consent screen and the globe for a signed-in user. */
@@ -250,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   /** The account is gone (deleted here, or found deleted): wipe first, then the UI (design 11.3). */
-  const finishDeletion = useCallback(
+  const wipeAfterDeletion = useCallback(
     async (sessionAlreadyGone: boolean) => {
       const userId = userIdNow();
       forgetUser();
@@ -270,6 +274,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [forgetUser, wipeDevice],
   );
 
+  /** Idempotent: the server's answer and a sign-out can both finish a deletion (review). */
+  const finishDeletion = useCallback(
+    (sessionAlreadyGone: boolean): Promise<void> => {
+      deletionFinishing.current ??= wipeAfterDeletion(sessionAlreadyGone);
+      return deletionFinishing.current;
+    },
+    [wipeAfterDeletion],
+  );
+
   // The stored session at launch, and session changes the user didn't make here.
   useEffect(() => {
     if (!supabase) return;
@@ -282,7 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_OUT' && !signingOut.current) {
         // Sprint 2 design 11.2: during a deletion this means it happened.
         if (deletingAccount.current) {
-          deletionFinishing.current = finishDeletion(true);
+          void finishDeletion(true);
           return;
         }
         // AC-8, AC-16: the account may have been deleted on another device;
@@ -545,9 +558,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   }, []);
 
-  const deleteAccount = useCallback(
+  const runDeletion = useCallback(
     async (onDeleting: () => void): Promise<DeleteOutcome> => {
-      if (!supabase || stateRef.current.status !== 'signedIn') return 'error';
+      if (!supabase) return 'error';
       const net = await NetInfo.fetch();
       if (net.isConnected === false) return 'offline';
       // Design 11.2: always the account chooser and a fresh token (iat), never the last pick.
@@ -571,7 +584,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // A sign-out meanwhile (the refresh found the user gone) means it happened.
       if (deletionFinishing.current) {
         await deletionFinishing.current;
-        deletionFinishing.current = null;
         return 'deleted';
       }
       if (signedOutNow()) return 'deleted';
@@ -591,6 +603,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     [finishDeletion],
+  );
+
+  const deleteAccount = useCallback(
+    async (onDeleting: () => void): Promise<DeleteOutcome> => {
+      if (!supabase || stateRef.current.status !== 'signedIn') return 'error';
+      if (deleteInFlight.current) return 'inProgress';
+      deleteInFlight.current = true;
+      deletionFinishing.current = null;
+      try {
+        return await runDeletion(onDeleting);
+      } finally {
+        deleteInFlight.current = false;
+      }
+    },
+    [runDeletion],
   );
 
   const value = useMemo(

@@ -50,7 +50,7 @@ import { HOME_CENTER, HOME_ZOOM, flightDuration, zoomForSpan } from './camera';
 import { countryByAdm0 } from './countryData';
 import { GlobeLayers, LAYER } from './GlobeLayers';
 import { hasMapboxToken, turnOffMapboxTelemetryOnce } from './mapbox';
-import { logGlobeReady, markGlobeMounted } from './perfLog';
+import { logGlobeReady, markGlobeMounted, markMyTripsOpened } from './perfLog';
 import { resolveTap, type TapHits } from './resolveTap';
 import { SystemScrims } from './SystemScrims';
 import { isTap, type TouchDown } from './tapGesture';
@@ -146,7 +146,7 @@ export function GlobeScreen() {
   const [tripForm, setTripForm] = useState<TripFormTarget | null>(null);
   const [pendingIntent, setPendingIntent] = useState<PendingIntent>(null);
   /** The trip to open in the card, when the card was opened from "My trips" (design 5.3). */
-  const [openTripId, setOpenTripId] = useState<string | null>(null);
+  const [openTrip, setOpenTrip] = useState<{ id: string; adm0: string } | null>(null);
   const [tripToast, setTripToast] = useState<{ text: string; at: number } | null>(null);
   const tripAdm0s = useMemo(
     () => (trips.countries ? [...trips.countries] : null),
@@ -180,11 +180,16 @@ export function GlobeScreen() {
   const selectedAdm0 = selection.selected?.adm0 ?? null;
   const selectedCountry = selectedAdm0 ? countryByAdm0(selectedAdm0) : undefined;
 
+  // Any other country, or none, drops it (review): reopening later starts closed.
+  if (openTrip && selectedAdm0 !== openTrip.adm0) setOpenTrip(null);
+
   // Sprint 2 design 2.3: after sign-in (and consent), do what the tap asked for.
   if (auth.state.status === 'signedIn' && pendingIntent) {
     setPendingIntent(null);
-    if (pendingIntent.type === 'myTrips') setMyTripsOpen(true);
-    else if (selectedCountry?.adm0 === pendingIntent.adm0) {
+    if (pendingIntent.type === 'myTrips') {
+      markMyTripsOpened();
+      setMyTripsOpen(true);
+    } else if (selectedCountry?.adm0 === pendingIntent.adm0) {
       setTripForm({ kind: 'new', country: selectedCountry });
     }
   }
@@ -490,6 +495,7 @@ export function GlobeScreen() {
   const openMyTrips = useCallback(() => {
     if (rotationAllowedRef.current) stopRotation();
     if (auth.state.status === 'signedIn') {
+      markMyTripsOpened();
       setMyTripsOpen(true);
       return;
     }
@@ -516,7 +522,7 @@ export function GlobeScreen() {
   const openTripFromList = useCallback(
     (trip: Trip) => {
       setMyTripsOpen(false);
-      setOpenTripId(trip.id);
+      setOpenTrip({ id: trip.id, adm0: trip.countryAdm0 });
       if (countryByAdm0(trip.countryAdm0)) {
         dispatch({ type: 'countryTapped', country: { adm0: trip.countryAdm0 } });
       }
@@ -641,7 +647,7 @@ export function GlobeScreen() {
                     country={selectedCountry}
                     colorScheme={colorScheme}
                     maxListHeight={maxListHeight}
-                    initiallyOpen={openTripId}
+                    initiallyOpen={openTrip?.id ?? null}
                     onNewTrip={newTrip}
                     onEditTrip={(trip) =>
                       setTripForm({ kind: 'edit', country: selectedCountry, trip })
@@ -652,7 +658,6 @@ export function GlobeScreen() {
               : undefined
           }
           onClose={() => {
-            setOpenTripId(null);
             dispatch({ type: 'backPressed' });
           }}
           onHeight={(height) => {
@@ -757,6 +762,7 @@ export function GlobeScreen() {
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
           onClose={() => setTripForm(null)}
+          onGone={() => trips.changed({ adm0: tripForm.country.adm0, has: null })}
           onDone={tripFormDone}
         />
       )}
@@ -771,7 +777,8 @@ export function GlobeScreen() {
       )}
 
       {/* Design 2.3: "signed in as" waits until the trip form closes. */}
-      {auth.notice && !tripForm && (
+      {/* One toast at a time: the trip's first, then "signed in as" (review). */}
+      {auth.notice && !tripForm && !tripToast && (
         <Toast
           text={
             auth.notice.kind === 'signedIn'

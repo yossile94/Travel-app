@@ -313,7 +313,7 @@ export function ConsentScreen({
 function cardStyle(colorScheme: ColorScheme) {
   const palette = colors[colorScheme];
   return {
-    backgroundColor: palette.surface,
+    backgroundColor: palette.surfaceRaised,
     borderColor: palette.borderSubtle,
     borderWidth: colorScheme === 'dark' ? 1 : 0,
   };

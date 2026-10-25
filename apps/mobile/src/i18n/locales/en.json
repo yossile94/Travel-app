@@ -279,7 +279,9 @@
     "saving": "Saving…",
     "saved": "Choice saved",
     "offline": "You're offline. Changing a choice needs a connection.",
-    "error": "Couldn't save the change. Your choice is back to what it was. Try again."
+    "error": "Couldn't save the change. Your choice is back to what it was. Try again.",
+    "docMetaDated": "Version {{version}} · agreed {{date}}",
+    "docA11yDated": "{{doc}}, version {{version}}, agreed {{date}}"
   },
   "export": {
     "preparing": "Preparing the file…",

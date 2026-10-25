@@ -11,7 +11,7 @@ import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { limits } from '@/theme/tokens';
 
-import { codePointLength } from '../trips/tripDates';
+import { codePointLength, toPgDate } from '../trips/tripDates';
 
 export type SaveResult = 'ok' | 'offline' | 'error';
 
@@ -135,6 +135,35 @@ export async function fetchChoices(): Promise<OptionalChoices | null> {
   const [marketing, analytics] = await Promise.all([latest('marketing'), latest('analytics')]);
   if (marketing === null || analytics === null) return null;
   return { marketing, analytics };
+}
+
+/**
+ * When each document version was agreed (AC-13): the latest "granted" row of
+ * that version, as a local date. Null when it can't be read (offline).
+ */
+export async function fetchAgreedDates(
+  agreed: Record<'terms' | 'privacy', number>,
+): Promise<Partial<Record<'terms' | 'privacy', string>> | null> {
+  if (!supabase) return null;
+  const read = async (type: 'terms' | 'privacy') => {
+    const { data, error } = await supabase!
+      .from('consents')
+      .select('created_at')
+      .eq('doc_type', type)
+      .eq('doc_version', agreed[type])
+      .eq('action', 'granted')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(1);
+    if (error || !data) {
+      if (error) logFailure('load agreement date', error);
+      return undefined;
+    }
+    const at = (data as { created_at: string }[])[0]?.created_at;
+    return at ? toPgDate(new Date(at)) : undefined;
+  };
+  const [terms, privacy] = await Promise.all([read('terms'), read('privacy')]);
+  return { terms, privacy };
 }
 
 /** One tap = one new row in the log (AC-13); the local copy changes only after it. */

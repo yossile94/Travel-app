@@ -5,6 +5,7 @@
  */
 import NetInfo from '@react-native-community/netinfo';
 import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
@@ -39,7 +40,9 @@ import { legalDrafts } from '@/features/auth/legalDrafts';
 import { isolateLtr } from '@/features/globe/BoardingPassCard';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
 
+import { formatDate } from '../trips/tripDates';
 import {
+  fetchAgreedDates,
   fetchChoices,
   readLocalChoices,
   recordChoice,
@@ -62,6 +65,7 @@ interface ScreenProps {
 function PushScreen({
   title,
   onBack,
+  leavesOnBack = true,
   backDisabled = false,
   colorScheme,
   reduceMotion,
@@ -72,6 +76,8 @@ function PushScreen({
 }: ScreenProps & {
   title: string;
   onBack: () => void;
+  /** false: "back" stays on this screen (a step back inside it), so no exit animation. */
+  leavesOnBack?: boolean;
   backDisabled?: boolean;
   children: ReactNode;
   footer?: ReactNode;
@@ -99,6 +105,10 @@ function PushScreen({
   );
   const back = () => {
     if (backDisabled) return;
+    if (!leavesOnBack) {
+      onBack();
+      return;
+    }
     progress.set(
       withTiming(0, {
         duration: reduceMotion ? 200 : 250,
@@ -214,6 +224,7 @@ export function ConsentsScreen({
   const [agreed, setAgreed] = useState<AgreedVersions | null>(null);
   const [documents, setDocuments] = useState<LegalDocument[] | null>(null);
   const [choices, setChoices] = useState<OptionalChoices | null>(null);
+  const [agreedOn, setAgreedOn] = useState<Partial<Record<LegalDocType, string>>>({});
   const [saving, setSaving] = useState<Partial<Record<OptionalChoice, boolean>>>({});
   const [offline, setOffline] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -229,8 +240,13 @@ export function ConsentsScreen({
       if (!current) return;
       setAgreed(local);
       if (localChoices) setChoices(localChoices);
-      const [docs, server] = await Promise.all([fetchCurrentDocuments(), fetchChoices()]);
+      const [docs, server, dates] = await Promise.all([
+        fetchCurrentDocuments(),
+        fetchChoices(),
+        local ? fetchAgreedDates(local) : null,
+      ]);
       if (!current) return;
+      if (dates) setAgreedOn(dates);
       setDocuments(docs);
       if (server) {
         setChoices(server);
@@ -270,11 +286,16 @@ export function ConsentsScreen({
     // The agreed version's text: the hosted copy when it is the one in force.
     const url = doc && doc.version === version ? doc.url : null;
     const name = t(type === 'terms' ? 'consent.terms' : 'consent.privacy');
+    const date = agreedOn[type];
     return (
       <View key={type}>
         <Pressable
           accessibilityRole="link"
-          accessibilityLabel={t('consents.docA11y', { doc: name, version: version ?? '–' })}
+          accessibilityLabel={
+            date
+              ? t('consents.docA11yDated', { doc: name, version, date: formatDate(date, t) })
+              : t('consents.docA11y', { doc: name, version: version ?? '–' })
+          }
           accessibilityHint={url ? t('consents.docHint') : undefined}
           onPress={() => {
             if (url) Linking.openURL(url).catch(() => setReading(type));
@@ -285,7 +306,9 @@ export function ConsentsScreen({
           <Text style={[styles.bodyStrong, { color: palette.link }]}>{name}</Text>
           {version !== undefined ? (
             <Text style={[styles.footnote, styles.tabular, { color: palette.textSecondary }]}>
-              {t('consents.docMeta', { version })}
+              {date
+                ? t('consents.docMetaDated', { version, date: numericDate(date, t) })
+                : t('consents.docMeta', { version })}
             </Text>
           ) : null}
         </Pressable>
@@ -348,6 +371,12 @@ export function ConsentsScreen({
   );
 }
 
+/** "23.10.2026" (design 9.1), from a Postgres date. */
+function numericDate(value: string, t: TFunction): string {
+  const [yyyy, mm, dd] = value.split('-');
+  return t('date.numeric', { dd, mm, yyyy });
+}
+
 const DELETE_MESSAGES: Partial<Record<DeleteOutcome, string>> = {
   offline: 'deleteAccount.offline',
   cancelled: 'deleteAccount.cancelled',
@@ -385,7 +414,7 @@ export function DeleteAccountScreen({
     setOutcome(null);
     const result = await deleteAccount(() => setDeleting(true));
     // On success the whole account area unmounts with the signed-in state.
-    if (result === 'deleted') return;
+    if (result === 'deleted' || result === 'inProgress') return;
     setBusy(false);
     setDeleting(false);
     setOutcome(result);
@@ -413,6 +442,7 @@ export function DeleteAccountScreen({
         {...screen}
         title={t('deleteAccount.title')}
         onBack={() => (step === 2 ? setStep(1) : onBack())}
+        leavesOnBack={step === 1}
         backDisabled={busy}
         testID="delete-account-screen"
         footer={

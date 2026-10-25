@@ -27,6 +27,8 @@ interface Props {
   dismissable?: boolean;
   /** The sheet grows with its content up to this height; a list inside then scrolls (sprint 2 design 5.1). */
   maxHeight?: number;
+  /** Android back, when it means something other than closing (sprint 2 design 8.2, 12). */
+  onBack?: () => void;
   onClose: () => void;
   children: ReactNode;
   testID?: string;
@@ -41,6 +43,7 @@ export function BottomSheet({
   insetsBottom,
   dismissable = true,
   maxHeight,
+  onBack,
   onClose,
   children,
   testID,
@@ -79,7 +82,7 @@ export function BottomSheet({
       statusBarTranslucent
       navigationBarTranslucent
       animationType="none"
-      onRequestClose={requestClose}
+      onRequestClose={onBack ?? requestClose}
     >
       <Animated.View
         style={[StyleSheet.absoluteFill, { backgroundColor: palette.scrim }, scrimStyle]}
@@ -95,7 +98,7 @@ export function BottomSheet({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: palette.surface, paddingBottom: insetsBottom + 16, maxHeight },
+          { backgroundColor: palette.surfaceRaised, paddingBottom: insetsBottom + 16, maxHeight },
           sheetStyle,
         ]}
         accessibilityViewIsModal

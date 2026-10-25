@@ -150,7 +150,9 @@ describe('design tokens in the app', () => {
     assert.ok(light.includes(`textSecondary: '${design['color.light.text.secondary']}'`));
     assert.ok(dark.includes(`textPrimary: '${design['color.dark.text.primary']}'`));
     assert.ok(dark.includes(`textSecondary: '${design['color.dark.text.secondary']}'`));
-    assert.ok(dark.includes(`surface: '${design['color.dark.bg.surfaceRaised']}'`));
+    assert.ok(dark.includes(`surfaceRaised: '${design['color.dark.bg.surfaceRaised']}'`));
+    assert.ok(dark.includes(`surface: '${design['color.dark.bg.surface']}'`));
+    assert.ok(light.includes(`surface: '${design['color.light.bg.surface']}'`));
   });
 
   it('match the sprint 2 tokens (0.3.0)', () => {

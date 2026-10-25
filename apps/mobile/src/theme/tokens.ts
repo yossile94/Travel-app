@@ -5,6 +5,9 @@
 
 export const colors = {
   light: {
+    /** bg.surfaceRaised: sheets, the card, search. */
+    surfaceRaised: '#FFFFFF',
+    /** bg.surface: cards and fields on the canvas (sprint 2). */
     surface: '#FFFFFF',
     textPrimary: '#121C36',
     textSecondary: '#4A5573',
@@ -42,7 +45,8 @@ export const colors = {
     skeleton: '#F4E7D0',
   },
   dark: {
-    surface: '#121C36',
+    surfaceRaised: '#121C36',
+    surface: '#0B1326',
     textPrimary: '#F3F6FC',
     textSecondary: '#A3B3DB',
     textTertiary: '#7487BD',

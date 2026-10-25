@@ -6,6 +6,7 @@ import {
   formFromTrip,
   isFormChanged,
   onTitleBlur,
+  thousands,
   tripFields,
   validateTripForm,
   withStartDate,
@@ -89,6 +90,13 @@ describe('trip form (sprint 2 design 3.2, 3.3)', () => {
     expect(validateTripForm({ ...ok, title: 'x', notes: 'a'.repeat(2001) }).notes).toBe(
       'tripForm.errors.notesTooLong',
     );
+  });
+
+  it('writes counters with a thousands separator, without Intl', () => {
+    expect(thousands(840)).toBe('840');
+    expect(thousands(1840)).toBe('1,840');
+    expect(thousands(2000)).toBe('2,000');
+    expect(thousands(1234567)).toBe('1,234,567');
   });
 
   it('knows when leaving needs a confirmation, and sends trimmed values', () => {

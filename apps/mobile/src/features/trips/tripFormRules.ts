@@ -110,6 +110,11 @@ export function isFormChanged(values: TripFormValues, initial: TripFormValues): 
   );
 }
 
+/** "1,840": Hermes has no Intl, so no toLocaleString (design 3.1 counters). */
+export function thousands(n: number): string {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 /** What is sent: trimmed, and empty notes as null. */
 export function tripFields(values: TripFormValues) {
   const notes = values.notes.trim();

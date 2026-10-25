@@ -93,7 +93,12 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
 
   return (
     <>
-      <BottomSheet {...sheet} visible={visible} testID="account-sheet">
+      <BottomSheet
+        {...sheet}
+        visible={visible}
+        onBack={editing ? () => setEditing(false) : undefined}
+        testID="account-sheet"
+      >
         {editing ? (
           <NameEditor
             initial={name ?? ''}

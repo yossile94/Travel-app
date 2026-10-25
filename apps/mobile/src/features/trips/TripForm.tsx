@@ -7,7 +7,7 @@
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import NetInfo from '@react-native-community/netinfo';
 import * as Crypto from 'expo-crypto';
-import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
@@ -48,6 +48,7 @@ import {
 
 import { codePointLength, formatDate, fromPgDate, toPgDate, todayPg } from './tripDates';
 import {
+  thousands,
   emptyForm,
   firstErrorField,
   formFromTrip,
@@ -74,9 +75,6 @@ export type TripFormResult =
 type Notice = 'offline' | 'saveError' | 'gone' | 'consent' | 'deleteOffline' | 'deleteError' | null;
 
 /** "1,840": Hermes has no Intl, so no toLocaleString. */
-function thousands(n: number): string {
-  return String(n).replace(/B(?=(d{3})+(?!d))/g, ',');
-}
 
 /** The country's name in the app's language (design 3.2). */
 export function countryName(country: CountryInfo, language: string): string {
@@ -98,9 +96,19 @@ interface Props {
   insetsBottom: number;
   onClose: () => void;
   onDone: (result: TripFormResult) => void;
+  /** The trip was deleted on another device; the form stays open (design 6.1). */
+  onGone: () => void;
 }
 
-export function TripForm({ target, colorScheme, insetsTop, insetsBottom, onClose, onDone }: Props) {
+export function TripForm({
+  target,
+  colorScheme,
+  insetsTop,
+  insetsBottom,
+  onClose,
+  onDone,
+  onGone,
+}: Props) {
   const { t, i18n } = useTranslation();
   const { recheckConsent } = useAuth();
   const palette = colors[colorScheme];
@@ -116,6 +124,8 @@ export function TripForm({ target, colorScheme, insetsTop, insetsBottom, onClose
   const [submitted, setSubmitted] = useState(false);
   const [returnCleared, setReturnCleared] = useState(false);
   const [busy, setBusy] = useState<'save' | 'delete' | null>(null);
+  /** Set synchronously, so a second tap before the first re-render does nothing (3.4). */
+  const working = useRef(false);
   const [notice, setNotice] = useState<Notice>(null);
   const errors: TripFormErrors = submitted ? validateTripForm(values) : {};
 
@@ -203,8 +213,17 @@ export function TripForm({ target, colorScheme, insetsTop, insetsBottom, onClose
     });
   };
 
-  const save = useCallback(async () => {
-    if (busy) return;
+  const save = async () => {
+    if (busy || working.current) return;
+    working.current = true;
+    try {
+      await saveOnce();
+    } finally {
+      working.current = false;
+    }
+  };
+
+  const saveOnce = async () => {
     setSubmitted(true);
     const found = validateTripForm(values);
     const first = firstErrorField(found);
@@ -244,9 +263,11 @@ export function TripForm({ target, colorScheme, insetsTop, insetsBottom, onClose
       void recheckConsent();
       return;
     }
+    // Deleted on another device: the card, list and highlight refresh now (6.1).
+    if (result === 'gone') onGone();
     setNotice(result === 'gone' ? 'gone' : result === 'offline' ? 'offline' : 'saveError');
     scroll.current?.scrollTo({ y: 0, animated: true });
-  }, [busy, values, tripId, editing, target, t, recheckConsent, onDone]);
+  };
 
   const confirmDelete = () => {
     if (target.kind !== 'edit' || busy) return;
@@ -262,9 +283,12 @@ export function TripForm({ target, colorScheme, insetsTop, insetsBottom, onClose
               setNotice('deleteOffline');
               return;
             }
+            if (working.current) return;
+            working.current = true;
             setBusy('delete');
             const result = await withTimeout(deleteTrip(target.trip.id), timing.tripSaveTimeout);
             setBusy(null);
+            working.current = false;
             if (result === 'ok' || result === 'gone') {
               onDone({ kind: 'deleted', trip: target.trip, alreadyGone: result === 'gone' });
             } else {

@@ -23,6 +23,7 @@ import { Button } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
 import { AlertIcon, CloudOffIcon, GlobePlusIcon } from '@/components/icons';
 import { countryByAdm0 } from '@/features/globe/countryData';
+import { logMyTripsShown } from '@/features/globe/perfLog';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
 
 import { ActiveBadge } from './CardTrips';
@@ -61,6 +62,12 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
     if (state.showSkeleton) AccessibilityInfo.announceForAccessibility(t('myTrips.loading'));
   }, [state.showSkeleton, t]);
   const rowCount = state.upcoming.length + state.past.length;
+  // AC-10: measured until the first answer is drawn (after this commit).
+  useEffect(() => {
+    if (!visible) return;
+    if (state.status === 'ready') logMyTripsShown(rowCount > 0 ? 'rows' : 'empty');
+    else if (state.status === 'error' || state.status === 'offline') logMyTripsShown(state.status);
+  }, [visible, state.status, rowCount]);
   useEffect(() => {
     if (state.status === 'offline')
       AccessibilityInfo.announceForAccessibility(t('myTrips.offline'));
@@ -203,7 +210,7 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
           keyExtractor={(item, index) => (item === 'none' ? `none-${index}` : item.id)}
           stickySectionHeadersEnabled
           renderSectionHeader={({ section }) => (
-            <View style={[styles.sectionHeader, { backgroundColor: palette.surface }]}>
+            <View style={[styles.sectionHeader, { backgroundColor: palette.surfaceRaised }]}>
               <Text
                 style={[styles.title3, { color: palette.textPrimary }]}
                 accessibilityRole="header"

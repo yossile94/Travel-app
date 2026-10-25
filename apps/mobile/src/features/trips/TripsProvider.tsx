@@ -67,11 +67,14 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     setFirstLoad(false);
   }
 
+  /** Only the latest request's answer counts: an older, slower one is dropped. */
+  const sequence = useRef(0);
   const reload = useCallback(async () => {
     const forUser = currentUser.current;
     if (!forUser) return;
+    const id = ++sequence.current;
     const result = await loadTripCountries();
-    if (currentUser.current !== forUser || !result.ok) return;
+    if (id !== sequence.current || currentUser.current !== forUser || !result.ok) return;
     setCountries(result.value);
     setFirstLoad(true);
   }, []);
