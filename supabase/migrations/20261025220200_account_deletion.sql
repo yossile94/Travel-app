@@ -47,9 +47,12 @@ revoke execute on function public.admin_delete_user(uuid, text) from public, ano
 grant execute on function public.admin_delete_user(uuid, text) to service_role;
 
 -- AC-17: users who never consented to the terms (in any version) are deleted
--- 30 days after their account was created, at most `batch` per run. A user
--- who consented to an older version and not yet to a newer one is kept.
-create function public.purge_unconsented_users(batch integer default 500)
+-- 30 days after their account was created, in batches of `batch`, until none
+-- are left or `max_batches` ran (so a backlog drains instead of growing). A
+-- user who consented to an older version and not yet to a newer one is kept.
+-- One user whose deletion fails is skipped with a warning (no personal data),
+-- never blocking the rest.
+create function public.purge_unconsented_users(batch integer default 500, max_batches integer default 20)
   returns integer
   language plpgsql
   security definer
@@ -58,28 +61,41 @@ as $$
 declare
   target uuid;
   deleted integer := 0;
+  found_in_batch integer;
+  failed uuid[] := '{}'::uuid[];
 begin
-  for target in
-    select u.id
-    from auth.users u
-    where u.created_at < now() - interval '30 days'
-      and not exists (
-        select 1 from public.consents c
-        where c.user_id = u.id and c.doc_type = 'terms' and c.action = 'granted'
-      )
-    order by u.created_at
-    limit batch
-  loop
-    if public.admin_delete_user(target, 'no_consent_30d') then
-      deleted := deleted + 1;
-    end if;
+  for run in 1..max_batches loop
+    found_in_batch := 0;
+    for target in
+      select u.id
+      from auth.users u
+      where u.created_at < now() - interval '30 days'
+        and u.id <> all (failed)
+        and not exists (
+          select 1 from public.consents c
+          where c.user_id = u.id and c.doc_type = 'terms' and c.action = 'granted'
+        )
+      order by u.created_at
+      limit batch
+    loop
+      found_in_batch := found_in_batch + 1;
+      begin
+        if public.admin_delete_user(target, 'no_consent_30d') then
+          deleted := deleted + 1;
+        end if;
+      exception when others then
+        raise warning 'purge skipped one user: %', sqlstate;
+        failed := failed || target;
+      end;
+    end loop;
+    exit when found_in_batch < batch;
   end loop;
   return deleted;
 end;
 $$;
 
-revoke execute on function public.purge_unconsented_users(integer) from public, anon, authenticated;
-grant execute on function public.purge_unconsented_users(integer) to service_role;
+revoke execute on function public.purge_unconsented_users(integer, integer) from public, anon, authenticated;
+grant execute on function public.purge_unconsented_users(integer, integer) to service_role;
 
 -- Every day at 03:17 UTC. cron.schedule replaces a job with the same name.
 create extension if not exists pg_cron with schema pg_catalog;

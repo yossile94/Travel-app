@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(24);
 
 -- A: consented, new. B: consented to terms version 0 only (then version 1 is
 -- published), 40 days old. C: never consented, 31 days old. D: never
@@ -14,7 +14,12 @@ values
   ('00000000-0000-4000-8000-00000000003a', 'a@example.test', now()),
   ('00000000-0000-4000-8000-00000000003b', 'b@example.test', now() - interval '40 days'),
   ('00000000-0000-4000-8000-00000000003c', 'c@example.test', now() - interval '31 days'),
-  ('00000000-0000-4000-8000-00000000003d', 'd@example.test', now() - interval '29 days');
+  ('00000000-0000-4000-8000-00000000003d', 'd@example.test', now() - interval '29 days'),
+  -- E consented and later withdrew: they once agreed, so they are kept.
+  ('00000000-0000-4000-8000-00000000003e', 'e@example.test', now() - interval '35 days'),
+  -- F and G never consented, 32 and 33 days old: for the batch size.
+  ('00000000-0000-4000-8000-00000000003f', 'f@example.test', now() - interval '32 days'),
+  ('00000000-0000-4000-8000-000000000040', 'g@example.test', now() - interval '33 days');
 
 create function pg_temp.sign_in(user_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', user_id, 'role', 'authenticated')::text, true);
@@ -30,6 +35,12 @@ reset role;
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000003b');
 insert into public.consents (doc_type, doc_version, action, platform, app_version)
 values ('terms', 0, 'granted', 'android', '0.3.0'), ('privacy', 0, 'granted', 'android', '0.3.0');
+reset role;
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000003e');
+insert into public.consents (doc_type, doc_version, action, platform, app_version)
+values ('terms', 0, 'granted', 'android', '0.3.0');
+insert into public.consents (doc_type, doc_version, action, platform, app_version)
+values ('terms', 0, 'withdrawn', 'android', '0.3.0');
 reset role;
 -- Newer terms that B has not accepted yet.
 insert into public.legal_documents (doc_type, version) values ('terms', 1);
@@ -54,11 +65,13 @@ select function_privs_are('public', 'admin_delete_user', array['uuid', 'text'], 
   array[]::text[], 'users cannot run the deletion function themselves');
 select function_privs_are('public', 'admin_delete_user', array['uuid', 'text'], 'anon',
   array[]::text[], 'signed-out clients cannot run the deletion function');
-select function_privs_are('public', 'purge_unconsented_users', array['integer'], 'authenticated',
-  array[]::text[], 'users cannot run the purge');
-select is(
-  (select schedule from cron.job where jobname = 'purge-unconsented-users'),
-  '17 3 * * *',
+select function_privs_are('public', 'purge_unconsented_users', array['integer', 'integer'],
+  'authenticated', array[]::text[], 'users cannot run the purge');
+select function_privs_are('public', 'purge_unconsented_users', array['integer', 'integer'],
+  'anon', array[]::text[], 'signed-out clients cannot run the purge');
+select results_eq(
+  $$ select schedule, btrim(command) from cron.job where jobname = 'purge-unconsented-users' $$,
+  $$ values ('17 3 * * *'::text, 'select public.purge_unconsented_users();'::text) $$,
   'the purge runs every day'
 );
 
@@ -107,8 +120,23 @@ select results_eq(
 
 -- ---------------------------------------------------------- daily purge
 set local role service_role;
-select is(public.purge_unconsented_users(), 1, 'the purge deletes one user');
+select is(
+  public.purge_unconsented_users(batch => 1, max_batches => 1),
+  1,
+  'one batch of one deletes exactly one user'
+);
+select is(public.purge_unconsented_users(batch => 1), 2, 'later batches drain the rest');
+select is(public.purge_unconsented_users(), 0, 'nothing is left to purge');
 reset role;
+select is_empty(
+  $$ select 1 from auth.users
+     where id in ('00000000-0000-4000-8000-00000000003f', '00000000-0000-4000-8000-000000000040') $$,
+  'F and G, who never consented, are deleted'
+);
+select ok(
+  exists (select 1 from auth.users where id = '00000000-0000-4000-8000-00000000003e'),
+  'a user who consented once and withdrew is kept'
+);
 select is_empty(
   $$ select 1 from auth.users where id = '00000000-0000-4000-8000-00000000003c' $$,
   'a user who never consented, 31 days old, is deleted'

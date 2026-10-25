@@ -6,7 +6,11 @@ create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text not null
     constraint profiles_display_name_check
-    check (display_name = btrim(display_name) and char_length(display_name) between 1 and 60),
+    check (
+      display_name = btrim(display_name)
+      and display_name !~ '^\s|\s$'
+      and char_length(display_name) between 1 and 60
+    ),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -33,10 +37,13 @@ create policy "users rename themselves"
   using (id = (select auth.uid()))
   with check (id = (select auth.uid()));
 
--- Users write only the name; the server keeps the id and the times.
+-- Users write only the name; the server keeps the times. UPDATE on id is
+-- granted because supabase-js's upsert sets every sent column on conflict
+-- ("id" = EXCLUDED."id", checked when the statement is planned); WITH CHECK
+-- and the foreign key keep it the user's own id.
 revoke all on public.profiles from anon, authenticated;
 grant select on public.profiles to authenticated;
-grant insert (id, display_name), update (display_name) on public.profiles to authenticated;
+grant insert (id, display_name), update (id, display_name) on public.profiles to authenticated;
 
 -- A display name from Google (or the part of the email before the @), tidied
 -- to fit the check: whitespace collapsed, trimmed, at most 60 characters.
@@ -63,16 +70,17 @@ create function public.profiles_after_user_insert()
   set search_path = ''
 as $$
 declare
-  name text := public.profile_name_from(new.raw_user_meta_data, new.email);
+  name text;
 begin
-  if name is not null then
-    begin
+  begin
+    name := public.profile_name_from(new.raw_user_meta_data, new.email);
+    if name is not null then
       insert into public.profiles (id, display_name) values (new.id, name)
       on conflict (id) do nothing;
-    exception when others then
-      raise warning 'profile for % not created: %', new.id, sqlstate;
-    end;
-  end if;
+    end if;
+  exception when others then
+    raise warning 'profile for % not created: %', new.id, sqlstate;
+  end;
   return new;
 end;
 $$;

@@ -5,7 +5,9 @@
 
 -- True when the signed-in user's latest decision on the current terms and
 -- the current privacy policy is "granted" (Yossi's decision 4, sprint 2: no
--- trip writes without consent, even from a modified client).
+-- trip writes without consent, even from a modified client). Both documents
+-- must be published and granted: if one is missing, every write is refused
+-- (fails closed).
 create function public.has_current_consent()
   returns boolean
   language sql
@@ -36,10 +38,11 @@ create table public.trips (
   country_iso2 text not null constraint trips_country_check check (country_iso2 ~ '^[A-Z]{2}$'),
   title text not null
     constraint trips_title_check
-    check (title = btrim(title) and char_length(title) between 1 and 80),
+    check (title = btrim(title) and title !~ '^\s|\s$' and char_length(title) between 1 and 80),
   start_date date not null,
   end_date date not null,
-  notes text constraint trips_notes_check check (notes is null or char_length(notes) <= 2000),
+  -- No notes is null, never an empty string.
+  notes text constraint trips_notes_check check (char_length(notes) between 1 and 2000),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint trips_dates_check check (end_date >= start_date)

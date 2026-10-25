@@ -4,13 +4,14 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(36);
 
 insert into auth.users (id, email)
 values
   ('00000000-0000-4000-8000-00000000002a', 'a@example.test'),
   ('00000000-0000-4000-8000-00000000002b', 'b@example.test'),
-  ('00000000-0000-4000-8000-00000000002c', 'c@example.test');
+  ('00000000-0000-4000-8000-00000000002c', 'c@example.test'),
+  ('00000000-0000-4000-8000-00000000002d', 'd@example.test');
 
 create function pg_temp.sign_in(user_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', user_id, 'role', 'authenticated')::text, true);
@@ -127,6 +128,20 @@ select throws_ok(
   null,
   'the country is an ISO code in capitals'
 );
+select throws_ok(
+  $$ insert into public.trips (country_iso2, title, start_date, end_date)
+     values ('TH', E'x\n', '2027-08-01', '2027-08-02') $$,
+  '23514',
+  null,
+  'a name ending in a newline is refused'
+);
+select throws_ok(
+  $$ insert into public.trips (country_iso2, title, start_date, end_date, notes)
+     values ('TH', 'x', '2027-08-01', '2027-08-02', '') $$,
+  '23514',
+  null,
+  'empty notes are null, never an empty string'
+);
 select results_eq(
   $$ select * from public.my_trip_countries() order by 1 $$,
   $$ values ('GR'::text), ('TH'::text) $$,
@@ -146,6 +161,13 @@ select throws_ok(
   '42501',
   null,
   'the country cannot be changed (AC-2)'
+);
+select throws_ok(
+  $$ update public.trips set user_id = '00000000-0000-4000-8000-00000000002b'
+     where id = '00000000-0000-4000-8000-0000000000a1' $$,
+  '42501',
+  null,
+  'a trip cannot be moved to another user (AC-9)'
 );
 reset role;
 
@@ -177,6 +199,32 @@ select throws_ok(
   '42501',
   null,
   'a user who never consented cannot add a trip (decision 4)'
+);
+reset role;
+
+-- ------------------------------ D consented to the terms but not the privacy
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000002d');
+insert into public.consents (doc_type, doc_version, action, platform, app_version)
+values ('terms', 0, 'granted', 'android', '0.3.0');
+select throws_ok(
+  $$ insert into public.trips (country_iso2, title, start_date, end_date)
+     values ('TH', 'x', '2027-08-01', '2027-08-02') $$,
+  '42501',
+  null,
+  'consent to the terms alone is not enough'
+);
+reset role;
+
+-- ------------------------------------- B withdraws: the gate closes again
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000002b');
+insert into public.consents (doc_type, doc_version, action, platform, app_version)
+values ('terms', 0, 'withdrawn', 'android', '0.3.0');
+select throws_ok(
+  $$ insert into public.trips (country_iso2, title, start_date, end_date)
+     values ('TH', 'x', '2027-08-01', '2027-08-02') $$,
+  '42501',
+  null,
+  'after withdrawing the terms, writing is refused'
 );
 reset role;
 
