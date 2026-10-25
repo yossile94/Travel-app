@@ -169,6 +169,12 @@ export const layout = {
   mapboxAttributionLeft: 100,
   /** A country name longer than this steps down from title1 to title2 (sprint 1 AC-11). */
   cardNameStepDownChars: 16,
+  /**
+   * A generous width per character (pt, at font scale 1) of the card's
+   * English name with its letter spacing: a name keeps the spacing only if
+   * this many times its length fits the row (sprint 1 QA, BoardingPassCard).
+   */
+  cardNameEnSpacedCharWidth: 13,
 } as const;
 
 export const radius = { xs: 4, md: 12, lg: 16, sheet: 28, pill: 999, flap: 4 } as const;
