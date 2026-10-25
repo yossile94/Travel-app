@@ -171,7 +171,7 @@ const mockAuth = {
   signOut: jest.fn(async () => {}),
   clearNotice: jest.fn(),
   acknowledgeExpiry: jest.fn(),
-  recheckConsent: jest.fn(async () => {}),
+  recheckConsent: jest.fn(async () => false),
 };
 jest.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => mockAuth }));
 

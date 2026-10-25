@@ -407,6 +407,18 @@ export function DeleteAccountScreen({
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [outcome, setOutcome] = useState<DeleteOutcome | null>(null);
+  const [privacyUrl, setPrivacyUrl] = useState<string | null>(null);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  useEffect(() => {
+    let current = true;
+    void fetchCurrentDocuments().then((docs) => {
+      const url = docs?.find((doc) => doc.docType === 'privacy')?.url ?? null;
+      if (current) setPrivacyUrl(url);
+    });
+    return () => {
+      current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (deleting) AccessibilityInfo.announceForAccessibility(t('deleteAccount.deleting'));
@@ -504,6 +516,20 @@ export function DeleteAccountScreen({
               <Text style={[styles.body, { color: palette.textPrimary }]}>
                 {t('deleteAccount.kept')}
               </Text>
+              <Button
+                kind="text"
+                label={t('consent.privacy')}
+                onPress={() => {
+                  if (privacyUrl) Linking.openURL(privacyUrl).catch(() => setShowPrivacy(true));
+                  else setShowPrivacy((shown) => !shown);
+                }}
+                colorScheme={screen.colorScheme}
+              />
+              {showPrivacy ? (
+                <Text style={[styles.footnote, { color: palette.textPrimary }]}>
+                  {legalDrafts.privacy.body}
+                </Text>
+              ) : null}
             </View>
           </>
         ) : (

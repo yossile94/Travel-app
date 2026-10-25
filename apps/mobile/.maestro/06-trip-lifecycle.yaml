@@ -5,6 +5,7 @@ tags: [sprint-2, ac-19]
 # account already on the phone, by tapping: no password, and no other way
 # to sign in exists in the build. Pass the account as an env var:
 #   maestro test -e TEST_ACCOUNT=<the test Google account> .maestro/06-trip-lifecycle.yaml
+# Precondition: the account has no trips to Thailand (and no active trip).
 env:
   TEST_ACCOUNT: ${TEST_ACCOUNT}
 ---
@@ -65,7 +66,7 @@ env:
     timeout: 15000
 - assertVisible: הנסיעה נשמרה
 - assertVisible:
-    id: card-trip-.*
+    id: 'card-trip-[0-9a-f]{8}-.*'
 
 # AC-3, AC-10: the highlight shows once the card is closed (selection wins while open).
 - back
@@ -79,10 +80,10 @@ env:
     point: 50%,50%
 - extendedWaitUntil:
     visible:
-      id: card-trip-.*
+      id: 'card-trip-[0-9a-f]{8}-.*'
     timeout: 6000
 - tapOn:
-    id: card-trip-.*
+    id: 'card-trip-[0-9a-f]{8}-.*'
 - tapOn:
     id: card-trip-delete
 - assertVisible: למחוק את הנסיעה?
@@ -91,7 +92,7 @@ env:
     visible: הנסיעה נמחקה
     timeout: 10000
 - assertNotVisible:
-    id: card-trip-.*
+    id: 'card-trip-[0-9a-f]{8}-.*'
 - back
 - waitForAnimationToEnd
 - takeScreenshot: ac19-no-highlight-after-delete

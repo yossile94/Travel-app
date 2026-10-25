@@ -135,8 +135,25 @@ describe('trips on the server (sprint 2 F-006)', () => {
       'insert',
       expect.objectContaining({ id: trip.id, country_adm0: 'THA', start_date: '2027-08-01' }),
     ]);
+  });
+
+  it('the same id again after a lost answer writes the current values over it (QA D-3)', async () => {
+    let calls = 0;
+    // insert → 23505 (the first save landed); the update that follows matches the row.
     mockAnswer.value = { data: null, error: { code: '23505' } };
-    expect(await createTrip(trip)).toBe('ok');
+    const original = mockAnswer.value;
+    Object.defineProperty(mockAnswer, 'value', {
+      configurable: true,
+      get: () => (calls++ === 0 ? original : { data: [{ id: trip.id }], error: null }),
+      set: () => {},
+    });
+    expect(await createTrip({ ...trip, title: 'שם חדש' })).toBe('ok');
+    expect(mockCalls).toContainEqual(['update', expect.objectContaining({ title: 'שם חדש' })]);
+    Object.defineProperty(mockAnswer, 'value', {
+      configurable: true,
+      writable: true,
+      value: { data: [], error: null },
+    });
   });
 
   it('maps the consent gate (42501) and other failures', async () => {

@@ -157,7 +157,11 @@ export async function createTrip(trip: Trip): Promise<WriteResult> {
   });
   if (!error) return 'ok';
   // The same id again: the earlier attempt was saved and its answer was lost.
-  if ((error as { code?: string }).code === '23505') return 'ok';
+  // The form may have changed since, so its current values are written now.
+  if ((error as { code?: string }).code === '23505') {
+    const updated = await updateTrip(trip.id, trip);
+    return updated === 'gone' ? 'ok' : updated;
+  }
   return writeFailure('create', error);
 }
 

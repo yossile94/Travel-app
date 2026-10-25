@@ -26,7 +26,7 @@ const mockSupabase = {
     refreshSession: jest.fn(async () => ({ error: null as unknown })),
     signOut: jest.fn(async () => {
       mockState.listeners.forEach((listener: Listener) => listener('SIGNED_OUT'));
-      return { error: null };
+      return { error: null as unknown };
     }),
   },
 };
@@ -295,6 +295,25 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
     expect(mockSupabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
     expect(result.current.notice).toEqual({ kind: 'signedOut' });
+  });
+
+  it('removes the stored session even when supabase-js returns early (QA D-1, AC-8)', async () => {
+    mockState.session = { user: googleUser };
+    mockStore.local = { terms: 0, privacy: 0 };
+    await AsyncStorage.setItem('sb-ref-auth-token', 'encrypted-session');
+    await AsyncStorage.setItem('sb-ref-auth-token-user', 'encrypted-user');
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
+    // Offline with an expired token: auth-js answers with an error and keeps the session.
+    mockSupabase.auth.signOut.mockImplementationOnce(async () => ({
+      error: new AuthRetryableFetchError('Network request failed', 0),
+    }));
+    await act(async () => {
+      await result.current.signOut();
+    });
+    expect(await AsyncStorage.getItem('sb-ref-auth-token')).toBeNull();
+    expect(await AsyncStorage.getItem('sb-ref-auth-token-user')).toBeNull();
+    expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
   });
 
   describe('tech-lead review round 1', () => {

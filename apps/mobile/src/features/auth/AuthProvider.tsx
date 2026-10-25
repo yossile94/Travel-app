@@ -34,6 +34,7 @@ import {
   type SaveResult,
 } from '@/features/account/accountApi';
 import { requestDeletion } from '@/features/account/deleteAccountApi';
+import { clearStoredSessions } from '@/lib/secureSessionStorage';
 import { supabase } from '@/lib/supabase';
 
 import { consentNeed, type ConsentNeed, type LegalDocument } from './consentStatus';
@@ -119,7 +120,8 @@ interface AuthContextValue {
    * read the documents again, which shows the consent screen for the new
    * version. Anything open underneath stays open (design 3.4).
    */
-  recheckConsent: () => Promise<void>;
+  /** Resolves true when the consent screen is now shown; false when nothing changed (e.g. offline). */
+  recheckConsent: () => Promise<boolean>;
   /** The profile's display name (AC-12); null until read, or if there is no profile. */
   displayName: string | null;
   renameProfile: (name: string) => Promise<SaveResult>;
@@ -160,6 +162,18 @@ async function readLastUser(): Promise<AuthUser | null> {
       : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Signs out on this device, always: whatever supabase-js answers, the stored
+ * session and its key are removed (sprint 2 QA D-1, AC-8).
+ */
+async function localSignOut(): Promise<void> {
+  try {
+    await supabase?.auth.signOut({ scope: 'local' });
+  } finally {
+    await clearStoredSessions();
   }
 }
 
@@ -260,7 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       forgetUser();
       signingOut.current = true;
       try {
-        if (!sessionAlreadyGone) await supabase?.auth.signOut({ scope: 'local' });
+        if (!sessionAlreadyGone) await localSignOut();
         await wipeDevice(userId);
         await googleRevoke();
       } finally {
@@ -422,8 +436,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDisplayName(null);
     signingOut.current = true;
     try {
-      // Local scope works offline; revoking on the server is best effort.
-      await supabase?.auth.signOut({ scope: 'local' });
+      await localSignOut();
       await googleSignOut();
     } finally {
       signingOut.current = false;
@@ -467,7 +480,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           forgetUser();
           signingOut.current = true;
           try {
-            await supabase.auth.signOut({ scope: 'local' });
+            await localSignOut();
             await googleSignOut();
           } finally {
             signingOut.current = false;
@@ -546,8 +559,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const recheckConsent = useCallback(async () => {
     const current = stateRef.current;
-    if (current.status !== 'signedIn') return;
-    await settle(current.user);
+    if (current.status !== 'signedIn') return false;
+    const settled = await settle(current.user);
+    return settled !== null && !settled.signedIn;
   }, [settle]);
 
   const renameProfile = useCallback(async (name: string): Promise<SaveResult> => {

@@ -178,7 +178,8 @@
     "discardBody": "What you've filled in won't be saved.",
     "discardConfirm": "Leave",
     "discardCancel": "Keep editing",
-    "delete": "Delete trip"
+    "delete": "Delete trip",
+    "charsLeft": "{{n}} characters left"
   },
   "months": {
     "1": "January",

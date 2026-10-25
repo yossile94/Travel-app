@@ -178,7 +178,8 @@
     "discardBody": "מה שמילאת לא יישמר.",
     "discardConfirm": "יציאה",
     "discardCancel": "המשך עריכה",
-    "delete": "מחיקת הנסיעה"
+    "delete": "מחיקת הנסיעה",
+    "charsLeft": "נשארו {{n}} תווים"
   },
   "months": {
     "1": "ינואר",

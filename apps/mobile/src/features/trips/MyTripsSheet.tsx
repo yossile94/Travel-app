@@ -27,6 +27,7 @@ import { logMyTripsShown } from '@/features/globe/perfLog';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
 
 import { ActiveBadge } from './CardTrips';
+import { countryName } from './countryName';
 import { formatRange, formatRangeA11y, isActive, todayPg } from './tripDates';
 import type { Trip } from './tripsApi';
 import { useTrips } from './TripsProvider';
@@ -45,7 +46,7 @@ interface Props {
 type Item = Trip | 'none';
 
 export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const palette = colors[sheet.colorScheme];
   const { height } = useWindowDimensions();
   const trips = useTrips();
@@ -92,10 +93,10 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
 
   const renderTrip = (trip: Trip) => {
     const country = countryByAdm0(trip.countryAdm0);
-    const countryName = country?.nameHe ?? trip.countryAdm0;
+    const name = country ? countryName(country, i18n.language) : trip.countryAdm0;
     const active = isActive(trip.startDate, trip.endDate, today);
     const a11y = t(active ? 'trips.rowA11yActive' : 'trips.rowA11y', {
-      name: `${trip.title}, ${countryName}`,
+      name: `${trip.title}, ${name}`,
       dates: formatRangeA11y(trip.startDate, trip.endDate, t),
     });
     return (
@@ -115,7 +116,7 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
           <View style={[styles.activeBar, { backgroundColor: palette.activeBar }]} />
         ) : null}
         <View style={styles.rowText}>
-          <Text style={[styles.caption, { color: palette.textSecondary }]}>{countryName}</Text>
+          <Text style={[styles.caption, { color: palette.textSecondary }]}>{name}</Text>
           <Text
             style={[styles.bodyStrong, { color: palette.textPrimary }]}
             numberOfLines={2}

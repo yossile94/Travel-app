@@ -66,6 +66,18 @@ describe('trip dates (sprint 2 design 4.1, 4.3)', () => {
     expect(defaultTripName('תאילנד', '2027-08-12', t)).toBe('תאילנד אוגוסט 2027');
   });
 
+  it('keeps the calendar day in another time zone too (design 4.1)', () => {
+    const before = process.env.TZ;
+    process.env.TZ = 'America/Los_Angeles';
+    try {
+      expect(toPgDate(new Date(2027, 7, 12, 0, 0))).toBe('2027-08-12');
+      expect(toPgDate(new Date(2027, 2, 14, 0, 0))).toBe('2027-03-14'); // US clocks change
+      expect(toPgDate(fromPgDate('2026-12-31'))).toBe('2026-12-31');
+    } finally {
+      process.env.TZ = before;
+    }
+  });
+
   it('counts characters as Postgres does (code points)', () => {
     expect(codePointLength('תאילנד')).toBe(6);
     expect(codePointLength('🏝️ חופשה')).toBe(8);

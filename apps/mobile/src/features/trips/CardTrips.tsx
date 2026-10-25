@@ -25,8 +25,9 @@ import { InlineNotice } from '@/components/formControls';
 import { ChevronDownIcon, CloudOffIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import type { CountryInfo } from '@/features/globe/countryData';
-import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
+import { colors, fonts, layout, radius, timing, type ColorScheme } from '@/theme/tokens';
 
+import { countryName } from './countryName';
 import { formatRange, formatRangeA11y, isActive, todayPg } from './tripDates';
 import { deleteTrip, type Trip } from './tripsApi';
 import { useTrips } from './TripsProvider';
@@ -53,7 +54,7 @@ export function CardTrips({
   onEditTrip,
   onToast,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
   const { state: auth } = useAuth();
   const trips = useTrips();
@@ -104,7 +105,12 @@ export function CardTrips({
             }
             setDeleting(trip.id);
             setRowNotice(null);
-            const result = await deleteTrip(trip.id);
+            const result = await Promise.race([
+              deleteTrip(trip.id),
+              new Promise<'error'>((resolve) =>
+                setTimeout(() => resolve('error'), timing.tripSaveTimeout),
+              ),
+            ]);
             setDeleting(null);
             if (result === 'ok' || result === 'gone') {
               setOpen(null);
@@ -294,7 +300,7 @@ export function CardTrips({
         <Button
           kind="cta"
           label={t('card.trips.new')}
-          a11yLabel={t('card.trips.newA11y', { country: country.nameHe })}
+          a11yLabel={t('card.trips.newA11y', { country: countryName(country, i18n.language) })}
           icon={(color) => <PlusIcon color={color} size={20} />}
           onPress={onNewTrip}
           colorScheme={colorScheme}

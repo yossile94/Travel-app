@@ -47,6 +47,7 @@ import {
   type ColorScheme,
 } from '@/theme/tokens';
 
+import { countryName } from './countryName';
 import { codePointLength, formatDate, fromPgDate, toPgDate, todayPg } from './tripDates';
 import {
   thousands,
@@ -77,11 +78,6 @@ type Notice = 'offline' | 'saveError' | 'gone' | 'consent' | 'deleteOffline' | '
 
 /** "1,840": Hermes has no Intl, so no toLocaleString. */
 
-/** The country's name in the app's language (design 3.2). */
-export function countryName(country: CountryInfo, language: string): string {
-  return language === 'he' ? country.nameHe : country.nameEn;
-}
-
 /** A write that takes longer than this counts as failed; a retry sends the same id (design 3.4). */
 function withTimeout(write: Promise<WriteResult>, ms: number): Promise<WriteResult> {
   return Promise.race([
@@ -111,7 +107,7 @@ export function TripForm({
   onGone,
 }: Props) {
   const { t, i18n } = useTranslation();
-  const { recheckConsent } = useAuth();
+  const { recheckConsent, state: auth } = useAuth();
   const palette = colors[colorScheme];
   const country = countryName(target.country, i18n.language);
   const editing = target.kind === 'edit';
@@ -128,6 +124,12 @@ export function TripForm({
   /** Set synchronously, so a second tap before the first re-render does nothing (3.4). */
   const working = useRef(false);
   const [notice, setNotice] = useState<Notice>(null);
+  // D-2: once the updated terms are accepted, the consent notice goes (the user saves again).
+  const [authWas, setAuthWas] = useState(auth.status);
+  if (authWas !== auth.status) {
+    setAuthWas(auth.status);
+    if (authWas === 'needsConsent' && auth.status === 'signedIn') setNotice(null);
+  }
   const errors: TripFormErrors = submitted ? validateTripForm(values) : {};
 
   // "No network" shows as soon as the form opens, and goes when it's back (3.4).
@@ -261,7 +263,8 @@ export function TripForm({
       // The consent screen opens over this form, which keeps everything (3.4);
       // the user saves again after accepting, seeing what is saved.
       setNotice('consent');
-      void recheckConsent();
+      // The documents couldn't be read, so no consent screen opened: say it failed.
+      if (!(await recheckConsent())) setNotice('saveError');
       return;
     }
     // Deleted on another device: the card, list and highlight refresh now (6.1).
@@ -331,6 +334,18 @@ export function TripForm({
 
   const titleLength = codePointLength(values.title.trim());
   const notesLength = codePointLength(values.notes.trim());
+  const nearLimit = useRef({ title: false, notes: false });
+  useEffect(() => {
+    const check = (field: 'title' | 'notes', length: number, from: number, max: number) => {
+      const near = length >= from;
+      if (near && !nearLimit.current[field] && length <= max) {
+        AccessibilityInfo.announceForAccessibility(t('tripForm.charsLeft', { n: max - length }));
+      }
+      nearLimit.current[field] = near;
+    };
+    check('title', titleLength, limits.tripNameMax - 10, limits.tripNameMax);
+    check('notes', notesLength, limits.tripNotesMax - 50, limits.tripNotesMax);
+  }, [titleLength, notesLength, t]);
   const errorText = (field: TripFormField) => (errors[field] ? t(errors[field]!) : null);
   const dateA11y = (field: 'startDate' | 'endDate') =>
     t(field === 'startDate' ? 'tripForm.departureA11y' : 'tripForm.returnA11y', {
@@ -411,7 +426,7 @@ export function TripForm({
                 style={[styles.title2, { color: palette.textPrimary }]}
                 maxFontSizeMultiplier={2}
               >
-                {target.country.nameHe}
+                {country}
               </Text>
               <Text style={[styles.footnote, { color: palette.textSecondary }]} numberOfLines={1}>
                 {`⁦${target.country.nameEn}⁩`}
