@@ -50,6 +50,13 @@ const OCEAN_TINT_STYLE: FillLayerStyle = {
   fillAntialias: false,
 };
 
+/**
+ * Which features draw lines: every area's rings, except Antarctica's, whose
+ * rings include Natural Earth's cut at 180° and along the pole. Its line comes
+ * from a separate outline feature without them (scripts/build-countries.mjs).
+ */
+const LINE_FILTER = ['any', ['has', 'outline'], ['!=', ['get', 'adm0'], 'ATA']] as const;
+
 const BORDER_STYLE: LineLayerStyle = {
   lineColor: globe.border,
   lineWidth: [
@@ -242,6 +249,7 @@ function BorderLevel({ level, url, sourceMaxZoom, minZoom, maxZoom, highlight }:
     maxZoomLevel: maxZoom,
   };
   const filter = highlight.filter as never;
+  const lineFilter = ['all', highlight.filter, LINE_FILTER] as never;
   return (
     <ShapeSource id={`countries-${level}`} url={url} maxZoomLevel={sourceMaxZoom}>
       {/* Invisible fill: the hit-test surface for taps on countries. */}
@@ -250,7 +258,12 @@ function BorderLevel({ level, url, sourceMaxZoom, minZoom, maxZoom, highlight }:
         {...layerProps}
         style={{ fillColor: '#000000', fillOpacity: 0 }}
       />
-      <LineLayer id={`countries-${level}-border`} {...layerProps} style={BORDER_STYLE} />
+      <LineLayer
+        id={`countries-${level}-border`}
+        {...layerProps}
+        filter={LINE_FILTER as never}
+        style={BORDER_STYLE}
+      />
       <FillLayer
         id={`highlight-${level}-fill`}
         {...layerProps}
@@ -260,19 +273,19 @@ function BorderLevel({ level, url, sourceMaxZoom, minZoom, maxZoom, highlight }:
       <LineLayer
         id={`highlight-${level}-glow`}
         {...layerProps}
-        filter={filter}
+        filter={lineFilter}
         style={highlight.glow}
       />
       <LineLayer
         id={`highlight-${level}-underlay`}
         {...layerProps}
-        filter={filter}
+        filter={lineFilter}
         style={highlight.underlay}
       />
       <LineLayer
         id={`highlight-${level}-outline`}
         {...layerProps}
-        filter={filter}
+        filter={lineFilter}
         style={highlight.outline}
       />
     </ShapeSource>

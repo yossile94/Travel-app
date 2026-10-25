@@ -19,7 +19,25 @@ const file = join(
   'countries.geojson',
 );
 const bytes = readFileSync(file);
-const { features } = JSON.parse(bytes.toString('utf8'));
+const all = JSON.parse(bytes.toString('utf8')).features;
+// Areas, and Antarctica's outline line feature (see build-countries.mjs).
+const features = all.filter((f) => !f.properties.outline);
+const outlines = all.filter((f) => f.properties.outline);
+
+const polygonsOf = (geometry) =>
+  geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+
+/** Edges running along the 180° cut, longer than the ~100 m slivers the join leaves. */
+function cutEdges(geometry) {
+  let count = 0;
+  for (const ring of polygonsOf(geometry).flat()) {
+    for (let i = 1; i < ring.length; i++) {
+      const [a, b] = [ring[i - 1], ring[i]];
+      if (Math.abs(a[0]) === 180 && Math.abs(b[0]) === 180 && Math.abs(a[1] - b[1]) > 0.01) count++;
+    }
+  }
+  return count;
+}
 
 function inRing([x, y], ring) {
   let inside = false;
@@ -164,7 +182,9 @@ describe('detailed borders and ocean mask (sprint 1 F-001.1)', () => {
   const geoDir = dirname(file);
   const detailedBytes = readFileSync(join(geoDir, 'countries-detailed.geojson'));
   const oceanBytes = readFileSync(join(geoDir, 'ocean-mask.geojson'));
-  const detailed = JSON.parse(detailedBytes.toString('utf8')).features;
+  const detailed = JSON.parse(detailedBytes.toString('utf8')).features.filter(
+    (f) => !f.properties.outline,
+  );
   const ocean = JSON.parse(oceanBytes.toString('utf8')).features;
 
   it('has the same areas, with the same properties, at both levels', () => {
@@ -210,6 +230,23 @@ describe('detailed borders and ocean mask (sprint 1 F-001.1)', () => {
     }
   });
 
+  it('treats the Antarctic ice shelves as land, so they are not tinted (sprint 1 QA)', () => {
+    const [[, ...landHoles]] = ocean[0].geometry.coordinates;
+    for (const [name, point] of [
+      ['Ross Ice Shelf', [-175, -82]],
+      ['Ross Ice Shelf, south of Mapbox 85°', [-160, -85.1]],
+      ['Ronne Ice Shelf', [-60, -79]],
+      ['Amery Ice Shelf', [70, -70.5]],
+    ]) {
+      assert.ok(
+        landHoles.some((ring) => inRing(point, ring)),
+        `${name} is land in the mask`,
+      );
+    }
+    // The Southern Ocean is still sea.
+    assert.ok(!landHoles.some((ring) => inRing([0, -60], ring)));
+  });
+
   it('winds rings as GeoJSON expects and drops flat ones (Mapbox classifies by winding)', () => {
     const area = (ring) => {
       let sum = 0;
@@ -225,5 +262,55 @@ describe('detailed borders and ocean mask (sprint 1 F-001.1)', () => {
     for (const ring of [...holes, ...lakes.map(([lake]) => lake)]) {
       assert.ok(new Set(ring.map(String)).size >= 3, 'no ring with fewer than three points');
     }
+  });
+});
+
+describe('the 180° meridian (sprint 1 QA)', () => {
+  const geoDir = dirname(file);
+  const detailedAll = JSON.parse(
+    readFileSync(join(geoDir, 'countries-detailed.geojson')).toString('utf8'),
+  ).features;
+
+  for (const [level, list] of [
+    ['coarse', all],
+    ['detailed', detailedAll],
+  ]) {
+    it(`joins the areas Natural Earth cut at 180°, with no edge along the cut (${level})`, () => {
+      const areas = list.filter((f) => !f.properties.outline);
+      for (const f of areas) {
+        if (f.properties.adm0 === 'ATA') continue;
+        assert.equal(cutEdges(f.geometry), 0, f.properties.nameEn);
+      }
+      // Chukotka is one shape with the rest of Russia, past 180°.
+      const russia = areas.find((f) => f.properties.adm0 === 'RUS');
+      const mainland = polygonsOf(russia.geometry).find(([outer]) => inRing([100, 65], outer));
+      assert.ok(inRing([185, 66], mainland[0]), 'Chukotka joined to the mainland');
+    });
+
+    it(`closes Antarctica around the South Pole, so the pole is land (${level})`, () => {
+      const antarctica = list.find((f) => f.properties.adm0 === 'ATA' && !f.properties.outline);
+      assert.ok(contains(antarctica.geometry, [0, -89]), 'pole');
+      assert.ok(contains(antarctica.geometry, [-160, -86]), 'south of Mapbox 85°');
+      assert.ok(!contains(antarctica.geometry, [0, -55]), 'Southern Ocean');
+    });
+
+    it(`draws Antarctica from an outline without the cut or the pole (${level})`, () => {
+      const outline = list.filter((f) => f.properties.outline);
+      assert.equal(outline.length, 1);
+      assert.deepEqual(outline[0].properties, { adm0: 'ATA', outline: true });
+      assert.equal(outline[0].geometry.type, 'MultiLineString');
+      for (const line of outline[0].geometry.coordinates) {
+        for (let i = 1; i < line.length; i++) {
+          const [a, b] = [line[i - 1], line[i]];
+          assert.ok(!(Math.abs(a[0]) === 180 && Math.abs(b[0]) === 180), 'no segment along 180°');
+          assert.ok(!(a[1] <= -89.99 && b[1] <= -89.99), 'no segment along the pole');
+        }
+      }
+    });
+  }
+
+  it('keeps one outline feature, and it is not an area', () => {
+    assert.equal(outlines.length, 1);
+    assert.equal(outlines[0].properties.code, undefined);
   });
 });
