@@ -140,10 +140,20 @@ function timeZoneFor(code) {
   return { timeZone: zones[0].name };
 }
 
+/**
+ * Corrections to CLDR's Hebrew currency names. CLDR 48 calls AFN "אפגני
+ * אפגני"; "אפגני" is how it is written (sprint 1 AC-12).
+ */
+const CURRENCY_NAME_FIXES = {
+  AFN: 'אפגני',
+  // CLDR says "הנסיכויות"; the country is "איחוד האמירויות הערביות" (sprint 1 QA).
+  AED: 'דירהם של איחוד האמירויות הערביות',
+};
+
 function currencyFor(code) {
   const currency = countryToCurrency[code];
   if (!currency) return null;
-  const nameHe = hebrewCurrencyNames.of(currency);
+  const nameHe = CURRENCY_NAME_FIXES[currency] ?? hebrewCurrencyNames.of(currency);
   if (!nameHe) throw new Error(`No Hebrew name for currency ${currency} (${code}).`);
   return { code: currency, nameHe, symbol: currencySymbol(currency, code) };
 }
@@ -247,6 +257,7 @@ async function main() {
       label: properties.label,
       span,
     };
+    if (properties.parent) entry.parent = properties.parent;
     if (landArea(geometry) < SMALL_LAND_AREA) entry.small = true;
     if (zone.timeZone) entry.timeZone = zone.timeZone;
     if (zone.city) entry.city = zone.city;

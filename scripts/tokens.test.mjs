@@ -28,6 +28,15 @@ describe('design tokens in the app', () => {
     expectValue('saturation', 'globe.final.raster.saturation');
     expectValue('contrast', 'globe.final.raster.contrast');
     expectValue('fadeDuration', 'globe.final.raster.fadeDuration');
+    expectValue('brightnessMin', 'globe.final.raster.brightnessMin');
+    expectValue('brightnessMax', 'globe.final.raster.brightnessMax');
+    expectValue('oceanTint', 'globe.final.oceanTint');
+    expectValue('oceanTintOpacity', 'globe.final.oceanTintOpacity');
+    expectValue('oceanTintFadeStartZoom', 'globe.final.oceanTintFadeStartZoom');
+    expectValue('oceanTintFadeEndZoom', 'globe.final.oceanTintFadeEndZoom');
+    expectValue('borderWidthZ3', 'globe.final.borderWidthZ3');
+    expectValue('borderWidthZ8', 'globe.final.borderWidthZ8');
+    expectValue('borderDetailMinZoom', 'globe.final.borderDetailMinZoom');
     expectValue('color', 'globe.final.atmosphere.color');
     expectValue('highColor', 'globe.final.atmosphere.highColor');
     expectValue('horizonBlend', 'globe.final.atmosphere.horizonBlend');
@@ -56,6 +65,82 @@ describe('design tokens in the app', () => {
     expectValue('autoRotateDegPerSec', 'motion.globe.autoRotateDegPerSec');
     expectValue('autoRotateResumeDelay', 'motion.globe.autoRotateResumeDelay');
     expectValue('autoRotateRamp', 'motion.globe.autoRotateRamp');
+  });
+
+  it('match the sprint 1 search and chrome tokens', () => {
+    expectValue('searchScrim', 'globe.final.searchScrim');
+    const scrim = app.slice(app.indexOf('systemScrim: {'), app.indexOf('searchScrim'));
+    for (const key of ['color', 'opacityEdge', 'opacityInset', 'fadeLength', 'bottomFadeLength']) {
+      const value = design[`globe.final.systemScrim.${key}`];
+      const literal = typeof value === 'string' ? `'${value}'` : String(value);
+      assert.ok(scrim.includes(`${key}: ${literal}`), `systemScrim.${key} should be ${literal}`);
+    }
+    const ring = app.slice(app.indexOf('selectionRing: {'), app.indexOf('searchScrim'));
+    for (const [name, key] of [
+      ['radius', 'radius'],
+      ['width', 'width'],
+      ['color', 'color'],
+      ['underlayWidth', 'underlayWidth'],
+      ['underlayColor', 'underlayColor'],
+      ['underlayOpacity', 'underlayOpacity'],
+    ]) {
+      const value = design[`globe.final.selectionRing.${key}`];
+      const literal = typeof value === 'string' ? `'${value}'` : String(value);
+      assert.ok(ring.includes(`${name}: ${literal}`), `selectionRing.${name} should be ${literal}`);
+    }
+    expectValue('micro', 'motion.duration.micro');
+    expectValue('medium', 'motion.duration.medium');
+    expectValue('searchAnnounceDelay', 'motion.search.announceDelay');
+    expectValue('toastVisible', 'motion.toast.visible');
+    for (const scheme of ['light', 'dark']) {
+      const block = app.slice(app.indexOf(`${scheme}: { bg:`));
+      for (const part of ['bg', 'border', 'fg']) {
+        const value = design[`brand.google.${scheme}.${part}`];
+        assert.ok(
+          block.startsWith(`${scheme}: { bg:`) && block.includes(`${part}: '${value}'`),
+          `google ${scheme} ${part}`,
+        );
+      }
+    }
+    expectValue('touchTargetMin', 'size.touchTarget.min');
+    expectValue('listRowMin', 'size.listRow.min');
+    expectValue('chromeEdge', 'layout.chrome.edge');
+    expectValue('chromeRowTop', 'layout.chrome.rowTop');
+    expectValue('overlayTop', 'layout.chrome.overlayTop');
+    expectValue('mapboxLogoTop', 'layout.mapbox.logoTop');
+    expectValue('mapboxLogoLeft', 'layout.mapbox.logoLeft');
+    expectValue('mapboxAttributionLeft', 'layout.mapbox.attributionLeft');
+    expectValue('cardNameStepDownChars', 'layout.card.nameStepDownChars');
+    const light = app.slice(app.indexOf('light: {'), app.indexOf('dark: {'));
+    const dark = app.slice(app.indexOf('dark: {'), app.indexOf('} as const;'));
+    for (const [scheme, block] of [
+      ['light', light],
+      ['dark', dark],
+    ]) {
+      for (const [name, key] of [
+        ['textTertiary', 'text.tertiary'],
+        ['pressed', 'bg.pressed'],
+        ['tag', 'bg.tag'],
+        ['chromeBg', 'chrome.bg'],
+        ['chromeFg', 'chrome.fg'],
+        ['chromeBorder', 'chrome.border'],
+        ['canvas', 'bg.canvas'],
+        ['scrim', 'bg.scrim'],
+        ['primary', 'action.primary.bg'],
+        ['onPrimary', 'action.primary.fg'],
+        ['secondaryBg', 'action.secondary.bg'],
+        ['secondaryFg', 'action.secondary.fg'],
+        ['disabledBg', 'action.disabled.bg'],
+        ['disabledFg', 'action.disabled.fg'],
+        ['infoBg', 'status.info.subtleBg'],
+        ['infoFg', 'status.info.subtleFg'],
+        ['link', 'text.link'],
+        ['borderControl', 'border.control'],
+      ]) {
+        const value = design[`color.${scheme}.${key}`];
+        assert.ok(block.includes(`${name}: '${value}'`), `${scheme} ${name} should be ${value}`);
+      }
+    }
   });
 
   it('match the card colours', () => {

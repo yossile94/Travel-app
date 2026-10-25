@@ -28,7 +28,16 @@ jest.mock('react-native-reanimated', () => {
     Easing: { linear: identity, bezier: () => identity },
     useSharedValue,
     useAnimatedStyle: (factory: () => object) => factory(),
+    useAnimatedKeyboard: () => ({ height: { value: 0 }, state: { value: 0 } }),
     ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
     withTiming: jest.fn(<T>(target: T) => target),
   };
 });
+
+// Native modules from sprint 1 F-003a, replaced with their maintainers' Jest mocks.
+jest.mock('@react-native-async-storage/async-storage', () =>
+  jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
+jest.mock('@react-native-community/netinfo', () =>
+  jest.requireActual('@react-native-community/netinfo/jest/netinfo-mock.js'),
+);

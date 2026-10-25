@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   I18nManager,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type LayoutChangeEvent,
 } from 'react-native';
@@ -17,7 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Line, Path, Rect } from 'react-native-svg';
 
-import { colors, fonts, highlightColor, motion, type ColorScheme } from '@/theme/tokens';
+import { colors, fonts, highlightColor, layout, motion, type ColorScheme } from '@/theme/tokens';
 
 import { boardingPassPath } from './boardingPassPath';
 import type { CountryInfo } from './countryData';
@@ -30,8 +32,27 @@ const STUB_WIDTH = 108;
 const NOTCH_RADIUS = 11;
 const CORNER_RADIUS = 18;
 const DECELERATE = Easing.bezier(0.05, 0.7, 0.1, 1);
+const ACCELERATE = Easing.bezier(0.3, 0, 1, 1);
 /** Space between the card and the bottom inset (Android navigation bar). */
 export const CARD_GAP = 16;
+
+/**
+ * Whether the English name keeps its letter spacing. Android measures a
+ * spaced line without the spacing, so a name too long for its line was
+ * ellipsized short and then cut at its start ("H GEORGIA …", sprint 1 QA).
+ * A name keeps the spacing only when it surely fits the measured row;
+ * otherwise it drops it, and Android ellipsizes it correctly at its end.
+ * iOS measures spacing correctly and always keeps it.
+ */
+export function spaceEnglishName(
+  name: string,
+  fontScale: number,
+  rowWidth: number,
+  os: typeof Platform.OS = Platform.OS,
+): boolean {
+  if (os !== 'android') return true;
+  return rowWidth > 0 && name.length * layout.cardNameEnSpacedCharWidth * fontScale <= rowWidth;
+}
 
 interface Props {
   country: CountryInfo;
@@ -42,6 +63,8 @@ interface Props {
   onClose: () => void;
   /** Reports the card's height so the camera can lift the globe above it. */
   onHeight?: (height: number) => void;
+  /** Steps aside (slides down, or fades with reduced motion) while search is open (sprint 1 design 2.4). */
+  hidden?: boolean;
 }
 
 /** The country card from design direction C: a boarding pass (sprint 0 AC-4). */
@@ -52,17 +75,31 @@ export function BoardingPassCard({
   bottomInset,
   onClose,
   onHeight,
+  hidden = false,
 }: Props) {
   const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const [nameEnWidth, setNameEnWidth] = useState(0);
   const palette = colors[colorScheme];
   const dark = colorScheme === 'dark';
   const [size, setSize] = useState({ width: 0, height: 0 });
 
-  // Slide up from below (or fade, with reduced motion) when the card appears.
-  // The fade is the reduced-motion version, so it runs even then: Reanimated's
-  // default (ReduceMotion.System) would skip it and the card would pop in.
+  // Slide up from below (or fade, with reduced motion) when the card appears,
+  // and back down when search takes the screen (200 ms, accelerating).
+  // The fades are the reduced-motion version, so they run even then:
+  // Reanimated's default (ReduceMotion.System) would skip them.
   const progress = useSharedValue(0);
   useEffect(() => {
+    if (hidden) {
+      progress.set(
+        withTiming(0, {
+          duration: motion.short,
+          easing: reduceMotion ? Easing.linear : ACCELERATE,
+          reduceMotion: ReduceMotion.Never,
+        }),
+      );
+      return;
+    }
     progress.set(
       withTiming(
         1,
@@ -71,7 +108,7 @@ export function BoardingPassCard({
           : { duration: motion.sheet, easing: DECELERATE },
       ),
     );
-  }, [progress, reduceMotion]);
+  }, [progress, reduceMotion, hidden]);
   // Hidden until measured, so the first frame doesn't flash in place before sliding up.
   const enter = useAnimatedStyle(() =>
     reduceMotion
@@ -94,6 +131,9 @@ export function BoardingPassCard({
     <Animated.View
       style={[styles.card, { bottom: bottomInset + CARD_GAP }, enter]}
       onLayout={onLayout}
+      pointerEvents={hidden ? 'none' : 'auto'}
+      importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}
+      accessibilityElementsHidden={hidden}
       testID="country-card"
     >
       {size.width > 0 && (
@@ -125,15 +165,48 @@ export function BoardingPassCard({
           <Text style={[styles.label, { color: palette.textSecondary }]}>
             {t('card.destination')}
           </Text>
+          {/* AC-11: at most two lines; long names step down a size, and the
+              full name stays in the label for the screen reader. */}
           <Text
-            style={[styles.nameHe, styles.clearOfClose, { color: palette.textPrimary }]}
+            style={[
+              styles.nameHe,
+              country.nameHe.length > layout.cardNameStepDownChars && styles.nameHeLong,
+              styles.clearOfClose,
+              { color: palette.textPrimary },
+            ]}
             accessibilityRole="header"
+            accessibilityLabel={country.nameHe}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+            maxFontSizeMultiplier={1.6}
+            testID="card-name"
           >
             {country.nameHe}
           </Text>
-          <Text style={[styles.nameEn, styles.clearOfClose, { color: palette.textSecondary }]}>
-            {country.nameEn}
-          </Text>
+          {/* The inner row is laid out left to right even in Hebrew: in an
+              RTL layout Android ellipsized the English name from the wrong end
+              ("H GEORGIA …", sprint 1 QA). The outer view keeps the app's
+              direction, so the space for the close button stays on its side. */}
+          <View style={styles.clearOfClose}>
+            <View
+              style={styles.nameEnRow}
+              onLayout={(event) => setNameEnWidth(event.nativeEvent.layout.width)}
+            >
+              <Text
+                style={[
+                  styles.nameEn,
+                  !spaceEnglishName(country.nameEn, fontScale, nameEnWidth) && styles.nameEnTight,
+                  { color: palette.textSecondary },
+                ]}
+                accessibilityLabel={country.nameEn}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                testID="card-name-en"
+              >
+                {country.nameEn}
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.fields}>
             {country.timeZone && <LocalTime country={country} colorScheme={colorScheme} />}
@@ -187,7 +260,6 @@ export function BoardingPassCard({
         style={styles.close}
         accessibilityRole="button"
         accessibilityLabel={t('card.close')}
-        hitSlop={4}
         testID="card-close"
       >
         <Svg width={20} height={20} viewBox="0 0 24 24">
@@ -283,28 +355,33 @@ const styles = StyleSheet.create({
   },
   label: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, textAlign: 'left' },
   nameHe: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, marginTop: 4, textAlign: 'left' },
+  nameHeLong: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
+  nameEnRow: { direction: 'ltr' },
+  nameEnTight: { letterSpacing: 0 },
   nameEn: {
     fontFamily: fonts.medium,
     fontSize: 14,
     lineHeight: 20,
     letterSpacing: 2,
     textTransform: 'uppercase',
-    textAlign: 'left',
+    // Inside the LTR row, so these are physical sides: the reading start of the card.
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
     writingDirection: 'ltr',
   },
-  fields: { flexDirection: 'row', gap: 20, marginTop: 12 },
+  // At 130% font scale the currency drops to its own line rather than squeezing the time.
+  fields: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginTop: 12 },
   clock: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 26, fontVariant: ['tabular-nums'] },
   value: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 20, textAlign: 'left' },
   sub: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, textAlign: 'left' },
-  // The 44 pt close button sits at the end of the title row; long names wrap before it.
-  clearOfClose: { paddingEnd: 44 },
+  // The close button sits at the end of the title row; long names wrap before it.
+  clearOfClose: { paddingEnd: layout.touchTargetMin },
   barcode: { marginTop: 'auto' },
   close: {
     position: 'absolute',
     top: 6,
     end: STUB_WIDTH + 6,
-    width: 44,
-    height: 44,
+    width: layout.touchTargetMin,
+    height: layout.touchTargetMin,
     alignItems: 'center',
     justifyContent: 'center',
   },

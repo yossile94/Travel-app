@@ -8,25 +8,86 @@ export const colors = {
     surface: '#FFFFFF',
     textPrimary: '#121C36',
     textSecondary: '#4A5573',
+    textTertiary: '#646E8A',
     borderSubtle: '#F4E7D0',
     focusRing: '#1F78DB',
+    pressed: '#FBF4E8',
+    tag: '#FBF4E8',
+    chromeBg: 'rgba(255,255,255,0.92)',
+    chromeFg: '#121C36',
+    chromeBorder: 'rgba(18,28,54,0.08)',
+    canvas: '#FFFBF5',
+    scrim: 'rgba(6,11,24,0.48)',
+    primary: '#1561BC',
+    onPrimary: '#FFFFFF',
+    secondaryBg: '#EEF6FF',
+    secondaryFg: '#104C94',
+    disabledBg: '#E9EEFA',
+    disabledFg: '#646E8A',
+    infoBg: '#EEF6FF',
+    infoFg: '#104C94',
+    link: '#1561BC',
+    borderControl: '#7D869E',
   },
   dark: {
     surface: '#121C36',
     textPrimary: '#F3F6FC',
     textSecondary: '#A3B3DB',
+    textTertiary: '#7487BD',
     borderSubtle: '#1A2749',
     focusRing: '#6FB3FA',
+    pressed: '#1A2749',
+    tag: '#1A2749',
+    chromeBg: 'rgba(18,28,54,0.88)',
+    chromeFg: '#F3F6FC',
+    chromeBorder: 'rgba(163,179,219,0.32)',
+    canvas: '#060B18',
+    scrim: 'rgba(0,0,0,0.6)',
+    primary: '#6FB3FA',
+    onPrimary: '#060B18',
+    secondaryBg: '#1A2749',
+    secondaryFg: '#A9D2FF',
+    disabledBg: '#1A2749',
+    disabledFg: '#7487BD',
+    infoBg: '#1A2749',
+    infoFg: '#A9D2FF',
+    link: '#6FB3FA',
+    borderControl: '#7487BD',
   },
 } as const;
 
 export type ColorScheme = keyof typeof colors;
 
+/**
+ * "Sign in with Google" button colours (design 4.3). Google's branding rules
+ * fix these; checked against developers.google.com/identity/branding-guidelines.
+ */
+export const googleBrand = {
+  light: { bg: '#FFFFFF', border: '#747775', fg: '#1F1F1F' },
+  dark: { bg: '#131314', border: '#8E918F', fg: '#E3E3E3' },
+} as const;
+
+/** Toasts sit over the globe, so they are dark in both modes (design 7.5). */
+export const toastColors = { bg: '#121C36', fg: '#F3F6FC' } as const;
+
 /** Selection accent on the globe and the card strip (region colours come later, spec 12.2). */
 export const highlightColor = '#FF7A57';
 
 export const globe = {
-  raster: { saturation: 0.35, contrast: 0.12, fadeDuration: 300 },
+  // Sprint 1 AC-8: no contrast (it crushed the dark ocean to black) and calmer
+  // deserts; nothing is fully black or blinding (design 6.2).
+  raster: {
+    saturation: 0.12,
+    contrast: 0,
+    brightnessMin: 0.02,
+    brightnessMax: 0.96,
+    fadeDuration: 300,
+  },
+  /** Navy over the sea at the whole-globe view, gone by zoom 4 (AC-8). */
+  oceanTint: '#1561BC',
+  oceanTintOpacity: 0.4,
+  oceanTintFadeStartZoom: 2,
+  oceanTintFadeEndZoom: 4,
   atmosphere: {
     color: '#9FD0FF',
     highColor: '#2F7BE0',
@@ -38,7 +99,11 @@ export const globe = {
   baseOcean: '#0A1A3C',
   border: 'rgba(243,246,252,0.42)',
   borderWidthZ0: 0.5,
+  borderWidthZ3: 0.75,
   borderWidthZ5: 1,
+  borderWidthZ8: 1.6,
+  /** Detailed borders replace the coarse ones from this zoom (AC-13a). */
+  borderDetailMinZoom: 3,
   highlight: {
     fillOpacity: 0.3,
     glowWidth: 8,
@@ -46,10 +111,34 @@ export const globe = {
     outline: '#F3F6FC',
     outlineWidth: 1.6,
   },
+  /** Around a selected small country, which is too small to see highlighted (sprint 1 AC-7). */
+  selectionRing: {
+    radius: 10,
+    width: 2,
+    color: '#F3F6FC',
+    underlayWidth: 4,
+    underlayColor: '#03060F',
+    underlayOpacity: 0.6,
+  },
+  /**
+   * Behind the status and navigation bars, so their light icons stay at least
+   * 3:1 over bright imagery (sprint 1 AC-9). Alpha never below 0.5 (design 6.4).
+   */
+  systemScrim: {
+    color: '#03060F',
+    opacityEdge: 0.6,
+    opacityInset: 0.5,
+    fadeLength: 16,
+    bottomFadeLength: 24,
+  },
+  /** Dims the globe behind open search (sprint 1 design 2.1). */
+  searchScrim: 'rgba(3,6,15,0.40)',
 } as const;
 
 export const motion = {
+  micro: 100,
   short: 200,
+  medium: 300,
   sheet: 320,
   highlight: 600,
   splitFlap: 700,
@@ -60,9 +149,35 @@ export const motion = {
   autoRotateDegPerSec: 3,
   autoRotateResumeDelay: 5000,
   autoRotateRamp: 1000,
+  /** Delay before the screen reader hears the result count (sprint 1 AC-6). */
+  searchAnnounceDelay: 600,
+  /** How long a toast stays (design 7.5). */
+  toastVisible: 3000,
 } as const;
 
-export const radius = { sheet: 28, flap: 4 } as const;
+/** Sizes and positions of the controls over the globe (sprint 1 design 1). */
+export const layout = {
+  touchTargetMin: 48,
+  listRowMin: 56,
+  chromeEdge: 12,
+  /** Below insets.top. */
+  chromeRowTop: 52,
+  /** Below insets.top: the hint, offline pill, error banner and toast. */
+  overlayTop: 112,
+  mapboxLogoTop: 12,
+  mapboxLogoLeft: 12,
+  mapboxAttributionLeft: 100,
+  /** A country name longer than this steps down from title1 to title2 (sprint 1 AC-11). */
+  cardNameStepDownChars: 16,
+  /**
+   * A generous width per character (pt, at font scale 1) of the card's
+   * English name with its letter spacing: a name keeps the spacing only if
+   * this many times its length fits the row (sprint 1 QA, BoardingPassCard).
+   */
+  cardNameEnSpacedCharWidth: 13,
+} as const;
+
+export const radius = { xs: 4, md: 12, lg: 16, sheet: 28, pill: 999, flap: 4 } as const;
 
 export const fonts = {
   regular: 'Rubik_400Regular',

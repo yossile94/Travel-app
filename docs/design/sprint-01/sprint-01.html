@@ -1,0 +1,1408 @@
+<!doctype html>
+<html lang="he" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ספרינט 1 · חיפוש, חשבון והסכמות, ליטוש הגלובוס · הדמיה</title>
+<!-- Sprint 1 design prototype (not production code). Works offline; with a connection it also loads
+     pinned CDN assets: @fontsource-variable/rubik@5.1.0, d3@7.9.0, topojson-client@3.1.0, world-atlas@2.0.2. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/rubik@5.1.0/index.css">
+<style>
+/* ---------- tokens (mirror of docs/design/tokens.json 0.2.0) ---------- */
+:root {
+  --font: 'Rubik Variable', 'Rubik', system-ui, 'Segoe UI', Arial, sans-serif;
+  --sysfont: Roboto, 'Noto Sans Hebrew', 'Segoe UI', Arial, sans-serif;
+  --fs: 1; --top: 28px; --bottom: 48px; --scale: 1;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --space: #03060F;
+}
+:root[data-theme="light"] {
+  --canvas: #FFFBF5; --surface: #FFFFFF; --raised: #FFFFFF; --alt: #FBF4E8;
+  --t1: #121C36; --t2: #4A5573; --t3: #646E8A; --link: #1561BC;
+  --pri-bg: #1561BC; --pri-fg: #FFFFFF; --pri-pressed: #104C94;
+  --sec-bg: #EEF6FF; --sec-fg: #104C94; --dis-bg: #E9EEFA; --dis-fg: #646E8A;
+  --bsub: #F4E7D0; --bctl: #7D869E; --focus: #1F78DB;
+  --info-bg: #EEF6FF; --info-fg: #104C94; --pressed: #FBF4E8; --chip: #FBF4E8;
+  --scrim: rgba(6,11,24,0.48);
+  --chrome-bg: rgba(255,255,255,0.92); --chrome-fg: #121C36; --chrome-b: rgba(18,28,54,0.08);
+  --g-bg: #FFFFFF; --g-b: #747775; --g-fg: #1F1F1F;
+  --field-b: transparent;
+  --sh2: 0 4px 12px rgba(18,28,54,0.10), 0 1px 3px rgba(18,28,54,0.06);
+  --sh3: 0 8px 24px rgba(18,28,54,0.14);
+  --page: #EDE6D9; --kb: #E8EAED; --key: #FFFFFF; --keyfg: #202124;
+}
+:root[data-theme="dark"] {
+  --canvas: #060B18; --surface: #0B1326; --raised: #121C36; --alt: #121C36;
+  --t1: #F3F6FC; --t2: #A3B3DB; --t3: #7487BD; --link: #6FB3FA;
+  --pri-bg: #6FB3FA; --pri-fg: #060B18; --pri-pressed: #A9D2FF;
+  --sec-bg: #1A2749; --sec-fg: #A9D2FF; --dis-bg: #1A2749; --dis-fg: #7487BD;
+  --bsub: #1A2749; --bctl: #7487BD; --focus: #6FB3FA;
+  --info-bg: #1A2749; --info-fg: #A9D2FF; --pressed: #1A2749; --chip: #1A2749;
+  --scrim: rgba(0,0,0,0.6);
+  --chrome-bg: rgba(18,28,54,0.88); --chrome-fg: #F3F6FC; --chrome-b: rgba(163,179,219,0.32);
+  --g-bg: #131314; --g-b: #8E918F; --g-fg: #E3E3E3;
+  --field-b: #1A2749;
+  --sh2: none; --sh3: none;
+  --page: #03060E; --kb: #202124; --key: #3C4043; --keyfg: #E8EAED;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { font-family: var(--font); background: var(--page); color: var(--t1); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+bdi.ltr, .ltr { direction: ltr; unicode-bidi: isolate; }
+
+/* ---------- stage ---------- */
+.stage { display: flex; gap: 28px; padding: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+.phone-slot { position: relative; width: calc(411px * var(--scale) + 20px * var(--scale)); height: calc(914px * var(--scale) + 20px * var(--scale)); flex: none; }
+.bezel { position: absolute; top: 0; left: 0; width: 431px; height: 934px; padding: 10px; border-radius: 52px; background: #10131A; transform: scale(var(--scale)); transform-origin: 0 0; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.phone { position: relative; width: 411px; height: 914px; overflow: hidden; border-radius: 42px; background: var(--space); --fsz: var(--fs); }
+canvas#globe { position: absolute; inset: 0; width: 411px; height: 914px; touch-action: none; cursor: grab; }
+.veil { position: absolute; inset: 0; background: var(--space); opacity: 0; pointer-events: none; z-index: 1; transition: opacity 150ms linear; }
+
+/* ---------- system scrims (AC-9) ---------- */
+.scrim-top { position: absolute; top: 0; left: 0; right: 0; height: calc(var(--top) + 16px); z-index: 2; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(3,6,15,.6) 0, rgba(3,6,15,.5) var(--top), rgba(3,6,15,0) 100%); }
+.scrim-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: calc(var(--bottom) + 24px); z-index: 2; pointer-events: none;
+  background: linear-gradient(to top, rgba(3,6,15,.6) 0, rgba(3,6,15,.5) var(--bottom), rgba(3,6,15,0) 100%); }
+.phone.no-scrims .scrim-top, .phone.no-scrims .scrim-bottom { display: none; }
+
+/* ---------- status bar & navigation bar (system, not ours) ---------- */
+.statusbar { position: absolute; top: 0; left: 0; right: 0; height: var(--top); z-index: 30; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; color: #fff; font: 500 13px/1 var(--sysfont); pointer-events: none; }
+.statusbar.dark { color: #1F1F1F; }
+.statusbar .sb-icons { display: flex; gap: 6px; align-items: center; direction: ltr; }
+.statusbar svg { width: 15px; height: 15px; fill: currentColor; }
+.navbar { position: absolute; bottom: 0; left: 0; right: 0; height: var(--bottom); z-index: 30; display: flex; align-items: center; justify-content: space-around; color: #fff; }
+.navbar.dark { color: #1F1F1F; }
+.navbar button { background: none; border: 0; width: 64px; height: 44px; display: grid; place-items: center; cursor: pointer; }
+.navbar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+/* ---------- Mapbox logo & attribution (always visible) ---------- */
+.mapbox { position: absolute; top: calc(var(--top) + 12px); left: 12px; z-index: 3; display: flex; align-items: center; gap: 4px; direction: ltr; }
+.mapbox .wordmark { height: 23px; width: 84px; }
+.mapbox .attrib { width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(255,255,255,.85); color: #121C36; font: 700 13px/24px Georgia, serif; cursor: pointer; padding: 0; margin-left: 4px; } /* Mapbox ornament: no hitSlop */
+
+/* ---------- chrome buttons (search, account) ---------- */
+.chrome { position: absolute; top: calc(var(--top) + 52px); width: 48px; height: 48px; border-radius: 999px; border: 1px solid var(--chrome-b); background: var(--chrome-bg); color: var(--chrome-fg); box-shadow: var(--sh2); display: grid; place-items: center; cursor: pointer; z-index: 6; padding: 0;
+  transition: opacity 150ms var(--ease-accel), transform 100ms var(--ease-standard); }
+.chrome:active { transform: scale(0.96); }
+.chrome svg { width: 24px; height: 24px; }
+.acct { inset-inline-end: 12px; }
+.acct.gone { opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 150ms var(--ease-accel), visibility 0s 150ms; }
+.acct.pending { opacity: 0; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--pri-bg); color: var(--pri-fg); display: grid; place-items: center; font-weight: 600; font-size: 18px; line-height: 1; }
+.avatar.md { width: 48px; height: 48px; font-size: 22px; flex: none; }
+
+/* ---------- search bar (morphs from the chrome button) ---------- */
+.sb { position: absolute; top: calc(var(--top) + 52px); inset-inline-start: 12px; width: 48px; min-height: 48px; border-radius: 999px; z-index: 8;
+  background: var(--chrome-bg); border: 1px solid var(--chrome-b); box-shadow: var(--sh2); color: var(--chrome-fg);
+  display: flex; align-items: center; overflow: hidden; transition: width 300ms var(--ease-standard), background-color 200ms linear, border-color 200ms linear; }
+.sb.open { width: calc(100% - 24px); background: var(--raised); color: var(--t1); border: 2px solid var(--focus); }
+.sb.open.blur { border: 1px solid var(--field-b); }
+:root[data-theme="light"] .sb.open.blur { border-color: transparent; }
+.sb .sb-icon { flex: none; width: 44px; height: 44px; border: 0; background: none; display: grid; place-items: center; cursor: pointer; padding: 0; color: inherit; }
+.sb .sb-icon svg { width: 24px; height: 24px; transition: opacity 150ms var(--ease-standard); }
+.sb input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--t1); font: 400 calc(16px * var(--fs)) / calc(24px * var(--fs)) var(--font); text-align: right; direction: rtl; padding: 10px 0; opacity: 0; pointer-events: none; transition: opacity 150ms linear; }
+.sb.open input { opacity: 1; pointer-events: auto; transition-delay: 100ms; }
+.sb input::placeholder { color: var(--t3); }
+.sb input::-webkit-search-cancel-button { display: none; }
+.sb .sb-clear { flex: none; width: 44px; height: 44px; border: 0; background: none; display: grid; place-items: center; cursor: pointer; color: var(--t2); }
+.sb .sb-clear svg { width: 20px; height: 20px; }
+.sb .sb-spin { flex: none; width: 44px; height: 44px; display: grid; place-items: center; }
+.spinner { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid currentColor; border-top-color: transparent; animation: spin 900ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+:root[data-reduce] .spinner { animation-duration: 2400ms; }
+.search-scrim { position: absolute; top: calc(var(--top) + 108px); left: 0; right: 0; bottom: 0; background: rgba(3,6,15,0.40); z-index: 7; opacity: 0; pointer-events: none; transition: opacity 200ms linear; }
+.search-scrim.on { opacity: 1; pointer-events: auto; }
+
+/* ---------- results ---------- */
+.results { position: absolute; top: calc(var(--top) + 108px); inset-inline: 12px; z-index: 8; background: var(--raised); border-radius: 16px; box-shadow: var(--sh3); border: 1px solid var(--field-b); overflow-y: auto; overscroll-behavior: contain;
+  opacity: 0; transform: translateY(-8px); pointer-events: none; transition: opacity 150ms var(--ease-decel), transform 150ms var(--ease-decel); }
+:root[data-theme="light"] .results { border-color: transparent; }
+.results.on { opacity: 1; transform: none; pointer-events: auto; }
+:root[data-reduce] .results { transform: none; }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 16px; border: 0; background: none; text-align: right; cursor: pointer; position: relative; }
+.row + .row::before { content: ''; position: absolute; top: 0; inset-inline-start: 16px; inset-inline-end: 0; height: 1px; background: var(--bsub); }
+.row:active, .row.pressed { background: var(--pressed); }
+.row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.r-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.r-he { font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); font-weight: 500; color: var(--t1); }
+.r-he b { font-weight: 700; }
+.r-parent { font-weight: 400; color: var(--t2); }
+.r-en { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); }
+.r-why { color: var(--t3); }
+.r-code { flex: none; font: 500 calc(12px * var(--fs)) / calc(16px * var(--fs)) var(--font); letter-spacing: 1.2px; font-variant-numeric: tabular-nums; color: var(--t2); background: var(--chip); border-radius: 4px; padding: 4px 6px; direction: ltr; }
+.r-empty { padding: 16px; }
+.r-empty .t { font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.r-empty .s { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); margin-top: 2px; }
+.r-more { min-height: 40px; display: flex; align-items: center; padding: 0 16px; font-size: calc(13px * var(--fs)); color: var(--t3); border-top: 1px solid var(--bsub); }
+
+/* ---------- pills / toast ---------- */
+.pill { position: absolute; top: calc(var(--top) + 112px); left: 50%; transform: translateX(-50%); z-index: 5; background: rgba(11,19,38,.78); color: #F3F6FC; padding: 8px 14px; border-radius: 999px; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); white-space: nowrap; max-width: calc(100% - 48px); }
+.pill.warn::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #F2BC62; margin-inline-end: 8px; vertical-align: middle; }
+.toast { position: absolute; top: calc(var(--top) + 112px); left: 50%; z-index: 20; transform: translate(-50%, -8px); opacity: 0; pointer-events: none; background: #121C36; color: #F3F6FC; border-radius: 999px; padding: 10px 18px; font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); max-width: calc(100% - 48px); text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  transition: opacity 200ms var(--ease-accel), transform 200ms var(--ease-accel); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); transition: opacity 200ms var(--ease-decel), transform 200ms var(--ease-decel); }
+:root[data-reduce] .toast, :root[data-reduce] .toast.on { transform: translate(-50%, 0); }
+
+/* ---------- boarding-pass card (sprint 0, with AC-11 and AC-12 changes) ---------- */
+.card { position: absolute; inset-inline: 12px; bottom: calc(var(--bottom) + 16px); z-index: 4; transform: translateY(calc(100% + 80px)); transition: transform 200ms var(--ease-accel); }
+.card.open { transform: none; transition: transform 320ms var(--ease-decel); }
+:root[data-reduce] .card { transform: none; opacity: 0; pointer-events: none; transition: opacity 200ms linear; }
+:root[data-reduce] .card.open { opacity: 1; pointer-events: auto; }
+.bp { --stub: 108px; display: flex; flex-direction: row; background: var(--raised); border-radius: 18px; filter: drop-shadow(0 12px 14px rgba(0,0,0,.45));
+  -webkit-mask: radial-gradient(circle 11px at var(--stub) 0, #0000 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 11px at var(--stub) 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+  mask: radial-gradient(circle 11px at var(--stub) 0, #0000 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 11px at var(--stub) 100%, #0000 98%, #000) bottom / 100% 51% no-repeat; }
+:root[data-theme="dark"] .bp { box-shadow: inset 0 0 0 1px rgba(163,179,219,.16); }
+.c-main { flex: 1; min-width: 0; padding: 22px 20px 16px; position: relative; }
+.c-main .strip { position: absolute; top: 0; inset-inline: 0; height: 4px; background: #FF7A57; border-start-start-radius: 18px; }
+.c-stub { width: 108px; flex: none; border-inline-start: 2px dashed rgba(18,28,54,.22); padding: 54px 10px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+:root[data-theme="dark"] .c-stub { border-color: rgba(244,231,208,.22); }
+.lbl { font-weight: 600; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); }
+.c-name { margin: 4px 0 0; padding-inline-end: 48px; font-weight: 700; font-size: calc(28px * min(var(--fs), 1.6)); line-height: calc(34px * min(var(--fs), 1.6)); color: var(--t1);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.c-name.long { font-weight: 600; font-size: calc(22px * min(var(--fs), 1.6)); line-height: calc(28px * min(var(--fs), 1.6)); }
+.c-en { padding-inline-end: 48px; font-weight: 500; font-size: calc(14px * var(--fs)); line-height: calc(20px * var(--fs)); letter-spacing: 2px; text-transform: uppercase; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.c-fields { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; }
+.c-fields > div { min-width: 0; max-width: 100%; }
+.clock { font-weight: 700; font-size: calc(22px * var(--fs)); line-height: calc(26px * var(--fs)); font-variant-numeric: tabular-nums; text-align: right; }
+.val { font-weight: 500; font-size: calc(15px * var(--fs)); line-height: calc(20px * var(--fs)); }
+.sub { font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); }
+.card .close { position: absolute; top: 4px; inset-inline-end: calc(108px + 4px); width: 48px; height: 48px; border-radius: 50%; border: 0; background: transparent; color: var(--t1); cursor: pointer; display: grid; place-items: center; z-index: 1; }
+.card .close svg { width: 20px; height: 20px; }
+.flap { display: flex; gap: 3px; direction: ltr; }
+.flap span { width: 24px; height: 32px; border-radius: 4px; background: #121C36; color: #F3F6FC; display: grid; place-items: center; font: 600 18px/1 var(--font); font-variant-numeric: tabular-nums; animation: flip 70ms linear both; }
+:root[data-theme="dark"] .flap span { background: #060B18; }
+@keyframes flip { from { transform: scaleY(0.15); } to { transform: none; } }
+:root[data-reduce] .flap span { animation: none; }
+.barcode { margin-top: auto; height: 30px; width: 80px; color: var(--t1); }
+
+/* ---------- bottom sheets ---------- */
+.sheet-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 21; opacity: 0; pointer-events: none; transition: opacity 200ms linear; }
+.sheet-scrim.on { opacity: 1; pointer-events: auto; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 22; background: var(--raised); color: var(--t1); border-radius: 28px 28px 0 0; padding: 12px 16px calc(var(--bottom) + 20px); border-top: 1px solid var(--field-b);
+  transform: translateY(105%); visibility: hidden; transition: transform 200ms var(--ease-accel), visibility 0s 200ms; }
+.sheet.open { transform: none; visibility: visible; transition: transform 320ms var(--ease-decel), visibility 0s; }
+:root[data-reduce] .sheet { transform: none; opacity: 0; transition: opacity 200ms linear, visibility 0s 200ms; }
+:root[data-reduce] .sheet.open { opacity: 1; transition: opacity 200ms linear, visibility 0s; }
+.handle { width: 32px; height: 4px; border-radius: 2px; background: var(--bctl); margin: 0 auto 8px; opacity: .6; }
+.x { position: absolute; top: 8px; inset-inline-end: 8px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: none; color: var(--t1); display: grid; place-items: center; cursor: pointer; }
+.x svg { width: 22px; height: 22px; }
+.sheet h2 { margin: 12px 0 8px; font-weight: 600; font-size: calc(22px * var(--fs)); line-height: calc(28px * var(--fs)); padding-inline-end: 48px; }
+.sheet p { margin: 0 0 16px; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); color: var(--t2); }
+.sheet .fine { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); margin: 12px 0 0; }
+.acct-row { display: flex; gap: 16px; align-items: center; margin: 8px 0 24px; }
+.acct-name { font-weight: 600; font-size: calc(18px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.acct-mail { font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); color: var(--t2); text-align: right; }
+.acct-via { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t3); }
+
+/* ---------- buttons ---------- */
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); padding: 10px 20px; transition: background-color 200ms var(--ease-standard), color 200ms var(--ease-standard); }
+.btn svg { width: 20px; height: 20px; flex: none; }
+.btn.primary { background: var(--pri-bg); color: var(--pri-fg); }
+.btn.primary:active { background: var(--pri-pressed); }
+.btn.primary[aria-disabled="true"] { background: var(--dis-bg); color: var(--dis-fg); cursor: default; }
+.btn.secondary { background: var(--sec-bg); color: var(--sec-fg); }
+.btn.text { background: none; color: var(--link); }
+.flip-rtl { transform: scaleX(-1); }
+.gbtn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 48px; border-radius: 999px; border: 1px solid var(--g-b); background: var(--g-bg); color: var(--g-fg); font: 500 calc(14px * var(--fs)) / calc(20px * var(--fs)) var(--sysfont); cursor: pointer; padding: 10px 20px; position: relative; }
+.gbtn:active::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: .08; }
+.gbtn[aria-disabled="true"] { opacity: .38; cursor: default; }
+.gbtn .g { width: 20px; height: 20px; flex: none; }
+.notice { display: flex; gap: 10px; align-items: flex-start; background: var(--info-bg); color: var(--info-fg); border-radius: 12px; padding: 12px; margin: 0 0 16px; font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); }
+.notice svg { width: 20px; height: 20px; flex: none; margin-top: 1px; }
+.notice .linkbtn { display: inline-flex; align-items: center; min-height: 44px; border: 0; background: none; color: inherit; font-weight: 600; text-decoration: underline; padding: 0; cursor: pointer; }
+.note { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); margin: 8px 0 0; text-align: center; }
+
+/* ---------- system Google chooser (simulated, not our UI) ---------- */
+.chooser { position: absolute; left: 8px; right: 8px; bottom: calc(var(--bottom) + 8px); z-index: 26; background: #FFFFFF; color: #1F1F1F; border-radius: 28px; padding: 20px 16px 12px; font-family: var(--sysfont); box-shadow: 0 10px 40px rgba(0,0,0,.4); transform: translateY(120%); transition: transform 250ms var(--ease-decel); }
+:root[data-theme="dark"] .chooser { background: #1F1F1F; color: #E3E3E3; }
+.chooser.open { transform: none; }
+.chooser .sys { font-size: 11px; color: #5F6368; text-align: center; margin-bottom: 8px; }
+.chooser h3 { margin: 0 0 4px; font-size: 20px; font-weight: 400; text-align: center; }
+.chooser .acc { display: flex; gap: 12px; align-items: center; width: 100%; border: 0; background: none; color: inherit; padding: 12px 8px; border-radius: 12px; cursor: pointer; text-align: right; margin-top: 12px; }
+.chooser .acc:hover { background: rgba(127,127,127,.12); }
+.chooser .acc .a { width: 36px; height: 36px; border-radius: 50%; background: #7B1FA2; color: #fff; display: grid; place-items: center; }
+.chooser .cancel { display: block; margin: 8px auto 0; border: 0; background: none; color: #0B57D0; font: 500 14px var(--sysfont); min-height: 44px; padding: 0 16px; cursor: pointer; }
+:root[data-theme="dark"] .chooser .cancel { color: #A8C7FA; }
+.chooser-scrim { position: absolute; inset: 0; z-index: 25; background: rgba(0,0,0,.32); opacity: 0; pointer-events: none; transition: opacity 200ms linear; }
+.chooser-scrim.on { opacity: 1; pointer-events: auto; }
+
+/* ---------- consent ---------- */
+.consent { position: absolute; inset: 0; z-index: 24; background: var(--canvas); color: var(--t1); display: flex; flex-direction: column; padding-top: var(--top);
+  transform: translateY(100%); visibility: hidden; transition: transform 200ms var(--ease-accel), visibility 0s 200ms; }
+.consent.open { transform: none; visibility: visible; transition: transform 300ms var(--ease-decel), visibility 0s; }
+:root[data-reduce] .consent { transform: none; opacity: 0; transition: opacity 200ms linear, visibility 0s 200ms; }
+:root[data-reduce] .consent.open { opacity: 1; transition: opacity 200ms linear, visibility 0s; }
+.c-scroll { flex: 1; overflow-y: auto; padding: 24px 16px 16px; }
+.badge { display: inline-block; font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); background: var(--info-bg); color: var(--info-fg); border-radius: 999px; padding: 4px 10px; }
+.consent h1 { margin: 12px 0 8px; font-weight: 700; font-size: calc(28px * min(var(--fs), 1.6)); line-height: calc(34px * min(var(--fs), 1.6)); }
+.consent .lead { margin: 0 0 20px; color: var(--t2); font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.consent h2 { margin: 24px 0 2px; font-weight: 600; font-size: calc(18px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.consent .hint { margin: 0 0 12px; color: var(--t2); font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); }
+.ccard { background: var(--surface); border-radius: 16px; border: 1px solid transparent; }
+:root[data-theme="dark"] .ccard { border-color: var(--bsub); }
+.cb-row { display: flex; gap: 12px; align-items: flex-start; width: 100%; min-height: 56px; padding: 12px 16px; border: 0; background: none; text-align: right; cursor: pointer; border-radius: 16px; }
+.cb-row + .cb-row { border-top: 1px solid var(--bsub); border-radius: 0 0 16px 16px; }
+.cb { flex: none; width: 24px; height: 24px; border-radius: 4px; border: 2px solid var(--bctl); display: grid; place-items: center; margin-top: 0; transition: background-color 100ms var(--ease-standard), border-color 100ms var(--ease-standard); position: relative; }
+.cb svg { width: 18px; height: 18px; stroke: var(--pri-fg); fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; transform: scale(.6); opacity: 0; transition: transform 100ms var(--ease-standard), opacity 100ms; }
+.cb-row[aria-checked="true"] .cb { background: var(--pri-bg); border-color: var(--pri-bg); }
+.cb-row[aria-checked="true"] .cb svg { transform: none; opacity: 1; }
+:root[data-reduce] .cb, :root[data-reduce] .cb svg { transition: none; }
+.cb-row[aria-disabled="true"] { opacity: .6; cursor: default; }
+.cb-text { flex: 1; min-width: 0; }
+.cb-label { font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); color: var(--t1); }
+.cb-label.strong { font-weight: 500; }
+.cb-desc { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); margin-top: 2px; }
+.doc { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; border-top: 1px solid var(--bsub); width: 100%; border-inline: 0; border-bottom: 0; background: none; text-align: right; cursor: pointer; }
+.doc:last-child { border-radius: 0 0 16px 16px; }
+.doc .d-t { color: var(--link); font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.doc .d-s { color: var(--t2); font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); }
+.doc .d-txt { flex: 1; }
+.doc svg { width: 20px; height: 20px; color: var(--link); flex: none; }
+.newtag { display: inline-block; font-weight: 500; font-size: calc(12px * var(--fs)); background: var(--info-bg); color: var(--info-fg); border-radius: 999px; padding: 0 8px; margin-inline-start: 6px; vertical-align: 2px; }
+.kept { margin: 20px 0 0; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); }
+.c-foot { padding: 12px 16px calc(var(--bottom) + 8px); border-top: 1px solid var(--bsub); background: var(--canvas); }
+.c-foot .helper { margin: 0 0 8px; text-align: center; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); }
+.c-foot .notice { margin-bottom: 12px; }
+
+/* ---------- dialog ---------- */
+.dialog-scrim { position: absolute; inset: 0; z-index: 40; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; padding: 24px; }
+.dialog-scrim.on { display: flex; }
+.dialog { background: var(--raised); color: var(--t1); border-radius: 28px; padding: 24px; width: 100%; max-width: 340px; box-shadow: 0 16px 40px rgba(0,0,0,.35); }
+.dialog h3 { margin: 0 0 12px; font-weight: 600; font-size: calc(22px * var(--fs)); line-height: calc(28px * var(--fs)); }
+.dialog p { margin: 0 0 20px; color: var(--t2); font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); }
+.dialog .acts { display: flex; justify-content: flex-end; gap: 8px; }
+.dialog .acts button { min-height: 48px; padding: 0 16px; border: 0; background: none; color: var(--link); font-weight: 500; font-size: calc(15px * var(--fs)); border-radius: 999px; cursor: pointer; }
+
+/* ---------- simulated keyboard (Gboard-like) ---------- */
+.kb { position: absolute; left: 0; right: 0; bottom: var(--bottom); height: 280px; z-index: 28; background: var(--kb); padding: 6px 4px 8px; transform: translateY(calc(100% + var(--bottom))); transition: transform 250ms var(--ease-decel); direction: ltr; }
+.kb.on { transform: none; }
+.kb .sugg { height: 40px; display: flex; align-items: center; justify-content: center; color: var(--keyfg); opacity: .6; font: 13px var(--sysfont); }
+.kb .krow { display: flex; gap: 5px; justify-content: center; margin: 0 0 8px; }
+.kb .key { flex: 1; max-width: 36px; height: 44px; border: 0; border-radius: 6px; background: var(--key); color: var(--keyfg); font: 400 19px var(--sysfont); cursor: pointer; box-shadow: 0 1px 0 rgba(0,0,0,.2); padding: 0; }
+.kb .key.wide { max-width: 64px; font-size: 14px; }
+.kb .key.space { max-width: 200px; flex: 5; }
+.kb .key.act { background: #0B57D0; color: #fff; max-width: 64px; }
+
+/* ---------- panel (outside the phone, not app UI) ---------- */
+.panel { width: 400px; max-width: 100%; background: var(--surface); color: var(--t1); border-radius: 24px; padding: 20px 22px; box-shadow: 0 1px 2px rgba(18,28,54,.06), 0 8px 24px rgba(18,28,54,.08); max-height: calc(100vh - 32px); overflow-y: auto; }
+:root[data-theme="dark"] .panel { box-shadow: none; border: 1px solid var(--bsub); }
+.panel .eyebrow { font-size: 12px; font-weight: 600; color: var(--t2); margin: 0 0 4px; }
+.panel h1 { margin: 0 0 4px; font-size: 22px; line-height: 28px; }
+.panel h2 { font-size: 13px; line-height: 18px; font-weight: 600; margin: 18px 0 8px; }
+.panel p, .panel li { font-size: 14px; line-height: 21px; color: var(--t2); }
+.panel p { margin: 6px 0; }
+.seg { display: flex; flex-wrap: wrap; border: 1px solid var(--bctl); border-radius: 18px; padding: 3px; gap: 2px; }
+.seg button { flex: 1 0 auto; font-size: 13px; min-height: 36px; border: 0; border-radius: 999px; background: transparent; color: var(--t1); cursor: pointer; padding: 0 10px; }
+.seg button[aria-pressed="true"] { background: var(--pri-bg); color: var(--pri-fg); font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font-size: 13px; min-height: 36px; border: 1px solid var(--bctl); border-radius: 999px; background: transparent; color: var(--t1); padding: 0 12px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--t1); color: var(--surface); border-color: transparent; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 14px; min-height: 36px; }
+.chk input { width: 20px; height: 20px; accent-color: var(--pri-bg); }
+.group[hidden] { display: none; }
+table.cal { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.cal th, table.cal td { padding: 5px 4px; text-align: right; border-bottom: 1px solid var(--bsub); vertical-align: middle; }
+table.cal th { color: var(--t2); font-weight: 500; }
+.sw { display: inline-block; width: 18px; height: 18px; border-radius: 4px; vertical-align: middle; margin-inline-end: 6px; border: 1px solid rgba(127,127,127,.35); }
+.mono { font-family: ui-monospace, Consolas, monospace; direction: ltr; unicode-bidi: isolate; font-size: 12px; }
+.ok { color: #0B7F73; font-weight: 600; } :root[data-theme="dark"] .ok { color: #4FCFBE; }
+.bad { color: #C81E16; font-weight: 600; } :root[data-theme="dark"] .bad { color: #FF5D52; }
+.rangebar { height: 22px; border-radius: 6px; display: flex; overflow: hidden; border: 1px solid rgba(127,127,127,.35); margin: 6px 0; }
+.rangebar span { flex: 1; }
+.log { list-style: none; padding: 0; margin: 0; max-height: 160px; overflow-y: auto; font-size: 13px; }
+.log li { padding: 4px 0; border-bottom: 1px dashed var(--bsub); color: var(--t1); }
+.log li small { color: var(--t3); margin-inline-start: 6px; }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.pbtn { font-size: 13px; min-height: 36px; border: 0; border-radius: 999px; background: var(--sec-bg); color: var(--sec-fg); padding: 0 14px; cursor: pointer; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone-slot"><div class="bezel"><div class="phone" id="phone" aria-label="הדמיית טלפון">
+
+    <canvas id="globe" width="411" height="914" aria-label="גלובוס. גררו כדי לסובב והקישו על מדינה." role="img"></canvas>
+    <div class="veil" id="veil"></div>
+    <div class="scrim-top"></div>
+    <div class="scrim-bottom"></div>
+
+    <div class="statusbar" id="statusbar" aria-hidden="true">
+      <span>09:41</span>
+      <span class="sb-icons">
+        <svg viewBox="0 0 16 16"><path d="M8 13.5 1 6.2a10 10 0 0 1 14 0z"/></svg>
+        <svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><rect x="13.5" y="6.5" width="1.5" height="3" rx=".5"/></svg>
+        <span>87%</span>
+      </span>
+    </div>
+
+    <div class="mapbox" aria-label="Mapbox (סמליל מדומה)">
+      <svg class="wordmark" viewBox="0 0 84 23" aria-hidden="true">
+        <circle cx="11" cy="11.5" r="9" fill="#fff" stroke="rgba(0,0,0,.35)" stroke-width="1"/>
+        <path d="M7 15l2.5-7 2 4 2-4 1 7" stroke="#333" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+        <text x="23" y="16.5" font-family="Arial, sans-serif" font-weight="700" font-size="14" fill="#fff" stroke="rgba(0,0,0,.45)" stroke-width="2.4" paint-order="stroke">mapbox</text>
+      </svg>
+      <button class="attrib" type="button" aria-label="קרדיטים של המפה" data-action="attrib">i</button>
+    </div>
+
+    <div class="pill warn" id="offlinePill" hidden>אין חיבור · מציגים את מה שנשמר במכשיר</div>
+
+    <button class="chrome acct" id="acct" type="button" data-action="account"></button>
+
+    <div class="search-scrim" id="searchScrim" data-action="searchScrim"></div>
+    <div class="sb" id="sb" role="search">
+      <button class="sb-icon" id="sbIcon" type="button" data-action="sbIcon"></button>
+      <input id="q" type="search" placeholder="חיפוש מדינה" aria-label="חיפוש מדינה" autocomplete="off" spellcheck="false" enterkeyhint="search" tabindex="-1">
+      <span class="sb-spin" id="sbSpin" hidden><span class="spinner" aria-hidden="true"></span></span>
+      <button class="sb-clear" id="sbClear" type="button" aria-label="ניקוי החיפוש" data-action="clear" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="results" id="results"></div>
+    <div class="sr" id="countLive" aria-live="polite"></div>
+
+    <div class="card" id="card" aria-hidden="true">
+      <div class="bp">
+        <div class="c-main">
+          <div class="strip"></div>
+          <div class="lbl">יעד</div>
+          <h2 class="c-name" id="cName"></h2>
+          <div class="c-en" id="cEn" dir="ltr"></div>
+          <div class="c-fields">
+            <div id="cTime"><div class="lbl" id="cTimeLbl"></div><div class="clock"><bdi class="ltr" id="cClock"></bdi></div><div class="sub" id="cDiff"></div></div>
+            <div id="cCurBox"><div class="lbl">מטבע</div><div class="val" id="cCur"></div><div class="sub" id="cCurSub"></div></div>
+          </div>
+        </div>
+        <div class="c-stub">
+          <div class="flap" id="cCode"></div>
+          <svg class="barcode" viewBox="0 0 80 30" aria-hidden="true" id="barcode"></svg>
+        </div>
+      </div>
+      <button class="close" type="button" aria-label="סגירה" data-action="cardClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="sheet-scrim" id="sheetScrim" data-action="closeSheet"></div>
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+
+    <div class="consent" id="consent" role="dialog" aria-modal="true" aria-labelledby="cTitle"></div>
+
+    <div class="chooser-scrim" id="chooserScrim" data-action="chooserCancel"></div>
+    <div class="chooser" id="chooser" aria-hidden="true">
+      <div class="sys">מסך של Google (מערכת). לא חלק מהעיצוב שלנו</div>
+      <h3>בחירת חשבון</h3>
+      <div style="text-align:center;font-size:14px;opacity:.7">כדי להמשיך לאפליקציה</div>
+      <button class="acc" type="button" data-action="chooserPick"><span class="a">Y</span><span><div>יוסי לוי</div><div style="font-size:13px;opacity:.7"><bdi class="ltr">yossi@example.com</bdi></div></span></button>
+      <button class="cancel" type="button" data-action="chooserCancel">ביטול</button>
+    </div>
+
+    <div class="kb" id="kb" aria-hidden="true"></div>
+
+    <div class="dialog-scrim" id="dialog">
+      <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgT">
+        <h3 id="dlgT">לצאת בלי לאשר?</h3>
+        <p>החשבון יתנתק. הגלובוס והחיפוש ימשיכו לעבוד גם בלי חשבון.</p>
+        <div class="acts"><button type="button" data-action="dialogStay">חזרה</button><button type="button" data-action="dialogLeave">התנתקות</button></div>
+      </div>
+    </div>
+
+    <div class="navbar" id="navbar">
+      <button type="button" aria-label="חזור (Android)" data-action="back"><svg viewBox="0 0 20 20"><path d="M14 4 5 10l9 6z"/></svg></button>
+      <button type="button" aria-label="בית" tabindex="-1"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.5"/></svg></button>
+      <button type="button" aria-label="אפליקציות אחרונות" tabindex="-1"><svg viewBox="0 0 20 20"><rect x="4" y="4" width="12" height="12" rx="2"/></svg></button>
+    </div>
+  </div></div></div>
+
+  <aside class="panel" aria-label="פאנל הבקרה של ההדמיה">
+    <p class="eyebrow">ספרינט 1 · הדמיה לאישור רז · לא חלק מהאפליקציה</p>
+    <h1>חיפוש, חשבון והסכמות, ליטוש הגלובוס</h1>
+    <p>הכול בטלפון לחיץ. Esc הוא כפתור "חזור" של Android. הפירוט ב-<span class="mono">README.md</span>.</p>
+    <p><small>לפתיחה מקומית בלבד: קבצי ה-CDN נטענים בלי SRI. לא לארח.</small></p>
+
+    <h2>תצוגה</h2>
+    <div class="seg" id="segTheme"><button data-theme-set="light">בהיר</button><button data-theme-set="dark">כהה</button></div>
+    <div class="seg" id="segFs" style="margin-top:8px"><button data-fs="1">גופן 100%</button><button data-fs="1.3">גופן 130%</button></div>
+    <label class="chk"><input type="checkbox" id="chkReduce"> הפחתת תנועה ("Remove animations")</label>
+    <div class="btnrow"><button class="pbtn" data-action="back">חזור (Android)</button><button class="pbtn" id="kbToggle">מקלדת: פתוחה/סגורה</button></div>
+
+    <h2>מסך ומצב</h2>
+    <div class="seg" id="segScreen">
+      <button data-screen="home">בית</button><button data-screen="search">חיפוש</button><button data-screen="signin">התחברות</button><button data-screen="consent">הסכמות</button><button data-screen="globe">ליטוש הגלובוס</button>
+    </div>
+
+    <div class="group" data-group="home"><h2>בית וכפתור החשבון</h2><div class="chips">
+      <button data-preset="home-out">לא מחובר</button><button data-preset="home-in">מחובר</button><button data-preset="home-sheet">גיליון חשבון</button><button data-preset="home-offline">אין רשת (גלולה)</button>
+    </div><h2>כרטיס (AC-11, AC-12)</h2><div class="chips">
+      <button data-preset="card-THA">תאילנד</button><button data-preset="card-SGS">שם ארוך</button><button data-preset="card-USA">ניו יורק</button><button data-preset="card-BRA">ברזיל</button><button data-preset="card-IND">הודו</button><button data-preset="card-NPL">נפאל</button><button data-preset="card-AFG">אפגניסטן</button><button data-preset="card-GRC">יוון</button><button data-preset="card-VAT">הוותיקן (טבעת)</button>
+    </div></div>
+
+    <div class="group" data-group="search"><h2>חיפוש (F-002)</h2><div class="chips">
+      <button data-preset="s-empty">שדה ריק</button><button data-preset="s-tai">תאי</button><button data-preset="s-ara">ארה</button><button data-preset="s-usa">usa</button><button data-preset="s-eng">אנגליה</button><button data-preset="s-cote">cote</button><button data-preset="s-tag">טגיק</button><button data-preset="s-mld">מלד</button><button data-preset="s-vat">ותיק</button><button data-preset="s-ii">איי (טריטוריות)</button><button data-preset="s-alef">א (יותר מ-8)</button><button data-preset="s-none">בנגקוק (אין תוצאות)</button><button data-preset="s-card">עם כרטיס פתוח</button><button data-preset="s-nokb">מקלדת סגורה</button><button data-preset="s-loading">טעינה</button><button data-preset="s-error">שגיאה</button>
+    </div></div>
+
+    <div class="group" data-group="signin"><h2>התחברות (AC-15, AC-20)</h2><div class="chips">
+      <button data-preset="si-idle">רגיל</button><button data-preset="si-loading">ממתינים</button><button data-preset="si-cancelled">בוטל</button><button data-preset="si-offline">אין רשת</button><button data-preset="si-playOld">Play Services ישן</button><button data-preset="si-playMissing">Play Services חסר</button><button data-preset="si-expired">פג תוקף</button><button data-preset="si-error">שגיאה כללית</button><button data-preset="si-chooser">חלון Google</button>
+    </div>
+    <h2>מה קורה אחרי בחירת חשבון ב-Google</h2>
+    <div class="seg" id="segOutcome"><button data-outcome="consent">הצלחה, צריך הסכמות</button><button data-outcome="known">הצלחה, הסכמות עדכניות</button><button data-outcome="offline">אין רשת</button><button data-outcome="error">שגיאה</button></div></div>
+
+    <div class="group" data-group="consent"><h2>הסכמות (AC-16, AC-18)</h2><div class="chips">
+      <button data-preset="c-first">פעם ראשונה</button><button data-preset="c-ticked">מסומן</button><button data-preset="c-saving">שומרים</button><button data-preset="c-offline">אין רשת (שמירה)</button><button data-preset="c-launch-offline">פתיחה בלי רשת, בלי אישור שמור</button><button data-preset="c-error">שגיאת שרת</button><button data-preset="c-re">הסכמה מחדש: מסמך</button><button data-preset="c-re-ana">הסכמה מחדש: אנליטיקה</button><button data-preset="c-dialog">יציאה בלי לאשר</button>
+    </div>
+    <h2>בהצלחה: האם השמירה תצליח</h2>
+    <div class="seg" id="segSave"><button data-save="ok">כן</button><button data-save="offline">אין רשת</button><button data-save="error">שגיאת שרת</button></div></div>
+
+    <div class="group" data-group="globe"><h2>כיול תמונת הלוויין (AC-8)</h2>
+      <div class="seg" id="segCalib"><button data-calib="s0">ספרינט 0 (היום)</button><button data-calib="prop">מוצע</button></div>
+      <div class="seg" id="segView" style="margin-top:8px"><button data-view="whole">כדור מלא</button><button data-view="sahara">קרוב: סהרה</button><button data-view="ice">קרוב: אנטארקטיקה</button></div>
+      <label class="chk"><input type="checkbox" id="chkScrims" checked> הצללה לשורת הסטטוס ולפס הניווט (AC-9)</label>
+      <div class="btnrow"><button class="pbtn" data-preset="card-MDV">בחר: המלדיביים</button><button class="pbtn" data-preset="card-VAT">בחר: הוותיקן</button></div>
+      <p id="calParams" class="mono"></p>
+      <table class="cal" id="calTable"></table>
+      <h2>טווח היעד לאוקיינוס (tokens.json)</h2>
+      <div class="rangebar" id="rangeBar"></div>
+      <p id="oceanCheck"></p>
+      <h2>ניגודיות האייקונים של המערכת (נדגם מהמסך)</h2>
+      <p id="contrastOut">—</p>
+      <h2>עובי הגבולות לפי זום (AC-13a)</h2>
+      <svg id="borderDemo" viewBox="0 0 340 92" width="100%" style="background:#0F366B;border-radius:8px"></svg>
+      <h2>נוסח ההפרש משעון ישראל (AC-12)</h2>
+      <ul id="diffList" style="padding-inline-start:18px;margin:0"></ul>
+    </div>
+
+    <h2>מה קורא המסך אומר</h2>
+    <ul class="log" id="log"></ul>
+  </aside>
+</div>
+
+<script>
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const W = 411, H = 914, TOP = 28, BOTTOM = 48;
+const phone = $('#phone');
+
+/* ---------- icons ---------- */
+const ICON = {
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 20 20"/></svg>',
+  back: '<svg class="flip-rtl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
+  person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  logout: '<svg class="flip-rtl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
+  ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg>',
+  g: '<svg class="g" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>',
+};
+
+/* ---------- countries: adm0|he|en|lon,lat|tz|currency he|symbol|code|city|parent|synonyms|flags|topo name ---------- */
+const RAW = `THA|תאילנד|Thailand|101,15|Asia/Bangkok|בהט תאילנדי|฿|THB|בנגקוק||||
+USA|ארצות הברית|United States|-98,39|America/New_York|דולר אמריקאי|$|USD|ניו יורק||ארה"ב;ארהב;אמריקה;usa;us;america||United States of America
+GBR|בריטניה|United Kingdom|-2,54|Europe/London|לירה שטרלינג|£|GBP|לונדון||אנגליה;הממלכה המאוחדת;סקוטלנד;uk;england;great britain||
+MDV|המלדיביים|Maldives|73.5,3.2|Indian/Maldives|רופיה מלדיבית|Rf|MVR|מאלה|||s|
+CIV|חוף השנהב|Côte d'Ivoire|-5.5,7.5|Africa/Abidjan|פרנק CFA מערב אפריקאי|CFA|XOF|אביג'אן||ivory coast;קוט דיבואר||
+TJK|טג'יקיסטן|Tajikistan|71,38.8|Asia/Dushanbe|סומוני|ЅМ|TJS|דושנבה||||
+VAT|הוותיקן|Vatican City|12.45,41.9|Europe/Vatican|אירו|€|EUR|||ותיקן;holy see;vatican|s|
+CCK|איי קוקוס|Cocos (Keeling) Islands|96.8,-12.2|Indian/Cocos|דולר אוסטרלי|$|AUD||אוסטרליה||s|
+SGS|איי ג'ורג'יה הדרומית ואיי סנדוויץ' הדרומיים|South Georgia and the South Sandwich Islands|-36.5,-54.4|Atlantic/South_Georgia|לירה שטרלינג|£|GBP||בריטניה|||
+AUS|אוסטרליה|Australia|134,-25|Australia/Sydney|דולר אוסטרלי|$|AUD|סידני||||
+GRC|יוון|Greece|22,39|Europe/Athens|אירו|€|EUR|אתונה||hellas||
+CYP|קפריסין|Cyprus|33,35|Asia/Nicosia|אירו|€|EUR|ניקוסיה||||
+ITA|איטליה|Italy|12.5,42.8|Europe/Rome|אירו|€|EUR|רומא||||
+ESP|ספרד|Spain|-3.7,40.2|Europe/Madrid|אירו|€|EUR|מדריד||||
+FRA|צרפת|France|2.3,46.5|Europe/Paris|אירו|€|EUR|פריז||||
+DEU|גרמניה|Germany|10.4,51.1|Europe/Berlin|אירו|€|EUR|ברלין||||
+NLD|הולנד|Netherlands|5.3,52.2|Europe/Amsterdam|אירו|€|EUR|אמסטרדם||holland||
+PRT|פורטוגל|Portugal|-8.2,39.6|Europe/Lisbon|אירו|€|EUR|ליסבון||||
+HRV|קרואטיה|Croatia|15.5,45.1|Europe/Zagreb|אירו|€|EUR|זאגרב||||
+GEO|גאורגיה|Georgia|43.4,42.3|Asia/Tbilisi|לארי גאורגי|₾|GEL|טביליסי||גרוזיה||
+ARM|ארמניה|Armenia|45,40.1|Asia/Yerevan|דראם ארמני|֏|AMD|ירוואן||||
+ARE|איחוד האמירויות|United Arab Emirates|54,24|Asia/Dubai|דירהם|د.إ|AED|אבו דאבי||אמירויות;האמירויות;uae;emirates||
+EGY|מצרים|Egypt|30,26.5|Africa/Cairo|לירה מצרית|E£|EGP|קהיר||||
+JOR|ירדן|Jordan|36.5,31|Asia/Amman|דינר ירדני|JD|JOD|עמאן||||
+IND|הודו|India|79,22|Asia/Kolkata|רופי הודי|₹|INR|ניו דלהי||||
+NPL|נפאל|Nepal|84,28.3|Asia/Kathmandu|רופי נפאלי|रू|NPR|קטמנדו||||
+AFG|אפגניסטן|Afghanistan|66,33.9|Asia/Kabul|אפגני|؋|AFN|קאבול||||
+JPN|יפן|Japan|138,36|Asia/Tokyo|ין|¥|JPY|טוקיו||||
+CHN|סין|China|104,35|Asia/Shanghai|יואן|¥|CNY|בייג'ינג||||
+TWN|טאיוואן|Taiwan|121,23.7|Asia/Taipei|דולר טאיוואני|NT$|TWD|טאיפיי||||
+VNM|וייטנאם|Vietnam|106,16|Asia/Ho_Chi_Minh|דונג|₫|VND|האנוי||||
+PHL|הפיליפינים|Philippines|122,12|Asia/Manila|פסו פיליפיני|₱|PHP|מנילה||||
+IDN|אינדונזיה|Indonesia|117,-2|Asia/Jakarta|רופיה אינדונזית|Rp|IDR|ג'קרטה||||
+LKA|סרי לנקה|Sri Lanka|80.7,7.8|Asia/Colombo|רופי סרי לנקי|Rs|LKR|קולומבו||||
+MEX|מקסיקו|Mexico|-102,23.6|America/Mexico_City|פסו מקסיקני|$|MXN|מקסיקו סיטי||||
+BRA|ברזיל|Brazil|-51,-10|America/Sao_Paulo|ריאל ברזילאי|R$|BRL|סאו פאולו||||
+ARG|ארגנטינה|Argentina|-64,-34|America/Argentina/Buenos_Aires|פסו ארגנטינאי|$|ARS|בואנוס איירס||||
+PER|פרו|Peru|-75,-9.2|America/Lima|סול|S/|PEN|לימה||||
+COL|קולומביה|Colombia|-73,4|America/Bogota|פסו קולומביאני|$|COP|בוגוטה||||
+CHL|צ'ילה|Chile|-71,-35|America/Santiago|פסו צ'יליאני|$|CLP|סנטיאגו||||
+CUB|קובה|Cuba|-79,21.7|America/Havana|פסו קובני|$|CUP|הוואנה||||
+CAN|קנדה|Canada|-106,56|America/Toronto|דולר קנדי|$|CAD|טורונטו||||
+ISL|איסלנד|Iceland|-19,65|Atlantic/Reykjavik|קרונה איסלנדית|kr|ISK|רייקיאוויק||||
+NOR|נורווגיה|Norway|9,61|Europe/Oslo|כתר נורווגי|kr|NOK|אוסלו||||
+SWE|שוודיה|Sweden|15,62|Europe/Stockholm|כתר שוודי|kr|SEK|שטוקהולם||||
+FIN|פינלנד|Finland|26,64|Europe/Helsinki|אירו|€|EUR|הלסינקי||||
+DNK|דנמרק|Denmark|9.5,56|Europe/Copenhagen|כתר דני|kr|DKK|קופנהגן||||
+IRL|אירלנד|Ireland|-8,53.2|Europe/Dublin|אירו|€|EUR|דבלין||||
+CHE|שווייץ|Switzerland|8.2,46.8|Europe/Zurich|פרנק שווייצרי|CHF|CHF|ציריך||||
+AUT|אוסטריה|Austria|14.5,47.5|Europe/Vienna|אירו|€|EUR|וינה||||
+CZE|צ'כיה|Czechia|15.5,49.8|Europe/Prague|כתר צ'כי|Kč|CZK|פראג||czech republic||
+HUN|הונגריה|Hungary|19.5,47.2|Europe/Budapest|פורינט|Ft|HUF|בודפשט||||
+POL|פולין|Poland|19,52|Europe/Warsaw|זלוטי|zł|PLN|ורשה||||
+ROU|רומניה|Romania|25,46|Europe/Bucharest|לאו רומני|lei|RON|בוקרשט||||
+BGR|בולגריה|Bulgaria|25.5,42.7|Europe/Sofia|לב בולגרי|лв|BGN|סופיה||||
+SRB|סרביה|Serbia|20.9,44|Europe/Belgrade|דינר סרבי|дин|RSD|בלגרד||||
+MNE|מונטנגרו|Montenegro|19.3,42.7|Europe/Podgorica|אירו|€|EUR|פודגוריצה||||
+ALB|אלבניה|Albania|20,41.1|Europe/Tirane|לק|L|ALL|טירנה||||
+TUR|טורקיה|Türkiye|35,39|Europe/Istanbul|לירה טורקית|₺|TRY|איסטנבול||turkey||Turkey
+MAR|מרוקו|Morocco|-7,31.8|Africa/Casablanca|דירהם מרוקאי|DH|MAD|מרקש||||
+ZAF|דרום אפריקה|South Africa|24,-29|Africa/Johannesburg|ראנד|R|ZAR|קייפטאון||||
+KEN|קניה|Kenya|38,0|Africa/Nairobi|שילינג קנייתי|KSh|KES|ניירובי||||
+TZA|טנזניה|Tanzania|35,-6|Africa/Dar_es_Salaam|שילינג טנזני|TSh|TZS|דאר א-סלאם||||
+SYC|סיישל|Seychelles|55.5,-4.6|Indian/Mahe|רופי סיישלי|SR|SCR||||s|
+MUS|מאוריציוס|Mauritius|57.5,-20.2|Indian/Mauritius|רופי מאוריציני|Rs|MUR||||s|
+MLT|מלטה|Malta|14.4,35.9|Europe/Malta|אירו|€|EUR|ולטה|||s|
+SGP|סינגפור|Singapore|103.8,1.35|Asia/Singapore|דולר סינגפורי|S$|SGD||||s|
+MCO|מונקו|Monaco|7.42,43.74|Europe/Monaco|אירו|€|EUR||||s|
+BHR|בחריין|Bahrain|50.55,26.07|Asia/Bahrain|דינר בחרייני|BD|BHD|מנאמה|||s|
+AIA|אנגווילה|Anguilla|-63.05,18.22|America/Anguilla|דולר מזרח קריבי|$|XCD||בריטניה||s|
+ABW|ארובה|Aruba|-69.97,12.52|America/Aruba|פלורין ארובי|ƒ|AWG||הולנד||s|
+BMU|ברמודה|Bermuda|-64.75,32.3|Atlantic/Bermuda|דולר ברמודי|$|BMD||בריטניה||s|
+GUM|גואם|Guam|144.8,13.44|Pacific/Guam|דולר אמריקאי|$|USD||ארצות הברית||s|
+PRI|פוארטו ריקו|Puerto Rico|-66.5,18.2|America/Puerto_Rico|דולר אמריקאי|$|USD|סן חואן|ארצות הברית|||
+GRL|גרינלנד|Greenland|-41,72|America/Nuuk|כתר דני|kr|DKK|נוק|דנמרק|||
+FRO|איי פארו|Faroe Islands|-6.9,62|Atlantic/Faroe|כתר פארואזי|kr|DKK||דנמרק||s|
+CXR|אי חג המולד|Christmas Island|105.6,-10.5|Indian/Christmas|דולר אוסטרלי|$|AUD||אוסטרליה||s|
+NFK|האי נורפוק|Norfolk Island|167.95,-29.03|Pacific/Norfolk|דולר אוסטרלי|$|AUD||אוסטרליה||s|
+HKG|הונג קונג|Hong Kong|114.17,22.32|Asia/Hong_Kong|דולר הונג קונגי|HK$|HKD||סין||s|
+MAC|מקאו|Macao|113.55,22.19|Asia/Macau|פטקה|MOP$|MOP||סין||s|
+NZL|ניו זילנד|New Zealand|172,-41|Pacific/Auckland|דולר ניו זילנדי|$|NZD|אוקלנד||||
+FJI|פיג'י|Fiji|178,-17.8|Pacific/Fiji|דולר פיג'יאני|$|FJD|סובה||||
+ISR|ישראל|Israel|35,31.4|Asia/Jerusalem|שקל חדש|₪|ILS|ירושלים||||
+KAZ|קזחסטן|Kazakhstan|67,48|Asia/Almaty|טנגה|₸|KZT|אלמטי||||
+UZB|אוזבקיסטן|Uzbekistan|64,41.4|Asia/Tashkent|סום אוזבקי|soʻm|UZS|טשקנט||||
+KGZ|קירגיזסטן|Kyrgyzstan|74.7,41.2|Asia/Bishkek|סום קירגיזי|сом|KGS|בישקק||||
+MNG|מונגוליה|Mongolia|103,46.8|Asia/Ulaanbaatar|טוגריק|₮|MNT|אולן בטור||||
+KOR|דרום קוריאה|South Korea|127.8,36.3|Asia/Seoul|וון דרום קוריאני|₩|KRW|סיאול||קוריאה;korea||South Korea
+PRK|צפון קוריאה|North Korea|127.2,40.1|Asia/Pyongyang|וון צפון קוריאני|₩|KPW|פיונגיאנג||||North Korea`;
+
+const C = RAW.split('\n').map((line) => {
+  const f = line.split('|');
+  const [lon, lat] = f[3].split(',').map(Number);
+  return { adm0: f[0], he: f[1], en: f[2], lon, lat, tz: f[4], curHe: f[5], sym: f[6], code: f[7], city: f[8] || '', parent: f[9] || '', syn: (f[10] || '').split(';').filter(Boolean), small: (f[11] || '').includes('s'), topo: f[12] || f[2] };
+});
+const BY = Object.fromEntries(C.map((c) => [c.adm0, c]));
+
+/* ---------- matching (approximation of AC-2, for the prototype only) ---------- */
+const FIN = { 'ם': 'מ', 'ן': 'נ', 'ץ': 'צ', 'ף': 'פ', 'ך': 'כ' };
+function norm(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-֑ͯ-ׇ]/g, '')
+    .replace(/['׳`’‘"״“”]/g, '').replace(/[םןץףך]/g, (c) => FIN[c])
+    .replace(/[-–(),.]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function variants(name) {
+  const words = norm(name).split(' ');
+  const noIslands = words.filter((w) => w !== 'איי' && w !== 'האיימ');
+  const noHe = (ws) => ws.map((w) => (w.length > 2 && w[0] === 'ה' ? w.slice(1) : w));
+  return [...new Set([words, noIslands, noHe(words), noHe(noIslands)].filter((w) => w.length).map((w) => w.join(' ')))];
+}
+C.forEach((c) => { c.vName = [...variants(c.he), ...variants(c.en)]; c.vSyn = c.syn.map((s) => ({ s, v: variants(s) })); });
+function rankStr(v, q) {
+  if (v === q) return 0;
+  if (v.startsWith(q)) return 1;
+  const ws = v.split(' ');
+  for (let i = 1; i < ws.length; i++) if (ws.slice(i).join(' ').startsWith(q)) return 2;
+  return 9;
+}
+function search(raw) {
+  const q = norm(raw);
+  if (!q) return { list: [], total: 0 };
+  const hits = [];
+  for (const c of C) {
+    let best = 9, why = null;
+    for (const v of c.vName) best = Math.min(best, rankStr(v, q));
+    if (best === 9) for (const { s, v } of c.vSyn) if (v.some((x) => rankStr(x, q) < 9)) { best = 3; why = s; break; }
+    if (best < 9) hits.push({ c, rank: best, why });
+  }
+  hits.sort((a, b) => a.rank - b.rank || a.c.he.localeCompare(b.c.he, 'he'));
+  return { list: hits.slice(0, 8), total: hits.length, q };
+}
+function boldHe(he, q) {
+  if (!q || q.includes(' ')) return esc(he);
+  const words = he.split(' ');
+  let done = false;
+  return words.map((w) => {
+    if (done) return esc(w);
+    const nw = norm(w);
+    let skip = -1;
+    if (nw.startsWith(q)) skip = 0; else if (nw.length > 2 && nw[0] === 'ה' && nw.slice(1).startsWith(q)) skip = 1;
+    if (skip < 0) return esc(w);
+    let n = 0, i = skip;
+    for (; i < w.length && n < q.length; i++) n += norm(w[i]).length || 0;
+    done = true;
+    return esc(w.slice(0, skip)) + '<b>' + esc(w.slice(skip, i)) + '</b>' + esc(w.slice(i));
+  }).join(' ');
+}
+function esc(s) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+/* ---------- time difference wording (AC-12, decision 3) ---------- */
+function tzOffset(tz, d) {
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(d);
+  const g = (t) => +p.find((x) => x.type === t).value;
+  return Math.round((Date.UTC(g('year'), g('month') - 1, g('day'), g('hour') % 24, g('minute'), g('second')) - d.getTime()) / 60000);
+}
+function amountText(abs) {
+  const h = Math.floor(abs / 60), m = abs % 60;
+  const hours = h === 1 ? 'שעה' : h === 2 ? 'שעתיים' : `${h} שעות`;
+  if (m === 0) return hours;
+  if (m === 30) return h === 0 ? 'חצי שעה' : `${hours} וחצי`;
+  return h === 0 ? `${m} דקות` : `${hours} ו-${m} דקות`;
+}
+function diffText(min) { return min === 0 ? 'כמו בישראל' : `${amountText(Math.abs(min))} ${min > 0 ? 'יותר' : 'פחות'} מבישראל`; }
+
+/* ---------- colour maths: WCAG + Mapbox raster pipeline ---------- */
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const toHex = (c) => '#' + c.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('').toUpperCase();
+const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const mix = (a, b, t) => a.map((v, i) => v * (1 - t) + b[i] * t);
+function hueOf([r, g, b]) { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (!d) return 0; let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; return h < 0 ? h + 360 : h; }
+function rasterPipe(rgb, p) {
+  let c = rgb.map((v) => v / 255);
+  const sf = p.sat > 0 ? 1 - 1 / (1.001 - p.sat) : -p.sat;
+  const avg = (c[0] + c[1] + c[2]) / 3;
+  c = c.map((v) => v + (avg - v) * sf);
+  const cf = p.con > 0 ? 1 / (1 - p.con) : 1 + p.con;
+  c = c.map((v) => (v - 0.5) * cf + 0.5);
+  c = c.map((v) => p.bmin + (p.bmax - p.bmin) * v);
+  return c.map((v) => Math.max(0, Math.min(1, v)) * 255);
+}
+const CAL = {
+  s0: { sat: 0.35, con: 0.12, bmin: 0, bmax: 1, tint: null, tintA: 0 },
+  prop: { sat: 0.12, con: 0, bmin: 0.02, bmax: 0.96, tint: '#1561BC', tintA: 0.4 },
+};
+/* Estimated Mapbox Satellite samples at low zoom (to be replaced by A73 screenshot samples). */
+const RAWS = { ocean: [9, 22, 48], desert: [196, 160, 112], forest: [38, 62, 30], ice: [232, 238, 244], temperate: [86, 98, 58], boreal: [52, 66, 44] };
+const SPACE = hex('#03060F');
+const TARGET = { min: '#0A2A52', max: '#0D3A70', lmin: 0.022, lmax: 0.045, hmin: 205, hmax: 225 };
+
+/* ---------- state ---------- */
+const S = {
+  theme: 'light', fs: 1, reduce: false, screen: 'home',
+  signedIn: false, user: { name: 'יוסי לוי', given: 'יוסי', email: 'yossi@example.com' },
+  sel: null, offline: false,
+  search: { open: false, q: '', kb: false, mode: 'ok' },
+  sheet: null, signin: 'idle', chooser: false, outcome: 'consent',
+  consent: null, cstate: 'idle', ticks: { terms: false, mkt: false, ana: false }, nudge: false, save: 'ok',
+  dialog: false, calib: 'prop', view: 'whole', scrims: true, toast: null,
+};
+
+/* ---------- screen reader log ---------- */
+function announce(text) {
+  const li = document.createElement('li');
+  li.innerHTML = esc(text) + '<small>' + new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '</small>';
+  $('#log').prepend(li);
+  $('#countLive').textContent = text;
+}
+let toastTimer;
+function toast(text) {
+  S.toast = text; clearTimeout(toastTimer);
+  announce(text);
+  toastTimer = setTimeout(() => { S.toast = null; render(); }, 3000);
+}
+
+/* ---------- search ---------- */
+let annTimer, lastAnn = '';
+function countText(r) {
+  if (r.total === 0) return 'לא נמצאה מדינה';
+  if (r.total === 1) return 'נמצאה מדינה אחת';
+  if (r.total <= 8) return `נמצאו ${r.total} מדינות`;
+  return 'מוצגות 8 מדינות. המשיכו להקליד כדי לצמצם';
+}
+function scheduleAnnounce() {
+  clearTimeout(annTimer);
+  annTimer = setTimeout(() => {
+    if (!S.search.open || !S.search.q || S.search.mode !== 'ok') return;
+    const t = countText(search(S.search.q));
+    if (t !== lastAnn) { lastAnn = t; announce(t); }
+  }, 600);
+}
+function openSearch() {
+  if (S.search.open) return;
+  S.search = { open: true, q: '', kb: true, mode: S.search.mode };
+  lastAnn = '';
+  render();
+  setTimeout(() => $('#q').focus({ preventScroll: true }), S.reduce ? 0 : 120);
+}
+function closeSearch() {
+  S.search.open = false; S.search.q = ''; S.search.kb = false; lastAnn = '';
+  $('#q').blur(); interacted(); render();
+}
+function pick(adm0) {
+  S.search.open = false; S.search.q = ''; S.search.kb = false; $('#q').blur();
+  select(adm0);
+}
+function renderResults() {
+  const box = $('#results');
+  const { open, q, mode, kb } = S.search;
+  const top = TOP + 108, maxH = H - BOTTOM - (kb ? 280 + 8 : 16) - top;
+  box.style.maxHeight = maxH + 'px';
+  let html = '';
+  if (open && q && mode === 'error') {
+    html = '<div class="r-empty"><div class="t">החיפוש לא זמין כרגע</div><div class="s">אפשר לבחור מדינה בהקשה על הגלובוס.</div></div>';
+  } else if (open && q && mode === 'ok') {
+    const r = search(q);
+    if (!r.total) html = '<div class="r-empty"><div class="t">לא נמצאה מדינה</div><div class="s">החיפוש לפי שם מדינה, בעברית או באנגלית.</div></div>';
+    else {
+      html = r.list.map(({ c, rank, why }) => {
+        const label = c.parent ? `${c.he}, טריטוריה של ${c.parent}, ${c.en}` : `${c.he}, ${c.en}`;
+        const he = rank <= 2 ? boldHe(c.he, r.q) : esc(c.he);
+        return `<button class="row" type="button" data-action="pick" data-adm0="${c.adm0}" aria-label="${esc(label)}">
+          <span class="r-text"><span class="r-he">${he}${c.parent ? `<span class="r-parent"> (${esc(c.parent)})</span>` : ''}</span>
+          <span class="r-en"><bdi class="ltr">${esc(c.en)}</bdi>${why && norm(why) !== norm(c.en) ? `<span class="r-why"> · לפי „${esc(why)}”</span>` : ''}</span></span>
+          <span class="r-code" aria-hidden="true">${c.adm0}</span></button>`;
+      }).join('');
+      if (r.total > 8) html += '<div class="r-more">יש עוד תוצאות. המשיכו להקליד</div>';
+    }
+  }
+  if (box.dataset.html !== html) { box.innerHTML = html; box.dataset.html = html; }
+  box.classList.toggle('on', !!html);
+}
+
+/* ---------- selection & card ---------- */
+function select(adm0, instant) {
+  const c = BY[adm0]; if (!c) return;
+  S.sel = adm0; S.sheet = null;
+  fillCard(c);
+  flyTo(c, instant);
+  announce('נבחרה: ' + c.he);
+  render();
+}
+function closeCard() { if (!S.sel) return; S.sel = null; announce('הכרטיס נסגר'); G.goHome = true; interacted(); render(); }
+function fillCard(c) {
+  const name = $('#cName');
+  name.textContent = c.he; name.setAttribute('aria-label', c.he);
+  name.classList.toggle('long', [...c.he].length > 16);
+  $('#cEn').textContent = c.en; $('#cEn').title = c.en;
+  $('#cTimeLbl').textContent = c.city ? `שעה מקומית · ${c.city}` : 'שעה מקומית';
+  $('#cCur').textContent = c.curHe;
+  $('#cCurSub').innerHTML = `<bdi class="ltr">${c.sym === c.code ? esc(c.code) : `<bdi>${esc(c.sym)}</bdi> · ${esc(c.code)}`}</bdi>`;
+  updateClock();
+  $('#cCode').innerHTML = [...c.adm0].map((ch, i) => `<span style="animation-delay:${300 + i * 140}ms">${ch}</span>`).join('');
+  const bars = [0, 3, 5, 9, 12, 14, 18, 21, 23, 27, 30, 32, 36, 39, 41, 45, 48, 50, 54, 57];
+  $('#barcode').innerHTML = bars.map((x, i) => `<rect x="${x * 1.4}" y="0" width="${i % 3 === 0 ? 3 : 1.5}" height="30" fill="currentColor" opacity=".85"/>`).join('');
+}
+function updateClock() {
+  const c = BY[S.sel]; if (!c) return;
+  const now = new Date(Math.floor(Date.now() / 1000) * 1000);
+  $('#cClock').textContent = new Intl.DateTimeFormat('he-IL', { timeZone: c.tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
+  $('#cDiff').textContent = diffText(tzOffset(c.tz, now) - tzOffset('Asia/Jerusalem', now));
+}
+setInterval(updateClock, 30000);
+
+/* ---------- sheets ---------- */
+function notice(text, extra = '') { return `<div class="notice" role="status">${ICON.info}<div>${text}${extra}</div></div>`; }
+function sheetHTML() {
+  if (S.sheet === 'account') {
+    const u = S.user;
+    return `<div class="handle"></div><button class="x" type="button" aria-label="סגירה" data-action="closeSheet">${ICON.close}</button>
+      <h2 tabindex="-1" id="sheetTitle">החשבון שלך</h2>
+      <div class="acct-row"><span class="avatar md" aria-hidden="true">${u.given[0]}</span><div><div class="acct-name">${esc(u.name)}</div><div class="acct-mail"><bdi class="ltr">${esc(u.email)}</bdi></div><div class="acct-via">החשבון מחובר דרך Google</div></div></div>
+      <button class="btn secondary" type="button" data-action="signOut">${ICON.logout}התנתקות</button>`;
+  }
+  if (S.sheet === 'signin') {
+    const st = S.signin;
+    const msgs = {
+      offline: notice('אין חיבור לאינטרנט. כדי להתחבר צריך חיבור.'),
+      playOld: notice('כדי להתחבר עם Google צריך לעדכן את Google Play Services.', '<br><button class="linkbtn" type="button" data-action="playUpdate">לעדכון ב-Google Play</button>'),
+      playMissing: notice('במכשיר הזה אי אפשר להתחבר עם Google. הגלובוס והחיפוש ממשיכים לעבוד גם בלי חשבון.'),
+      expired: notice('פג תוקף ההתחברות. צריך להתחבר שוב.'),
+      error: notice('לא הצלחנו להתחבר. נסו שוב בעוד רגע.'),
+    };
+    const busy = st === 'loading', disabled = busy || st === 'playMissing';
+    const label = busy ? `<span class="spinner" aria-hidden="true" style="width:18px;height:18px"></span><span>מתחברים…</span>` : `<span>המשך עם <bdi>Google</bdi></span>`;
+    return `<div class="handle"></div><button class="x" type="button" aria-label="סגירה" data-action="closeSheet">${ICON.close}</button>
+      <h2 tabindex="-1" id="sheetTitle">התחברות</h2>
+      <p>התחברו עם חשבון Google. הגלובוס והחיפוש זמינים גם בלי חשבון.</p>
+      ${msgs[st] || ''}
+      <button class="gbtn" type="button" data-action="google" aria-disabled="${disabled}" ${busy ? 'aria-busy="true"' : ''}>${ICON.g}${label}</button>
+      ${st === 'cancelled' ? '<p class="note" role="status">ההתחברות בוטלה. אפשר לנסות שוב.</p>' : ''}
+      <p class="fine">בשלב הבא נבקש לאשר את תנאי השימוש ומדיניות הפרטיות.</p>`;
+  }
+  return '';
+}
+
+/* ---------- consent ---------- */
+function cbRow(key, label, desc, strong) {
+  const on = S.ticks[key], dis = S.cstate === 'saving';
+  return `<button class="cb-row" type="button" role="checkbox" aria-checked="${on}" aria-disabled="${dis}" data-action="tick" data-key="${key}">
+    <span class="cb" aria-hidden="true">${ICON.check}</span>
+    <span class="cb-text"><div class="cb-label${strong ? ' strong' : ''}">${label}</div>${desc ? `<div class="cb-desc">${desc}</div>` : ''}</span></button>`;
+}
+function docRow(key, title, meta, isNew) {
+  return `<button class="doc" type="button" data-action="doc" data-doc="${key}"><span class="d-txt"><div class="d-t">${title}${isNew ? '<span class="newtag">חדש</span>' : ''}</div><div class="d-s">${meta}</div></span>${ICON.ext}</button>`;
+}
+function consentHTML() {
+  const re = S.consent === 're' || S.consent === 're-ana';
+  const reAna = S.consent === 're-ana';
+  const locked = !S.ticks.terms;
+  const saving = S.cstate === 'saving';
+  const foot = S.cstate === 'offline' ? notice('אין חיבור לאינטרנט. צריך חיבור כדי לשמור את האישור.')
+    : S.cstate === 'error' ? notice('לא הצלחנו לשמור. נסו שוב.') : '';
+  return `<div class="c-scroll" id="cScroll">
+      <span class="badge">${reAna ? 'גרסה 2 · טיוטה' : re ? 'גרסה 1 · טיוטה' : 'גרסה 0 · טיוטה'}</span>
+      <h1 id="cTitle" tabindex="-1">${re ? 'עדכנו את מדיניות הפרטיות' : 'לפני שממשיכים'}</h1>
+      <p class="lead">${re ? 'פרסמנו גרסה חדשה. כדי להמשיך להשתמש בחשבון צריך לאשר אותה.' : 'כדי להשתמש בחשבון צריך לאשר את תנאי השימוש ומדיניות הפרטיות.'}</p>
+      <div class="ccard" id="mandatory">
+        ${cbRow('terms', 'אני מאשר/ת את תנאי השימוש ומדיניות הפרטיות', '', true)}
+        ${docRow('terms', 'תנאי השימוש', 'גרסה 0 · פורסם 23.10.2026', false)}
+        ${docRow('privacy', 'מדיניות הפרטיות', reAna ? 'גרסה 2 · דוגמה לעתיד' : re ? 'גרסה 1 · פורסם 14.11.2026' : 'גרסה 0 · פורסם 23.10.2026', re)}
+      </div>
+      ${reAna ? `
+      <h2>לבחירתך</h2><p class="hint">לא חובה. אנחנו מתחילים לאסוף נתוני שימוש, ולכן שואלים שוב. הבחירה שלך לגבי דיוור לא השתנתה.</p>
+      <div class="ccard">
+        ${cbRow('ana', 'מותר להשתמש בנתוני שימוש כדי לשפר את האפליקציה', 'אפשר לבטל בכל עת.')}
+      </div>` : re ? '<p class="kept">הבחירות שלך לגבי דיוור ונתוני שימוש לא השתנו.</p>' : `
+      <h2>לבחירתך</h2><p class="hint">לא חובה. אפשר להמשיך גם בלי לסמן.</p>
+      <div class="ccard">
+        ${cbRow('mkt', 'אני רוצה לקבל עדכונים והצעות במייל', 'אפשר לבטל בכל עת.')}
+        ${cbRow('ana', 'מותר להשתמש בנתוני שימוש כדי לשפר את האפליקציה', 'כרגע אנחנו לא אוספים נתוני שימוש. הבחירה שלך נשמרת.')}
+      </div>`}
+    </div>
+    <div class="c-foot">
+      ${foot}
+      ${locked ? '<p class="helper">כדי להמשיך צריך לסמן את האישור.</p>' : ''}
+      <button class="btn primary" type="button" data-action="consentGo" aria-disabled="${locked}" ${saving ? 'aria-busy="true"' : ''}>${saving ? '<span class="spinner" aria-hidden="true"></span>שומרים…' : 'המשך'}</button>
+      <button class="btn text" type="button" data-action="consentLeave">${re ? 'התנתקות' : 'ביטול והתנתקות'}</button>
+    </div>`;
+}
+function finishSignIn() {
+  S.consent = null; S.sheet = null; S.cstate = 'idle'; S.signedIn = true; S.signin = 'idle';
+  render(); toast(`התחברת בתור ${S.user.given}`);
+}
+
+/* ---------- keyboard ---------- */
+let kbLang = 'he';
+function renderKb() {
+  const rows = kbLang === 'he'
+    ? ['קראטוןםפ', 'שדגכעיחלךף', 'זסבהנמצתץ']
+    : ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+  $('#kb').innerHTML = `<div class="sugg">מקלדת מדומה · אפשר גם להקליד במקלדת המחשב</div>` +
+    rows.map((r, i) => `<div class="krow">${[...r].map((ch) => `<button class="key" type="button" data-action="key" data-ch="${ch}" tabindex="-1">${ch}</button>`).join('')}${i === 2 ? '<button class="key wide" type="button" data-action="kbDel" tabindex="-1" aria-label="מחיקה">⌫</button>' : ''}</div>`).join('') +
+    `<div class="krow"><button class="key wide" type="button" data-action="kbLang" tabindex="-1">${kbLang === 'he' ? 'EN' : 'עב'}</button><button class="key space" type="button" data-action="key" data-ch=" " tabindex="-1">${kbLang === 'he' ? 'עברית' : 'English'}</button><button class="key act" type="button" data-action="kbEnter" tabindex="-1" aria-label="חיפוש">⌕</button></div>`;
+}
+renderKb();
+
+/* ---------- render ---------- */
+let sheetSig = '', consentSig = '';
+function render() {
+  const R = document.documentElement;
+  R.dataset.theme = S.theme;
+  R.toggleAttribute('data-reduce', S.reduce);
+  phone.style.setProperty('--fs', S.fs);
+  phone.classList.toggle('no-scrims', !S.scrims);
+
+  // search bar
+  const sb = $('#sb'), q = $('#q');
+  sb.classList.toggle('open', S.search.open);
+  sb.classList.toggle('blur', S.search.open && !S.search.kb);
+  if (q.value !== S.search.q) q.value = S.search.q;
+  q.tabIndex = S.search.open ? 0 : -1;
+  const icon = $('#sbIcon');
+  const want = S.search.open ? 'back' : 'search';
+  if (icon.dataset.icon !== want) { icon.dataset.icon = want; icon.innerHTML = ICON[want]; }
+  icon.setAttribute('aria-label', S.search.open ? 'סגירת החיפוש' : 'חיפוש מדינה');
+  $('#sbClear').hidden = !(S.search.open && S.search.q && S.search.mode !== 'loading');
+  $('#sbSpin').hidden = !(S.search.open && S.search.q && S.search.mode === 'loading');
+  $('#searchScrim').classList.toggle('on', S.search.open);
+  renderResults();
+  $('#kb').classList.toggle('on', S.search.open && S.search.kb);
+
+  // account button
+  const acct = $('#acct');
+  acct.classList.toggle('gone', S.search.open);
+  const accSig = S.signedIn ? 'in' : 'out';
+  if (acct.dataset.sig !== accSig) {
+    acct.dataset.sig = accSig;
+    acct.innerHTML = S.signedIn ? `<span class="avatar" aria-hidden="true">${S.user.given[0]}</span>` : ICON.person;
+    acct.setAttribute('aria-label', S.signedIn ? `החשבון של ${S.user.name}` : 'התחברות לחשבון');
+  }
+
+  // card
+  const showCard = !!S.sel && !S.search.open && !S.consent;
+  $('#card').classList.toggle('open', showCard);
+  $('#card').setAttribute('aria-hidden', String(!showCard));
+
+  // pills & toast
+  $('#offlinePill').hidden = !S.offline || S.search.open || !!S.toast; // a toast takes the pill's slot for its 3 s
+  const t = $('#toast');
+  if (S.toast) t.textContent = S.toast;
+  t.classList.toggle('on', !!S.toast);
+
+  // sheet
+  const sig = `${S.sheet}|${S.signin}|${S.signedIn}`;
+  const sheet = $('#sheet');
+  if (S.sheet && sig !== sheetSig) { sheet.innerHTML = sheetHTML(); sheet.setAttribute('aria-labelledby', 'sheetTitle'); }
+  sheetSig = S.sheet ? sig : '';
+  sheet.classList.toggle('open', !!S.sheet);
+  $('#sheetScrim').classList.toggle('on', !!S.sheet);
+
+  // chooser
+  $('#chooser').classList.toggle('open', S.chooser);
+  $('#chooserScrim').classList.toggle('on', S.chooser);
+
+  // consent
+  const cs = $('#consent');
+  const csig = `${S.consent}|${S.cstate}|${JSON.stringify(S.ticks)}|${S.nudge}`;
+  if (S.consent && csig !== consentSig) {
+    const scroll = $('#cScroll'); const st = scroll ? scroll.scrollTop : 0;
+    const focusKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.key || document.activeElement.dataset.action : null;
+    cs.innerHTML = consentHTML();
+    $('#cScroll').scrollTop = st;
+    if (focusKey) { const el = cs.querySelector(`[data-key="${focusKey}"]`) || cs.querySelector(`[data-action="${focusKey}"]`); if (el) el.focus({ preventScroll: true }); }
+  }
+  consentSig = S.consent ? csig : '';
+  cs.classList.toggle('open', !!S.consent);
+
+  // dialog
+  $('#dialog').classList.toggle('on', S.dialog);
+
+  // system bars
+  const lightUI = S.theme === 'light';
+  $('#statusbar').classList.toggle('dark', !!S.consent && lightUI);
+  $('#navbar').classList.toggle('dark', lightUI && (!!S.consent || !!S.sheet || S.chooser || (S.search.open && S.search.kb)));
+
+  // panel
+  $$('#segTheme button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeSet === S.theme)));
+  $$('#segFs button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.fs === S.fs)));
+  $$('#segScreen button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.screen === S.screen)));
+  $$('#segOutcome button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.outcome === S.outcome)));
+  $$('#segSave button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.save === S.save)));
+  $$('#segCalib button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.calib === S.calib)));
+  $$('#segView button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)));
+  $$('.group').forEach((g) => { g.hidden = g.dataset.group !== S.screen; });
+  $('#chkReduce').checked = S.reduce;
+  $('#chkScrims').checked = S.scrims;
+  renderCalib();
+}
+
+/* ---------- actions ---------- */
+/* One Back order (README 5.5): system dialog > consent > sheet > search > card. Only the top layer handles it. */
+function back() {
+  if (S.dialog) { S.dialog = false; return render(); }
+  if (S.sheet === 'signin' && S.signin === 'loading') return announce('(חזור לא עושה כלום בזמן ההחלפה מול Supabase)');
+  if (S.chooser) { S.chooser = false; S.signin = 'cancelled'; render(); return announce('ההתחברות בוטלה. אפשר לנסות שוב.'); }
+  if (S.consent) { S.dialog = true; return render(); }
+  if (S.sheet) { S.sheet = null; return render(); }
+  if (S.search.open) {
+    if (S.search.kb) { S.search.kb = false; $('#q').blur(); return render(); } // Android hides the keyboard first
+    return closeSearch();
+  }
+  if (S.sel) return closeCard();
+  announce('(חזור ממסך הבית יוצא מהאפליקציה)');
+}
+function signOut() {
+  S.signedIn = false; S.sheet = null; render();
+  toast('התנתקת מהחשבון');
+}
+const actions = {
+  sbIcon: () => (S.search.open ? closeSearch() : openSearch()),
+  clear: () => { S.search.q = ''; S.search.kb = true; lastAnn = ''; render(); $('#q').focus(); },
+  searchScrim: () => {
+    if (!S.search.q) return closeSearch();
+    if (S.search.kb) { S.search.kb = false; $('#q').blur(); return render(); }
+    closeSearch();
+  },
+  pick: (el) => pick(el.dataset.adm0),
+  account: () => { S.sheet = S.signedIn ? 'account' : 'signin'; if (!S.signedIn && S.signin !== 'offline') S.signin = S.offline ? 'offline' : 'idle'; render(); setTimeout(() => $('#sheetTitle') && $('#sheetTitle').focus(), 50); },
+  closeSheet: () => { if (S.sheet === 'signin' && S.signin === 'loading') return; S.sheet = null; render(); },
+  signOut,
+  google: (el) => {
+    if (el.getAttribute('aria-disabled') === 'true') return;
+    if (S.offline) { S.signin = 'offline'; render(); return announce('אין חיבור לאינטרנט. כדי להתחבר צריך חיבור.'); }
+    S.chooser = true; render();
+  },
+  chooserCancel: () => { S.chooser = false; S.signin = 'cancelled'; render(); announce('ההתחברות בוטלה. אפשר לנסות שוב.'); },
+  chooserPick: () => {
+    S.chooser = false; S.signin = 'loading'; render(); announce('מתחברים');
+    setTimeout(() => {
+      if (S.outcome === 'consent') { S.signin = 'idle'; S.sheet = null; S.consent = 'first'; S.ticks = { terms: false, mkt: false, ana: false }; S.cstate = 'idle'; render(); setTimeout(() => $('#cTitle') && $('#cTitle').focus(), 60); }
+      else if (S.outcome === 'known') finishSignIn();
+      else { S.signin = S.outcome; render(); announce(S.outcome === 'offline' ? 'אין חיבור לאינטרנט. כדי להתחבר צריך חיבור.' : 'לא הצלחנו להתחבר. נסו שוב בעוד רגע.'); }
+    }, 900);
+  },
+  playUpdate: () => announce('(נפתח הדיאלוג של המערכת לעדכון Google Play Services)'),
+  tick: (el) => {
+    if (S.cstate === 'saving') return;
+    const k = el.dataset.key; S.ticks[k] = !S.ticks[k]; S.nudge = false;
+    if (S.cstate !== 'idle') S.cstate = 'idle';
+    render();
+  },
+  doc: (el) => announce(`(נפתח ${el.dataset.doc === 'terms' ? 'תנאי השימוש' : 'מדיניות הפרטיות'} בדפדפן בתוך האפליקציה)`),
+  consentGo: () => {
+    if (S.cstate === 'saving' || !S.ticks.terms) return; // locked: nothing happens, the helper line explains
+    S.cstate = 'saving'; render();
+    setTimeout(() => {
+      const result = S.offline ? 'offline' : S.save;
+      if (result === 'ok') return finishSignIn();
+      S.cstate = result; render();
+      announce(result === 'offline' ? 'אין חיבור לאינטרנט. צריך חיבור כדי לשמור את האישור.' : 'לא הצלחנו לשמור. נסו שוב.');
+    }, 900);
+  },
+  consentLeave: () => { S.dialog = true; render(); },
+  dialogStay: () => { S.dialog = false; render(); },
+  dialogLeave: () => { S.dialog = false; S.consent = null; S.signedIn = false; S.cstate = 'idle'; render(); toast('החשבון התנתק'); },
+  cardClose: closeCard,
+  back,
+  attrib: () => announce('(נפתחים הקרדיטים של Mapbox ו-OpenStreetMap)'),
+  key: (el) => { if (!S.search.open) return; S.search.q += el.dataset.ch; S.search.kb = true; render(); scheduleAnnounce(); },
+  kbDel: () => { S.search.q = S.search.q.slice(0, -1); render(); scheduleAnnounce(); },
+  kbLang: () => { kbLang = kbLang === 'he' ? 'en' : 'he'; renderKb(); },
+  kbEnter: () => submitSearch(),
+};
+function submitSearch() {
+  if (S.search.mode !== 'ok') return;
+  const r = search(S.search.q);
+  if (r.list.length) pick(r.list[0].c.adm0);
+}
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const fn = actions[el.dataset.action];
+  if (fn) { e.preventDefault(); fn(el); }
+});
+$('#q').addEventListener('input', (e) => { S.search.q = e.target.value; S.search.kb = true; render(); scheduleAnnounce(); });
+$('#q').addEventListener('focus', () => { if (S.search.open && !S.search.kb) { S.search.kb = true; render(); } });
+$('#q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitSearch(); } });
+$('#results').addEventListener('scroll', () => { if (S.search.kb) { S.search.kb = false; $('#q').blur(); render(); } }, { passive: true });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); back(); } });
+
+/* ---------- panel ---------- */
+function base() {
+  S.search = { open: false, q: '', kb: false, mode: 'ok' }; S.sheet = null; S.chooser = false; S.consent = null; S.dialog = false;
+  S.cstate = 'idle'; S.nudge = false; S.offline = false; S.toast = null; $('#q').blur();
+  if (S.sel) { S.sel = null; G.goHome = true; }
+}
+function openSearchWith(q, extra = {}) {
+  S.search = { open: true, q, kb: true, mode: 'ok', ...extra };
+  lastAnn = ''; render(); scheduleAnnounce();
+}
+const PRESETS = {
+  'home-out': () => { base(); S.signedIn = false; },
+  'home-in': () => { base(); S.signedIn = true; },
+  'home-sheet': () => { base(); S.signedIn = true; S.sheet = 'account'; },
+  'home-offline': () => { base(); S.offline = true; },
+  's-empty': () => { base(); openSearchWith(''); },
+  's-tai': () => { base(); openSearchWith('תאי'); },
+  's-ara': () => { base(); openSearchWith('ארה'); },
+  's-usa': () => { base(); openSearchWith('usa'); },
+  's-eng': () => { base(); openSearchWith('אנגליה'); },
+  's-cote': () => { base(); openSearchWith('cote'); },
+  's-tag': () => { base(); openSearchWith('טגיק'); },
+  's-mld': () => { base(); openSearchWith('מלד'); },
+  's-vat': () => { base(); openSearchWith('ותיק'); },
+  's-ii': () => { base(); openSearchWith('איי'); },
+  's-alef': () => { base(); openSearchWith('א'); },
+  's-none': () => { base(); openSearchWith('בנגקוק'); },
+  's-card': () => { base(); select('THA', true); openSearchWith(''); },
+  's-nokb': () => { base(); openSearchWith('תאי', { kb: false }); },
+  's-loading': () => { base(); openSearchWith('ת', { mode: 'loading' }); },
+  's-error': () => { base(); openSearchWith('ת', { mode: 'error' }); },
+  'c-first': () => { base(); S.consent = 'first'; S.ticks = { terms: false, mkt: false, ana: false }; },
+  'c-ticked': () => { base(); S.consent = 'first'; S.ticks = { terms: true, mkt: false, ana: false }; },
+  'c-launch-offline': () => { base(); S.signedIn = true; S.offline = true; S.consent = 'first'; S.ticks = { terms: false, mkt: false, ana: false }; },
+  'c-re-ana': () => { base(); S.signedIn = true; S.consent = 're-ana'; S.ticks = { terms: false, mkt: false, ana: false }; },
+  'c-saving': () => { base(); S.consent = 'first'; S.ticks = { terms: true, mkt: true, ana: false }; S.cstate = 'saving'; },
+  'c-offline': () => { base(); S.consent = 'first'; S.ticks = { terms: true, mkt: false, ana: false }; S.cstate = 'offline'; },
+  'c-error': () => { base(); S.consent = 'first'; S.ticks = { terms: true, mkt: false, ana: false }; S.cstate = 'error'; },
+  'c-re': () => { base(); S.signedIn = true; S.consent = 're'; S.ticks = { terms: false, mkt: false, ana: false }; },
+  'c-dialog': () => { base(); S.consent = 'first'; S.dialog = true; },
+  'si-chooser': () => { base(); S.signedIn = false; S.sheet = 'signin'; S.signin = 'idle'; S.chooser = true; },
+};
+['idle', 'loading', 'cancelled', 'offline', 'playOld', 'playMissing', 'expired', 'error'].forEach((st) => {
+  PRESETS['si-' + st] = () => { base(); S.signedIn = false; S.sheet = 'signin'; S.signin = st; if (st === 'offline') S.offline = true; };
+});
+['THA', 'SGS', 'USA', 'BRA', 'IND', 'NPL', 'AFG', 'GRC', 'MDV', 'VAT'].forEach((a) => {
+  PRESETS['card-' + a] = () => { base(); render(); select(a, false); };
+});
+$$('[data-preset]').forEach((b) => b.addEventListener('click', () => {
+  $$('.chips [data-preset]').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+  b.setAttribute('aria-pressed', 'true');
+  PRESETS[b.dataset.preset](); render();
+  if (S.sheet) setTimeout(() => $('#sheetTitle') && $('#sheetTitle').focus({ preventScroll: true }), 50);
+}));
+$$('#segTheme button').forEach((b) => b.addEventListener('click', () => { S.theme = b.dataset.themeSet; sheetSig = consentSig = ''; render(); }));
+$$('#segFs button').forEach((b) => b.addEventListener('click', () => { S.fs = +b.dataset.fs; render(); }));
+$$('#segScreen button').forEach((b) => b.addEventListener('click', () => {
+  S.screen = b.dataset.screen;
+  const first = { home: 'home-out', search: 's-tai', signin: 'si-idle', consent: 'c-first', globe: null }[S.screen];
+  if (first) PRESETS[first](); else base();
+  if (S.screen === 'globe') { S.view = 'whole'; }
+  render();
+}));
+$$('#segOutcome button').forEach((b) => b.addEventListener('click', () => { S.outcome = b.dataset.outcome; render(); }));
+$$('#segSave button').forEach((b) => b.addEventListener('click', () => { S.save = b.dataset.save; render(); }));
+$$('#segCalib button').forEach((b) => b.addEventListener('click', () => { S.calib = b.dataset.calib; buildColors(); render(); }));
+$$('#segView button').forEach((b) => b.addEventListener('click', () => { S.view = b.dataset.view; render(); }));
+$('#chkReduce').addEventListener('change', (e) => { S.reduce = e.target.checked; render(); });
+$('#chkScrims').addEventListener('change', (e) => { S.scrims = e.target.checked; render(); });
+$('#kbToggle').addEventListener('click', () => { if (!S.search.open) openSearch(); else { S.search.kb = !S.search.kb; render(); } });
+
+/* ---------- globe (schematic canvas; colours follow the raster pipeline) ---------- */
+const cv = $('#globe'), ctx = cv.getContext('2d', { willReadFrequently: true });
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+cv.width = W * DPR; cv.height = H * DPR; ctx.scale(DPR, DPR);
+const D2R = Math.PI / 180;
+const G = { rot: [-30, -15], r: 190, cy: H * 0.47, anim: null, goHome: false, last: performance.now(), lastTouch: 0, d3: false, feats: null, byClass: null, mesh: null, byTopo: {} };
+const STARS = Array.from({ length: 220 }, () => [Math.random() * W, Math.random() * H, Math.random() * 1.1 + 0.2, Math.random() * 0.6 + 0.2]);
+const BLOBS = [[15, 22, 25, 12, 'desert'], [20, 0, 15, 12, 'forest'], [24, -22, 10, 9, 'temperate'], [15, 50, 18, 8, 'temperate'], [90, 52, 42, 14, 'boreal'], [45, 23, 9, 7, 'desert'], [78, 21, 7, 8, 'temperate'], [104, 14, 8, 8, 'forest'], [-100, 45, 28, 14, 'temperate'], [-60, -12, 15, 20, 'forest'], [134, -25, 15, 9, 'desert'], [-41, 72, 10, 7, 'ice']];
+let COL = {};
+function buildColors() {
+  const p = CAL[S.calib];
+  COL = {};
+  for (const k in RAWS) COL[k] = rasterPipe(RAWS[k], p);
+}
+buildColors();
+function oceanColor(z) {
+  const p = CAL[S.calib];
+  let c = COL.ocean;
+  if (p.tint) { const a = p.tintA * Math.max(0, Math.min(1, (4 - z) / 2)); c = mix(c, hex(p.tint), a); }
+  return c;
+}
+function interacted() { G.lastTouch = performance.now(); }
+function viewParams() {
+  if (S.view === 'sahara') return { rot: [-15, -5], r: 1100, cx: W / 2, cy: H / 2 };
+  if (S.view === 'ice') return { rot: [0, 85], r: 2000, cx: W / 2, cy: H / 2 };
+  return { rot: G.rot, r: G.r, cx: W / 2, cy: G.cy };
+}
+function zoomOf(r) { return 0.8 + Math.log2(r / 190); }
+function ortho(lon, lat, v) {
+  const l = (lon + v.rot[0]) * D2R, p = lat * D2R, p0 = -v.rot[1] * D2R;
+  const x = Math.cos(p) * Math.sin(l);
+  const y = Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(l);
+  const z = Math.sin(p0) * Math.sin(p) + Math.cos(p0) * Math.cos(p) * Math.cos(l);
+  return { x: v.cx + v.r * x, y: v.cy - v.r * y, vis: z > 0 };
+}
+const easeFly = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+function flyTo(c, instant) {
+  if (S.view !== 'whole') S.view = 'whole';
+  const from = G.rot.slice();
+  const to = [-c.lon, -c.lat];
+  to[0] = from[0] + ((((to[0] - from[0]) % 360) + 540) % 360) - 180;
+  const r1 = c.small ? 620 : 300;
+  const dist = Math.hypot(to[0] - from[0], to[1] - from[1]);
+  const dur = Math.min(1800, Math.max(1200, 1200 + (dist / 180) * 600));
+  G.goHome = false;
+  if (instant) { G.rot = to; G.r = r1; G.anim = null; return; }
+  if (S.reduce) {
+    const veil = $('#veil'); veil.style.transition = 'opacity 150ms linear'; veil.style.opacity = 1;
+    setTimeout(() => { G.rot = to; G.r = r1; G.anim = null; veil.style.transition = 'opacity 250ms linear'; veil.style.opacity = 0; }, 150);
+    return;
+  }
+  G.anim = { from, to, r0: G.r, r1, t0: performance.now(), dur };
+}
+function draw(now) {
+  const dt = Math.min(64, now - G.last); G.last = now;
+  if (G.anim) {
+    const a = G.anim, t = Math.min(1, (now - a.t0) / a.dur), e = easeFly(t);
+    G.rot = [a.from[0] + (a.to[0] - a.from[0]) * e, a.from[1] + (a.to[1] - a.from[1]) * e];
+    G.r = (a.r0 + (a.r1 - a.r0) * e) * (1 - 0.22 * Math.sin(Math.PI * t));
+    if (t >= 1) G.anim = null;
+  } else if (G.goHome) {
+    G.r += (190 - G.r) * Math.min(1, dt / (S.reduce ? 1 : 260));
+    if (Math.abs(G.r - 190) < 0.5) { G.r = 190; G.goHome = false; }
+  }
+  const idle = !S.sel && !S.search.open && !S.sheet && !S.consent && !S.reduce && !dragging && S.view === 'whole' && now - G.lastTouch > 5000;
+  if (idle) { const ramp = Math.min(1, (now - G.lastTouch - 5000) / 1000); G.rot[0] += 3 * (dt / 1000) * (ramp * ramp * (3 - 2 * ramp)); }
+  const targetCy = H * (S.sel && !S.search.open ? 0.37 : 0.47);
+  G.cy += (targetCy - G.cy) * (S.reduce ? 1 : Math.min(1, dt / 120));
+
+  const v = viewParams();
+  const z = zoomOf(v.r);
+  ctx.fillStyle = '#03060F'; ctx.fillRect(0, 0, W, H);
+  for (const [x, y, s, o] of STARS) { ctx.globalAlpha = o; ctx.fillStyle = '#fff'; ctx.fillRect(x, y, s, s); }
+  ctx.globalAlpha = 1;
+  if (v.r < 900) {
+    const gr = ctx.createRadialGradient(v.cx, v.cy, v.r * 0.98, v.cx, v.cy, v.r * 1.13);
+    gr.addColorStop(0, 'rgba(159,208,255,0.55)'); gr.addColorStop(0.35, 'rgba(47,123,224,0.22)'); gr.addColorStop(1, 'rgba(47,123,224,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(v.cx, v.cy, v.r * 1.13, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.save();
+  ctx.beginPath(); ctx.arc(v.cx, v.cy, v.r, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = toHex(oceanColor(z)); ctx.fillRect(0, 0, W, H);
+  let proj = null, path = null;
+  if (G.d3) {
+    proj = d3.geoOrthographic().rotate(v.rot).scale(v.r).translate([v.cx, v.cy]).clipAngle(90);
+    path = d3.geoPath(proj, ctx);
+    for (const k in G.byClass) { ctx.beginPath(); for (const f of G.byClass[k]) path(f); ctx.fillStyle = toHex(COL[k]); ctx.fill(); }
+    ctx.beginPath(); path(G.mesh);
+    ctx.strokeStyle = 'rgba(243,246,252,0.42)';
+    ctx.lineWidth = S.calib === 'prop' ? Math.min(1.6, z <= 3 ? 0.5 + (0.25 * z) / 3 : z <= 5 ? 0.75 + (0.25 * (z - 3)) / 2 : 1 + (0.6 * (z - 5)) / 3) : Math.min(1, 0.5 + (0.5 * z) / 5);
+    ctx.stroke();
+  } else {
+    for (const [lon, lat, rx, ry, k] of BLOBS) {
+      const p = ortho(lon, lat, v); if (!p.vis) continue;
+      ctx.fillStyle = toHex(COL[k]); ctx.beginPath(); ctx.ellipse(p.x, p.y, v.r * rx * D2R * 0.9, v.r * ry * D2R * 0.9, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    if (S.view === 'ice' || v.rot[1] > 40) { ctx.fillStyle = toHex(COL.ice); ctx.fillRect(0, 0, W, H); }
+  }
+  // selection highlight
+  const sel = S.sel && BY[S.sel];
+  if (sel && path && G.byTopo[sel.topo]) {
+    const f = G.byTopo[sel.topo];
+    ctx.beginPath(); path(f); ctx.fillStyle = 'rgba(255,122,87,0.3)'; ctx.fill();
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(255,122,87,0.55)'; ctx.lineWidth = 7; ctx.stroke();
+    ctx.strokeStyle = 'rgba(3,6,15,0.6)'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.strokeStyle = '#F3F6FC'; ctx.lineWidth = 1.6; ctx.stroke();
+  }
+  // small countries: sprint 0 dots vs sprint 1 selection ring
+  for (const c of C) {
+    if (!c.small) continue;
+    const p = ortho(c.lon, c.lat, v); if (!p.vis) continue;
+    if (S.calib === 's0') {
+      ctx.beginPath(); ctx.arc(p.x, p.y, S.sel === c.adm0 ? 6 : 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,122,87,0.9)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#F3F6FC'; ctx.stroke();
+    } else if (S.sel === c.adm0) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(3,6,15,0.6)'; ctx.stroke();
+      ctx.lineWidth = 2; ctx.strokeStyle = '#F3F6FC'; ctx.stroke();
+    }
+  }
+  ctx.restore();
+  if (v.r < 900) { ctx.beginPath(); ctx.arc(v.cx, v.cy, v.r, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(159,208,255,0.55)'; ctx.lineWidth = 1.2; ctx.stroke(); }
+  G.proj = proj; G.view = v;
+  if (now - (G.lastSample || 0) > 400) { G.lastSample = now; sampleContrast(); }
+  requestAnimationFrame(draw);
+}
+
+/* sample the brightest pixel behind the system icons, then composite the scrim on top (AC-9) */
+function sampleContrast() {
+  const rows = [{ y: 14, a: 0.55, name: 'שורת הסטטוס' }, { y: H - 24, a: 0.55, name: 'פס הניווט' }];
+  const out = rows.map(({ y, a, name }) => {
+    let worst = null, wl = -1;
+    for (let x = 16; x < W - 16; x += 8) {
+      const d = ctx.getImageData(Math.round(x * DPR), Math.round(y * DPR), 1, 1).data;
+      const c = [d[0], d[1], d[2]]; const l = lum(c);
+      if (l > wl) { wl = l; worst = c; }
+    }
+    const alpha = S.scrims ? a : 0;
+    const bg = mix(worst, SPACE, alpha);
+    const r = ratio([255, 255, 255], bg);
+    return `${name}: <span class="${r >= 3 ? 'ok' : 'bad'}">${r.toFixed(1)}:1 ${r >= 3 ? '✓' : '✗'}</span> <span class="sw" style="background:${toHex(bg)}"></span><span class="mono">${toHex(worst)}${S.scrims ? ' + הצללה ' + alpha : ''}</span>`;
+  });
+  const el = $('#contrastOut'); if (el) el.innerHTML = out.join('<br>') + '<br><small>אייקונים לבנים מול הפיקסל הבהיר ביותר בשורה. היעד 3:1 (WCAG 1.4.11).</small>';
+}
+
+/* ---------- calibration panel ---------- */
+function renderCalib() {
+  const p = CAL[S.calib];
+  $('#calParams').innerHTML = `rasterSaturation ${p.sat} · rasterContrast ${p.con} · rasterBrightnessMin ${p.bmin} · rasterBrightnessMax ${p.bmax}${p.tint ? ` · ocean-tint ${p.tint} @ ${p.tintA} (z≤2 → 0 at z4)` : ''}`;
+  const names = { ocean: 'אוקיינוס', desert: 'מדבר', forest: 'יער', ice: 'קרח' };
+  const rows = Object.keys(names).map((k) => {
+    const raw = RAWS[k];
+    const a = rasterPipe(raw, CAL.s0);
+    let b = rasterPipe(raw, CAL.prop);
+    if (k === 'ocean') b = mix(b, hex(CAL.prop.tint), CAL.prop.tintA);
+    const cell = (c) => `<span class="sw" style="background:${toHex(c)}"></span><span class="mono">${toHex(c)}</span>`;
+    return `<tr><td>${names[k]}</td><td>${cell(raw)}</td><td>${cell(a)}</td><td>${cell(b)}</td></tr>`;
+  }).join('');
+  $('#calTable').innerHTML = `<tr><th></th><th>מקור (משוער)</th><th>ספרינט 0</th><th>מוצע</th></tr>${rows}`;
+  const lo = hex(TARGET.min), hi = hex(TARGET.max);
+  $('#rangeBar').innerHTML = [0, 0.25, 0.5, 0.75, 1].map((t) => `<span style="background:${toHex(mix(lo, hi, t))}"></span>`).join('');
+  const oc = oceanColor(0.8), L = lum(oc), h = hueOf(oc);
+  const ok = L >= TARGET.lmin && L <= TARGET.lmax && h >= TARGET.hmin && h <= TARGET.hmax;
+  $('#oceanCheck').innerHTML = `אוקיינוס בכדור המלא (${S.calib === 'prop' ? 'מוצע' : 'ספרינט 0'}): <span class="sw" style="background:${toHex(oc)}"></span><span class="mono">${toHex(oc)}</span> · luminance <span class="mono">${L.toFixed(3)}</span> · hue <span class="mono">${Math.round(h)}°</span> · <span class="${ok ? 'ok' : 'bad'}">${ok ? 'בטווח ✓' : 'מחוץ לטווח ✗'}</span><br>היעד: <span class="mono">${TARGET.min}–${TARGET.max}</span>, luminance <span class="mono">${TARGET.lmin}–${TARGET.lmax}</span>, hue <span class="mono">${TARGET.hmin}–${TARGET.hmax}°</span>. החלל <span class="mono">#03060F</span> הוא <span class="mono">${lum(SPACE).toFixed(4)}</span>.`;
+}
+(function borderDemo() {
+  const stops = [[0, 0.5], [3, 0.75], [5, 1], [8, 1.6]];
+  $('#borderDemo').innerHTML = stops.map(([z, w], i) => {
+    const x = 20 + i * 80;
+    return `<path d="M${x} 12 q 12 18 0 34 t 8 34" stroke="rgba(243,246,252,0.42)" stroke-width="${w * 2}" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="${x + 22}" y="40" fill="#F3F6FC" font-size="12" font-family="Rubik, sans-serif">z${z}</text>
+      <text x="${x + 22}" y="58" fill="#A3B3DB" font-size="11" font-family="Rubik, sans-serif">${w}dp</text>`;
+  }).join('') + '<text x="330" y="86" fill="#A3B3DB" font-size="10" text-anchor="end" font-family="Rubik, sans-serif">מוגדל ×2 · 50m עד z3, ‏10m מ-z3</text>';
+})();
+(function diffList() {
+  const ex = [[0, 'יוון / קפריסין'], [60, 'גאורגיה בקיץ'], [-60, 'איטליה'], [120, ''], [-360, 'ברזיל בקיץ הישראלי'], [-420, 'ניו יורק'], [30, ''], [90, 'אפגניסטן'], [150, 'הודו'], [270, ''], [45, ''], [165, 'נפאל בקיץ הישראלי'], [-210, '']];
+  $('#diffList').innerHTML = ex.map(([m, n]) => `<li><b>${diffText(m)}</b>${n ? ` <small>(${n})</small>` : ''}</li>`).join('');
+})();
+
+/* ---------- gestures on the globe ---------- */
+let dragging = false, down = null;
+const toLocal = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * (W / r.width), (e.clientY - r.top) * (H / r.height)]; };
+cv.addEventListener('pointerdown', (e) => { down = { p: toLocal(e), rot: G.rot.slice() }; dragging = false; interacted(); cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', (e) => {
+  if (!down) return;
+  const p = toLocal(e), dx = p[0] - down.p[0], dy = p[1] - down.p[1];
+  if (!dragging && Math.hypot(dx, dy) > 6) dragging = true;
+  if (dragging && S.view === 'whole') { G.anim = null; const k = 0.25 * (190 / G.r); G.rot = [down.rot[0] + dx * k, Math.max(-85, Math.min(85, down.rot[1] - dy * k))]; }
+});
+cv.addEventListener('pointerup', (e) => {
+  if (!down) return;
+  const p = toLocal(e); const wasDrag = dragging; down = null; dragging = false; interacted();
+  if (wasDrag || S.view !== 'whole') return;
+  tapGlobe(p);
+});
+function tapGlobe([x, y]) {
+  if (S.search.open) return;
+  const v = G.view;
+  // small areas first over the sea (22pt), like resolveTap
+  let hit = null;
+  if (G.proj) {
+    const ll = G.proj.invert([x, y]);
+    const inside = Math.hypot(x - v.cx, y - v.cy) <= v.r;
+    if (inside && ll) { const f = G.feats.find((ft) => d3.geoContains(ft, ll)); if (f) hit = C.find((c) => c.topo === f.properties.name) || { missing: f.properties.name }; }
+  }
+  if (!hit) {
+    let best = null, bd = 23;
+    for (const c of C) { if (!c.small) continue; const p = ortho(c.lon, c.lat, v); if (!p.vis) continue; const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = c; } }
+    if (best) hit = best;
+  }
+  if (!hit) return closeCard();
+  if (hit.missing) return toast(`בהדמיה אין נתונים ל-${hit.missing}`);
+  select(hit.adm0);
+}
+
+/* ---------- optional: real country shapes from CDN (pinned) ---------- */
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+function climate(f) {
+  const n = f.properties.name; const [lon, lat] = d3.geoCentroid(f);
+  if (n === 'Antarctica' || n === 'Greenland' || lat < -60) return 'ice';
+  const deserts = ['Mongolia', 'Kazakhstan', 'Uzbekistan', 'Turkmenistan', 'Namibia', 'Botswana', 'Afghanistan', 'Iran', 'Pakistan', 'W. Sahara', 'Mauritania', 'Mali', 'Niger', 'Chad', 'Sudan', 'Libya', 'Algeria', 'Egypt', 'Saudi Arabia', 'Yemen', 'Oman', 'Iraq', 'Syria', 'Jordan', 'Israel', 'Kuwait', 'Qatar', 'United Arab Emirates', 'Australia', 'Somalia', 'Somaliland', 'Djibouti', 'Eritrea'];
+  if (deserts.includes(n)) return 'desert';
+  if (Math.abs(lat) < 16) return 'forest';
+  if (lat > 55) return 'boreal';
+  return 'temperate';
+}
+Promise.all([loadScript('https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js'), loadScript('https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js')])
+  .then(() => fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json'))
+  .then((r) => r.json())
+  .then((topo) => {
+    G.feats = topojson.feature(topo, topo.objects.countries).features;
+    G.mesh = topojson.mesh(topo, topo.objects.countries, (a, b) => a !== b);
+    G.byClass = {};
+    for (const f of G.feats) { const k = climate(f); (G.byClass[k] = G.byClass[k] || []).push(f); G.byTopo[f.properties.name] = f; }
+    G.d3 = true;
+  })
+  .catch(() => { G.d3 = false; });
+
+/* ---------- boot ---------- */
+function fit() {
+  const s = Math.min(1, (window.innerHeight - 32) / 934);
+  document.documentElement.style.setProperty('--scale', Math.max(0.5, s).toFixed(3));
+}
+window.addEventListener('resize', fit); fit();
+if (window.matchMedia('(prefers-color-scheme: dark)').matches) S.theme = 'dark';
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) S.reduce = true;
+render();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

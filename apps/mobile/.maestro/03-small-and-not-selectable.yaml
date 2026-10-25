@@ -1,6 +1,6 @@
 appId: com.travelapp.companion
-name: Small areas, nearby big countries and non-destinations (AC-4, AC-5)
-tags: [sprint-0, ac-4, ac-5]
+name: Small areas, nearby big countries and non-destinations (sprint 0 AC-4/AC-5, sprint 1 AC-7)
+tags: [sprint-0, sprint-1, ac-4, ac-5, ac-7]
 ---
 - launchApp:
     clearState: true
@@ -15,7 +15,7 @@ tags: [sprint-0, ac-4, ac-5]
     timeout: 4000
 - back
 
-# Zoomed in, tapping right on the dot selects the Vatican.
+# Zoomed in, tapping on the Vatican (its invisible, zoom-scaled target; no dot since sprint 1) selects it.
 - openLink: travelapp://?lng=12.4534&lat=41.9033&zoom=7
 - waitForAnimationToEnd
 - tapOn:
@@ -25,8 +25,18 @@ tags: [sprint-0, ac-4, ac-5]
     timeout: 4000
 - back
 
-# Over the sea, small islands get a 44 pt target.
+# Over the sea, small islands keep an invisible 44 pt target (sprint 1 AC-7: no dot).
 - openLink: travelapp://?lng=73.5076&lat=4.1744&zoom=4
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible: האיים המלדיביים
+    timeout: 4000
+- back
+
+# AC-7: the same at the whole-globe zoom (HOME_ZOOM 1.2).
+- openLink: travelapp://?lng=73.5076&lat=4.1744&zoom=1.2
 - waitForAnimationToEnd
 - tapOn:
     point: 50%,50%

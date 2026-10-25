@@ -120,6 +120,29 @@ describe('globe card data', () => {
     }
   });
 
+  it('names every currency once, without a repeated word (AFN was "אפגני אפגני")', () => {
+    assert.equal(meta.AFG.currency.nameHe, 'אפגני');
+    // The currency uses the country's own word, not CLDR's "הנסיכויות" (sprint 1 QA).
+    assert.equal(meta.ARE.currency.nameHe, 'דירהם של איחוד האמירויות הערביות');
+    for (const [adm0, { currency }] of Object.entries(meta)) {
+      if (!currency) continue;
+      const words = currency.nameHe.split(' ');
+      assert.equal(new Set(words).size, words.length, `${adm0}: ${currency.nameHe}`);
+    }
+  });
+
+  it('links each territory to its sovereign, for search results', () => {
+    assert.equal(meta.GIB.parent, 'GBR');
+    assert.equal(meta.GUM.parent, 'USA');
+    assert.equal(meta.IOA.parent, 'AUS');
+    assert.equal(meta.HKG.parent, 'CHN');
+    for (const adm0 of ['FRA', 'GBR', 'ISR', 'USA'])
+      assert.equal(meta[adm0].parent, undefined, adm0);
+    for (const [adm0, entry] of Object.entries(meta)) {
+      if (entry.parent) assert.ok(meta[entry.parent], `${adm0} → ${entry.parent}`);
+    }
+  });
+
   it('keeps Kosovo on Belgrade time', () => {
     assert.equal(meta.KOS.timeZone, 'Europe/Belgrade');
   });

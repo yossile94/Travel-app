@@ -18,7 +18,7 @@ tags: [sprint-0, ac-4]
 - assertVisible:
     id: card-time
 - assertVisible: '.*\d\d:\d\d.*'
-- assertVisible: '.*לפני ישראל'
+- assertVisible: '.*יותר מבישראל'
 - assertVisible: בהט תאילנדי
 - assertVisible: '.*THB.*'
 # Android back closes the card.

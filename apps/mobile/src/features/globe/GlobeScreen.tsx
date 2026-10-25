@@ -1,5 +1,6 @@
 import { Camera, MapView } from '@rnmapbox/maps';
 import * as Linking from 'expo-linking';
+import { NavigationBar } from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import {
   useCallback,
@@ -28,18 +29,30 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { globe, motion } from '@/theme/tokens';
+import { Toast } from '@/components/formControls';
+import { AccountButton } from '@/features/auth/AccountButton';
+import { AccountSheet, SignInSheet } from '@/features/auth/AccountSheets';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { ConsentScreen } from '@/features/auth/ConsentScreen';
+import { SearchBar } from '@/features/search/SearchBar';
+import { globe, layout, motion } from '@/theme/tokens';
 
 import { BoardingPassCard, CARD_GAP } from './BoardingPassCard';
 import { HOME_CENTER, HOME_ZOOM, flightDuration, zoomForSpan } from './camera';
 import { countryByAdm0 } from './countryData';
 import { GlobeLayers, LAYER } from './GlobeLayers';
-import { hasMapboxToken } from './mapbox';
+import { hasMapboxToken, turnOffMapboxTelemetryOnce } from './mapbox';
 import { logGlobeReady, markGlobeMounted } from './perfLog';
 import { resolveTap, type TapHits } from './resolveTap';
+import { SystemScrims } from './SystemScrims';
+import { isTap, type TouchDown } from './tapGesture';
 import { handlesBack, initialSelection, selectionReducer } from './selection';
 import { useAutoRotation } from './useAutoRotation';
-import { useCountriesAsset } from './useCountriesAsset';
+import {
+  useCountriesAsset,
+  useDetailedCountriesAsset,
+  useOceanMaskAsset,
+} from './useCountriesAsset';
 import { useReduceMotion } from './useReduceMotion';
 
 /** An empty style: every layer is ours, so nothing depends on a remote style's layer ids. */
@@ -50,6 +63,29 @@ const DEFAULT_CAMERA = { centerCoordinate: HOME_CENTER, zoomLevel: HOME_ZOOM };
 /** Card height before it has been measured, for the first flight's camera padding. */
 const ESTIMATED_CARD_HEIGHT = 184;
 
+/**
+ * AC-10 (Yossi, 2026-10-25): zoom is by pinch only. A double tap no longer
+ * zooms, so tapping twice quickly can't select a country and jump the map.
+ */
+const GESTURES = {
+  doubleTapToZoomInEnabled: false,
+  doubleTouchToZoomOutEnabled: false,
+  quickZoomEnabled: false,
+  pinchZoomEnabled: true,
+} as const;
+
+/** How long after "map loaded" the globe counts as ready if Mapbox never goes idle. */
+const GLOBE_READY_FALLBACK_MS = 5000;
+
+/** How long the coarse borders stay at every zoom if the map doesn't go idle after the detailed ones mount. */
+const DETAILED_DRAWN_FALLBACK_MS = 3000;
+
+/** The touch event's own time (ms), falling back to the JS clock. */
+function touchTime(event: GestureResponderEvent): number {
+  const { timestamp } = event.nativeEvent as { timestamp?: number };
+  return typeof timestamp === 'number' && timestamp > 0 ? timestamp : Date.now();
+}
+
 /** End-to-end tests (Maestro) build with EXPO_PUBLIC_E2E=1: a still globe at a fixed view. */
 const E2E = process.env.EXPO_PUBLIC_E2E === '1';
 
@@ -59,15 +95,15 @@ const VEIL_FADE_OUT = { duration: motion.reduceFadeOut, reduceMotion: ReduceMoti
 const VEIL_FADE_IN = { duration: motion.reduceFadeIn, reduceMotion: ReduceMotion.Never };
 
 type CameraHandle = ComponentRef<typeof Camera>;
-type PressFeature = GeoJSON.Feature<GeoJSON.Point, { screenPointX: number; screenPointY: number }>;
 
-/** Home screen globe (sprint 0, F-001). */
+/** Home screen globe (sprint 0, F-001) with country search (sprint 1, F-002). */
 export function GlobeScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const reduceMotion = useReduceMotion();
   const countries = useCountriesAsset();
+  const oceanMask = useOceanMaskAsset();
 
   const mapRef = useRef<MapView>(null);
   const cameraRef = useRef<CameraHandle>(null);
@@ -75,9 +111,29 @@ export function GlobeScreen() {
 
   const [selection, dispatch] = useReducer(selectionReducer, initialSelection);
   const [fingerDown, setFingerDown] = useState(false);
-  // Until Mapbox has loaded the map, getCenter() answers [0, 0] rather than
-  // the default camera, so rotation would jump the globe to 0°,0° (seen on device).
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const auth = useAuth();
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  // Signing in, out or into the consent screen closes whatever sheet led there
+  // (design 4.2, 5.2): the next screen is the globe, the consent screen or a toast.
+  const [sheetForStatus, setSheetForStatus] = useState(auth.state.status);
+  if (sheetForStatus !== auth.state.status) {
+    setSheetForStatus(auth.state.status);
+    setAccountSheetOpen(false);
+  }
+  // An expired session opens the sign-in sheet by itself (design 4.2).
+  const expired = auth.state.status === 'signedOut' && auth.state.expired;
+  const sheetOpen = accountSheetOpen || expired;
+  const consentShown = auth.state.status === 'needsConsent';
+  // The first frame is drawn (first idle, or the fallback below). Before
+  // that getCenter() answers [0, 0] rather than the default camera, so
+  // rotation would jump the globe to 0°,0° (seen on device).
+  const [globeReady, setGlobeReady] = useState(false);
+  // AC-13a: the detailed borders never compete with the first frame.
+  const detailedCountries = useDetailedCountriesAsset(globeReady);
+  // The coarse borders stop at zoom 3 only once the detailed ones are drawn:
+  // the first idle after they mount, or a fallback (review finding 1).
+  const [detailedDrawn, setDetailedDrawn] = useState(false);
   // Start "idle" so the globe begins turning (after the ramp) as soon as it appears.
   const [lastInteractionAt, setLastInteractionAt] = useState(
     () => Date.now() - motion.autoRotateResumeDelay,
@@ -95,17 +151,21 @@ export function GlobeScreen() {
     }
   }, []);
 
-  // AC-2: turn slowly while idle; never while a card is open, a finger or a
-  // flight is on the globe, or the device asks for reduced motion (AC-6).
+  // AC-2: turn slowly while idle; never while a card or search is open, a
+  // finger or a flight is on the globe, or the device asks for reduced motion (AC-6).
   // `reduceMotion` is null until the setting is known, so the globe doesn't
   // start a ramp it would have to stop a moment later.
   const rotationAllowed =
     !E2E &&
-    mapLoaded &&
+    globeReady &&
     reduceMotion === false &&
     !selectedAdm0 &&
     !selection.flying &&
-    !fingerDown;
+    !fingerDown &&
+    !searchOpen &&
+    // Design 5.1: the globe holds still behind the consent screen and sheets.
+    !sheetOpen &&
+    !consentShown;
   useAutoRotation({ cameraRef, getCenter, allowed: rotationAllowed, lastInteractionAt });
 
   /** Cancels a native rotation segment in flight (a zero-length move stops every animator). */
@@ -146,14 +206,33 @@ export function GlobeScreen() {
   // stops before lifting the finger would leave rotation off for good. The
   // count comes from each event rather than a running tally, so a lost
   // end/cancel event can't leave it stuck.
-  const onTouch = useCallback((event: GestureResponderEvent) => {
-    const down = event.nativeEvent.touches.length > 0;
-    setFingerDown(down);
-    if (!down) setLastInteractionAt(Date.now());
+  // The same events also recognise taps (AC-10, see tapGesture.ts).
+  const touchDown = useRef<TouchDown | null>(null);
+  const handleTapRef = useRef<(point: [number, number]) => void>(() => {});
+  const onTouchStart = useCallback((event: GestureResponderEvent) => {
+    const { touches, pageX, pageY } = event.nativeEvent;
+    setFingerDown(true);
+    if (touches.length > 1) {
+      if (touchDown.current) touchDown.current.multiTouch = true;
+      return;
+    }
+    touchDown.current = { x: pageX, y: pageY, at: touchTime(event), multiTouch: false };
+  }, []);
+  const onTouchEnd = useCallback((event: GestureResponderEvent) => {
+    const { touches, pageX, pageY } = event.nativeEvent;
+    if (touches.length > 0) return;
+    setFingerDown(false);
+    setLastInteractionAt(Date.now());
+    const down = touchDown.current;
+    touchDown.current = null;
+    if (down && isTap(down, { x: pageX, y: pageY, at: touchTime(event) })) {
+      handleTapRef.current([pageX, pageY]);
+    }
   }, []);
   // A cancel means the gesture ended for us; the finger may still be on the
   // glass, but no end event will follow, so treat it as lifted.
   const onTouchCancel = useCallback(() => {
+    touchDown.current = null;
     setFingerDown(false);
     setLastInteractionAt(Date.now());
   }, []);
@@ -241,38 +320,56 @@ export function GlobeScreen() {
     AccessibilityInfo.announceForAccessibility(t('globe.closed'));
   }, [selectedAdm0, reduceMotion, t]);
 
-  // AC-4: Android back closes the card instead of leaving the app.
+  // AC-4: Android back closes the card instead of leaving the app. While
+  // search is open, back belongs to search (sprint 1 design 5.5).
   useEffect(() => {
-    if (!handlesBack(selection)) return;
+    if (!handlesBack(selection) || searchOpen) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       dispatch({ type: 'backPressed' });
       return true;
     });
     return () => subscription.remove();
-  }, [selection]);
+  }, [selection, searchOpen]);
 
-  const onPress = useCallback(
-    async (feature: PressFeature) => {
+  // Sprint 1 F-002: search pauses the globe; choosing a result is a tap on it.
+  const openSearch = useCallback(() => {
+    if (rotationAllowedRef.current) stopRotation();
+    setSearchOpen(true);
+  }, [stopRotation]);
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setLastInteractionAt(Date.now());
+  }, []);
+  const selectFromSearch = useCallback((adm0: string) => {
+    setSearchOpen(false);
+    if (countryByAdm0(adm0)) dispatch({ type: 'countryTapped', country: { adm0 } });
+  }, []);
+
+  const handleTap = useCallback(
+    async (point: [number, number]) => {
       const map = mapRef.current;
       if (!map) return;
       // A tap doesn't move the camera, so Mapbox doesn't cancel a running
       // rotation segment by itself; stop it so the globe holds still.
       if (rotationAllowedRef.current) stopRotation();
-      const point: [number, number] = [
-        feature.properties.screenPointX,
-        feature.properties.screenPointY,
-      ];
-      const firstAdm0 = async (layer: string) => {
-        const result = await map.queryRenderedFeaturesAtPoint(point, [], [layer]);
+      const firstAdm0 = async (layers: string[]) => {
+        const result = await map.queryRenderedFeaturesAtPoint(point, [], layers);
         return result?.features[0]?.properties as
           { adm0?: string; code?: string | null } | undefined;
       };
 
-      const [wide, tight, country] = await Promise.all([
-        firstAdm0(LAYER.smallHitWide),
-        firstAdm0(LAYER.smallHitTight),
-        firstAdm0(LAYER.countriesHit),
-      ]);
+      let wide, tight, country;
+      try {
+        // Both border levels in one query: only one is drawn at any zoom.
+        [wide, tight, country] = await Promise.all([
+          firstAdm0([LAYER.smallHitWide]),
+          firstAdm0([LAYER.smallHitTight]),
+          firstAdm0([LAYER.countriesCoarseHit, LAYER.countriesDetailedHit]),
+        ]);
+      } catch (error) {
+        console.error('[globe] tap query failed', error);
+        return;
+      }
       const hits: TapHits = {
         smallWide: wide?.adm0,
         smallTight: tight?.adm0,
@@ -288,20 +385,59 @@ export function GlobeScreen() {
     },
     [stopRotation],
   );
+  useEffect(() => {
+    handleTapRef.current = (point) => void handleTap(point);
+  }, [handleTap]);
 
-  // AC-1: the map mounts once the borders file is ready (a fast local copy),
-  // so Mapbox's "map loaded" event — style, visible tiles and the borders
-  // drawn — is the end point. It fires once. (onDidFinishRenderingMapFully is
-  // never sent on Android in @rnmapbox/maps 10.3.)
+  // AC-1: the map mounts once the borders file is ready (a fast local copy).
+  // The end point is the first time Mapbox is idle — every visible tile,
+  // satellite imagery included, loaded and drawn (sprint 1 AC-14a: on an empty
+  // cache "map loaded" fired before the imagery). Rotation and the detailed
+  // borders wait for it too. If the map never settles, a fallback after
+  // "map loaded" keeps the globe from waiting forever.
+  // (onDidFinishRenderingMapFully is never sent on Android in @rnmapbox/maps 10.3.)
   useEffect(markGlobeMounted, []);
   const mapReady = Boolean(countries.url || countries.error);
-  const onMapLoaded = useCallback(() => {
-    logGlobeReady();
-    setMapLoaded(true);
+  const globeReadySent = useRef(false);
+  const onGlobeReady = useCallback((reason: 'idle' | 'fallback') => {
+    if (globeReadySent.current) return;
+    globeReadySent.current = true;
+    logGlobeReady(reason);
+    setGlobeReady(true);
   }, []);
+  const detailedMounted = Boolean(detailedCountries.url);
+  const onMapIdle = useCallback(() => {
+    onGlobeReady('idle');
+    // Idle after the detailed source mounted means it is parsed and drawn.
+    if (detailedMounted) setDetailedDrawn(true);
+  }, [onGlobeReady, detailedMounted]);
+  useEffect(() => {
+    if (!detailedMounted || detailedDrawn) return;
+    // The map may not go idle again soon (a flight, rotation); don't wait forever.
+    const timer = setTimeout(() => setDetailedDrawn(true), DETAILED_DRAWN_FALLBACK_MS);
+    return () => clearTimeout(timer);
+  }, [detailedMounted, detailedDrawn]);
 
-  const logoPosition = useMemo(() => ({ top: insets.top + 8, left: 8 }), [insets.top]);
-  const attributionPosition = useMemo(() => ({ top: insets.top + 8, left: 92 }), [insets.top]);
+  // AC-14: Mapbox usage telemetry off. On Android this builds a throwaway
+  // map view, so it waits for the globe to be up (review finding 6).
+  useEffect(() => {
+    if (globeReady) turnOffMapboxTelemetryOnce();
+  }, [globeReady]);
+  const fallbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const onMapLoaded = useCallback(() => {
+    fallbackTimer.current = setTimeout(() => onGlobeReady('fallback'), GLOBE_READY_FALLBACK_MS);
+  }, [onGlobeReady]);
+  useEffect(() => () => clearTimeout(fallbackTimer.current), []);
+
+  // The Mapbox logo and credits keep their own strip above the controls (sprint 1 design 1).
+  const logoPosition = useMemo(
+    () => ({ top: insets.top + layout.mapboxLogoTop, left: layout.mapboxLogoLeft }),
+    [insets.top],
+  );
+  const attributionPosition = useMemo(
+    () => ({ top: insets.top + layout.mapboxLogoTop, left: layout.mapboxAttributionLeft }),
+    [insets.top],
+  );
 
   useEffect(() => {
     if (countries.error) console.error('[globe] could not load country borders', countries.error);
@@ -318,13 +454,16 @@ export function GlobeScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* The scene is always space, so the status bar is always light (AC-7). */}
-      <StatusBar style="light" />
+      {/* The scene is always space, so the system bars keep light icons (AC-7, AC-9). */}
+      {/* Dark icons over the light consent screen (WCAG 1.4.11, sprint 1 QA). */}
+      <StatusBar style={consentShown && colorScheme === 'light' ? 'dark' : 'light'} />
+      <NavigationBar style="light" />
       <View
         style={StyleSheet.absoluteFill}
-        onTouchStart={onTouch}
-        onTouchEnd={onTouch}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchCancel}
+        importantForAccessibility={searchOpen ? 'no-hide-descendants' : 'auto'}
         testID="globe-touch-surface"
       >
         {mapReady && (
@@ -333,12 +472,13 @@ export function GlobeScreen() {
             style={StyleSheet.absoluteFill}
             projection="globe"
             styleJSON={STYLE_JSON}
-            onPress={onPress}
             onDidFinishLoadingMap={onMapLoaded}
+            onMapIdle={onMapIdle}
             scaleBarEnabled={false}
             compassEnabled={false}
             pitchEnabled={false}
             rotateEnabled={false}
+            gestureSettings={GESTURES}
             logoPosition={logoPosition}
             attributionPosition={attributionPosition}
             accessibilityLabel={t('globe.a11yLabel')}
@@ -351,6 +491,9 @@ export function GlobeScreen() {
             />
             <GlobeLayers
               countriesUrl={countries.url}
+              detailedCountriesUrl={detailedCountries.url}
+              detailedDrawn={detailedDrawn}
+              oceanMaskUrl={oceanMask.url}
               highlightedAdm0={selectedAdm0}
               reduceMotion={reduceMotion === true}
             />
@@ -358,19 +501,23 @@ export function GlobeScreen() {
         )}
       </View>
 
+      <SystemScrims insetsTop={insets.top} insetsBottom={insets.bottom} />
+
       <Animated.View
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, styles.veil, veilStyle]}
       />
 
       {countries.error && (
-        <View style={[styles.banner, { top: insets.top + 56 }]} pointerEvents="none">
+        <View style={[styles.banner, { top: insets.top + layout.overlayTop }]} pointerEvents="none">
           <Text style={styles.message}>{t('globe.loadError')}</Text>
         </View>
       )}
 
+      {/* The card steps aside while searching and comes back if nothing is chosen. */}
       {selectedCountry && (
         <BoardingPassCard
+          hidden={searchOpen}
           key={selectedCountry.adm0}
           country={selectedCountry}
           colorScheme={colorScheme}
@@ -382,6 +529,80 @@ export function GlobeScreen() {
           }}
         />
       )}
+
+      {(auth.state.status === 'signedOut' || auth.state.status === 'signedIn') && !searchOpen && (
+        <AccountButton
+          user={auth.state.status === 'signedIn' ? auth.state.user : null}
+          colorScheme={colorScheme}
+          top={insets.top + layout.chromeRowTop}
+          onPress={() => {
+            if (rotationAllowedRef.current) stopRotation();
+            setAccountSheetOpen(true);
+          }}
+        />
+      )}
+
+      {auth.state.status === 'signedIn' ? (
+        <AccountSheet
+          visible={accountSheetOpen}
+          user={auth.state.user}
+          colorScheme={colorScheme}
+          reduceMotion={reduceMotion === true}
+          insetsBottom={insets.bottom}
+          onClose={() => {
+            setAccountSheetOpen(false);
+            setLastInteractionAt(Date.now());
+          }}
+        />
+      ) : auth.state.status === 'signedOut' ? (
+        <SignInSheet
+          key={expired ? 'expired' : 'signIn'}
+          visible={sheetOpen}
+          expired={expired}
+          colorScheme={colorScheme}
+          reduceMotion={reduceMotion === true}
+          insetsBottom={insets.bottom}
+          onClose={() => {
+            setAccountSheetOpen(false);
+            auth.acknowledgeExpiry();
+            setLastInteractionAt(Date.now());
+          }}
+        />
+      ) : null}
+
+      {auth.state.status === 'needsConsent' && (
+        <ConsentScreen
+          need={auth.state.need}
+          documents={auth.state.documents}
+          colorScheme={colorScheme}
+          reduceMotion={reduceMotion === true}
+          insetsTop={insets.top}
+          insetsBottom={insets.bottom}
+        />
+      )}
+
+      {auth.notice && (
+        <Toast
+          text={
+            auth.notice.kind === 'signedIn'
+              ? t('account.signedInAs', { name: auth.notice.name })
+              : t('account.signedOut')
+          }
+          top={insets.top + layout.overlayTop}
+          onDone={auth.clearNotice}
+        />
+      )}
+
+      <SearchBar
+        open={searchOpen}
+        colorScheme={colorScheme}
+        reduceMotion={reduceMotion === true}
+        insetsTop={insets.top}
+        insetsBottom={insets.bottom}
+        onOpen={openSearch}
+        onClose={closeSearch}
+        onSelect={selectFromSearch}
+      />
     </View>
   );
 }
