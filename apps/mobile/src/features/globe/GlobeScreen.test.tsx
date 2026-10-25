@@ -28,6 +28,8 @@ const mockMap = {
   center: [34.8, 22] as [number, number],
   setCamera: jest.fn(),
   loads: true,
+  /** The gestureSettings the map was last rendered with. */
+  gestures: undefined as object | undefined,
   /** Mapbox goes idle once the visible tiles are drawn (the globe-ready point). */
   /** How many more times Mapbox will go idle (each mount effect uses one). */
   idles: Infinity,
@@ -65,6 +67,7 @@ jest.mock('@rnmapbox/maps', () => {
     props: {
       onDidFinishLoadingMap?: () => void;
       onMapIdle?: () => void;
+      gestureSettings?: object;
       children?: React.ReactNode;
     },
     ref,
@@ -80,6 +83,7 @@ jest.mock('@rnmapbox/maps', () => {
       onDidFinishLoadingMap?.();
       if (mockMap.idles-- > 0) onMapIdle?.();
     }, [onDidFinishLoadingMap, onMapIdle]);
+    mockMap.gestures = props.gestureSettings;
     return React.createElement(View, { testID: 'map' }, props.children);
   });
   const Camera = React.forwardRef(function Camera(_props, ref) {
@@ -532,6 +536,16 @@ describe('GlobeScreen', () => {
     mockDetailedRequests.length = 0;
     await render(<GlobeScreen />);
     expect(mockDetailedRequests.at(-1)).toBe(true);
+  });
+
+  it('zooms by pinch only: no double-tap or quick zoom (AC-10)', async () => {
+    await render(<GlobeScreen />);
+    expect(mockMap.gestures).toEqual({
+      doubleTapToZoomInEnabled: false,
+      doubleTouchToZoomOutEnabled: false,
+      quickZoomEnabled: false,
+      pinchZoomEnabled: true,
+    });
   });
 
   it('asks both border levels and takes the one that is drawn (AC-13a)', async () => {
