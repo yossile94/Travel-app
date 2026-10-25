@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { withTiming } from 'react-native-reanimated';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 import '@/i18n';
 import { motion } from '@/theme/tokens';
@@ -16,6 +16,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   jest.useRealTimers();
+  jest.restoreAllMocks();
 });
 
 async function renderCard(adm0: string, onClose = jest.fn()) {
@@ -104,12 +105,15 @@ describe('BoardingPassCard', () => {
 
   it('keeps the letter spacing only for an English name that surely fits (sprint 1 QA)', async () => {
     // Measured on the A73: the row is ~176 pt wide at 100%.
-    expect(spaceEnglishName('SAUDI ARABIA', 1, 176)).toBe(true);
-    expect(spaceEnglishName('UNITED ARAB EMIRATES', 1, 176)).toBe(false);
-    expect(spaceEnglishName('SAUDI ARABIA', 1.3, 176)).toBe(false);
+    expect(spaceEnglishName('SAUDI ARABIA', 1, 176, 'android')).toBe(true);
+    expect(spaceEnglishName('UNITED ARAB EMIRATES', 1, 176, 'android')).toBe(false);
+    expect(spaceEnglishName('SAUDI ARABIA', 1.3, 176, 'android')).toBe(false);
     // Before the row is measured, no spacing: never a wrongly cut name.
-    expect(spaceEnglishName('FIJI', 1, 0)).toBe(false);
+    expect(spaceEnglishName('FIJI', 1, 0, 'android')).toBe(false);
+    // The bug is Android's: iOS keeps the designed spacing.
+    expect(spaceEnglishName('UNITED ARAB EMIRATES', 1, 176, 'ios')).toBe(true);
 
+    jest.replaceProperty(Platform, 'OS', 'android');
     await renderCard('SGS');
     const nameEn = screen.getByTestId('card-name-en');
     await fireEvent(nameEn.parent!, 'layout', { nativeEvent: { layout: { width: 176 } } });
