@@ -1,14 +1,16 @@
 /**
  * Entry point of the delete-account Edge Function: wires the handler to
  * Supabase Auth, Google's keys and the admin_delete_user SQL function
- * (ADR-006). verify_jwt is off (config.toml): the platform's check only
- * understands the legacy keys, and the handler checks the session itself
- * with auth.getUser, which also confirms it still exists on the server.
+ * (ADR-006 section 6). verify_jwt is off (config.toml): the project signs
+ * sessions with asymmetric keys (ES256), which the platform's check doesn't
+ * verify; the handler checks the session itself with auth.getUser, which
+ * also confirms it still exists on the server.
  */
 import { createClient } from '@supabase/supabase-js';
 
 import { verifyGoogleIdToken } from './google.ts';
 import { createHandler } from './handler.ts';
+import { deleteUserWith, lookupFrom, type Rpc } from './session.ts';
 
 /** A fresh re-authentication: the Google token was issued in the last 5 minutes (AC-18). */
 const GOOGLE_TOKEN_MAX_AGE_SECONDS = 5 * 60;
@@ -23,6 +25,8 @@ function required(name: string): string {
 function secretKey(): string {
   const keys = Deno.env.get('SUPABASE_SECRET_KEYS');
   const key = keys ? (JSON.parse(keys) as Record<string, string>).default : undefined;
+  // Which source, never the value: a silent fall back to the legacy key shows here.
+  console.info(`[delete-account] secret key from ${key ? 'SUPABASE_SECRET_KEYS' : 'legacy'}`);
   return key ?? required('SUPABASE_SERVICE_ROLE_KEY');
 }
 
@@ -35,24 +39,10 @@ Deno.serve(
   createHandler({
     async userFromToken(accessToken) {
       const { data, error } = await admin.auth.getUser(accessToken);
-      if (error || !data.user) return null;
-      const googleSubs = (data.user.identities ?? [])
-        .filter((identity) => identity.provider === 'google')
-        .map((identity) => {
-          const sub = (identity.identity_data as { sub?: unknown } | undefined)?.sub;
-          return typeof sub === 'string' ? sub : identity.id;
-        });
-      return { id: data.user.id, googleSubs };
+      return lookupFrom(data.user, error);
     },
     verifyGoogle: (idToken) =>
       verifyGoogleIdToken(idToken, { audience, maxAgeSeconds: GOOGLE_TOKEN_MAX_AGE_SECONDS }),
-    async deleteUser(userId) {
-      const { data, error } = await admin.rpc('admin_delete_user', {
-        target: userId,
-        why: 'user_request',
-      });
-      if (error) throw error;
-      return data === true;
-    },
+    deleteUser: (userId) => deleteUserWith(admin.rpc.bind(admin) as unknown as Rpc, userId),
   }),
 );

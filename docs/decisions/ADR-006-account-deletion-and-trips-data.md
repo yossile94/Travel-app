@@ -35,13 +35,41 @@
 - **פרופיל חסר:** יצירה עם `ignoreDuplicates` (`DO NOTHING`), כדי לא לדרוס שם שהמשתמש כבר שינה.
 
 **6. ה-Edge Function `delete-account`** (`supabase/functions/delete-account/`):
-- **זהות:** נקבעת רק מה-session שבכותרת `Authorization`, דרך `auth.getUser` (שגם מוודא שה-session עדיין קיים בשרת). שום שדה בגוף הבקשה לא קובע את מי מוחקים.
-- **אימות מחדש:** ה-ID token החדש של Google נבדק עם המפתחות של Google: חתימה RS256, `iss`, `aud` (לקוח ה-Web) ו-`exp`, ו-`iat` מ-5 הדקות האחרונות. ה-`sub` חייב להיות של זהות Google של אותו משתמש. חשבון Google אחר מקבל 403 `wrong_account`.
-- **`verify_jwt` כבוי:** בדיקת ה-JWT של הפלטפורמה מכירה רק את מפתחות ה-JWT הישנים, ואנחנו עובדים עם `sb_publishable`/`sb_secret` (לפי התיעוד של Supabase). הבדיקה בקוד חזקה יותר, כי `getUser` פונה לשרת ה-Auth.
-- **מפתח השירות:** נקרא רק מהסביבה (`SUPABASE_SECRET_KEYS`, ובסביבה המקומית `SUPABASE_SERVICE_ROLE_KEY`). `GOOGLE_WEB_CLIENT_ID` מוגדר כ-secret של הפונקציה.
-- **תשובות:** 200 `{ deleted: true }`; 200 `{ deleted: false }` כשהמשתמש כבר לא קיים; 401 בלי session תקף; 400 בלי token; 403 `reauth_failed` או `wrong_account`; 500. בלוגים נרשמים רק שם השגיאה והקוד שלה, בלי מזהים, tokens או הודעות.
-- **בדיקות:** Deno (`deno test`) לכל מסלול ב-handler עם תלויות מזויפות, ולאימות ה-token עם מפתחות שנוצרים בבדיקה. ב-CI יש job בשם `functions` עם Deno 2.9.6: lint, check ו-test עם `--frozen`. הגרסאות קבועות ב-`supabase/functions/deno.json`, וה-hash שלהן ב-`deno.lock`.
-- **פרסום:** ידני ומתועד, כמו ה-migrations (ADR-004): ל-staging אחרי הסקירות ולפני QA. אחר כך מגדירים את `GOOGLE_WEB_CLIENT_ID` ומוודאים קריאה עם session תקף ועם session לא תקף.
+- **זהות:** נקבעת רק מה-session שבכותרת `Authorization`, דרך `auth.getUser`, שגם מוודא שה-session עדיין קיים בשרת. שום שדה בגוף הבקשה לא קובע את מי מוחקים. token שאינו בצורת JWT נדחה לפני שהוא מגיע ל-Auth.
+- **אימות מחדש:** ה-ID token החדש של Google נבדק עם המפתחות של Google:
+  - חתימה RS256, `iss`, `aud` (לקוח ה-Web) ו-`exp`.
+  - `iat` מ-5 הדקות האחרונות, עם סובלנות של 30 שניות לסטיית שעונים.
+  - ה-`sub` חייב להיות של זהות Google של אותו משתמש. חשבון Google אחר מקבל 403 `wrong_account`.
+- **`verify_jwt` כבוי:** ב-`travel-app-dev` ה-sessions נחתמים במפתחות אסימטריים (ES256, נבדק ב-JWKS ב-2026-10-25). בדיקת ה-JWT של הפלטפורמה מכירה רק את הסוד הישן (HS256). הבדיקה בקוד חזקה יותר, כי `getUser` פונה לשרת ה-Auth.
+- **מפתח השירות:** נקרא רק מהסביבה: `SUPABASE_SECRET_KEYS`, ובסביבה המקומית `SUPABASE_SERVICE_ROLE_KEY`. בעלייה נרשם בלוג איזה מקור שימש, בלי הערך. `GOOGLE_WEB_CLIENT_ID` מוגדר כ-secret של הפונקציה.
+- **החוזה עם האפליקציה:** **רק 200 אומר שהחשבון נמחק.**
+  - 200 `{ deleted: true }`: נמחק עכשיו.
+  - 200 `{ deleted: false }`: החשבון כבר לא קיים. זה המקרה של ניסיון חוזר אחרי שהתשובה אבדה: ה-token עדיין חתום כראוי, ו-GoTrue עונה `user_not_found`.
+  - 401: אין session תקף (token פגום, `session_not_found`). **אף פעם לא "נמחק".**
+  - 400: אין token בגוף הבקשה. 413: גוף מעל 8KB.
+  - 403 `reauth_failed`: ה-token של Google פסול, ישן או לא שלנו. 403 `wrong_account`: token תקף של חשבון אחר.
+  - 500: Auth או בסיס הנתונים נכשלו.
+  - 503: המפתחות של Google לא זמינים.
+  - בכל שגיאה החשבון נשאר, ולכן האפליקציה לעולם לא מנקה את המכשיר על סמך שגיאה.
+  - תשובה שאינה בחוזה, כמו כשל בעליית הפונקציה, נחשבת 500.
+- **לוגים:** רק שם השגיאה, הקוד שלה ושם ה-claim שנכשל (למשל `aud`), בלי מזהים, tokens או הודעות. `wrong_account` נרשם כאזהרה בלי מזהים.
+- **בדיקות:** Deno, 30 בדיקות:
+  - **handler:** כל מסלול, עם תלויות מזויפות.
+  - **מיפוי ה-session:** זהויות Google בלבד, `user_not_found` מול token לא תקף מול תקלה.
+  - **הקריאה ל-`admin_delete_user`:** שם הפונקציה, הפרמטרים והתשובה.
+  - **אימות ה-token:** עם מפתחות שנוצרים בבדיקה.
+  - **ב-CI:** job בשם `functions` עם Deno 2.9.6, שמריץ lint, check ו-test עם `--frozen`. הגרסאות קבועות ב-`supabase/functions/deno.json`, וה-hash שלהן ב-`deno.lock`.
+- **פרסום:** ידני ומתועד, כמו ה-migrations (ADR-004): ל-staging אחרי הסקירות ולפני QA. אחרי הפרסום:
+  - (א) הפונקציה עולה, וה-secret `GOOGLE_WEB_CLIENT_ID` מוגדר.
+  - (ב) קריאה בלי session ועם token פגום מחזירה 401.
+  - (ג) בדיקה בפלט הפרסום אם `deno.lock` חל גם בפרסום. אם לא, לרשום כאן שהנעילה של התלויות העקיפות קיימת רק ב-CI.
+  - (ד) ב-QA של AC-16 עד AC-18, במכשיר, עם החשבון של הבדיקות:
+    - חשבון Google אחר מקבל `wrong_account`.
+    - מחיקה אמיתית: אין שורה ב-`auth.users`, הפרופיל והנסיעות נמחקו, יש שורה ב-`account_deletions` עם `user_request`, ושורות ה-`consents` נשמרו.
+    - ניסיון חוזר עם אותו JWT מחזיר `deleted: false`.
+    - `rpc` עם מפתח `sb_secret` עובד.
+- **לפני ההשקה ב-iOS:** המחיקה צריכה לתמוך גם בזהות Apple (דרישת החנות). היום משתמש בלי זהות Google מקבל `wrong_account`.
+- **אחרי staging:** הגבלת קצב לפי משתמש (למשל 5 קריאות ב-10 דקות) לפני production. רשום ב-backlog.
 
 **7. העלאה לסביבות:** לפי ADR-004. staging אחרי הסקירה של דודי ולפני QA, עם הבדיקות שלפני ההעלאה:
 - ל-postgres יש הרשאות על `auth.users`.

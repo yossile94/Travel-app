@@ -1,4 +1,4 @@
-// Run with: npx deno@2.9.6 test supabase/functions
+// Run with: npx -y deno@2.9.6 test --config supabase/functions/deno.json supabase/functions
 import { assertEquals, assertRejects } from '@std/assert';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 
@@ -29,6 +29,21 @@ const verify = (idToken: string) =>
 Deno.test('accepts a fresh Google ID token for our client', async () => {
   assertEquals(await verify(await token()), { sub: 'google-me' });
   assertEquals(await verify(await token({ iss: 'accounts.google.com' })), { sub: 'google-me' });
+});
+
+Deno.test('accepts a token issued a few seconds in our future (clock skew)', async () => {
+  assertEquals(await verify(await token({}, -5)), { sub: 'google-me' });
+});
+
+Deno.test('refuses a token without a subject', async () => {
+  const noSub = await new SignJWT({})
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+    .setIssuer('https://accounts.google.com')
+    .setAudience(AUDIENCE)
+    .setIssuedAt(seconds(NOW) - 30)
+    .setExpirationTime(seconds(NOW) + 3600)
+    .sign(privateKey);
+  await assertRejects(() => verify(noSub));
 });
 
 Deno.test('refuses a token for another client', async () => {

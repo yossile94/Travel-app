@@ -30,6 +30,9 @@ export async function verifyGoogleIdToken(
     audience,
     algorithms: ['RS256'],
     maxTokenAge: `${maxAgeSeconds}s`,
+    // Google's clock may run slightly ahead of ours: a token just issued
+    // could otherwise look issued in the future.
+    clockTolerance: '30s',
     currentDate: now,
   });
   if (typeof payload.sub !== 'string' || payload.sub.length === 0) {
