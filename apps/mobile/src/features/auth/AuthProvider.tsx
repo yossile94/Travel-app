@@ -417,7 +417,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setState({ status: 'signedOut', expired: false });
     setNotice({ kind: 'signedOut' });
-  }, [forgetUser]);
+  }, [forgetUser, wipeDevice]);
 
   const signInWithGoogle = useCallback(
     async (onExchangeStarted: () => void): Promise<SignInOutcome> => {
