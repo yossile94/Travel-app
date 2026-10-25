@@ -1,0 +1,97 @@
+appId: com.travelapp.companion
+name: Sign in, a new trip to Thailand, its highlight, and deleting it (sprint 2 AC-19)
+tags: [sprint-2, ac-19]
+# Runs on the A73 only, never in CI (ADR-003). Sign-in picks the Google
+# account already on the phone, by tapping: no password, and no other way
+# to sign in exists in the build. Pass the account as an env var:
+#   maestro test -e TEST_ACCOUNT=<the test Google account> .maestro/06-trip-lifecycle.yaml
+env:
+  TEST_ACCOUNT: ${TEST_ACCOUNT}
+---
+- launchApp:
+    clearState: true
+- openLink: travelapp://?lng=101.0732&lat=15.4597&zoom=4
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible:
+      id: country-card
+    timeout: 4000
+
+# AC-1: signed out, "New trip" opens sign-in with the trip text.
+- tapOn:
+    id: card-new-trip
+- assertVisible: כדי לשמור נסיעה צריך להתחבר עם חשבון Google.
+- tapOn:
+    id: google-sign-in
+- extendedWaitUntil:
+    visible: ${TEST_ACCOUNT}
+    timeout: 10000
+- tapOn: ${TEST_ACCOUNT}
+
+# A new install asks for consent (a returning account may go straight on).
+- runFlow:
+    when:
+      visible:
+        id: consent-screen
+    commands:
+      - tapOn:
+          id: consent-agree
+      - tapOn:
+          id: consent-continue
+
+# AC-1: back to the form of the same country, not the card.
+- extendedWaitUntil:
+    visible:
+      id: trip-form
+    timeout: 15000
+- assertVisible: תאילנד
+
+# AC-2: the system picker's defaults (today, then the return = departure).
+# The return picker opens by itself after the departure (design 4.1).
+- tapOn:
+    id: trip-form-start
+- tapOn: אישור
+- tapOn: אישור
+- assertVisible: '.*נקבע לפי היעד ותאריך היציאה.*'
+- tapOn:
+    id: trip-form-save
+
+# AC-3: saved, back on the card with the trip in it.
+- extendedWaitUntil:
+    notVisible:
+      id: trip-form
+    timeout: 15000
+- assertVisible: הנסיעה נשמרה
+- assertVisible:
+    id: card-trip-.*
+
+# AC-3, AC-10: the highlight shows once the card is closed (selection wins while open).
+- back
+- assertNotVisible:
+    id: country-card
+- waitForAnimationToEnd
+- takeScreenshot: ac19-trip-highlight-thailand
+
+# AC-6: open the card again, open the trip, delete it.
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible:
+      id: card-trip-.*
+    timeout: 6000
+- tapOn:
+    id: card-trip-.*
+- tapOn:
+    id: card-trip-delete
+- assertVisible: למחוק את הנסיעה?
+- tapOn: מחיקה
+- extendedWaitUntil:
+    visible: הנסיעה נמחקה
+    timeout: 10000
+- assertNotVisible:
+    id: card-trip-.*
+- back
+- waitForAnimationToEnd
+- takeScreenshot: ac19-no-highlight-after-delete
