@@ -33,7 +33,14 @@ function secretKey(): string {
 const admin = createClient(required('SUPABASE_URL'), secretKey(), {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-const audience = required('GOOGLE_WEB_CLIENT_ID');
+/**
+ * The app's Google Web client: public (it ships in the app bundle), so it
+ * has a default here; GOOGLE_WEB_CLIENT_ID overrides it per environment
+ * (production gets its own client).
+ */
+const DEV_GOOGLE_WEB_CLIENT_ID =
+  '263709257260-339uciacknal8tq6s2hbmruqa4i2274c.apps.googleusercontent.com';
+const audience = Deno.env.get('GOOGLE_WEB_CLIENT_ID') ?? DEV_GOOGLE_WEB_CLIENT_ID;
 
 Deno.serve(
   createHandler({
