@@ -307,6 +307,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error && isAuthRetryableFetchError(error)) return 'offline';
         if (error || !data.user) {
           console.error('[auth] Supabase sign-in failed', error);
+          // Forget the picked Google account, so a retry shows the chooser again (QA bug 2).
+          await googleSignOut();
           return 'error';
         }
         // Design 4.2: never a signed-in user who didn't see the consent screen.

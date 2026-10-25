@@ -339,6 +339,21 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
       expect(outcome).toBe('offline');
     });
 
+    it('forgets the picked Google account when the server refuses the sign-in', async () => {
+      mockSupabase.auth.signInWithIdToken.mockResolvedValue({
+        data: { user: null },
+        error: { status: 400, code: 'provider_disabled' },
+      });
+      const { result } = await signedOutHook();
+      let outcome = '';
+      await act(async () => {
+        outcome = await result.current.signInWithGoogle(() => {});
+      });
+      expect(outcome).toBe('error');
+      expect(jest.requireMock('./googleAuth').googleSignOut).toHaveBeenCalled();
+      expect(result.current.state.status).toBe('signedOut');
+    });
+
     it('shows the real documents before recording consent made on the offline screen (AC-16)', async () => {
       mockStore.current = null;
       const { result } = await signedOutHook();
