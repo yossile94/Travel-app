@@ -275,8 +275,11 @@ function countriesAt(simplified) {
       ]);
       if (f.geometry.type === 'Polygon') f.geometry.coordinates = f.geometry.coordinates[0];
     }
+    const original = f.geometry;
     if (f.geometry) f.geometry = joinAcrossAntimeridian(f.geometry, f.properties.adm0);
     if (f.geometry) f.geometry.coordinates = roundCoordinates(f.geometry.coordinates);
+    // A joined area reaches past 180°; its bbox from the cut pieces would be wrong.
+    if (f.geometry && f.geometry !== original) f.bbox = boundingBox(f.geometry);
   }
   const antarctica = result.features.find((f) => f.properties.adm0 === 'ATA');
   if (!antarctica?.geometry) throw new Error('Antarctica is missing from the borders.');
@@ -290,6 +293,13 @@ function countriesAt(simplified) {
 
 const polygonsOf = (geometry) =>
   geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+
+function boundingBox(geometry) {
+  const points = polygonsOf(geometry).flat(2);
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
 
 /** A point on the 180° cut: Natural Earth puts cut vertices exactly at ±180. */
 const onCut = ([x]) => Math.abs(x) === 180;
@@ -323,6 +333,8 @@ export function joinAcrossAntimeridian(geometry, adm0) {
  * puts the cut and the pole back where the ring crosses 180°.
  */
 export function closeAroundSouthPole(ring) {
+  // Already closed (the pole survived simplification), or nothing to close.
+  if (ring.some(([, y]) => y <= -89.99)) return ring;
   const i = ring.findIndex((point, k) => k > 0 && Math.abs(point[0] - ring[k - 1][0]) > 180);
   if (i === -1) return ring;
   const [a, b] = [ring[i - 1], ring[i]];
@@ -330,6 +342,7 @@ export function closeAroundSouthPole(ring) {
   // Latitude where the coast meets 180°, between a and b (b moved next to a).
   const bx = b[0] + 360 * side;
   const y = a[1] + ((b[1] - a[1]) * (180 * side - a[0])) / (bx - a[0]);
+  if (!Number.isFinite(y)) throw new Error(`Cannot close the ring at ${a} → ${b}.`);
   return [
     ...ring.slice(0, i),
     [180 * side, y],
@@ -416,8 +429,10 @@ function oceanMask(simplified, iceShelves) {
   ];
   // Antarctica and the islands near it, unioned with the ice shelves: the
   // satellite shows the shelves as white ice, so they are land here.
-  const outers = land.coordinates.map(([outer]) => closeAroundSouthPole(outer));
   const southern = (ring) => ring.every(([, y]) => y < -60);
+  const outers = land.coordinates.map(([outer]) =>
+    southern(outer) ? closeAroundSouthPole(outer) : outer,
+  );
   const antarctic = polygonClipping
     .union(...outers.filter(southern).map((ring) => [ring]), ...iceShelves)
     .map(([outer]) => outer);
