@@ -1,0 +1,1442 @@
+<!doctype html>
+<html lang="he" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ספרינט 3 · הנסיעה מתמלאת · הדמיה</title>
+<!-- Sprint 3 design prototype (not production code). Works offline; with a connection it also loads
+     pinned CDN assets without SRI: @fontsource-variable/rubik@5.1.0, d3@7.9.0, topojson-client@3.1.0, world-atlas@2.0.2.
+     Open locally only. Demo data (cities, populations, temperatures) is illustrative, not GeoNames or CRU. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/rubik@5.1.0/index.css">
+<style>
+/* ---------- tokens (tokens.json 0.3.0 + tokens-0.4.0.proposed.json) ---------- */
+:root {
+  --font: 'Rubik Variable', 'Rubik', system-ui, 'Segoe UI', Arial, sans-serif;
+  --sysfont: Roboto, 'Noto Sans Hebrew', 'Segoe UI', Arial, sans-serif;
+  --fs: 1; --top: 28px; --bottom: 48px; --scale: 1;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --space: #03060F; --trip: #4FCFBE; --sel: #FF7A57;
+}
+:root[dir="rtl"] { --push-from: -100%; }
+:root[dir="ltr"] { --push-from: 100%; }
+:root[data-theme="light"] {
+  --canvas: #FFFBF5; --surface: #FFFFFF; --raised: #FFFFFF; --alt: #FBF4E8;
+  --t1: #121C36; --t2: #4A5573; --t3: #646E8A; --link: #1561BC; --alert: #C81E16;
+  --pri-bg: #1561BC; --pri-fg: #FFFFFF; --pri-pressed: #104C94;
+  --cta-bg: #C8441F; --cta-fg: #FFFFFF; --cta-pressed: #A8381A;
+  --sec-bg: #EEF6FF; --sec-fg: #104C94;
+  --ok-bg: #0B7F73; --ok-sbg: #E8FAF7; --ok-sfg: #0A665D;
+  --plan-bg: #EEF6FF; --plan-fg: #104C94; --end-bg: #FBF4E8; --end-fg: #4A5573;
+  --bsub: #F4E7D0; --bctl: #7D869E; --focus: #1F78DB;
+  --info-bg: #EEF6FF; --info-fg: #104C94; --pressed: #FBF4E8; --chip: #FBF4E8; --skel: #F4E7D0;
+  --scrim: rgba(6,11,24,0.48);
+  --chrome-bg: rgba(255,255,255,0.92); --chrome-fg: #121C36; --chrome-b: rgba(18,28,54,0.08);
+  --field-b: transparent; --perf: rgba(18,28,54,.22);
+  --sh2: 0 4px 12px rgba(18,28,54,0.10), 0 1px 3px rgba(18,28,54,0.06);
+  --sh3: 0 8px 24px rgba(18,28,54,0.14);
+  --page: #EDE6D9; --sys-bg: #FFFFFF; --sys-fg: #1F1F1F; --sys-2: #444746; --sys-acc: #0B57D0;
+}
+:root[data-theme="dark"] {
+  --canvas: #060B18; --surface: #0B1326; --raised: #121C36; --alt: #121C36;
+  --t1: #F3F6FC; --t2: #A3B3DB; --t3: #7487BD; --link: #6FB3FA; --alert: #FF5D52;
+  --pri-bg: #6FB3FA; --pri-fg: #060B18; --pri-pressed: #A9D2FF;
+  --cta-bg: #FF7A57; --cta-fg: #060B18; --cta-pressed: #FF9677;
+  --sec-bg: #1A2749; --sec-fg: #A9D2FF;
+  --ok-bg: #4FCFBE; --ok-sbg: #0D2B2E; --ok-sfg: #8FE3D6;
+  --plan-bg: #1A2749; --plan-fg: #A9D2FF; --end-bg: #1A2749; --end-fg: #A3B3DB;
+  --bsub: #1A2749; --bctl: #7487BD; --focus: #6FB3FA;
+  --info-bg: #1A2749; --info-fg: #A9D2FF; --pressed: #1A2749; --chip: #1A2749; --skel: #1A2749;
+  --scrim: rgba(0,0,0,0.6);
+  --chrome-bg: rgba(18,28,54,0.88); --chrome-fg: #F3F6FC; --chrome-b: rgba(163,179,219,0.32);
+  --field-b: #1A2749; --perf: rgba(244,231,208,.22);
+  --sh2: none; --sh3: none;
+  --page: #03060E; --sys-bg: #2B2D31; --sys-fg: #E3E3E3; --sys-2: #C4C7C5; --sys-acc: #A8C7FA;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { font-family: var(--font); background: var(--page); color: var(--t1); -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.ltr { direction: ltr; unicode-bidi: isolate; }
+bdi.auto { unicode-bidi: isolate; }
+.num { font-variant-numeric: tabular-nums; }
+svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+svg.i.s20 { width: 20px; height: 20px; } svg.i.s16 { width: 16px; height: 16px; }
+:root[dir="rtl"] .dir { transform: scaleX(-1); }
+
+/* ---------- stage ---------- */
+.stage { display: flex; gap: 28px; padding: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+.phone-slot { position: relative; width: calc(431px * var(--scale)); height: calc(934px * var(--scale)); flex: none; }
+.bezel { position: absolute; top: 0; left: 0; width: 431px; height: 934px; padding: 10px; border-radius: 52px; background: #10131A; transform: scale(var(--scale)); transform-origin: 0 0; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.phone { position: relative; width: 411px; height: 914px; overflow: hidden; border-radius: 42px; background: var(--space); }
+canvas#globe { position: absolute; inset: 0; width: 411px; height: 914px; touch-action: none; cursor: grab; }
+.veil { position: absolute; inset: 0; background: var(--space); opacity: 0; pointer-events: none; z-index: 1; }
+.scrim-top { position: absolute; top: 0; left: 0; right: 0; height: calc(var(--top) + 16px); z-index: 2; pointer-events: none; background: linear-gradient(to bottom, rgba(3,6,15,.6) 0, rgba(3,6,15,.5) var(--top), rgba(3,6,15,0) 100%); }
+.scrim-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: calc(var(--bottom) + 24px); z-index: 2; pointer-events: none; background: linear-gradient(to top, rgba(3,6,15,.6) 0, rgba(3,6,15,.5) var(--bottom), rgba(3,6,15,0) 100%); }
+.statusbar { position: absolute; top: 0; left: 0; right: 0; height: var(--top); z-index: 60; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; color: #fff; font: 500 13px/1 var(--sysfont); pointer-events: none; direction: ltr; }
+.statusbar.dark { color: #1F1F1F; }
+.navbar { position: absolute; bottom: 0; left: 0; right: 0; height: var(--bottom); z-index: 60; display: flex; align-items: center; justify-content: space-around; color: #fff; direction: ltr; }
+.navbar.dark { color: #1F1F1F; }
+.navbar button { background: none; border: 0; width: 64px; height: 44px; display: grid; place-items: center; cursor: pointer; color: inherit; }
+.navbar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
+.mapbox { position: absolute; top: calc(var(--top) + 12px); left: 12px; z-index: 3; display: flex; align-items: center; gap: 6px; direction: ltr; color: #fff; font: 700 15px/1 Arial, sans-serif; opacity: .9; pointer-events: none; }
+.mapbox .attrib { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,.85); color: #121C36; font: 700 13px/24px Georgia, serif; text-align: center; }
+
+/* ---------- chrome ---------- */
+.chrome { position: absolute; top: calc(var(--top) + 52px); width: 48px; height: 48px; border-radius: 999px; border: 1px solid var(--chrome-b); background: var(--chrome-bg); color: var(--chrome-fg); box-shadow: var(--sh2); display: grid; place-items: center; cursor: pointer; z-index: 6; padding: 0; transition: opacity 150ms var(--ease-accel), transform 100ms var(--ease-standard); }
+.chrome:active { transform: scale(0.96); }
+.chrome.search { inset-inline-start: 12px; } .chrome.acct { inset-inline-end: 12px; }
+.chrome.gone { opacity: 0; pointer-events: none; visibility: hidden; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--pri-bg); color: var(--pri-fg); display: grid; place-items: center; font-weight: 600; font-size: 18px; line-height: 1; }
+.trips-btn { position: absolute; bottom: calc(var(--bottom) + 16px); left: 50%; transform: translateX(-50%); z-index: 5; min-height: 48px; padding: 0 20px; display: flex; align-items: center; gap: 8px; border-radius: 999px; border: 1px solid var(--chrome-b); background: var(--chrome-bg); color: var(--chrome-fg); box-shadow: var(--sh2); cursor: pointer; font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); white-space: nowrap; transition: transform 320ms var(--ease-decel), opacity 320ms var(--ease-decel); }
+.trips-btn:active { transform: translateX(-50%) scale(.96); }
+.trips-btn.gone { transform: translate(-50%, 80px); opacity: 0; pointer-events: none; transition: transform 200ms var(--ease-accel), opacity 200ms var(--ease-accel); }
+:root[data-reduce] .trips-btn, :root[data-reduce] .trips-btn.gone { transform: translateX(-50%); transition: opacity 200ms linear; }
+
+/* ---------- search (minimal, sprint 1) ---------- */
+.sb { position: absolute; top: calc(var(--top) + 52px); inset-inline: 12px; min-height: 48px; border-radius: 999px; z-index: 8; background: var(--raised); color: var(--t1); border: 2px solid var(--focus); display: flex; align-items: center; }
+.sb button { flex: none; width: 48px; height: 44px; border: 0; background: none; display: grid; place-items: center; cursor: pointer; }
+.sb input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: calc(16px * var(--fs)); padding: 10px 0; }
+.search-scrim { position: absolute; top: calc(var(--top) + 108px); left: 0; right: 0; bottom: 0; background: rgba(3,6,15,0.40); z-index: 7; }
+.results { position: absolute; top: calc(var(--top) + 108px); inset-inline: 12px; z-index: 8; background: var(--raised); border-radius: 16px; box-shadow: var(--sh3); border: 1px solid var(--field-b); max-height: 520px; overflow-y: auto; }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 16px; border: 0; background: none; text-align: start; cursor: pointer; position: relative; color: var(--t1); }
+.row + .row::before { content: ''; position: absolute; top: 0; inset-inline-start: 16px; inset-inline-end: 0; height: 1px; background: var(--bsub); }
+.row:active { background: var(--pressed); }
+.code { flex: none; font: 500 calc(12px * var(--fs)) / calc(16px * var(--fs)) var(--font); letter-spacing: 1.2px; font-variant-numeric: tabular-nums; color: var(--t2); background: var(--chip); border-radius: 4px; padding: 4px 6px; direction: ltr; }
+
+/* ---------- toast + offline pill ---------- */
+.toast { position: absolute; top: calc(var(--top) + 112px); left: 50%; z-index: 70; transform: translate(-50%, -8px); opacity: 0; pointer-events: none; background: #121C36; color: #F3F6FC; border-radius: 999px; padding: 10px 18px; font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); width: max-content; max-width: calc(100% - 48px); text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: opacity 200ms var(--ease-accel), transform 200ms var(--ease-accel); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); transition: opacity 200ms var(--ease-decel), transform 200ms var(--ease-decel); }
+:root[data-reduce] .toast { transform: translate(-50%, 0); }
+.pill { position: absolute; top: calc(var(--top) + 112px); left: 50%; transform: translateX(-50%); z-index: 5; background: rgba(11,19,38,.78); color: #F3F6FC; padding: 8px 14px; border-radius: 999px; font-size: calc(13px * var(--fs)); white-space: nowrap; }
+.pill::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #F2BC62; margin-inline-end: 8px; }
+
+/* ---------- boarding-pass card + coupon (sprint 2) ---------- */
+.card { position: absolute; inset-inline: 12px; bottom: calc(var(--bottom) + 16px); z-index: 4; filter: drop-shadow(0 12px 14px rgba(0,0,0,.45)); transform: translateY(calc(100% + 80px)); transition: transform 200ms var(--ease-accel); }
+.card.open { transform: none; transition: transform 320ms var(--ease-decel); }
+:root[data-reduce] .card { transform: none; opacity: 0; pointer-events: none; transition: opacity 200ms linear; }
+:root[data-reduce] .card.open { opacity: 1; pointer-events: auto; }
+.bp { --stubx: 108px; --cy: 160px; display: flex; flex-direction: column; background: var(--raised); border-radius: 18px; max-height: calc(914px - var(--top) - 160px - var(--bottom) - 16px); overflow: hidden;
+  -webkit-mask: radial-gradient(circle 11px at var(--stubx) 0, #0000 98%, #000), radial-gradient(circle 11px at 0 var(--cy), #0000 98%, #000), radial-gradient(circle 11px at 100% var(--cy), #0000 98%, #000);
+  -webkit-mask-composite: source-in; mask: radial-gradient(circle 11px at var(--stubx) 0, #0000 98%, #000), radial-gradient(circle 11px at 0 var(--cy), #0000 98%, #000), radial-gradient(circle 11px at 100% var(--cy), #0000 98%, #000); mask-composite: intersect; }
+:root[data-theme="dark"] .bp { box-shadow: inset 0 0 0 1px rgba(163,179,219,.16); }
+.bp-top { display: flex; position: relative; flex: none; }
+.c-main { flex: 1; min-width: 0; padding: 22px 20px 16px; position: relative; }
+.c-main .strip { position: absolute; top: 0; inset-inline: 0; height: 4px; background: var(--sel); border-start-start-radius: 18px; }
+.c-stub { width: 108px; flex: none; border-inline-start: 2px dashed var(--perf); margin-bottom: 4px; padding: 54px 10px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.lbl { font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); }
+.c-name { margin: 4px 0 0; padding-inline-end: 48px; font-weight: 700; font-size: calc(28px * min(var(--fs), 1.6)); line-height: calc(34px * min(var(--fs), 1.6)); outline: none; }
+.c-en { padding-inline-end: 48px; font-weight: 500; font-size: calc(14px * var(--fs)); line-height: calc(20px * var(--fs)); letter-spacing: 2px; text-transform: uppercase; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: start; }
+.c-fields { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; }
+.clock { font-weight: 700; font-size: calc(22px * var(--fs)); line-height: calc(26px * var(--fs)); font-variant-numeric: tabular-nums; text-align: start; }
+.val { font-weight: 500; font-size: calc(15px * var(--fs)); line-height: calc(20px * var(--fs)); }
+.sub { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); }
+.card .close { position: absolute; top: 4px; inset-inline-end: calc(108px + 4px); width: 48px; height: 48px; border-radius: 50%; border: 0; background: transparent; color: var(--t1); cursor: pointer; display: grid; place-items: center; }
+.flap { display: flex; gap: 3px; direction: ltr; }
+.flap span { width: 24px; height: 32px; border-radius: 4px; background: #121C36; color: #F3F6FC; display: grid; place-items: center; font: 600 18px/1 var(--font); }
+:root[data-theme="dark"] .flap span { background: #060B18; }
+.barcode { margin-top: auto; height: 30px; width: 80px; color: var(--t1); }
+.coupon { position: relative; display: flex; flex-direction: column; min-height: 0; padding: 12px 20px 16px; }
+.coupon::before { content: ''; position: absolute; top: 0; inset-inline: 14px; border-top: 2px dashed var(--perf); }
+.cp-list { overflow-y: auto; min-height: 0; flex: 1 1 auto; margin-inline: -8px; padding-inline: 8px; overscroll-behavior: contain; }
+.sec-lbl { font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t3); margin: 8px 0 2px; }
+.trow-wrap { border-radius: 12px; position: relative; }
+.trow-wrap.open { background: var(--alt); }
+:root[data-theme="dark"] .trow-wrap.open { background: #1A2749; }
+:root[data-theme="dark"] .trow-wrap.open .btn.secondary { box-shadow: inset 0 0 0 1px var(--bctl); }
+.flash { animation: flash 1200ms var(--ease-standard); }
+@keyframes flash { 0% { background: transparent; } 17% { background: var(--ok-sbg); } 50% { background: var(--ok-sbg); } 100% { background: transparent; } }
+:root[data-reduce] .flash { animation: none; }
+.trow { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 8px 8px; border: 0; background: none; color: var(--t1); text-align: start; cursor: pointer; border-radius: 12px; }
+.trow:active { background: var(--pressed); }
+.active-bar { position: absolute; inset-inline-start: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--ok-bg); }
+.tr-text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.tr-name { font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tr-dates { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); font-variant-numeric: tabular-nums; }
+.chev { color: var(--t3); transition: transform 200ms var(--ease-standard); }
+.open > .trow .chev { transform: rotate(180deg); }
+:root[data-reduce] .chev { transition: none; }
+.tr-more { padding: 0 8px 12px; }
+.tr-more > .lbl { margin-top: 8px; }
+.tr-notes { font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); white-space: pre-wrap; margin: 2px 0 4px; }
+.tr-cities { font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); margin-top: 2px; }
+.tr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tr-actions .btn { width: auto; flex: 1 1 96px; padding-inline: 10px; }
+.cp-line { display: flex; align-items: center; gap: 8px; min-height: 48px; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); flex-wrap: wrap; }
+.skel { border-radius: 6px; background: var(--skel); height: 12px; animation: pulse 1000ms var(--ease-standard) infinite alternate; }
+@keyframes pulse { from { opacity: .55; } to { opacity: 1; } }
+:root[data-reduce] .skel { animation: none; opacity: .75; }
+
+/* ---------- sprint 3: tags, counts, temperature ---------- */
+.tr-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; }
+.tag { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.tag.planned { background: var(--plan-bg); color: var(--plan-fg); }
+.tag.active { background: var(--ok-sbg); color: var(--ok-sfg); }
+.tag.active::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ok-bg); }
+.tag.ended, .tag.neutral { background: var(--end-bg); color: var(--end-fg); }
+.count { display: inline-flex; align-items: center; gap: 4px; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); }
+.tval { font-weight: 500; font-size: calc(17px * var(--fs)); line-height: calc(22px * var(--fs)); font-variant-numeric: tabular-nums; color: var(--t1); }
+.tfield { display: flex; flex-direction: column; align-items: flex-start; }
+.srcbtn { min-height: 48px; min-width: 48px; margin: -14px 0 -14px; margin-inline-start: -4px; padding: 0 4px; border: 0; background: none; color: var(--link); font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-align: start; }
+.mcols { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 2px; }
+.ttrip { margin-top: 8px; }
+
+/* ---------- buttons, notices, fields ---------- */
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); padding: 10px 20px; }
+.btn.primary { background: var(--pri-bg); color: var(--pri-fg); } .btn.primary:active { background: var(--pri-pressed); }
+.btn.cta { background: var(--cta-bg); color: var(--cta-fg); } .btn.cta:active { background: var(--cta-pressed); }
+.btn.secondary { background: var(--sec-bg); color: var(--sec-fg); }
+.btn.text { background: none; color: var(--link); }
+.btn.plain { background: none; color: var(--t1); }
+.btn:disabled { opacity: .6; cursor: default; }
+.btn.inline { width: auto; display: inline-flex; padding: 10px 12px; }
+.spinner { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid currentColor; border-top-color: transparent; animation: spin 900ms linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+:root[data-reduce] .spinner { animation-duration: 2400ms; }
+.notice { display: flex; gap: 10px; align-items: flex-start; background: var(--info-bg); color: var(--info-fg); border-radius: 12px; padding: 12px; margin: 0 0 12px; font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); }
+.fine { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); margin: 8px 0 0; }
+.field { margin-top: 20px; }
+.field > label, .field > .flabel { display: block; font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); margin-bottom: 6px; }
+.input { width: 100%; min-height: 56px; border-radius: 8px; border: 1px solid var(--bctl); background: var(--surface); color: var(--t1); padding: 14px 14px; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); outline: none; text-align: start; }
+.input:focus { border: 2px solid var(--focus); padding: 13px; }
+.input.err { border: 2px solid var(--alert); padding: 13px; }
+textarea.input { min-height: 96px; resize: none; display: block; }
+.input::placeholder { color: var(--t3); }
+.dates { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.dates .field { margin-top: 0; flex: 1 1 160px; min-width: 160px; }
+.datebtn { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.datebtn .ph { color: var(--t3); }
+.meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); }
+.meta .cnt { flex: none; font-variant-numeric: tabular-nums; direction: ltr; }
+.ferr { display: flex; gap: 6px; align-items: flex-start; margin-top: 6px; color: var(--alert); font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); }
+
+/* ---------- sprint 3: form sections (cities, travelers) ---------- */
+.fsec { margin-top: 24px; }
+.fsec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.fsec-head h2 { margin: 0; font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); }
+.fsec-head .hint { font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t3); }
+.lcard { background: var(--surface); border-radius: 16px; border: 1px solid transparent; overflow: hidden; }
+:root[data-theme="dark"] .lcard, :root[data-theme="dark"] .dest { border-color: var(--bsub); }
+.irow { display: flex; align-items: center; gap: 12px; min-height: 56px; padding-block: 4px; padding-inline: 16px 4px; position: relative; }
+.irow + .irow, .lcard .add, .lcard .limit { border-top: 1px solid var(--bsub); }
+.idx { flex: none; min-width: 24px; height: 24px; border-radius: 999px; background: var(--chip); color: var(--t2); font-weight: 500; font-size: calc(12px * var(--fs)); display: grid; place-items: center; font-variant-numeric: tabular-nums; padding: 0 6px; align-self: flex-start; margin-top: 12px; }
+.iname { flex: 1; min-width: 0; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); display: flex; flex-direction: column; align-items: flex-start; padding-block: 6px; }
+.iname .nm { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ifree { font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t3); }
+.ifree.t2 { color: var(--t2); }
+.ini { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--chip); color: var(--t2); display: grid; place-items: center; font-weight: 600; font-size: 18px; align-self: flex-start; margin-top: 6px; }
+.ini svg { width: 20px; height: 20px; }
+.tedit { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 48px; border: 0; background: none; color: var(--t1); text-align: start; cursor: pointer; padding: 0; border-radius: 8px; }
+.tedit .tag { margin-top: 2px; }
+.iconbtn { width: 48px; height: 48px; border-radius: 50%; border: 0; background: none; color: var(--t2); display: grid; place-items: center; cursor: pointer; flex: none; }
+.iconbtn:disabled { opacity: .6; cursor: default; }
+.add { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 8px 16px; border: 0; background: none; color: var(--link); font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); cursor: pointer; text-align: start; }
+.add:disabled { opacity: .6; cursor: default; }
+.limit { padding: 14px 16px; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; margin-block: 4px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--bctl); background: transparent; color: var(--t1); font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); cursor: pointer; transition: background-color 100ms var(--ease-standard), border-color 100ms var(--ease-standard); }
+.chip[aria-checked="true"] { background: var(--pri-bg); border-color: var(--pri-bg); color: var(--pri-fg); }
+.chip svg { width: 16px; height: 16px; }
+:root[data-reduce] .chip { transition: none; }
+
+/* ---------- sheets ---------- */
+.sheet-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 21; opacity: 0; pointer-events: none; transition: opacity 200ms linear; }
+.sheet-scrim.on { opacity: 1; pointer-events: auto; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 22; background: var(--raised); color: var(--t1); border-radius: 28px 28px 0 0; padding: 12px 16px calc(var(--bottom) + 20px); border-top: 1px solid var(--field-b); max-height: calc(100% - var(--top) - 12px); display: flex; flex-direction: column; overflow-y: auto;
+  transform: translateY(105%); visibility: hidden; transition: transform 200ms var(--ease-accel), visibility 0s 200ms; }
+.sheet.open { transform: none; visibility: visible; transition: transform 320ms var(--ease-decel), visibility 0s; }
+:root[data-reduce] .sheet { transform: none; opacity: 0; transition: opacity 200ms linear, visibility 0s 200ms; }
+:root[data-reduce] .sheet.open { opacity: 1; transition: opacity 200ms linear, visibility 0s; }
+#scrim2 { z-index: 27; } #sheet2 { z-index: 28; }
+.sheet.trips { height: 70%; padding-bottom: 0; padding-inline: 0; overflow: hidden; }
+.handle { width: 32px; height: 4px; border-radius: 2px; background: var(--bctl); margin: 0 auto 8px; opacity: .6; flex: none; }
+.x { position: absolute; top: 8px; inset-inline-end: 8px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: none; color: var(--t1); display: grid; place-items: center; cursor: pointer; z-index: 2; }
+.sheet h2 { margin: 12px 0 8px; font-weight: 600; font-size: calc(22px * var(--fs)); line-height: calc(28px * var(--fs)); padding-inline-end: 48px; outline: none; }
+.sheet p.src { margin: 0 0 16px; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.mt-head { padding: 0 16px; position: relative; flex: none; }
+.mt-list { flex: 1; overflow-y: auto; min-height: 0; padding-bottom: calc(var(--bottom) + 16px); overscroll-behavior: contain; }
+.mt-sec { position: sticky; top: 0; z-index: 1; background: var(--raised); padding: 8px 16px; min-height: 40px; font-weight: 600; font-size: calc(18px * var(--fs)); line-height: calc(24px * var(--fs)); margin: 0; }
+.mrow { display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: 72px; padding: 12px 16px; border: 0; background: none; color: var(--t1); text-align: start; cursor: pointer; position: relative; }
+.mrow + .mrow::after { content: ''; position: absolute; top: 0; inset-inline-start: 16px; inset-inline-end: 0; height: 1px; background: var(--bsub); }
+.mrow:active { background: var(--pressed); }
+.mrow .active-bar { top: 14px; bottom: 14px; inset-inline-start: 4px; }
+.mrow .side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+.mrow .cn { font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); }
+.mt-state { padding: 32px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mt-state svg.big { width: 48px; height: 48px; color: var(--t3); stroke-width: 1.6; }
+.mt-state h3 { margin: 4px 0 0; font-weight: 600; font-size: calc(18px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.mt-state p { margin: 0 0 8px; color: var(--t2); font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.mt-none { padding: 4px 16px 12px; font-size: calc(13px * var(--fs)); color: var(--t2); }
+
+/* ---------- full-screen: form (modal) and city search (push) ---------- */
+.full { position: absolute; inset: 0; background: var(--canvas); color: var(--t1); display: flex; flex-direction: column; padding-top: var(--top); visibility: hidden; }
+.modal { z-index: 24; transform: translateY(100%); transition: transform 200ms var(--ease-accel), visibility 0s 200ms; }
+.modal.open { transform: none; visibility: visible; transition: transform 300ms var(--ease-decel), visibility 0s; }
+.push { z-index: 26; transform: translateX(var(--push-from)); transition: transform 250ms var(--ease-accel), visibility 0s 250ms; }
+.push.open { transform: none; visibility: visible; transition: transform 300ms var(--ease-standard), visibility 0s; }
+:root[data-reduce] .full { transform: none; opacity: 0; transition: opacity 200ms linear, visibility 0s 200ms; }
+:root[data-reduce] .full.open { opacity: 1; transition: opacity 200ms linear, visibility 0s; }
+.bar { display: flex; align-items: center; gap: 4px; min-height: 56px; padding: 0 4px; flex: none; }
+.bar h1 { flex: 1; margin: 0; font-weight: 600; font-size: calc(18px * var(--fs)); line-height: calc(24px * var(--fs)); padding-inline: 12px; outline: none; }
+.scroll { flex: 1; overflow-y: auto; padding: 8px 16px 24px; min-height: 0; }
+.foot { flex: none; padding: 12px 16px calc(var(--bottom) + 12px); border-top: 1px solid var(--bsub); background: var(--canvas); display: flex; flex-direction: column; gap: 4px; }
+.dest { background: var(--surface); border-radius: 16px; padding: 18px 16px 14px; position: relative; overflow: hidden; display: flex; align-items: flex-start; gap: 12px; border: 1px solid transparent; }
+.dest::before { content: ''; position: absolute; top: 0; inset-inline: 0; height: 4px; background: var(--sel); }
+.dest .dn { font-weight: 600; font-size: calc(22px * var(--fs)); line-height: calc(28px * var(--fs)); }
+.dest .de { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); text-align: start; }
+.sbar { display: flex; align-items: center; gap: 4px; min-height: 56px; padding: 4px; flex: none; }
+.sbar input { flex: 1; min-width: 0; min-height: 48px; border-radius: 999px; border: 2px solid var(--focus); background: var(--surface); color: var(--t1); padding: 0 16px; font-size: calc(16px * var(--fs)); outline: none; margin-inline-end: 8px; }
+.sbar input.err { border-color: var(--alert); }
+.cs-body { flex: 1; overflow-y: auto; min-height: 0; padding-bottom: calc(var(--bottom) + 16px); }
+.cs-hd { padding: 12px 16px 4px; font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); margin: 0; }
+.cs-row .rtext { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.cs-row .rname { font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.cs-row .ren { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cs-free { border-top: 1px solid var(--bsub); }
+.cs-free .rname { color: var(--t1); font-weight: 400; }
+.cs-free > svg { color: var(--link); }
+.cs-msg { padding: 12px 16px; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); color: var(--t2); margin: 0; }
+.cs-err { padding: 0 16px; }
+
+/* ---------- system UI (simulated, not ours) ---------- */
+.dlg-scrim { position: absolute; inset: 0; z-index: 40; background: rgba(0,0,0,.4); }
+.alert { position: absolute; z-index: 41; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 312px; background: var(--sys-bg); color: var(--sys-fg); border-radius: 28px; padding: 24px 24px 16px; font-family: var(--sysfont); box-shadow: 0 10px 40px rgba(0,0,0,.4); }
+.alert h3 { margin: 0 0 12px; font-size: 22px; font-weight: 400; line-height: 28px; }
+.alert p { margin: 0 0 20px; font-size: 14px; line-height: 20px; color: var(--sys-2); }
+.alert .acts { display: flex; justify-content: flex-end; gap: 8px; }
+.alert .acts button { min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--sys-acc); font: 500 14px var(--sysfont); cursor: pointer; border-radius: 20px; }
+.picker { position: absolute; z-index: 41; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 344px; background: var(--sys-bg); color: var(--sys-fg); border-radius: 28px; font-family: var(--sysfont); box-shadow: 0 10px 40px rgba(0,0,0,.4); overflow: hidden; }
+.pk-head { padding: 16px 24px 12px; border-bottom: 1px solid rgba(127,127,127,.3); }
+.pk-head .sup { font-size: 14px; color: var(--sys-2); }
+.pk-head .hl { font-size: 28px; line-height: 36px; margin-top: 28px; font-variant-numeric: tabular-nums; }
+.pk-nav { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 0 16px; }
+.pk-nav .mon { font-size: 14px; font-weight: 500; color: var(--sys-2); }
+.pk-nav button { width: 48px; height: 48px; border: 0; background: none; color: var(--sys-2); border-radius: 50%; cursor: pointer; display: grid; place-items: center; }
+.pk-grid { display: grid; grid-template-columns: repeat(7, 44px); justify-content: center; padding: 4px 12px 8px; }
+.pk-grid .wd { height: 40px; display: grid; place-items: center; font-size: 13px; }
+.pk-grid button { width: 40px; height: 40px; margin: 2px; border-radius: 50%; border: 0; background: none; color: var(--sys-fg); font: 400 14px var(--sysfont); font-variant-numeric: tabular-nums; cursor: pointer; }
+.pk-grid button.sel { background: var(--sys-acc); color: var(--sys-bg); }
+.pk-grid button:disabled { opacity: .38; cursor: default; }
+.pk-acts { display: flex; justify-content: flex-end; gap: 8px; padding: 0 12px 12px; }
+.pk-acts button { min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--sys-acc); font: 500 14px var(--sysfont); cursor: pointer; border-radius: 20px; }
+
+/* ---------- panel ---------- */
+.panel { width: 400px; max-width: 100%; background: #fff; color: #121C36; border-radius: 16px; padding: 16px; font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,.12); direction: rtl; text-align: right; }
+:root[data-theme="dark"] .panel { background: #121C36; color: #F3F6FC; }
+.panel h1 { font-size: 17px; margin: 0 0 4px; } .panel h2 { font-size: 13px; margin: 16px 0 6px; color: #646E8A; font-weight: 600; }
+:root[data-theme="dark"] .panel h2 { color: #A3B3DB; }
+.panel .grp { display: flex; flex-wrap: wrap; gap: 6px; }
+.panel button, .panel select { font: 500 12px var(--font); border: 1px solid #CED8F0; background: transparent; color: inherit; border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.panel button[aria-pressed="true"] { background: #1561BC; color: #fff; border-color: #1561BC; }
+.panel label.ck { display: flex; align-items: center; gap: 6px; padding: 3px 0; cursor: pointer; }
+.panel .log { background: rgba(127,127,127,.08); border-radius: 8px; padding: 8px; max-height: 180px; overflow-y: auto; font-size: 12px; line-height: 18px; }
+.panel .log div + div { border-top: 1px dashed rgba(127,127,127,.3); }
+.panel table { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+.panel td, .panel th { padding: 3px 4px; border-bottom: 1px solid rgba(127,127,127,.2); text-align: start; vertical-align: top; }
+.panel .ok { color: #0A665D; font-weight: 600; } .panel .bad { color: #C81E16; font-weight: 600; }
+:root[data-theme="dark"] .panel .ok { color: #4FCFBE; } :root[data-theme="dark"] .panel .bad { color: #FF8A80; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone-slot"><div class="bezel"><div class="phone" id="phone">
+    <canvas id="globe" width="822" height="1828" aria-label="globe"></canvas>
+    <div class="veil" id="veil"></div>
+    <div class="scrim-top"></div><div class="scrim-bottom"></div>
+    <div class="statusbar" id="statusbar"><span class="num">09:41</span><span>▮▮ 87%</span></div>
+    <div class="mapbox" aria-hidden="true"><span>mapbox</span><span class="attrib">i</span></div>
+    <button class="chrome search" id="searchBtn" data-act="openSearch"></button>
+    <button class="chrome acct" id="acctBtn" data-act="account"></button>
+    <div class="pill" id="offlinePill" hidden></div>
+    <div id="searchLayer" hidden></div>
+    <div class="card" id="card" aria-hidden="true"></div>
+    <button class="trips-btn" id="tripsBtn" data-act="myTrips"></button>
+    <div class="sheet-scrim" id="sheetScrim" data-act="scrim"></div>
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+    <div class="full modal" id="modal" role="dialog" aria-modal="true"></div>
+    <div class="full push" id="city" role="dialog" aria-modal="true"></div>
+    <div class="sheet-scrim" id="scrim2" data-act="tsClose"></div>
+    <div class="sheet" id="sheet2" role="dialog" aria-modal="true"></div>
+    <div id="sys"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="navbar" id="navbar"><button data-act="back" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-8 7 8 7"/></svg></button><button><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button><button><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button></div>
+  </div></div></div>
+
+  <div class="panel" id="panel">
+    <h1>ספרינט 3 · הנסיעה מתמלאת</h1>
+    <div style="color:#646E8A">הפאנל אינו חלק מהאפליקציה. Esc = "חזור". הערים, האוכלוסייה והטמפרטורות להדגמה בלבד.</div>
+    <h2>תצוגה</h2>
+    <div class="grp">
+      <button data-p="theme" data-v="light" aria-pressed="true">בהיר</button><button data-p="theme" data-v="dark">כהה</button>
+      <button data-p="lang" data-v="he" aria-pressed="true">עברית</button><button data-p="lang" data-v="en">English</button>
+      <button data-p="fs" data-v="1" aria-pressed="true">גופן 100%</button><button data-p="fs" data-v="1.3">130%</button>
+      <button data-p="reduce" data-v="1">הפחתת תנועה</button>
+    </div>
+    <h2>מצב</h2>
+    <div class="grp">
+      <button data-p="signed" data-v="1" aria-pressed="true">מחובר</button><button data-p="signed" data-v="0">לא מחובר</button>
+      <button data-p="online" data-v="1" aria-pressed="true">יש רשת</button><button data-p="online" data-v="0">בלי רשת</button>
+    </div>
+    <h2>"היום" במכשיר (AC-6)</h2>
+    <div class="grp"><select id="today">
+      <option value="2026-10-25">25.10.2026 · יוון פעילה</option>
+      <option value="2026-10-31">31.10.2026 · יוון הסתיימה</option>
+      <option value="2026-12-20">20.12.2026 · תאילנד פעילה</option>
+      <option value="2027-01-21">21.01.2027 · יפן פעילה</option>
+    </select></div>
+    <h2>הפין (AC-7)</h2>
+    <div class="grp"><select id="pinVariant"><option value="pulse">פעימה (העיצוב הראשי)</option><option value="static">סטטי עם כניסה (הגיבוי)</option></select></div>
+    <h2>הפעלה קרה (AC-8)</h2>
+    <div class="grp">
+      <button id="coldBtn">הפעלה קרה</button>
+      <select id="arrive"><option value="800">הנתונים מגיעים אחרי 0.8 שנ'</option><option value="2500">אחרי 2.5 שנ'</option><option value="4000">אחרי 4 שנ' (מאוחר מדי)</option></select>
+    </div>
+    <label class="ck"><input type="checkbox" id="ckTouch"> המשתמש נוגע בגלובוס לפני שהנתונים מגיעים</label>
+    <label class="ck"><input type="checkbox" id="ckConsent"> ההסכמה לא עדכנית</label>
+    <h2>תקלות</h2>
+    <label class="ck"><input type="checkbox" id="ckSaveFail"> השמירה הבאה נכשלת</label>
+    <label class="ck"><input type="checkbox" id="ckCityFail"> רשימת הערים לא נטענת</label>
+    <label class="ck"><input type="checkbox" id="ckClimSlow"> קובץ האקלים נטען לאט (בהפעלה הקרה הבאה)</label>
+    <h2>קפיצה למצב</h2>
+    <div class="grp">
+      <button data-j="cardTHA">תאילנד: 2 חודשים</button><button data-j="cardGRC">יוון: חודש אחד, פעילה</button><button data-j="cardJPN">יפן: טווח עם מינוס</button>
+      <button data-j="cardISL">איסלנד: 0°</button><button data-j="cardMLT">מלטה: עיר "כמו שנכתב"</button><button data-j="cardFLK">איי פוקלנד</button><button data-j="cardATA">אנטארקטיקה: בלי טמפרטורה</button>
+      <button data-j="sources">גיליון המקורות</button>
+      <button data-j="form">טופס חדש</button><button data-j="edit">עריכה (4 נוסעים, 4 ערים)</button><button data-j="traveler">גיליון נוסע</button>
+      <button data-j="city">הוספת עיר</button><button data-j="cityFLK">הוספת עיר: אזור בלי ערים</button><button data-j="limits">מגבלות: 9 נוסעים, 10 ערים</button>
+      <button data-j="dupAuto">שכפול: שם אוטומטי</button><button data-j="dupManual">שכפול: שם ידני</button>
+      <button data-j="list">הנסיעות שלי</button>
+    </div>
+    <h2>מה קורא המסך אומר</h2>
+    <div class="log" id="srlog" aria-live="off"></div>
+    <h2>בודק הנוסחים של הטמפרטורה (README סעיף 2)</h2>
+    <div id="fmtLab"></div>
+    <h2>ניגודיות הפין (README סעיף 9.7)</h2>
+    <div id="pinLab"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =================== strings (README section 14, plus the sprint 2 strings this prototype uses) =================== */
+const S = {
+he: {
+  months: ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'],
+  wd: ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'],
+  'date.single': '{{d}} ב{{m}} {{y}}', 'date.to': 'עד',
+  'globe.selected': 'נבחרה: {{name}}', 'globe.closed': 'הכרטיס נסגר', 'globe.onlyDemo': 'בהדמיה אפשר לבחור את המדינות שמופיעות בחיפוש',
+  'offline.pill': 'אין חיבור. הגלובוס עובד כרגיל',
+  'card.destination': 'יעד', 'card.localTimeIn': 'שעה מקומית · {{city}}', 'card.currency': 'מטבע', 'card.close': 'סגירה',
+  'card.trips.title': 'הנסיעות שלך', 'card.trips.upcoming': 'קרובות', 'card.trips.past': 'שעברו', 'card.trips.new': 'נסיעה חדשה', 'card.trips.newA11y': 'נסיעה חדשה: {{country}}',
+  'card.trips.offline': 'צריך חיבור כדי לראות את הנסיעות.', 'card.trips.notes': 'הערות', 'card.trips.edit': 'עריכה', 'card.trips.delete': 'מחיקה',
+  'card.trips.duplicate': 'שכפול', 'card.trips.cities': 'ערים', 'card.trips.citiesA11y': 'ערים לפי הסדר: {{list}}', 'trips.opened': 'נפתחה הנסיעה {{name}}',
+  'trips.status.planned': 'מתוכננת', 'trips.status.active': 'בנסיעה עכשיו', 'trips.status.ended': 'הסתיימה', 'trips.travelers': '{{n}} נוסעים',
+  'activeTrip.opened': 'בנסיעה עכשיו: {{name}}',
+  'climate.cardLabel': 'ממוצע יומי ב{{month}}', 'climate.tripLabel': 'ממוצע יומי', 'climate.tripLabelRange': 'ממוצע יומי בחודשי הנסיעה',
+  'climate.range': 'בין {{low}} ל-{{high}}', 'climate.rangeNegHigh': 'בין {{low}} ובין {{high}}', 'climate.rangeA11y': 'בין {{low}} ובין {{high}}',
+  'temp.a11y.one': 'מעלה אחת', 'temp.a11y.many': '{{n}} מעלות', 'temp.a11y.minusOne': 'מינוס מעלה אחת', 'temp.a11y.minusMany': 'מינוס {{n}} מעלות',
+  'sources.link': 'מקורות', 'sources.linkA11y': 'מקורות הנתונים', 'sources.title': 'מקורות',
+  'sources.cities': 'נתוני ערים: GeoNames (geonames.org), רישיון CC BY 4.0, עובדו.',
+  'sources.climate': 'נתוני אקלים: CRU TS v4.08, Climatic Research Unit, University of East Anglia (Harris, Jones, Osborn), דרך CEDA, רישיון Open Government Licence v3.0. הממוצעים לשנים 1991–2020 חושבו על ידינו.',
+  'tripForm.titleNew': 'נסיעה חדשה', 'tripForm.titleEdit': 'עריכת נסיעה', 'tripForm.close': 'סגירה', 'tripForm.destination': 'יעד', 'tripForm.destinationA11y': 'יעד: {{country}}. היעד קבוע ולא ניתן לשינוי.',
+  'tripForm.departure': 'יציאה', 'tripForm.return': 'חזרה', 'tripForm.pickDate': 'בחירת תאריך', 'tripForm.departureA11y': 'תאריך יציאה, {{date}}', 'tripForm.returnA11y': 'תאריך חזרה, {{date}}', 'tripForm.notSet': 'לא נבחר',
+  'tripForm.name': 'שם הנסיעה', 'tripForm.namePending': 'השם ייקבע לפי תאריך היציאה', 'tripForm.nameAuto': 'נקבע לפי היעד ותאריך היציאה. אפשר לשנות.',
+  'tripForm.notes': 'הערות (לא חובה)', 'tripForm.notesPlaceholder': 'מה חשוב לזכור לנסיעה הזו?',
+  'err.departureRequired': 'צריך לבחור תאריך יציאה.', 'err.returnRequired': 'צריך לבחור תאריך חזרה.', 'err.returnBeforeDeparture': 'תאריך החזרה לא יכול להיות לפני היציאה.',
+  'err.nameRequired': 'צריך לתת לנסיעה שם.', 'err.nameTooLong': 'השם יכול להיות עד 80 תווים.', 'err.notesTooLong': 'ההערות יכולות להיות עד 2,000 תווים.',
+  'err.summaryOne': 'יש שדה אחד לתיקון', 'err.summaryMany': 'יש {{n}} שדות לתיקון', 'err.prefix': 'שגיאה: {{m}}',
+  'tripForm.save': 'שמירת הנסיעה', 'tripForm.saveEdit': 'שמירת השינויים', 'tripForm.saving': 'שומרים…',
+  'tripForm.offline': 'אין חיבור לאינטרנט. כדי לשמור נסיעה צריך חיבור. מה שמילאת נשאר כאן.', 'tripForm.saveError': 'לא הצלחנו לשמור את הנסיעה. נסו שוב.',
+  'tripForm.saved': 'הנסיעה נשמרה', 'tripForm.savedA11y': 'הנסיעה {{name}} נשמרה', 'tripForm.updated': 'השינויים נשמרו',
+  'tripForm.discardTitle': 'לצאת בלי לשמור?', 'tripForm.discardBody': 'מה שמילאת לא יישמר.', 'tripForm.discardConfirm': 'יציאה', 'tripForm.discardCancel': 'המשך עריכה', 'tripForm.delete': 'מחיקת הנסיעה',
+  'tripForm.duplicated': 'זה עותק של „{{name}}”, בלי התאריכים.',
+  'tripForm.cities': 'ערים', 'tripForm.citiesHint': 'לפי סדר הביקור', 'tripForm.addCity': 'הוספת עיר', 'tripForm.cityRowA11y': 'עיר {{n}} מתוך {{total}}: {{city}}', 'tripForm.cityFree': 'כמו שנכתב',
+  'tripForm.cityRemove': 'הסרת {{city}}', 'tripForm.citiesMax': 'אפשר להוסיף עד 10 ערים.', 'tripForm.cityAdded': 'הוספנו את {{city}} לערים', 'tripForm.cityRemoved': 'הסרנו את {{city}} מהערים',
+  'tripForm.travelers': 'נוסעים', 'tripForm.travelersHint': 'שם וקשר בלבד. השמות נשמרים רק בנסיעה הזו.', 'tripForm.me': 'אני', 'tripForm.meNote': 'תמיד בנסיעה', 'tripForm.meA11y': 'אני, תמיד בנסיעה',
+  'tripForm.addTraveler': 'הוספה לנוסעים', 'tripForm.travelersMax': 'אפשר להוסיף עד 9 נוסעים.', 'tripForm.travelerHint': 'פותח עריכה', 'tripForm.travelerRemove': 'הסרת {{name}}',
+  'tripForm.travelerAdded': 'הוספנו את {{name}} לנוסעים', 'tripForm.travelerRemoved': 'הסרנו את {{name}} מהנוסעים', 'tripForm.travelerUpdated': 'הפרטים עודכנו',
+  'traveler.titleNew': 'מי עוד בנסיעה?', 'traveler.titleEdit': 'עריכת פרטים', 'traveler.name': 'שם', 'traveler.relation': 'קשר (לא חובה)', 'traveler.relationHint': 'הקשה נוספת מבטלת את הבחירה',
+  'traveler.rel.partner': 'בן או בת זוג', 'traveler.rel.child': 'ילד או ילדה', 'traveler.rel.parent': 'הורה', 'traveler.rel.friend': 'חבר או חברה', 'traveler.rel.other': 'קשר אחר',
+  'traveler.add': 'הוספה', 'traveler.save': 'שמירה', 'traveler.cancel': 'ביטול', 'traveler.remove': 'הסרה מהנסיעה', 'traveler.required': 'צריך לכתוב שם.', 'traveler.tooLong': 'השם יכול להיות עד 40 תווים.',
+  'citySearch.back': 'חזרה', 'citySearch.placeholder': 'חיפוש עיר', 'citySearch.fieldA11y': 'חיפוש עיר, {{country}}', 'citySearch.largest': 'ערים גדולות', 'citySearch.already': 'כבר בנסיעה',
+  'citySearch.rowHint': 'מוסיף לערים בנסיעה', 'citySearch.addAsWritten': 'הוספת „{{q}}” כמו שנכתב', 'citySearch.addAsWrittenNote': 'בלי נתוני אקלים לעיר הזו.',
+  'citySearch.noResults': 'לא מצאנו את „{{q}}” ברשימת הערים של {{country}}.', 'citySearch.noCitiesTitle': 'אין רשימת ערים לאזור הזה', 'citySearch.noCitiesBody': 'אפשר לכתוב את שם המקום ולהוסיף אותו כמו שנכתב.',
+  'citySearch.loading': 'טוענים את רשימת הערים', 'citySearch.loadError': 'לא הצלחנו לטעון את רשימת הערים. אפשר להוסיף עיר כמו שהיא נכתבת.',
+  'citySearch.resultsOne': 'נמצאה עיר אחת', 'citySearch.resultsMany': 'נמצאו {{n}} ערים', 'citySearch.resultsNone': 'לא נמצאו ערים', 'citySearch.tooLong': 'שם העיר יכול להיות עד 60 תווים.',
+  'datePicker.ok': 'אישור', 'datePicker.cancel': 'ביטול', 'datePicker.titleDeparture': 'תאריך יציאה', 'datePicker.titleReturn': 'תאריך חזרה', 'datePicker.prev': 'החודש הקודם', 'datePicker.next': 'החודש הבא',
+  'myTrips.button': 'הנסיעות שלי', 'myTrips.title': 'הנסיעות שלי', 'myTrips.upcoming': 'קרובות', 'myTrips.past': 'שעברו', 'myTrips.upcomingNone': 'אין נסיעות קרובות.',
+  'myTrips.emptyTitle': 'אין עדיין נסיעות', 'myTrips.emptyBody': 'בוחרים מדינה על הגלובוס או בחיפוש, ובכרטיס שלה מקישים על „נסיעה חדשה”.',
+  'myTrips.offline': 'צריך חיבור כדי לראות את הנסיעות', 'myTrips.offlineBody': 'הרשימה תיטען לבד כשהחיבור יחזור.', 'myTrips.loaded': 'הרשימה נטענה',
+  'tripDelete.title': 'למחוק את הנסיעה?', 'tripDelete.body': '„{{name}}” תימחק לצמיתות.', 'tripDelete.confirm': 'מחיקה', 'tripDelete.cancel': 'ביטול', 'tripDelete.done': 'הנסיעה נמחקה', 'tripDelete.offline': 'אין חיבור לאינטרנט. כדי למחוק נסיעה צריך חיבור.',
+  'sheet.close': 'סגירה', 'account.signIn': 'התחברות לחשבון', 'account.yours': 'החשבון של {{name}}',
+  'demo.account': 'החשבון כמו בספרינט 2. בהדמיה הזו מתחברים ומתנתקים מהפאנל.', 'demo.signIn': 'כדי לשמור נסיעה צריך להתחבר. בהדמיה הזו: "מחובר" בפאנל.',
+  'search.open': 'חיפוש מדינה', 'search.close': 'סגירת החיפוש', 'search.placeholder': 'חיפוש מדינה',
+  'diff.same': 'כמו בישראל', 'diff.ahead': '{{a}} יותר מבישראל', 'diff.behind': '{{a}} פחות מבישראל', 'h1': 'שעה', 'h2': 'שעתיים', 'hn': '{{n}} שעות', 'hh': 'חצי שעה', 'h1h': 'שעה וחצי', 'h2h': 'שעתיים וחצי', 'hnh': '{{n}} שעות וחצי',
+},
+en: {
+  months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  monthsShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  wd: ['S','M','T','W','T','F','S'],
+  'date.single': '{{d}} {{m}} {{y}}', 'date.to': 'to',
+  'globe.selected': 'Selected: {{name}}', 'globe.closed': 'Card closed', 'globe.onlyDemo': 'In the prototype you can pick the countries listed in search',
+  'offline.pill': 'Offline. The globe still works',
+  'card.destination': 'Destination', 'card.localTimeIn': 'Local time · {{city}}', 'card.currency': 'Currency', 'card.close': 'Close',
+  'card.trips.title': 'Your trips', 'card.trips.upcoming': 'Upcoming', 'card.trips.past': 'Past', 'card.trips.new': 'New trip', 'card.trips.newA11y': 'New trip: {{country}}',
+  'card.trips.offline': 'You need a connection to see your trips.', 'card.trips.notes': 'Notes', 'card.trips.edit': 'Edit', 'card.trips.delete': 'Delete',
+  'card.trips.duplicate': 'Duplicate', 'card.trips.cities': 'Cities', 'card.trips.citiesA11y': 'Cities in order: {{list}}', 'trips.opened': 'Opened {{name}}',
+  'trips.status.planned': 'Planned', 'trips.status.active': 'Happening now', 'trips.status.ended': 'Ended', 'trips.travelers': '{{n}} travelers',
+  'activeTrip.opened': 'Happening now: {{name}}',
+  'climate.cardLabel': 'Daily average in {{month}}', 'climate.tripLabel': 'Daily average', 'climate.tripLabelRange': 'Daily average over the trip months',
+  'climate.range': 'Between {{low}} and {{high}}', 'climate.rangeNegHigh': 'Between {{low}} and {{high}}', 'climate.rangeA11y': 'between {{low}} and {{high}}',
+  'temp.a11y.one': '1 degree', 'temp.a11y.many': '{{n}} degrees', 'temp.a11y.minusOne': 'minus 1 degree', 'temp.a11y.minusMany': 'minus {{n}} degrees',
+  'sources.link': 'Sources', 'sources.linkA11y': 'Data sources', 'sources.title': 'Sources',
+  'sources.cities': 'City data: GeoNames (geonames.org), CC BY 4.0 licence, modified.',
+  'sources.climate': 'Climate data: CRU TS v4.08, Climatic Research Unit, University of East Anglia (Harris, Jones, Osborn), via CEDA, Open Government Licence v3.0. The 1991–2020 averages were calculated by us.',
+  'tripForm.titleNew': 'New trip', 'tripForm.titleEdit': 'Edit trip', 'tripForm.close': 'Close', 'tripForm.destination': 'Destination', 'tripForm.destinationA11y': "Destination: {{country}}. The destination can't be changed.",
+  'tripForm.departure': 'Departure', 'tripForm.return': 'Return', 'tripForm.pickDate': 'Choose a date', 'tripForm.departureA11y': 'Departure date, {{date}}', 'tripForm.returnA11y': 'Return date, {{date}}', 'tripForm.notSet': 'not set',
+  'tripForm.name': 'Trip name', 'tripForm.namePending': 'Set from the departure date', 'tripForm.nameAuto': 'Based on the destination and departure date. You can change it.',
+  'tripForm.notes': 'Notes (optional)', 'tripForm.notesPlaceholder': 'Anything to remember for this trip?',
+  'err.departureRequired': 'Choose a departure date.', 'err.returnRequired': 'Choose a return date.', 'err.returnBeforeDeparture': "The return date can't be before departure.",
+  'err.nameRequired': 'Give the trip a name.', 'err.nameTooLong': 'The name can be up to 80 characters.', 'err.notesTooLong': 'Notes can be up to 2,000 characters.',
+  'err.summaryOne': '1 field needs fixing', 'err.summaryMany': '{{n}} fields need fixing', 'err.prefix': 'Error: {{m}}',
+  'tripForm.save': 'Save trip', 'tripForm.saveEdit': 'Save changes', 'tripForm.saving': 'Saving…',
+  'tripForm.offline': "You're offline. Saving a trip needs a connection. What you've filled in stays here.", 'tripForm.saveError': "Couldn't save the trip. Try again.",
+  'tripForm.saved': 'Trip saved', 'tripForm.savedA11y': '{{name}} saved', 'tripForm.updated': 'Changes saved',
+  'tripForm.discardTitle': 'Leave without saving?', 'tripForm.discardBody': "What you've filled in won't be saved.", 'tripForm.discardConfirm': 'Leave', 'tripForm.discardCancel': 'Keep editing', 'tripForm.delete': 'Delete trip',
+  'tripForm.duplicated': 'This is a copy of “{{name}}”, without the dates.',
+  'tripForm.cities': 'Cities', 'tripForm.citiesHint': "In the order you'll visit", 'tripForm.addCity': 'Add a city', 'tripForm.cityRowA11y': 'City {{n}} of {{total}}: {{city}}', 'tripForm.cityFree': 'As written',
+  'tripForm.cityRemove': 'Remove {{city}}', 'tripForm.citiesMax': 'You can add up to 10 cities.', 'tripForm.cityAdded': 'Added {{city}} to cities', 'tripForm.cityRemoved': 'Removed {{city}} from cities',
+  'tripForm.travelers': 'Travelers', 'tripForm.travelersHint': 'Name and relation only. Names are saved with this trip only.', 'tripForm.me': 'Me', 'tripForm.meNote': 'Always on the trip', 'tripForm.meA11y': 'Me, always on the trip',
+  'tripForm.addTraveler': 'Add a traveler', 'tripForm.travelersMax': 'You can add up to 9 travelers.', 'tripForm.travelerHint': 'Opens editing', 'tripForm.travelerRemove': 'Remove {{name}}',
+  'tripForm.travelerAdded': 'Added {{name}} to travelers', 'tripForm.travelerRemoved': 'Removed {{name}} from travelers', 'tripForm.travelerUpdated': 'Details updated',
+  'traveler.titleNew': 'Who else is going?', 'traveler.titleEdit': 'Edit details', 'traveler.name': 'Name', 'traveler.relation': 'Relation (optional)', 'traveler.relationHint': 'Tap again to clear',
+  'traveler.rel.partner': 'Partner', 'traveler.rel.child': 'Child', 'traveler.rel.parent': 'Parent', 'traveler.rel.friend': 'Friend', 'traveler.rel.other': 'Other',
+  'traveler.add': 'Add', 'traveler.save': 'Save', 'traveler.cancel': 'Cancel', 'traveler.remove': 'Remove from trip', 'traveler.required': 'Enter a name.', 'traveler.tooLong': 'The name can be up to 40 characters.',
+  'citySearch.back': 'Back', 'citySearch.placeholder': 'Search for a city', 'citySearch.fieldA11y': 'Search for a city, {{country}}', 'citySearch.largest': 'Largest cities', 'citySearch.already': 'Already in this trip',
+  'citySearch.rowHint': "Adds it to the trip's cities", 'citySearch.addAsWritten': 'Add “{{q}}” as written', 'citySearch.addAsWrittenNote': 'No climate data for this city.',
+  'citySearch.noResults': "We couldn't find “{{q}}” in the city list for {{country}}.", 'citySearch.noCitiesTitle': 'No city list for this area', 'citySearch.noCitiesBody': 'Type the place name and add it as written.',
+  'citySearch.loading': 'Loading the city list', 'citySearch.loadError': "Couldn't load the city list. You can still add a city as written.",
+  'citySearch.resultsOne': '1 city found', 'citySearch.resultsMany': '{{n}} cities found', 'citySearch.resultsNone': 'No cities found', 'citySearch.tooLong': 'The city name can be up to 60 characters.',
+  'datePicker.ok': 'OK', 'datePicker.cancel': 'Cancel', 'datePicker.titleDeparture': 'Departure date', 'datePicker.titleReturn': 'Return date', 'datePicker.prev': 'Previous month', 'datePicker.next': 'Next month',
+  'myTrips.button': 'My trips', 'myTrips.title': 'My trips', 'myTrips.upcoming': 'Upcoming', 'myTrips.past': 'Past', 'myTrips.upcomingNone': 'No upcoming trips.',
+  'myTrips.emptyTitle': 'No trips yet', 'myTrips.emptyBody': 'Pick a country on the globe or in search, then tap “New trip” on its card.',
+  'myTrips.offline': 'You need a connection to see your trips', 'myTrips.offlineBody': "The list will load by itself when you're back online.", 'myTrips.loaded': 'List loaded',
+  'tripDelete.title': 'Delete this trip?', 'tripDelete.body': '“{{name}}” will be permanently deleted.', 'tripDelete.confirm': 'Delete', 'tripDelete.cancel': 'Cancel', 'tripDelete.done': 'Trip deleted', 'tripDelete.offline': "You're offline. Deleting a trip needs a connection.",
+  'sheet.close': 'Close', 'account.signIn': 'Sign in', 'account.yours': "{{name}}'s account",
+  'demo.account': 'The account works as in sprint 2. In this prototype, sign in and out from the panel.', 'demo.signIn': 'Saving a trip needs you to sign in. In this prototype: "signed in" in the panel.',
+  'search.open': 'Search for a country', 'search.close': 'Close search', 'search.placeholder': 'Search for a country',
+  'diff.same': 'Same as Israel', 'diff.ahead': '{{a}} ahead of Israel', 'diff.behind': '{{a}} behind Israel', 'h1': '1 hour', 'h2': '2 hours', 'hn': '{{n}} hours', 'hh': 'half an hour', 'h1h': '1.5 hours', 'h2h': '2.5 hours', 'hnh': '{{n}}.5 hours',
+}};
+let lang = 'he';
+const t = (k, p = {}) => String(S[lang][k] ?? S.he[k] ?? k).replace(/\{\{(\w+)\}\}/g, (_, n) => p[n] ?? '');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ltr = s => `<bdi class="ltr">${esc(s)}</bdi>`;
+const auto = s => `<bdi class="auto">${esc(s)}</bdi>`;
+const cps = s => [...s].length; // code points, like Postgres char_length
+
+/* =================== icons =================== */
+const I = {
+  x: '<svg class="i s20" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
+  person: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.8 4-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg>',
+  people: '<svg class="i s16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.9-3.2 3-4.8 5.5-4.8s4.6 1.6 5.5 4.8"/><circle cx="16.5" cy="9.5" r="2.6"/><path d="M15.8 14.3c2.2.1 3.9 1.6 4.7 4.2"/></svg>',
+  suitcase: '<svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V5.8c0-.9.7-1.6 1.6-1.6h2.8c.9 0 1.6.7 1.6 1.6v1.7M3.5 12.5h17"/></svg>',
+  plus: '<svg class="i s20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  minus: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8 12h8"/></svg>',
+  minus20: '<svg class="i s20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8 12h8"/></svg>',
+  check16: '<svg class="i s16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  chevDown: '<svg class="i s20 chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+  back: '<svg class="i dir" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
+  arrowBack: '<svg class="i dir" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
+  pencil20: '<svg class="i s20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg>',
+  copy: '<svg class="i s20" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6A1.5 1.5 0 0 0 14 4.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/></svg>',
+  trash: '<svg class="i s20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.8h5V7M6.5 7l1 12.5h9l1-12.5M10 11v5M14 11v5"/></svg>',
+  cal: '<svg class="i s20" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>',
+  cloudOff: '<svg class="i s20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 18.5h9.8a3.7 3.7 0 0 0 .8-7.3A5.6 5.6 0 0 0 8 9.3a4.6 4.6 0 0 0-.5 9.2zM4 4l16 16"/></svg>',
+  info: '<svg class="i s20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/></svg>',
+  warn: '<svg class="i s16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 15.5H3L12 4z"/><path d="M12 10v4.5M12 17v.2"/></svg>',
+  city: '<svg class="i big" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 40h36M10 40V18l10-5v27M20 40V8l12 6v26M32 40V22l8 3v15M14 22h2M14 28h2M14 34h2M25 16h2M25 22h2M25 28h2M25 34h2"/></svg>',
+  globePlus: '<svg class="i big" viewBox="0 0 48 48" aria-hidden="true"><circle cx="22" cy="24" r="15"/><path d="M7 24h30M22 9c4.5 4.2 6.5 9.2 6.5 15S26.5 34.8 22 39c-4.5-4.2-6.5-9.2-6.5-15S17.5 13.2 22 9z"/></svg>',
+  cloudOffBig: '<svg class="i big" viewBox="0 0 48 48" aria-hidden="true"><path d="M15 37h20a7.5 7.5 0 0 0 1.6-14.8A11.3 11.3 0 0 0 16 18.5 9.3 9.3 0 0 0 15 37zM8 8l32 32"/></svg>',
+};
+
+/* =================== demo data (illustrative only) =================== */
+let TODAY = '2026-10-25';
+const C = [
+  ['THA','764','תאילנד','Thailand',15.5,101,'בנגקוק','Bangkok','Asia/Bangkok','באט תאילנדי','Thai baht','฿','THB'],
+  ['GRC','300','יוון','Greece',39,22,'אתונה','Athens','Europe/Athens','אירו','Euro','€','EUR'],
+  ['JPN','392','יפן','Japan',36.5,138,'טוקיו','Tokyo','Asia/Tokyo','ין יפני','Japanese yen','¥','JPY'],
+  ['ITA','380','איטליה','Italy',42.8,12.5,'רומא','Rome','Europe/Rome','אירו','Euro','€','EUR'],
+  ['MLT','470','מלטה','Malta',35.9,14.4,'ולטה','Valletta','Europe/Malta','אירו','Euro','€','EUR',1],
+  ['SGP','702','סינגפור','Singapore',1.35,103.8,'סינגפור','Singapore','Asia/Singapore','דולר סינגפורי','Singapore dollar','S$','SGD',1],
+  ['ISL','352','איסלנד','Iceland',65,-18,'רייקיאוויק','Reykjavik','Atlantic/Reykjavik','כתר איסלנדי','Icelandic króna','kr','ISK'],
+  ['EGY','818','מצרים','Egypt',26.5,30,'קהיר','Cairo','Africa/Cairo','לירה מצרית','Egyptian pound','E£','EGP'],
+  ['FLK','238','איי פוקלנד','Falkland Islands',-51.7,-59.5,'סטנלי','Stanley','Atlantic/Stanley','לירה של איי פוקלנד','Falkland Islands pound','£','FKP'],
+  ['ATA','010','אנטארקטיקה','Antarctica',-80,20,null,null,null,null,null,null,null],
+].map(r => ({ adm0: r[0], id: r[1], he: r[2], en: r[3], lat: r[4], lon: r[5], cityHe: r[6], cityEn: r[7], tz: r[8], curHe: r[9], curEn: r[10], sym: r[11], code: r[12], small: !!r[13] }));
+const byAdm0 = Object.fromEntries(C.map(c => [c.adm0, c]));
+const byId = Object.fromEntries(C.map(c => [c.id, c]));
+const cname = c => lang === 'he' ? c.he : c.en;
+
+// Monthly means (Jan..Dec), °C, one decimal. Demo values only.
+const K = {
+  bkk: [27.4,28.6,29.6,30.4,30.0,29.5,29.0,28.8,28.3,28.1,27.8,26.8],
+  ath: [10.2,10.8,13.0,16.4,21.2,26.0,28.8,28.6,24.6,20.0,15.4,11.8],
+  tyo: [5.4,6.1,9.4,14.3,18.8,21.9,25.7,26.9,23.3,18.0,12.5,7.7],
+  rom: [8.1,8.9,11.5,14.4,18.6,22.8,25.6,25.9,21.9,17.6,12.7,9.0],
+  vlt: [12.8,12.6,14.0,16.2,19.8,23.8,26.6,27.2,24.8,21.6,17.8,14.4],
+  sin: [26.6,27.2,27.7,28.1,28.5,28.5,28.1,28.0,27.8,27.7,27.0,26.5],
+  rey: [-0.4,0.0,0.4,3.0,6.6,9.4,11.2,10.8,7.8,4.6,1.4,-0.2],
+  cai: [14.2,15.4,18.0,21.8,25.4,27.6,28.4,28.4,26.6,24.2,19.6,15.6],
+  stn: [9.4,9.2,8.0,5.8,3.6,2.0,1.6,2.2,3.6,5.2,6.8,8.4],
+};
+const CITY_RAW = {
+  THA: [['בנגקוק','Bangkok',5104476,K.bkk],['נונתבורי','Nonthaburi',291555,[27.3,28.5,29.5,30.3,29.9,29.4,28.9,28.7,28.2,28.0,27.7,26.7]],[null,'Udon Thani',247231,[22.8,25.1,28.0,29.6,29.0,28.5,28.1,27.6,27.3,26.6,24.6,22.4]],
+        ['האט יאי','Hat Yai',191696,[26.8,27.4,28.0,28.5,28.3,28.0,27.7,27.6,27.3,26.9,26.5,26.4]],["צ'יאנג מאי",'Chiang Mai',127240,[21.5,23.6,26.6,28.8,28.4,27.6,27.1,26.7,26.6,25.9,24.0,21.8]],
+        ['פטאיה','Pattaya',119532,[27.3,28.3,29.1,29.6,29.4,29.0,28.7,28.6,28.1,27.9,27.6,26.9]],['פוקט','Phuket',89072,[27.6,28.1,28.6,28.9,28.5,28.3,28.0,28.0,27.6,27.4,27.3,27.2]],
+        ["צ'יאנג ראי",'Chiang Rai',78756,[19.8,22.0,25.1,27.6,27.6,27.3,26.8,26.5,26.1,25.0,22.6,19.9]],['הואה הין','Hua Hin',63000,[26.4,27.4,28.5,29.4,29.2,28.9,28.6,28.4,28.0,27.6,27.0,26.0]],
+        ['קו סמוי','Ko Samui',61300,[26.4,27.0,27.9,28.9,29.1,28.9,28.6,28.6,28.2,27.5,26.8,26.3]],[null,'Krabi',31219,[27.0,27.6,28.2,28.5,28.2,27.9,27.6,27.6,27.2,27.0,26.9,26.8]]],
+  GRC: [['אתונה','Athens',664046,K.ath],['סלוניקי','Thessaloniki',354290,[5.6,7.4,10.4,14.6,20.0,24.8,27.4,27.0,22.6,17.4,11.8,7.2]],['פטרס','Patras',167446,[10.0,10.6,12.6,15.6,20.0,24.4,27.0,27.2,23.4,19.2,14.8,11.4]],
+        [null,'Larissa',144651,[5.8,7.4,10.2,14.2,19.8,25.0,27.8,27.2,22.4,16.8,11.2,7.0]],['הרקליון','Heraklion',140730,[12.4,12.6,14.2,16.8,20.4,24.4,26.4,26.4,23.8,20.6,17.0,14.0]],['רודוס','Rhodes',53709,[12.6,12.8,14.4,17.2,21.0,25.0,27.4,27.8,25.2,21.6,17.4,14.2]]],
+  JPN: [['טוקיו','Tokyo',8336599,K.tyo],['יוקוהמה','Yokohama',3574443,[6.1,6.7,9.8,14.4,18.7,21.8,25.6,27.0,23.6,18.5,13.3,8.6]],['אוסקה','Osaka',2592413,[6.2,6.7,9.9,15.3,20.0,23.6,27.7,29.0,25.2,19.5,13.9,8.7]],
+        ['נגויה','Nagoya',2191279,[4.8,5.5,9.2,14.6,19.4,23.0,26.9,28.2,24.5,18.6,12.6,7.2]],['סאפורו','Sapporo',1883027,[-3.2,-2.7,1.1,7.3,13.0,17.0,21.1,22.3,18.6,12.1,5.2,-0.9]],['קיוטו','Kyoto',1459640,[4.8,5.4,8.8,14.4,19.5,23.3,27.3,28.5,24.4,18.4,12.5,7.2]],
+        ['פוקואוקה','Fukuoka',1392289,[6.9,7.8,10.8,15.4,19.9,23.3,27.4,28.4,24.7,19.6,14.2,9.1]],['הירושימה','Hiroshima',1143841,[5.4,6.2,9.4,14.9,19.6,23.3,27.3,28.5,24.8,18.8,12.9,7.6]],['נארה','Nara',367353,[4.0,4.6,8.2,13.8,18.6,22.4,26.4,27.4,23.4,17.2,11.4,6.4]]],
+  ITA: [['רומא','Rome',2318895,K.rom],['מילאנו','Milan',1236837,[3.4,5.6,10.0,13.8,18.4,22.4,24.8,24.4,19.8,14.6,8.8,4.2]],['נאפולי','Naples',909048,[9.2,9.6,12.0,14.8,19.0,23.2,25.8,26.2,22.6,18.6,13.8,10.4]],
+        ['טורינו','Turin',870456,[2.8,4.6,9.0,12.8,17.2,21.4,23.8,23.2,18.8,13.4,7.8,3.6]],['בולוניה','Bologna',366133,[3.0,5.0,9.6,13.8,18.6,23.2,25.6,25.2,20.4,14.8,8.8,4.0]],['פירנצה','Florence',349296,[6.6,7.8,11.0,14.2,18.6,23.0,25.8,25.6,21.2,16.2,10.8,7.0]],
+        ['ונציה','Venice',51298,[3.8,5.2,8.8,12.8,17.6,21.8,24.2,23.8,19.6,14.6,9.2,4.8]]],
+  MLT: [[null,'San Pawl il-Baħar',32042,[12.4,12.2,13.6,15.8,19.4,23.4,26.2,26.8,24.4,21.2,17.4,14.0]],[null,'Birkirkara',22247,[12.6,12.4,13.8,16.0,19.6,23.6,26.4,27.0,24.6,21.4,17.6,14.2]],
+        [null,'Mosta',19750,[12.4,12.2,13.6,15.8,19.4,23.4,26.2,26.8,24.4,21.2,17.4,14.0]],[null,'Qormi',16559,[12.6,12.4,13.8,16.0,19.6,23.6,26.4,27.0,24.6,21.4,17.6,14.2]]],
+  SGP: [['סינגפור','Singapore',5638700,K.sin]],
+  ISL: [['רייקיאוויק','Reykjavik',118918,K.rey],[null,'Kópavogur',37959,[-0.6,-0.2,0.2,2.8,6.4,9.2,11.0,10.6,7.6,4.4,1.2,-0.4]],[null,'Hafnarfjörður',29971,[-0.6,-0.2,0.2,2.8,6.4,9.2,11.0,10.6,7.6,4.4,1.2,-0.4]]],
+  EGY: [['קהיר','Cairo',9606916,K.cai],['גיזה','Giza',4367343,[14.0,15.2,17.8,21.6,25.2,27.4,28.2,28.2,26.4,24.0,19.4,15.4]],['אלכסנדריה','Alexandria',3811516,[13.6,14.2,16.0,18.8,22.0,25.0,26.6,27.2,25.8,23.4,19.4,15.4]],
+        ['לוקסור','Luxor',422407,[15.0,17.2,21.0,26.0,29.8,31.8,32.0,31.6,29.6,26.0,20.2,16.4]],["שארם א-שייח'",'Sharm el-Sheikh',73000,[17.8,18.4,20.8,24.6,28.2,30.4,31.4,31.6,29.8,27.2,23.0,19.4]]],
+  FLK: [], ATA: [],
+};
+const CITIES = {}; const cityById = {};
+for (const [a, rows] of Object.entries(CITY_RAW)) CITIES[a] = rows.map((r, i) => { const c = { gid: `${a}-${i}`, adm0: a, he: r[0], en: r[1], pop: r[2], clim: r[3] }; cityById[c.gid] = c; return c; });
+// Climate point per region (AC-10): city of the local time, else capital, else label point (no city name). ATA: no value.
+const REGION = {
+  THA: { city: ['בנגקוק', 'Bangkok'], clim: K.bkk }, GRC: { city: ['אתונה', 'Athens'], clim: K.ath }, JPN: { city: ['טוקיו', 'Tokyo'], clim: K.tyo },
+  ITA: { city: ['רומא', 'Rome'], clim: K.rom }, MLT: { city: ['ולטה', 'Valletta'], clim: K.vlt }, SGP: { city: ['סינגפור', 'Singapore'], clim: K.sin },
+  ISL: { city: ['רייקיאוויק', 'Reykjavik'], clim: K.rey }, EGY: { city: ['קהיר', 'Cairo'], clim: K.cai }, FLK: { city: ['סטנלי', 'Stanley'], clim: K.stn }, ATA: null,
+};
+const cg = (a, en) => { const c = CITIES[a].find(x => x.en === en); return { gid: c.gid, snap: c.he || c.en }; };
+const cf = text => ({ gid: null, snap: text });
+function demoTrips() { return [
+  { id: 't1', adm0: 'GRC', name: 'יוון אוקטובר 2026', start: '2026-10-20', end: '2026-10-30', notes: 'מעבורת לנקסוס ביום שלישי, 07:30 מפיראוס.', travelers: [{ name: 'דנה', rel: 'partner' }], cities: [cg('GRC', 'Athens'), cf('נקסוס'), cg('GRC', 'Athens')] },
+  { id: 't2', adm0: 'THA', name: 'תאילנד דצמבר 2026', start: '2026-12-20', end: '2027-01-05', notes: 'לבדוק חיסונים. מלון בקוסמוי מ-24.12.', travelers: [{ name: 'דנה', rel: 'partner' }, { name: 'נועם', rel: 'child' }, { name: 'מיכל', rel: 'child' }], cities: [cg('THA', 'Bangkok'), cg('THA', 'Chiang Mai'), cg('THA', 'Ko Samui'), cg('THA', 'Bangkok')] },
+  { id: 't3', adm0: 'JPN', name: 'סקי בהוקאידו', start: '2027-01-20', end: '2027-04-05', notes: '', travelers: [], cities: [cg('JPN', 'Sapporo'), cg('JPN', 'Tokyo')] },
+  { id: 't7', adm0: 'ISL', name: 'איסלנד בחורף', start: '2026-12-28', end: '2027-01-03', notes: '', travelers: [{ name: 'אבי', rel: 'friend' }], cities: [cg('ISL', 'Reykjavik')] },
+  { id: 't4', adm0: 'ITA', name: 'איטליה יוני 2026', start: '2026-06-02', end: '2026-06-09', notes: '', travelers: [{ name: 'אבי', rel: 'friend' }], cities: [cg('ITA', 'Rome'), cg('ITA', 'Florence')] },
+  { id: 't5', adm0: 'THA', name: 'ירח דבש', start: '2025-02-10', end: '2025-02-24', notes: '', travelers: [{ name: 'דנה', rel: 'partner' }], cities: [cg('THA', 'Phuket')] },
+  { id: 't6', adm0: 'MLT', name: 'מלטה אפריל 2025', start: '2025-04-14', end: '2025-04-18', notes: '', travelers: [], cities: [cf('Valletta')] },
+  { id: 't8', adm0: 'EGY', name: 'סיני ופירמידות', start: '2024-11-01', end: '2024-11-08', notes: '', travelers: [{ name: 'דנה', rel: 'partner' }, { name: 'אמא', rel: 'parent' }], cities: [cg('EGY', 'Cairo'), cg('EGY', 'Sharm el-Sheikh')] },
+]; }
+const RELS = ['partner', 'child', 'parent', 'friend', 'other'];
+
+/* =================== dates =================== */
+function uuid() { return (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Math.random().toString(36).slice(2)); }
+function parts(s) { const [y, m, d] = s.split('-').map(Number); return { y, m, d }; }
+function defaultNameIn(l, adm0, start) { const p = parts(start); return `${l === 'he' ? byAdm0[adm0].he : byAdm0[adm0].en} ${S[l].months[p.m - 1]} ${p.y}`; }
+const defaultName = (adm0, start) => defaultNameIn(lang, adm0, start);
+function mon(m) { return lang === 'he' ? S.he.months[m - 1] : S.en.monthsShort[m - 1]; }
+function fmtDate(s) { const p = parts(s); return t('date.single', { d: p.d, m: mon(p.m), y: p.y }); }
+function fmtRange(a, b) {
+  if (a === b) return fmtDate(a);
+  const p = parts(a), q = parts(b), pre = lang === 'he' ? 'ב' : '';
+  if (p.y === q.y && p.m === q.m) return `${p.d}–${q.d} ${pre}${mon(p.m)} ${p.y}`;
+  if (p.y === q.y) return `${p.d} ${pre}${mon(p.m)} – ${q.d} ${pre}${mon(q.m)} ${p.y}`;
+  return `${fmtDate(a)} – ${fmtDate(b)}`;
+}
+const rangeA11y = (a, b) => a === b ? fmtDate(a) : `${fmtDate(a)} ${t('date.to')} ${fmtDate(b)}`;
+const statusAt = (tr, day) => day < tr.start ? 'planned' : day > tr.end ? 'ended' : 'active';
+const status = tr => statusAt(tr, TODAY);
+const isUpcoming = tr => tr.end >= TODAY;
+const cmpUp = (a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : (a.id < b.id ? -1 : 1);
+const cmpPast = (a, b) => -cmpUp(a, b);
+function tripMonths(start, end) { const a = parts(start), b = parts(end), out = []; let y = a.y, m = a.m; while (y < b.y || (y === b.y && m <= b.m)) { out.push(m); m++; if (m > 12) { m = 1; y++; } } return out; }
+
+/* =================== temperature formatting (README section 2) =================== */
+const LRI = '⁦', PDI = '⁩', MINUS = '−';
+function roundT(x) { const r = Math.sign(x) * Math.round(Math.abs(x)); return r === 0 ? 0 : r; } // half away from zero; never -0
+function fmtT(n) { return LRI + (n < 0 ? MINUS + Math.abs(n) : String(n)) + '°' + PDI; }
+function fmtTRange(lo, hi) { return lo === hi ? fmtT(lo) : t(hi < 0 ? 'climate.rangeNegHigh' : 'climate.range', { low: fmtT(lo), high: fmtT(hi) }); }
+function tA11y(n) { const a = Math.abs(n); if (n < 0) return a === 1 ? t('temp.a11y.minusOne') : t('temp.a11y.minusMany', { n: a }); return a === 1 ? t('temp.a11y.one') : t('temp.a11y.many', { n: a }); }
+function tRangeA11y(lo, hi) { return lo === hi ? tA11y(lo) : t('climate.rangeA11y', { low: tA11y(lo), high: tA11y(hi) }); }
+
+/* =================== cities: names + search (README 5.3) =================== */
+const cityText = c => lang === 'he' ? (c.he || c.en) : c.en;
+const cityHtml = c => (lang === 'he' && !c.he) ? ltr(c.en) : esc(cityText(c));
+function tripCityText(x) { const c = x.gid && cityById[x.gid]; return c ? cityText(c) : x.snap; } // README 18 q2: name by id in current language, snapshot as fallback
+function tripCityHtml(x) { const c = x.gid && cityById[x.gid]; return c ? cityHtml(c) : auto(x.snap); }
+const SPECIAL = { 'ð': 'd', 'þ': 'th', 'æ': 'ae', 'ø': 'o', 'ß': 'ss', 'ł': 'l', 'đ': 'd', 'ı': 'i', 'ħ': 'h', 'œ': 'oe' };
+const FINALS = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
+function norm(s) {
+  return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[֑-ׇ]/g, '')
+    .replace(/[ðþæøßłđıħœ]/g, ch => SPECIAL[ch])
+    .replace(/[ךםןףץ]/g, ch => FINALS[ch])
+    .replace(/['’`׳"”״]/g, '')
+    .replace(/[-‐–\s]+/g, ' ').trim();
+}
+function searchCities(adm0, q) {
+  const list = CITIES[adm0] || [], nq = norm(q);
+  if (!nq) return list.slice().sort((a, b) => b.pop - a.pop).slice(0, 20);
+  const toks = nq.split(' '), out = [];
+  for (const c of list) {
+    let best = 9;
+    for (const k of [c.he, c.en].filter(Boolean).map(norm)) {
+      const words = k.split(' ');
+      if (!toks.every(tk => words.some(w => w.startsWith(tk)))) continue;
+      best = Math.min(best, k.startsWith(nq) ? 0 : 1);
+    }
+    if (best < 9) out.push([best, c]);
+  }
+  return out.sort((a, b) => a[0] - b[0] || b[1].pop - a[1].pop).slice(0, 30).map(x => x[1]);
+}
+const exactCity = (adm0, q) => (CITIES[adm0] || []).some(c => [c.he, c.en].filter(Boolean).some(n => norm(n) === norm(q)));
+
+/* =================== state =================== */
+const st = {
+  theme: 'light', fs: 1, reduce: false, online: true, signedIn: true, user: { name: 'יוסי לוי' },
+  trips: demoTrips(), hl: new Set(), hlLoaded: false,
+  selected: null, expanded: null, flashId: null, card: { status: 'idle', notice: null },
+  sheet: null, listSnap: null, form: null, cs: null, ts: null, picker: null, dialog: null,
+  searchOpen: false, q: '', climReady: true, citiesLoaded: false,
+  pinVisible: false, pinSeen: false, pinDrop: null, pinVariant: 'pulse',
+  launch: { touched: true, opened: false },
+};
+const $ = s => document.querySelector(s);
+const phone = $('#phone');
+const delay = ms => new Promise(r => setTimeout(r, ms));
+function say(text) { const d = document.createElement('div'); d.textContent = text; $('#srlog').prepend(d); }
+let toastTimer;
+function toast(text, ms = 3000) { const el = $('#toast'); el.textContent = text; el.classList.add('on'); say(text); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('on'), ms); }
+function markTouched() { if (!st.launch.touched) { st.launch.touched = true; } }
+
+/* =================== globe =================== */
+const cv = $('#globe'), ctx = cv.getContext('2d');
+let geo = null, centroids = {};
+const cam = { lon: 35, lat: 18, s: 170, cy: 430 };
+let anim = null, lastT = performance.now(), dragging = null, lastInteract = 0, pulseT0 = null;
+const alphaSel = {}; let tripLayer = 0;
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+(async () => {
+  try {
+    await loadScript('https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js');
+    const topo = await (await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')).json();
+    geo = topojson.feature(topo, topo.objects.countries).features;
+    geo.forEach(f => { centroids[f.id] = d3.geoCentroid(f); });
+  } catch (e) { geo = null; }
+})();
+const DESERT = new Set(['818','682','434','012','504','478','466','562','148','736','729','784','512','887','368','760','400','732']);
+function landColor(id) {
+  if (!st.online) return '#1F3A68';
+  if (DESERT.has(id)) return '#C29C69';
+  const c = centroids[id]; if (c && Math.abs(c[1]) > 62) return '#DEE5EB';
+  if (id === '352' || id === '304' || id === '010') return '#DEE5EB';
+  return '#2F4A28';
+}
+function project(lon, lat) {
+  const r = Math.PI / 180, l = (lon - cam.lon) * r, p = lat * r, p0 = cam.lat * r;
+  const cosc = Math.sin(p0) * Math.sin(p) + Math.cos(p0) * Math.cos(p) * Math.cos(l);
+  const x = cam.s * Math.cos(p) * Math.sin(l), y = cam.s * (Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(l));
+  return { x: 205.5 + x, y: cam.cy - y, vis: cosc > 0.05 };
+}
+function bez(x1, y1, x2, y2) { return x => { let lo = 0, hi = 1, tt = x; for (let i = 0; i < 24; i++) { tt = (lo + hi) / 2; const xx = 3 * (1 - tt) ** 2 * tt * x1 + 3 * (1 - tt) * tt ** 2 * x2 + tt ** 3; if (xx < x) lo = tt; else hi = tt; } return 3 * (1 - tt) ** 2 * tt * y1 + 3 * (1 - tt) * tt ** 2 * y2 + tt ** 3; }; }
+const easeFly = bez(0.65, 0, 0.35, 1);
+const easeMapbox = bez(0, 0, 0.25, 1); // assumed native style-transition curve (README 9.3, verify on device)
+function cardTopCy() {
+  if (!st.selected) return 430;
+  const h = $('#card').offsetHeight || 260; const top = 914 - 48 - 16 - h; return Math.max(200, (28 + 112 + top) / 2 + 10);
+}
+function flyTo(c) {
+  const target = c ? { lon: c.lon, lat: c.lat, s: c.small ? 1100 : c.adm0 === 'ATA' ? 260 : 520 } : { lon: cam.lon, lat: 18, s: 170 };
+  if (st.reduce) {
+    const v = $('#veil'); v.style.transition = 'opacity 150ms linear'; v.style.opacity = 1;
+    setTimeout(() => { Object.assign(cam, target); v.style.transition = 'opacity 250ms linear'; v.style.opacity = 0; }, 150);
+    anim = null; return;
+  }
+  let dl = target.lon - cam.lon; dl = ((dl + 540) % 360) - 180;
+  anim = { from: { lon: cam.lon, lat: cam.lat, s: cam.s }, to: { lon: cam.lon + dl, lat: target.lat, s: target.s }, t0: performance.now(), dur: c ? 1500 : 900 };
+}
+function stepAlpha(map, adm0, target, dt) { const cur = map[adm0] ?? 0; map[adm0] = st.reduce ? target : cur < target ? Math.min(target, cur + dt / 600) : Math.max(target, cur - dt / 600); return map[adm0]; }
+const globeIdle = () => !st.selected && !st.searchOpen && !st.sheet && !st.form && !st.cs && !st.ts;
+function frame(now) {
+  const dt = now - lastT; lastT = now;
+  if (anim) { const k = Math.min(1, (now - anim.t0) / anim.dur), e = easeFly(k); cam.lon = anim.from.lon + (anim.to.lon - anim.from.lon) * e; cam.lat = anim.from.lat + (anim.to.lat - anim.from.lat) * e; cam.s = anim.from.s + (anim.to.s - anim.from.s) * e; if (k >= 1) anim = null; }
+  else if (globeIdle() && !dragging && !st.reduce && now - lastInteract > 5000) cam.lon -= 3 * dt / 1000;
+  cam.cy += (cardTopCy() - cam.cy) * Math.min(1, dt / 200);
+  draw(dt, now); requestAnimationFrame(frame);
+}
+function draw(dt, now) {
+  ctx.setTransform(2, 0, 0, 2, 0, 0);
+  ctx.fillStyle = '#03060F'; ctx.fillRect(0, 0, 411, 914);
+  const cx = 205.5, cy = cam.cy, R = cam.s;
+  const g = ctx.createRadialGradient(cx, cy, R * 0.98, cx, cy, R * 1.12); g.addColorStop(0, 'rgba(159,208,255,.55)'); g.addColorStop(1, 'rgba(47,123,224,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.12, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0F366B'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  const trips = (st.signedIn && st.hlLoaded) ? st.hl : new Set();
+  tripLayer = trips.size ? (st.reduce ? 1 : Math.min(1, tripLayer + dt / 600)) : tripLayer;
+  const tA = {}, sA = {};
+  C.forEach(c => { tA[c.adm0] = (trips.has(c.adm0) && c.adm0 !== st.selected ? 1 : 0) * tripLayer; sA[c.adm0] = stepAlpha(alphaSel, c.adm0, c.adm0 === st.selected ? 1 : 0, dt); });
+  if (geo && window.d3) {
+    const proj = d3.geoOrthographic().scale(R).translate([cx, cy]).rotate([-cam.lon, -cam.lat]).clipAngle(90);
+    const path = d3.geoPath(proj, ctx);
+    for (const f of geo) { ctx.beginPath(); path(f); ctx.fillStyle = landColor(f.id); ctx.fill(); }
+    ctx.beginPath(); geo.forEach(f => path(f)); ctx.strokeStyle = 'rgba(243,246,252,0.42)'; ctx.lineWidth = 0.6; ctx.stroke();
+    for (const f of geo) { const c = byId[f.id]; if (!c) continue; drawHl(() => { ctx.beginPath(); path(f); }, tA[c.adm0], sA[c.adm0]); }
+  } else {
+    for (const c of C.filter(c => !c.small)) {
+      const p = project(c.lon, c.lat); if (!p.vis) continue; const r = R * Math.sin((c.adm0 === 'ATA' ? 14 : 5) * Math.PI / 180);
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = c.adm0 === 'EGY' ? '#C29C69' : (c.adm0 === 'ISL' || c.adm0 === 'ATA') ? '#DEE5EB' : (st.online ? '#2F4A28' : '#1F3A68'); ctx.fill();
+      ctx.strokeStyle = 'rgba(243,246,252,0.42)'; ctx.lineWidth = .6; ctx.stroke();
+      drawHl(() => { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); }, tA[c.adm0], sA[c.adm0]);
+    }
+  }
+  for (const c of C.filter(c => c.small)) {
+    const p = project(c.lon, c.lat); if (!p.vis) continue;
+    if (tA[c.adm0] > 0) ring(p, 7, '#4FCFBE', 2, tA[c.adm0]);
+    if (sA[c.adm0] > 0) ring(p, 10, '#F3F6FC', 2, sA[c.adm0]);
+  }
+  drawPin(now);
+}
+function drawHl(shape, ta, sa) {
+  if (ta > 0) { ctx.globalAlpha = ta; shape(); ctx.fillStyle = 'rgba(79,207,190,0.22)'; ctx.fill(); ctx.strokeStyle = 'rgba(3,6,15,0.7)'; ctx.lineWidth = 3.6; ctx.lineJoin = 'round'; ctx.stroke(); ctx.strokeStyle = '#4FCFBE'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.globalAlpha = 1; }
+  if (sa > 0) { ctx.globalAlpha = sa; shape(); ctx.fillStyle = 'rgba(255,122,87,0.3)'; ctx.fill(); ctx.save(); ctx.shadowColor = '#FF7A57'; ctx.shadowBlur = 6; ctx.strokeStyle = 'rgba(255,122,87,.55)'; ctx.lineWidth = 8; ctx.stroke(); ctx.restore(); ctx.strokeStyle = 'rgba(3,6,15,0.6)'; ctx.lineWidth = 3.2; ctx.stroke(); ctx.strokeStyle = '#F3F6FC'; ctx.lineWidth = 1.6; ctx.stroke(); ctx.globalAlpha = 1; }
+}
+function ring(p, r, color, w, a) {
+  ctx.globalAlpha = a * 0.7; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.strokeStyle = '#03060F'; ctx.lineWidth = 4; ctx.stroke();
+  ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke(); ctx.globalAlpha = 1;
+}
+
+/* =================== next-trip pin (README 9) =================== */
+// Same geometry as the PNG spec: 24x32 artboard, tip at the bottom (anchor), head centre ~20 above it.
+const PIN_PATH = new Path2D('M12 31 C10.2 27.4 3.5 19 3.5 11.5 A8.5 8.5 0 0 1 20.5 11.5 C20.5 19 13.8 27.4 12 31 Z');
+function pinTrip() { if (!st.signedIn || !st.pinVisible) return null; return st.trips.filter(isUpcoming).sort(cmpUp)[0] || null; }
+const pulseOn = () => st.pinVariant === 'pulse' && !st.reduce && st.pinDrop == null && globeIdle() && !document.hidden;
+function drawPin(now) {
+  const tr = pinTrip(); if (!tr) { pulseT0 = null; return; }
+  const c = byAdm0[tr.adm0], p = project(c.lon, c.lat); if (!p.vis) return; // far side: hidden, camera not moved
+  if (pulseOn()) {
+    if (pulseT0 == null) pulseT0 = now;
+    const ph = ((now - pulseT0) % 1600) / 1200; // 1200 expand + 400 rest = 0.625 Hz
+    if (ph <= 1) { const e = easeMapbox(ph); ctx.globalAlpha = 0.7 * (1 - e); ctx.beginPath(); ctx.arc(p.x, p.y, 7 + 13 * e, 0, Math.PI * 2); ctx.strokeStyle = '#4FCFBE'; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1; }
+  } else pulseT0 = null; // paused: the ripple disappears at once
+  let dy = 0, a = 1;
+  if (st.pinDrop != null) { const k = Math.min(1, (now - st.pinDrop) / 400), e = easeMapbox(k); dy = -12 * (1 - e); a = e; if (k >= 1) st.pinDrop = null; }
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(p.x - 12, p.y - 31 + dy);
+  ctx.fillStyle = '#4FCFBE'; ctx.fill(PIN_PATH); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.strokeStyle = '#03060F'; ctx.stroke(PIN_PATH);
+  ctx.beginPath(); ctx.arc(12, 11.5, 3.5, 0, Math.PI * 2); ctx.fillStyle = '#03060F'; ctx.fill(); ctx.restore();
+}
+function loadPinAndHighlights() {
+  if (!st.signedIn || !st.online) return;
+  st.hl = new Set(st.trips.map(x => x.adm0)); st.hlLoaded = true;
+  st.pinVisible = true;
+  if (!st.pinSeen) { st.pinSeen = true; st.pinDrop = st.reduce ? null : performance.now(); } // one-time drop-in per session
+}
+function pinHit(x, y) {
+  const tr = pinTrip(); if (!tr) return null; const c = byAdm0[tr.adm0], p = project(c.lon, c.lat);
+  return (p.vis && Math.hypot(x - p.x, y - p.y) <= 32) ? tr : null; // next-trip-hit: radius 32 around the tip, queried first
+}
+function hitTest(x, y) {
+  for (const c of C.filter(c => c.small)) { const p = project(c.lon, c.lat); if (p.vis && Math.hypot(p.x - x, p.y - y) < 22) return c; }
+  if (geo && window.d3) {
+    if (Math.hypot(x - 205.5, y - cam.cy) > cam.s) return null;
+    const proj = d3.geoOrthographic().scale(cam.s).translate([205.5, cam.cy]).rotate([-cam.lon, -cam.lat]).clipAngle(90);
+    const ll = proj.invert([x, y]); const f = ll && geo.find(f => d3.geoContains(f, ll));
+    if (!f) return null; return byId[f.id] || 'other';
+  }
+  let best = null, bd = 1e9;
+  for (const c of C.filter(c => !c.small)) { const p = project(c.lon, c.lat); if (!p.vis) continue; const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = c; } }
+  return bd < 40 ? best : null;
+}
+cv.addEventListener('pointerdown', e => { markTouched(); dragging = { x: e.offsetX, y: e.offsetY, lon: cam.lon, lat: cam.lat, moved: 0 }; cv.setPointerCapture(e.pointerId); anim = null; });
+cv.addEventListener('pointermove', e => { if (!dragging) return; const dx = e.offsetX - dragging.x, dy = e.offsetY - dragging.y; dragging.moved = Math.max(dragging.moved, Math.hypot(dx, dy)); const k = 90 / cam.s; cam.lon = dragging.lon - dx * k; cam.lat = Math.max(-80, Math.min(70, dragging.lat + dy * k)); });
+cv.addEventListener('pointerup', e => {
+  const d = dragging; dragging = null; lastInteract = performance.now(); if (!d || d.moved > 6) return;
+  const tr = pinHit(e.offsetX, e.offsetY);
+  if (tr) { openTripOnGlobe(tr); return; } // the pin wins over the country (AC-7)
+  const c = hitTest(e.offsetX, e.offsetY);
+  if (c === 'other') toast(t('globe.onlyDemo')); else if (c) selectCountry(c.adm0);
+});
+requestAnimationFrame(frame);
+function openTripOnGlobe(tr, auto) {
+  if (st.selected === tr.adm0 && !auto) { st.expanded = tr.id; renderCard(); say(t('trips.opened', { name: tr.name })); scrollToTrip(tr.id); return; }
+  selectCountry(tr.adm0, { expand: tr.id, auto });
+}
+
+/* =================== country card =================== */
+function selectCountry(adm0, opts = {}) {
+  if (st.searchOpen) closeSearch(true);
+  st.selected = adm0; st.expanded = opts.expand || null;
+  st.card.status = st.signedIn ? (st.online ? 'ready' : 'offline') : 'signedout'; st.card.notice = null;
+  renderCard(); $('#card').classList.add('open'); $('#card').setAttribute('aria-hidden', 'false');
+  renderChrome(); flyTo(byAdm0[adm0]); say(t('globe.selected', { name: cname(byAdm0[adm0]) }));
+  if (opts.expand) { const tr = st.trips.find(x => x.id === opts.expand); if (tr) { say(opts.auto ? t('activeTrip.opened', { name: tr.name }) : t('trips.opened', { name: tr.name })); scrollToTrip(tr.id); } }
+  setTimeout(() => { const h = document.querySelector('#card .c-name'); h && h.focus({ preventScroll: true }); }, 340);
+}
+function scrollToTrip(id) { setTimeout(() => { const el = document.querySelector(`[data-wrap="${id}"]`); el && el.scrollIntoView({ block: 'nearest', behavior: st.reduce ? 'auto' : 'smooth' }); }, 360); }
+function closeCard() {
+  st.selected = null; st.expanded = null; $('#card').classList.remove('open'); $('#card').setAttribute('aria-hidden', 'true');
+  renderChrome(); flyTo(null); say(t('globe.closed')); lastInteract = performance.now();
+}
+function cardTrips() { const mine = st.trips.filter(x => x.adm0 === st.selected); return { up: mine.filter(isUpcoming).sort(cmpUp), past: mine.filter(x => !isUpcoming(x)).sort(cmpPast) }; }
+function localTime(c) {
+  if (!c.tz) return null;
+  try {
+    const now = new Date();
+    const f = tz => { const p = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now); const o = Object.fromEntries(p.map(x => [x.type, x.value])); return { hm: `${o.hour}:${o.minute}`, mins: Date.UTC(+o.year, +o.month - 1, +o.day, +o.hour, +o.minute) / 60000 }; };
+    const a = f(c.tz), b = f('Asia/Jerusalem'); const diff = Math.round(a.mins - b.mins);
+    let txt; if (diff === 0) txt = t('diff.same'); else {
+      const h = Math.floor(Math.abs(diff) / 60), m = Math.abs(diff) % 60;
+      const amt = m === 0 ? (h === 1 ? t('h1') : h === 2 ? t('h2') : t('hn', { n: h })) : m === 30 ? (h === 0 ? t('hh') : h === 1 ? t('h1h') : h === 2 ? t('h2h') : t('hnh', { n: h })) : `${h}:${String(m).padStart(2, '0')}`;
+      txt = t(diff > 0 ? 'diff.ahead' : 'diff.behind', { a: amt });
+    }
+    return { hm: a.hm, txt };
+  } catch (e) { return null; }
+}
+function regionTempHtml(c) { // AC-10
+  const r = REGION[c.adm0]; if (!r) return ''; // no value: the field and "Sources" are hidden
+  if (!st.climReady) return `<div class="tfield" aria-hidden="true" style="gap:8px;padding-top:2px"><div class="skel" style="width:64px"></div><div class="skel" style="width:40px"></div></div>`;
+  const m = parts(TODAY).m, v = roundT(r.clim[m - 1]), city = r.city ? (lang === 'he' ? r.city[0] : r.city[1]) : null;
+  const label = t('climate.cardLabel', { month: S[lang].months[m - 1] });
+  const a11y = `${label}: ${tA11y(v)}${city ? ', ' + city : ''}`;
+  return `<div class="tfield"><div role="group" aria-label="${esc(a11y)}"><div class="lbl" aria-hidden="true">${label}</div><div class="tval" aria-hidden="true">${esc(fmtT(v))}</div>${city ? `<div class="sub" aria-hidden="true">${esc(city)}</div>` : ''}</div>
+    <button class="srcbtn" data-act="sources" aria-label="${t('sources.linkA11y')}">${t('sources.link')}</button></div>`;
+}
+function tripClimate(tr) { // AC-11: first city with a value, else the region's climate point, else hidden
+  for (const x of tr.cities) { const c = x.gid && cityById[x.gid]; if (c && c.clim) return { clim: c.clim, city: cityText(c), cityH: cityHtml(c) }; }
+  const r = REGION[tr.adm0]; if (r && r.clim) { const n = r.city ? (lang === 'he' ? r.city[0] : r.city[1]) : null; return { clim: r.clim, city: n, cityH: n ? esc(n) : null }; }
+  return null;
+}
+function tripTempHtml(tr) {
+  if (!st.climReady) return '';
+  const cp = tripClimate(tr); if (!cp) return '';
+  const ms = tripMonths(tr.start, tr.end), vals = ms.map(m => roundT(cp.clim[m - 1]));
+  let label, body, a11y;
+  if (ms.length === 1) { label = t('climate.cardLabel', { month: S[lang].months[ms[0] - 1] }); body = `<div class="tval">${esc(fmtT(vals[0]))}</div>`; a11y = `${label}: ${tA11y(vals[0])}`; }
+  else if (ms.length <= 3) { label = t('climate.tripLabel'); body = `<div class="mcols">${ms.map((m, i) => `<div><div class="sub">${S[lang].months[m - 1]}</div><div class="tval">${esc(fmtT(vals[i]))}</div></div>`).join('')}</div>`; a11y = `${label}: ${ms.map((m, i) => `${S[lang].months[m - 1]} ${tA11y(vals[i])}`).join(', ')}`; }
+  else { const lo = Math.min(...vals), hi = Math.max(...vals); label = t('climate.tripLabelRange'); body = `<div class="tval">${esc(fmtTRange(lo, hi))}</div>`; a11y = `${label}: ${tRangeA11y(lo, hi)}`; }
+  if (cp.city) a11y += `, ${cp.city}`;
+  return `<div class="ttrip" role="group" aria-label="${esc(a11y)}"><div class="lbl" aria-hidden="true">${label}</div><div aria-hidden="true">${body}${cp.cityH ? `<div class="sub">${cp.cityH}</div>` : ''}</div></div>`;
+}
+function tripRow(tr) {
+  const open = st.expanded === tr.id, s = status(tr), n = tr.travelers.length + 1, stxt = t('trips.status.' + s);
+  const label = [tr.name, rangeA11y(tr.start, tr.end), stxt].concat(n >= 2 ? [t('trips.travelers', { n })] : []).join(', ');
+  const cityList = tr.cities.map(tripCityText).join(', ');
+  return `<div class="trow-wrap ${open ? 'open' : ''} ${st.flashId === tr.id ? 'flash' : ''}" data-wrap="${tr.id}">${s === 'active' ? '<span class="active-bar"></span>' : ''}
+    <button class="trow" data-act="toggleTrip" data-id="${tr.id}" aria-expanded="${open}" aria-label="${esc(label)}">
+      <span class="tr-text" aria-hidden="true"><span class="tr-name">${esc(tr.name)}</span><span class="tr-dates">${fmtRange(tr.start, tr.end)}</span>
+        <span class="tr-meta"><span class="tag ${s}">${stxt}</span>${n >= 2 ? `<span class="count">${I.people}${t('trips.travelers', { n })}</span>` : ''}</span></span>
+      ${I.chevDown}
+    </button>
+    ${open ? `<div class="tr-more">
+      ${tr.cities.length ? `<div class="lbl" aria-hidden="true">${t('card.trips.cities')}</div><div class="tr-cities" role="text" aria-label="${esc(t('card.trips.citiesA11y', { list: cityList }))}"><span aria-hidden="true">${tr.cities.map(tripCityHtml).join(' · ')}</span></div>` : ''}
+      ${tripTempHtml(tr)}
+      ${tr.notes ? `<div class="lbl">${t('card.trips.notes')}</div><div class="tr-notes">${esc(tr.notes)}</div>` : ''}
+      ${st.card.notice && st.card.notice.id === tr.id ? `<div class="notice" role="status" style="margin-top:8px">${I.info}<span>${esc(st.card.notice.text)}</span></div>` : ''}
+      <div class="tr-actions"><button class="btn secondary" data-act="editTrip" data-id="${tr.id}">${I.pencil20}${t('card.trips.edit')}</button>
+        <button class="btn plain" data-act="dupTrip" data-id="${tr.id}">${I.copy}${t('card.trips.duplicate')}</button>
+        <button class="btn plain" data-act="askDelete" data-id="${tr.id}">${I.trash}${t('card.trips.delete')}</button></div>
+    </div>` : ''}
+  </div>`;
+}
+function renderCard() {
+  const c = byAdm0[st.selected]; if (!c) return;
+  const prev = $('#cpList') ? $('#cpList').scrollTop : 0;
+  const lt = localTime(c), s = st.card.status;
+  let coupon = '';
+  if (s === 'offline') coupon = `<div class="cp-line" role="status">${I.cloudOff}<span>${t('card.trips.offline')}</span></div>`;
+  else if (s === 'ready') {
+    const { up, past } = cardTrips();
+    if (up.length || past.length) { const both = up.length && past.length;
+      coupon = `<div class="lbl" role="heading" aria-level="3">${t('card.trips.title')}</div><div class="cp-list" id="cpList">${both ? `<div class="sec-lbl">${t('card.trips.upcoming')}</div>` : ''}${up.map(tripRow).join('')}${both ? `<div class="sec-lbl">${t('card.trips.past')}</div>` : ''}${past.map(tripRow).join('')}</div>`; }
+  }
+  const flap = c.adm0.split('').map(ch => `<span>${ch}</span>`).join('');
+  const fields = (lt ? `<div><div class="lbl">${t('card.localTimeIn', { city: lang === 'he' ? c.cityHe : c.cityEn })}</div><div class="clock">${ltr(lt.hm)}</div><div class="sub">${lt.txt}</div></div>` : '')
+    + (c.curHe ? `<div><div class="lbl">${t('card.currency')}</div><div class="val">${esc(lang === 'he' ? c.curHe : c.curEn)}</div><div class="sub">${ltr(c.sym + ' · ' + c.code)}</div></div>` : '')
+    + regionTempHtml(c);
+  $('#card').innerHTML = `<div class="bp" id="bp">
+    <div class="bp-top" id="bpTop">
+      <div class="c-main"><div class="strip"></div><div class="lbl">${t('card.destination')}</div>
+        <h2 class="c-name" tabindex="-1">${esc(cname(c))}</h2><div class="c-en">${ltr(c.en)}</div>
+        <div class="c-fields">${fields}</div>
+      </div>
+      <div class="c-stub"><div class="flap" aria-label="${c.adm0}">${flap}</div><svg class="barcode" viewBox="0 0 80 30" aria-hidden="true">${[0,3,5,9,12,14,18,21,23,27,30,32,36,39,41,45,48,50,54].map((x, i) => `<rect x="${x * 1.4}" y="0" width="${i % 3 ? 1.5 : 3}" height="30" fill="currentColor" opacity=".85"/>`).join('')}</svg></div>
+      <button class="close" data-act="closeCard" aria-label="${t('card.close')}">${I.x}</button>
+    </div>
+    <div class="coupon">${coupon}
+      <button class="btn cta" style="margin-top:${coupon ? 12 : 0}px;flex:none" data-act="newTrip" aria-label="${esc(t('card.trips.newA11y', { country: cname(c) }))}">${I.plus}${t('card.trips.new')}</button>
+    </div></div>`;
+  const bp = $('#bp'); bp.style.setProperty('--cy', $('#bpTop').offsetHeight + 'px');
+  bp.style.setProperty('--stubx', document.documentElement.dir === 'rtl' ? '108px' : 'calc(100% - 108px)');
+  if ($('#cpList')) $('#cpList').scrollTop = prev;
+}
+
+/* =================== chrome + country search (sprint 1, minimal) =================== */
+function renderChrome() {
+  $('#searchBtn').innerHTML = I.search; $('#searchBtn').setAttribute('aria-label', t('search.open'));
+  const a = $('#acctBtn');
+  if (st.signedIn) { a.innerHTML = `<span class="avatar">${esc([...st.user.name][0])}</span>`; a.setAttribute('aria-label', t('account.yours', { name: st.user.name })); }
+  else { a.innerHTML = I.person; a.setAttribute('aria-label', t('account.signIn')); }
+  a.classList.toggle('gone', st.searchOpen); $('#searchBtn').classList.toggle('gone', st.searchOpen);
+  const tb = $('#tripsBtn'); tb.innerHTML = `${I.suitcase}<span>${t('myTrips.button')}</span>`;
+  tb.classList.toggle('gone', !!(st.selected || st.searchOpen || st.sheet || st.form));
+  $('#offlinePill').hidden = st.online || st.searchOpen; $('#offlinePill').textContent = t('offline.pill');
+  const light = st.theme === 'light';
+  $('#statusbar').classList.toggle('dark', !!(light && (st.form || st.cs)));
+  $('#navbar').classList.toggle('dark', !!(light && (st.form || st.cs || st.sheet)));
+}
+function openSearch() { markTouched(); st.searchOpen = true; st.q = ''; renderSearch(); renderChrome(); $('#card').classList.remove('open'); setTimeout(() => $('#sq') && $('#sq').focus(), 50); }
+function closeSearch(silent) { st.searchOpen = false; $('#searchLayer').hidden = true; renderChrome(); if (!silent && st.selected) $('#card').classList.add('open'); }
+function renderSearch() {
+  const L = $('#searchLayer'); L.hidden = false;
+  const q = st.q.trim().toLowerCase();
+  const res = q ? C.filter(c => c.he.includes(st.q.trim()) || c.en.toLowerCase().includes(q) || c.adm0.toLowerCase().includes(q)) : [];
+  L.innerHTML = `<div class="search-scrim" data-act="closeSearch"></div><div class="sb"><button data-act="closeSearch" aria-label="${t('search.close')}">${I.arrowBack}</button><input id="sq" type="search" placeholder="${t('search.placeholder')}" value="${esc(st.q)}" autocomplete="off"></div>
+    ${res.length ? `<div class="results">${res.map(c => `<button class="row" data-act="pick" data-adm0="${c.adm0}"><span style="flex:1;text-align:start"><b style="font-weight:500">${esc(c.he)}</b><br><span class="sub">${ltr(c.en)}</span></span><span class="code">${c.adm0}</span></button>`).join('')}</div>` : ''}`;
+  const inp = $('#sq'); inp.addEventListener('input', () => { st.q = inp.value; const pos = inp.selectionStart; renderSearch(); const n = $('#sq'); n.focus(); n.setSelectionRange(pos, pos); });
+}
+
+/* =================== sheets: My trips, Sources =================== */
+function openSheet(kind) { st.sheet = kind; renderSheet(); $('#sheetScrim').classList.add('on'); $('#sheet').classList.add('open'); renderChrome(); setTimeout(() => { const h = $('#sheet h2'); h && h.focus(); }, 60); }
+function closeSheet() {
+  const was = st.sheet; st.sheet = null; $('#sheetScrim').classList.remove('on'); $('#sheet').classList.remove('open', 'trips'); renderChrome();
+  setTimeout(() => { if (!st.sheet) $('#sheet').innerHTML = ''; }, 220);
+  if (was === 'sources') { const b = document.querySelector('#card [data-act="sources"]'); b && b.focus(); }
+}
+function renderSheet() {
+  const el = $('#sheet'); el.classList.toggle('trips', st.sheet === 'trips');
+  const close = `<button class="x" data-act="closeSheet" aria-label="${t('sheet.close')}">${I.x}</button>`;
+  if (st.sheet === 'sources') { el.innerHTML = `<div class="handle"></div>${close}<h2 tabindex="-1">${t('sources.title')}</h2><p class="src">${esc(t('sources.cities'))}</p><p class="src">${esc(t('sources.climate'))}</p>`; return; }
+  if (st.sheet !== 'trips') return;
+  const L = st.listSnap; let body;
+  if (!L) body = `<div class="mt-state" role="status">${I.cloudOffBig}<h3>${t('myTrips.offline')}</h3><p>${t('myTrips.offlineBody')}</p></div>`;
+  else if (!L.up.length && !L.past.length) body = `<div class="mt-state">${I.globePlus}<h3>${t('myTrips.emptyTitle')}</h3><p>${t('myTrips.emptyBody')}</p></div>`;
+  else body = `<h3 class="mt-sec" role="heading">${t('myTrips.upcoming')}</h3>` + (L.up.length ? L.up.map(x => mrow(x, L.day)).join('') : `<div class="mt-none">${t('myTrips.upcomingNone')}</div>`)
+    + (L.past.length ? `<h3 class="mt-sec">${t('myTrips.past')}</h3>` + L.past.map(x => mrow(x, L.day)).join('') : '');
+  el.innerHTML = `<div class="mt-head"><div class="handle"></div>${close}<h2 tabindex="-1" style="margin-top:4px">${t('myTrips.title')}</h2></div><div class="mt-list">${body}</div>`;
+}
+function mrow(tr, day) {
+  const c = byAdm0[tr.adm0], s = statusAt(tr, day), n = tr.travelers.length + 1, stxt = t('trips.status.' + s);
+  const label = [tr.name, cname(c), rangeA11y(tr.start, tr.end), stxt].concat(n >= 2 ? [t('trips.travelers', { n })] : []).join(', ');
+  return `<button class="mrow" data-act="openTrip" data-id="${tr.id}" aria-label="${esc(label)}">${s === 'active' ? '<span class="active-bar"></span>' : ''}
+    <span class="tr-text" aria-hidden="true"><span class="cn">${esc(cname(c))}</span><span class="tr-name">${esc(tr.name)}</span><span class="tr-dates">${fmtRange(tr.start, tr.end)}</span>${n >= 2 ? `<span class="count" style="margin-top:2px">${I.people}${t('trips.travelers', { n })}</span>` : ''}</span>
+    <span class="side" aria-hidden="true"><span class="code">${c.adm0}</span><span class="tag ${s}">${stxt}</span></span></button>`;
+}
+function openMyTrips() {
+  markTouched();
+  if (!st.signedIn) { toast(t('demo.signIn')); return; }
+  // AC-6: an open list keeps the statuses of its own load; it refreshes on the next load.
+  st.listSnap = st.online ? { day: TODAY, up: st.trips.filter(isUpcoming).sort(cmpUp), past: st.trips.filter(x => !isUpcoming(x)).sort(cmpPast) } : null;
+  openSheet('trips'); if (st.listSnap) say(t('myTrips.loaded')); else say(t('myTrips.offline'));
+}
+
+/* =================== trip form (sprint 2 + travelers, cities, duplicate) =================== */
+const snapForm = f => JSON.stringify([f.start, f.end, f.name, f.notes, f.travelers, f.cities]);
+function newTrip() { if (!st.signedIn) { toast(t('demo.signIn')); return; } openForm('new', st.selected); }
+function openForm(mode, adm0, tr) {
+  const dup = mode === 'dup';
+  const f = { mode: dup ? 'new' : mode, adm0, id: mode === 'edit' ? tr.id : uuid(), dupOf: dup ? tr.name : null,
+    start: mode === 'edit' ? tr.start : null, end: mode === 'edit' ? tr.end : null,
+    name: tr ? tr.name : '', notes: tr ? tr.notes : '',
+    travelers: tr ? tr.travelers.map(x => ({ ...x })) : [], cities: tr ? tr.cities.map(x => ({ ...x })) : [],
+    errors: {}, attempted: false, saving: false, notice: null, flash: null };
+  if (mode === 'new') f.nameAuto = true;
+  else if (mode === 'edit') f.nameAuto = tr.name === defaultName(adm0, tr.start);
+  else { // AC-9: auto when the source name equals its own default name in Hebrew or English
+    f.nameAuto = tr.name === defaultNameIn('he', tr.adm0, tr.start) || tr.name === defaultNameIn('en', tr.adm0, tr.start);
+    if (f.nameAuto) f.name = '';
+  }
+  if (!st.online) f.notice = 'offline';
+  f.orig = snapForm(f);
+  st.form = f; renderForm(); $('#modal').classList.add('open'); renderChrome();
+  setTimeout(() => $('#modal h1').focus(), 60);
+}
+function closeForm() { st.form = null; $('#modal').classList.remove('open'); renderChrome(); const b = document.querySelector('#card [data-act="newTrip"]'); b && setTimeout(() => b.focus(), 220); }
+function validate(f) {
+  const e = {}; if (!f.start) e.start = 'departureRequired';
+  if (!f.end) e.end = 'returnRequired'; else if (f.start && f.end < f.start) e.end = 'returnBeforeDeparture';
+  const n = cps(f.name.trim()); if (n === 0) e.name = 'nameRequired'; else if (n > 80) e.name = 'nameTooLong';
+  if (cps(f.notes.trim()) > 2000) e.notes = 'notesTooLong'; return e;
+}
+const ferr = (f, k) => f.errors[k] ? `<div class="ferr">${I.warn}<span>${t('err.' + f.errors[k])}</span></div>` : '';
+function renderForm() {
+  const f = st.form; if (!f) return; const c = byAdm0[f.adm0], edit = f.mode === 'edit', lock = f.saving ? 'disabled' : '';
+  const keepScroll = $('#formScroll') ? $('#formScroll').scrollTop : 0;
+  const notices = [];
+  if (f.dupOf) notices.push(t('tripForm.duplicated', { name: f.dupOf }));
+  if (f.notice === 'offline') notices.push(t('tripForm.offline')); else if (f.notice === 'saveError') notices.push(t('tripForm.saveError'));
+  const dateBtn = k => { const v = f[k], lab = k === 'start' ? 'departure' : 'return';
+    return `<div class="field"><span class="flabel" aria-hidden="true">${t('tripForm.' + lab)}</span>
+      <button class="input datebtn ${f.errors[k] ? 'err' : ''}" data-act="pickDate" data-k="${k}" ${lock} aria-label="${esc(t(k === 'start' ? 'tripForm.departureA11y' : 'tripForm.returnA11y', { date: v ? fmtDate(v) : t('tripForm.notSet') }) + (f.errors[k] ? ', ' + t('err.prefix', { m: t('err.' + f.errors[k]) }) : ''))}">
+        <span class="${v ? '' : 'ph'}">${v ? fmtDate(v) : t('tripForm.pickDate')}</span>${I.cal}</button>${ferr(f, k)}</div>`; };
+  const cityRows = f.cities.map((x, i) => { const nm = tripCityText(x);
+    return `<div class="irow ${f.flash === 'c' + i ? 'flash' : ''}"><span class="idx" aria-hidden="true">${i + 1}</span>
+      <span class="iname" role="text" aria-label="${esc(t('tripForm.cityRowA11y', { n: i + 1, total: f.cities.length, city: nm }) + (x.gid ? '' : ', ' + t('tripForm.cityFree')))}"><span class="nm" aria-hidden="true">${tripCityHtml(x)}</span>${x.gid ? '' : `<span class="ifree" aria-hidden="true">${t('tripForm.cityFree')}</span>`}</span>
+      <button class="iconbtn" data-act="removeCity" data-i="${i}" ${lock} aria-label="${esc(t('tripForm.cityRemove', { city: nm }))}">${I.minus}</button></div>`; }).join('');
+  const cityAdd = f.cities.length >= 10 ? `<div class="limit" role="status">${t('tripForm.citiesMax')}</div>` : `<button class="add" id="addCityBtn" data-act="addCity" ${lock}>${I.plus}${t('tripForm.addCity')}</button>`;
+  const meRow = `<div class="irow"><span class="ini" aria-hidden="true">${I.person}</span><span class="iname" role="text" aria-label="${t('tripForm.meA11y')}"><span aria-hidden="true">${t('tripForm.me')}</span><span class="ifree t2" aria-hidden="true">${t('tripForm.meNote')}</span></span></div>`;
+  const tRows = f.travelers.map((x, i) => { const rel = x.rel ? t('traveler.rel.' + x.rel) : '';
+    return `<div class="irow ${f.flash === 't' + i ? 'flash' : ''}"><button class="tedit" data-act="editTraveler" data-i="${i}" ${lock} aria-label="${esc(x.name + (rel ? ', ' + rel : ''))}" aria-description="${t('tripForm.travelerHint')}">
+      <span class="ini" aria-hidden="true">${esc([...x.name][0] || '?')}</span><span class="iname" aria-hidden="true"><span class="nm">${auto(x.name)}</span>${rel ? `<span class="tag neutral">${rel}</span>` : ''}</span></button>
+      <button class="iconbtn" data-act="removeTraveler" data-i="${i}" ${lock} aria-label="${esc(t('tripForm.travelerRemove', { name: x.name }))}">${I.minus}</button></div>`; }).join('');
+  const tAdd = f.travelers.length >= 9 ? `<div class="limit" role="status">${t('tripForm.travelersMax')}</div>` : `<button class="add" id="addTravBtn" data-act="addTraveler" ${lock}>${I.plus}${t('tripForm.addTraveler')}</button>`;
+  const nl = cps(f.name), tl = cps(f.notes);
+  $('#modal').innerHTML = `<div class="bar"><h1 tabindex="-1">${t(edit ? 'tripForm.titleEdit' : 'tripForm.titleNew')}</h1><button class="x" style="position:static" data-act="formClose" aria-label="${t('tripForm.close')}">${I.x}</button></div>
+    <div class="scroll" id="formScroll">
+      ${notices.map(n => `<div class="notice" role="status">${I.info}<span>${esc(n)}</span></div>`).join('')}
+      <div class="dest" role="group" aria-label="${esc(t('tripForm.destinationA11y', { country: cname(c) }))}"><div style="flex:1;min-width:0" aria-hidden="true"><div class="lbl">${t('tripForm.destination')}</div><div class="dn">${esc(cname(c))}</div><div class="de">${ltr(c.en)}</div></div><span class="code" aria-hidden="true">${c.adm0}</span></div>
+      <div class="dates">${dateBtn('start')}${dateBtn('end')}</div>
+      <div class="field"><label for="fName">${t('tripForm.name')}</label>
+        <input id="fName" class="input ${f.errors.name ? 'err' : ''}" maxlength="160" value="${esc(f.name)}" placeholder="${t('tripForm.namePending')}" ${lock} aria-invalid="${!!f.errors.name}">
+        ${ferr(f, 'name')}<div class="meta"><span id="nameHelp">${f.nameAuto && f.start ? t('tripForm.nameAuto') : ''}</span><span class="cnt" id="nameCount">${nl >= 60 ? `${nl}/80` : ''}</span></div></div>
+      <section class="fsec" aria-labelledby="secCities"><div class="fsec-head"><h2 id="secCities">${t('tripForm.cities')}</h2><span class="hint">${t('tripForm.citiesHint')}</span></div>
+        <div class="lcard">${cityRows}${cityAdd}</div></section>
+      <section class="fsec" aria-labelledby="secTrav"><div class="fsec-head"><h2 id="secTrav">${t('tripForm.travelers')}</h2></div>
+        <div class="lcard">${meRow}${tRows}${tAdd}</div><p class="fine">${t('tripForm.travelersHint')}</p></section>
+      <div class="field"><label for="fNotes">${t('tripForm.notes')}</label>
+        <textarea id="fNotes" class="input ${f.errors.notes ? 'err' : ''}" maxlength="4000" placeholder="${t('tripForm.notesPlaceholder')}" ${lock}>${esc(f.notes)}</textarea>
+        ${ferr(f, 'notes')}<div class="meta"><span></span><span class="cnt" id="notesCount">${tl >= 1800 ? `${tl.toLocaleString('en-US')}/2,000` : ''}</span></div></div>
+      ${edit ? `<button class="btn plain" style="margin-top:24px" data-act="askDeleteForm" ${lock}>${I.trash}${t('tripForm.delete')}</button>` : ''}
+    </div>
+    <div class="foot"><button class="btn primary" data-act="saveForm" ${f.saving ? 'aria-busy="true"' : ''}>${f.saving ? `<span class="spinner"></span>${t('tripForm.saving')}` : t(edit ? 'tripForm.saveEdit' : 'tripForm.save')}</button></div>`;
+  $('#formScroll').scrollTop = keepScroll;
+  const nm = $('#fName'), nt = $('#fNotes');
+  nm.addEventListener('input', () => { f.name = nm.value; f.nameAuto = false; liveCheck(); const l = cps(f.name); $('#nameCount').textContent = l >= 60 ? `${l}/80` : ''; $('#nameHelp').textContent = ''; });
+  nm.addEventListener('blur', () => { if (!f.name.trim() && f.start) { f.nameAuto = true; f.name = defaultName(f.adm0, f.start); nm.value = f.name; $('#nameHelp').textContent = t('tripForm.nameAuto'); liveCheck(); } });
+  nt.addEventListener('input', () => { f.notes = nt.value; liveCheck(); const l = cps(f.notes); $('#notesCount').textContent = l >= 1800 ? `${l.toLocaleString('en-US')}/2,000` : ''; });
+}
+function liveCheck() {
+  const f = st.form; if (!f.attempted) return; const before = JSON.stringify(f.errors); f.errors = validate(f);
+  if (JSON.stringify(f.errors) !== before) { const a = document.activeElement && document.activeElement.id; const pos = document.activeElement && document.activeElement.selectionStart; renderForm(); if (a) { const el = document.getElementById(a); el && (el.focus(), pos != null && el.setSelectionRange && el.setSelectionRange(pos, pos)); } }
+}
+function flashRow(key) { const f = st.form; if (!f || st.reduce) return; f.flash = key; renderForm(); setTimeout(() => { if (st.form === f && f.flash === key) { f.flash = null; } }, 1300); }
+async function saveForm() {
+  const f = st.form; if (!f || f.saving) return;
+  f.attempted = true; f.errors = validate(f); if (f.notice === 'saveError') f.notice = null;
+  const keys = ['start', 'end', 'name', 'notes'].filter(k => f.errors[k]);
+  if (keys.length) {
+    renderForm(); say(keys.length === 1 ? t('err.summaryOne') : t('err.summaryMany', { n: keys.length }));
+    const first = keys[0], el = first === 'name' ? $('#fName') : first === 'notes' ? $('#fNotes') : document.querySelector(`[data-k="${first}"]`);
+    el.scrollIntoView({ block: 'center', behavior: st.reduce ? 'auto' : 'smooth' }); el.focus({ preventScroll: true }); return;
+  }
+  if (!st.online) { f.notice = 'offline'; renderForm(); say(t('tripForm.offline')); $('#formScroll').scrollTo({ top: 0 }); return; }
+  f.saving = true; renderForm(); say(t('tripForm.saving'));
+  await delay(800); if (st.form !== f) return;
+  if ($('#ckSaveFail').checked) { $('#ckSaveFail').checked = false; f.saving = false; f.notice = 'saveError'; renderForm(); say(t('tripForm.saveError')); return; }
+  // one RPC (save_trip): trip + travelers + cities; the city snapshot is the name shown at save time (AC-5)
+  const rec = { id: f.id, adm0: f.adm0, name: f.name.trim(), start: f.start, end: f.end, notes: f.notes.trim(), travelers: f.travelers.map(x => ({ ...x })), cities: f.cities.map(x => ({ gid: x.gid, snap: tripCityText(x) })) };
+  const i = st.trips.findIndex(x => x.id === f.id); if (i >= 0) st.trips[i] = rec; else st.trips.push(rec);
+  const wasEdit = f.mode === 'edit'; closeForm(); st.flashId = rec.id; st.expanded = null;
+  afterChange(); toast(t(wasEdit ? 'tripForm.updated' : 'tripForm.saved')); say(t('tripForm.savedA11y', { name: rec.name }));
+  scrollToTrip(rec.id); setTimeout(() => { st.flashId = null; }, 1300);
+}
+function afterChange() { // highlight + pin re-query; the pin moves instantly (README 9.4)
+  if (st.signedIn && st.online) { st.hl = new Set(st.trips.map(x => x.adm0)); st.hlLoaded = true; }
+  if (st.selected) renderCard();
+}
+function formBack() {
+  const f = st.form; if (!f || f.saving) return;
+  if (snapForm(f) === f.orig) { closeForm(); return; } // duplicate: the starting point is the copied form (README 8)
+  showDialog(t('tripForm.discardTitle'), t('tripForm.discardBody'), [[t('tripForm.discardCancel'), () => {}], [t('tripForm.discardConfirm'), () => closeForm()]]);
+}
+function removeCity(i) {
+  const f = st.form, x = f.cities[i], nm = tripCityText(x); f.cities.splice(i, 1); renderForm(); say(t('tripForm.cityRemoved', { city: nm }));
+  const btns = document.querySelectorAll('#modal [data-act="removeCity"]'); const next = btns[Math.min(i, btns.length - 1)] || $('#addCityBtn'); next && next.focus();
+}
+function removeTraveler(i) {
+  const f = st.form, x = f.travelers[i]; f.travelers.splice(i, 1); renderForm(); say(t('tripForm.travelerRemoved', { name: x.name }));
+  const btns = document.querySelectorAll('#modal [data-act="removeTraveler"]'); const next = btns[Math.min(i, btns.length - 1)] || $('#addTravBtn'); next && next.focus();
+}
+
+/* =================== traveler sheet (README 6.2) =================== */
+function openTSheet(i) {
+  const f = st.form, x = i == null ? null : f.travelers[i];
+  st.ts = { i, name: x ? x.name : '', rel: x ? x.rel : null, error: null, attempted: false };
+  renderTSheet(); $('#scrim2').classList.add('on'); $('#sheet2').classList.add('open'); renderChrome();
+  setTimeout(() => { const n = $('#tsName'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 80);
+}
+function closeTSheet(focusEl) {
+  const s = st.ts; st.ts = null; $('#scrim2').classList.remove('on'); $('#sheet2').classList.remove('open'); renderChrome();
+  setTimeout(() => { if (!st.ts) $('#sheet2').innerHTML = ''; }, 220);
+  const target = focusEl || (s && s.i != null ? document.querySelectorAll('#modal [data-act="editTraveler"]')[s.i] : $('#addTravBtn'));
+  target && target.focus();
+}
+function tsValidate(v) { const n = cps(v.trim()); return n === 0 ? 'traveler.required' : n > 40 ? 'traveler.tooLong' : null; }
+function renderTSheet() {
+  const s = st.ts; if (!s) return; const edit = s.i != null, len = cps(s.name);
+  $('#sheet2').innerHTML = `<div class="handle"></div><button class="x" data-act="tsClose" aria-label="${t('sheet.close')}">${I.x}</button>
+    <h2 tabindex="-1">${t(edit ? 'traveler.titleEdit' : 'traveler.titleNew')}</h2>
+    <div class="field" style="margin-top:8px"><label for="tsName">${t('traveler.name')}</label>
+      <input id="tsName" class="input ${s.error ? 'err' : ''}" maxlength="80" autocomplete="off" autocapitalize="words" spellcheck="false" value="${esc(s.name)}" aria-invalid="${!!s.error}">
+      ${s.error ? `<div class="ferr" role="alert">${I.warn}<span>${t(s.error)}</span></div>` : ''}
+      <div class="meta"><span></span><span class="cnt" id="tsCnt">${len >= 30 ? `${len}/40` : ''}</span></div></div>
+    <div class="field" style="margin-top:12px"><span class="flabel" id="relLbl">${t('traveler.relation')}</span>
+      <div class="chips" role="radiogroup" aria-labelledby="relLbl">${RELS.map(r => `<button class="chip" role="radio" aria-checked="${s.rel === r}" data-act="tsRel" data-r="${r}" ${s.rel === r ? `aria-description="${t('traveler.relationHint')}"` : ''}>${s.rel === r ? I.check16 : ''}${t('traveler.rel.' + r)}</button>`).join('')}</div></div>
+    <div style="margin-top:20px;display:flex;flex-direction:column;gap:4px">
+      <button class="btn primary" data-act="tsSave">${t(edit ? 'traveler.save' : 'traveler.add')}</button>
+      <button class="btn text" data-act="tsClose">${t('traveler.cancel')}</button>
+      ${edit ? `<button class="btn plain" data-act="tsRemove">${I.minus20}${t('traveler.remove')}</button>` : ''}</div>`;
+  const inp = $('#tsName');
+  inp.addEventListener('input', () => { s.name = inp.value; const l = cps(inp.value); $('#tsCnt').textContent = l >= 30 ? `${l}/40` : ''; if (s.attempted) { const e = tsValidate(s.name); if (e !== s.error) { s.error = e; const pos = inp.selectionStart; renderTSheet(); const n = $('#tsName'); n.focus(); n.setSelectionRange(pos, pos); } } });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') tsSave(); });
+}
+function tsSave() {
+  const s = st.ts, f = st.form; s.attempted = true; s.error = tsValidate(s.name);
+  if (s.error) { renderTSheet(); say(t(s.error)); $('#tsName').focus(); return; }
+  const rec = { name: s.name.trim(), rel: s.rel };
+  if (s.i == null) {
+    f.travelers.push(rec); const idx = f.travelers.length - 1; closeTSheet(); flashRow('t' + idx); renderForm(); say(t('tripForm.travelerAdded', { name: rec.name }));
+    const b = $('#addTravBtn') || document.querySelector('#modal .limit'); b && b.focus && b.focus();
+  } else {
+    const old = f.travelers[s.i]; const changed = old.name !== rec.name || old.rel !== rec.rel; const i = s.i;
+    f.travelers[i] = rec; closeTSheet(null); renderForm(); if (changed) say(t('tripForm.travelerUpdated'));
+    const b = document.querySelectorAll('#modal [data-act="editTraveler"]')[i]; b && b.focus();
+  }
+}
+
+/* =================== city search screen (README 5.2–5.4) =================== */
+let csAnnounce;
+function buildCity() {
+  const c = byAdm0[st.form.adm0];
+  $('#city').innerHTML = `<div class="sbar"><button class="iconbtn" style="color:var(--t1)" data-act="csBack" aria-label="${t('citySearch.back')}">${I.arrowBack}</button>
+    <input id="csq" type="search" placeholder="${t('citySearch.placeholder')}" value="${esc(st.cs.q)}" aria-label="${esc(t('citySearch.fieldA11y', { country: cname(c) }))}" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="search"></div>
+    <div class="cs-err" id="csErr"></div><div class="cs-body" id="csBody"></div>`;
+  const inp = $('#csq');
+  inp.addEventListener('input', () => { st.cs.q = inp.value; renderCityBody(); clearTimeout(csAnnounce); csAnnounce = setTimeout(announceCity, 600); });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+  renderCityBody();
+}
+function openCity() {
+  st.cs = { q: '' }; buildCity();
+  $('#city').classList.add('open'); renderChrome();
+  setTimeout(() => $('#csq') && $('#csq').focus(), 80);
+  if (!st.citiesLoaded) { st.cs.loading = 'pending'; setTimeout(() => { if (st.cs && st.cs.loading === 'pending') { st.cs.loading = 'skel'; renderCityBody(); say(t('citySearch.loading')); } }, 150);
+    setTimeout(() => { if (!st.cs) return; if ($('#ckCityFail').checked) { st.cs.loading = 'error'; say(t('citySearch.loadError')); } else { st.citiesLoaded = true; st.cs.loading = null; } renderCityBody(); }, 450); }
+  renderCityBody();
+}
+function closeCity(focusEl) {
+  st.cs = null; $('#city').classList.remove('open'); renderChrome(); clearTimeout(csAnnounce);
+  const b = focusEl || $('#addCityBtn') || document.querySelector('#modal .limit'); b && b.focus && b.focus();
+}
+function announceCity() {
+  if (!st.cs || !st.cs.q.trim() || st.cs.loading) return; const n = searchCities(st.form.adm0, st.cs.q).length;
+  say(n === 0 ? t('citySearch.resultsNone') : n === 1 ? t('citySearch.resultsOne') : t('citySearch.resultsMany', { n }));
+}
+function renderCityBody() {
+  const s = st.cs; if (!s) return; const f = st.form, c = byAdm0[f.adm0], q = s.q.trim(), list = CITIES[f.adm0] || [];
+  const tooLong = cps(q) > 60;
+  $('#csErr').innerHTML = tooLong ? `<div class="ferr" role="alert" style="margin:0 8px 8px">${I.warn}<span>${t('citySearch.tooLong')}</span></div>` : '';
+  $('#csq').classList.toggle('err', tooLong);
+  const freeRow = (q && !tooLong && (s.loading === 'error' || !exactCity(f.adm0, q))) ? `<button class="row cs-row cs-free" data-act="addFree">${I.plus}<span class="rtext"><span class="rname">${esc(t('citySearch.addAsWritten', { q }))}</span><span class="ren" style="white-space:normal">${t('citySearch.addAsWrittenNote')}</span></span></button>` : '';
+  let html = '';
+  if (s.loading === 'skel') html = [1, 2, 3, 4].map(() => `<div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px" aria-hidden="true"><div class="skel" style="width:45%"></div><div class="skel" style="width:30%"></div></div>`).join('');
+  else if (s.loading === 'pending') html = '';
+  else if (s.loading === 'error') html = `<div style="padding:8px 16px 0"><div class="notice" role="status">${I.info}<span>${t('citySearch.loadError')}</span></div></div>${freeRow}`;
+  else if (!list.length) html = `<div class="mt-state">${I.city}<h3>${t('citySearch.noCitiesTitle')}</h3><p>${t('citySearch.noCitiesBody')}</p></div>${freeRow}`;
+  else {
+    const res = searchCities(f.adm0, q), inTrip = new Set(f.cities.map(x => x.gid).filter(Boolean));
+    const rows = res.map(x => { const already = inTrip.has(x.gid), a11y = [cityText(x)].concat(lang === 'he' && x.he ? [x.en] : []).concat(already ? [t('citySearch.already')] : []).join(', ');
+      return `<button class="row cs-row" data-act="pickCity" data-gid="${x.gid}" aria-label="${esc(a11y)}" aria-description="${t('citySearch.rowHint')}"><span class="rtext" aria-hidden="true"><span class="rname">${cityHtml(x)}</span>${lang === 'he' && x.he ? `<span class="ren">${ltr(x.en)}</span>` : ''}</span>${already ? `<span class="tag neutral" aria-hidden="true">${t('citySearch.already')}</span>` : ''}</button>`; }).join('');
+    html = (!q ? `<h2 class="cs-hd">${t('citySearch.largest')}</h2>` : '') + (q && !res.length ? `<p class="cs-msg" role="status">${esc(t('citySearch.noResults', { q, country: cname(c) }))}</p>` : '') + rows + freeRow;
+  }
+  $('#csBody').innerHTML = html;
+}
+function pickCity(gid) {
+  const f = st.form, c = cityById[gid]; f.cities.push({ gid, snap: c.he || c.en }); const i = f.cities.length - 1;
+  closeCity(); flashRow('c' + i); renderForm(); say(t('tripForm.cityAdded', { city: cityText(c) }));
+  const b = $('#addCityBtn') || document.querySelector('#modal .limit'); b && b.focus && b.focus();
+}
+function addFree() {
+  const f = st.form, q = st.cs.q.trim(); f.cities.push({ gid: null, snap: q }); const i = f.cities.length - 1;
+  closeCity(); flashRow('c' + i); renderForm(); say(t('tripForm.cityAdded', { city: q }));
+  const b = $('#addCityBtn') || document.querySelector('#modal .limit'); b && b.focus && b.focus();
+}
+
+/* =================== date picker (Material 3 drawing; the real one is the system picker, sprint 2 README 4) =================== */
+function openPicker(k) { const f = st.form; const init = f[k] || (k === 'end' && f.start) || TODAY; const p = parts(init); st.picker = { k, y: p.y, m: p.m, sel: f[k] || null, min: k === 'end' ? f.start : null }; renderPicker(); }
+function renderPicker() {
+  const pk = st.picker; if (!pk) { $('#sys').innerHTML = ''; return; }
+  const first = new Date(pk.y, pk.m - 1, 1).getDay(), days = new Date(pk.y, pk.m, 0).getDate(), cells = [];
+  for (let i = 0; i < first; i++) cells.push('<span></span>');
+  for (let d = 1; d <= days; d++) { const s = `${pk.y}-${String(pk.m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; const dis = pk.min && s < pk.min;
+    cells.push(`<button class="${s === pk.sel ? 'sel' : ''}" data-act="pkDay" data-d="${s}" ${dis ? 'disabled' : ''} aria-label="${fmtDate(s)}" aria-pressed="${s === pk.sel}">${d}</button>`); }
+  const ttl = t(pk.k === 'start' ? 'datePicker.titleDeparture' : 'datePicker.titleReturn');
+  $('#sys').innerHTML = `<div class="dlg-scrim" data-act="pkCancel"></div><div class="picker" role="dialog" aria-modal="true" aria-label="${ttl}">
+    <div class="pk-head"><div class="sup">${ttl}</div><div class="hl">${pk.sel ? fmtDate(pk.sel) : '—'}</div></div>
+    <div class="pk-nav"><span class="mon">${S[lang].months[pk.m - 1]} ${pk.y}</span><span style="display:flex"><button data-act="pkPrev" aria-label="${t('datePicker.prev')}">${I.back}</button><button data-act="pkNext" aria-label="${t('datePicker.next')}"><svg class="i dir" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></span></div>
+    <div class="pk-grid">${S[lang].wd.map(w => `<span class="wd" aria-hidden="true">${w}</span>`).join('')}${cells.join('')}</div>
+    <div class="pk-acts"><button data-act="pkCancel">${t('datePicker.cancel')}</button><button data-act="pkOk">${t('datePicker.ok')}</button></div></div>`;
+}
+function pickerOk() {
+  const pk = st.picker, f = st.form; st.picker = null; renderPicker(); if (!pk.sel) return;
+  if (pk.k === 'start') { f.start = pk.sel; if (f.end && f.end < f.start) f.end = null; if (f.nameAuto) f.name = defaultName(f.adm0, f.start); if (f.attempted) f.errors = validate(f); renderForm(); if (!f.end) setTimeout(() => openPicker('end'), 200); }
+  else { f.end = pk.sel; if (f.attempted) f.errors = validate(f); renderForm(); }
+  const b = document.querySelector(`[data-k="${pk.k}"]`); b && b.focus();
+}
+
+/* =================== delete trip (sprint 2, abridged) =================== */
+function askDelete(id, fromForm) { const tr = st.trips.find(x => x.id === id); if (!tr) return; showDialog(t('tripDelete.title'), t('tripDelete.body', { name: tr.name }), [[t('tripDelete.cancel'), () => {}], [t('tripDelete.confirm'), () => doDelete(id, fromForm)]]); }
+async function doDelete(id, fromForm) {
+  if (!st.online) { if (fromForm) { toast(t('tripDelete.offline')); } else { st.card.notice = { id, text: t('tripDelete.offline') }; renderCard(); say(t('tripDelete.offline')); } return; }
+  await delay(500); st.trips = st.trips.filter(x => x.id !== id); st.expanded = null; if (fromForm) closeForm();
+  afterChange(); toast(t('tripDelete.done'));
+}
+
+/* =================== system alert dialog =================== */
+function showDialog(title, body, actions) {
+  st.dialog = { actions };
+  $('#sys').innerHTML = `<div class="dlg-scrim"></div><div class="alert" role="alertdialog" aria-modal="true" aria-labelledby="dlgT"><h3 id="dlgT">${esc(title)}</h3><p>${esc(body)}</p><div class="acts">${actions.map((a, i) => `<button data-act="dlg" data-i="${i}">${esc(a[0])}</button>`).join('')}</div></div>`;
+  setTimeout(() => document.querySelector('.alert button:last-child').focus(), 30);
+}
+function closeDialog(i) { const d = st.dialog; st.dialog = null; $('#sys').innerHTML = ''; if (d && i != null) d.actions[i][1](); }
+
+/* =================== back (README 11) =================== */
+function back() {
+  if (st.dialog) return closeDialog(0);
+  if (st.picker) { st.picker = null; return renderPicker(); }
+  if (st.ts) return closeTSheet();
+  if (st.cs) return closeCity();
+  if (st.form) return formBack();
+  if (st.sheet) return closeSheet();
+  if (st.searchOpen) return closeSearch();
+  if (st.selected) return closeCard();
+}
+
+/* =================== actions =================== */
+const A = {
+  openSearch, closeSearch: () => closeSearch(), pick: el => selectCountry(el.dataset.adm0), myTrips: openMyTrips,
+  account: () => { markTouched(); toast(t('demo.account')); },
+  closeCard, newTrip, sources: () => openSheet('sources'),
+  toggleTrip: el => { const id = el.dataset.id; st.expanded = st.expanded === id ? null : id; st.card.notice = null; renderCard(); const b = document.querySelector(`.trow[data-id="${id}"]`); b && b.focus(); },
+  editTrip: el => { const tr = st.trips.find(x => x.id === el.dataset.id); tr && openForm('edit', tr.adm0, tr); },
+  dupTrip: el => { const tr = st.trips.find(x => x.id === el.dataset.id); tr && openForm('dup', tr.adm0, tr); },
+  askDelete: el => askDelete(el.dataset.id, false), askDeleteForm: () => askDelete(st.form.id, true),
+  scrim: () => { if (st.sheet) closeSheet(); }, closeSheet,
+  openTrip: el => { const tr = st.trips.find(x => x.id === el.dataset.id); if (!tr) return; closeSheet(); setTimeout(() => openTripOnGlobe(tr), 0); },
+  formClose: () => formBack(), saveForm, pickDate: el => openPicker(el.dataset.k),
+  pkPrev: () => { const p = st.picker; p.m--; if (p.m < 1) { p.m = 12; p.y--; } renderPicker(); }, pkNext: () => { const p = st.picker; p.m++; if (p.m > 12) { p.m = 1; p.y++; } renderPicker(); },
+  pkDay: el => { st.picker.sel = el.dataset.d; renderPicker(); const b = document.querySelector(`.pk-grid [data-d="${el.dataset.d}"]`); b && b.focus(); },
+  pkCancel: () => { const k = st.picker.k; st.picker = null; renderPicker(); const b = document.querySelector(`[data-k="${k}"]`); b && b.focus(); }, pkOk: pickerOk,
+  dlg: el => closeDialog(+el.dataset.i),
+  addCity: () => openCity(), removeCity: el => removeCity(+el.dataset.i), csBack: () => closeCity(), pickCity: el => pickCity(el.dataset.gid), addFree,
+  addTraveler: () => openTSheet(null), editTraveler: el => openTSheet(+el.dataset.i), removeTraveler: el => removeTraveler(+el.dataset.i),
+  tsClose: () => closeTSheet(), tsSave,
+  tsRel: el => { const s = st.ts, r = el.dataset.r; s.rel = s.rel === r ? null : r; renderTSheet(); const b = document.querySelector(`#sheet2 [data-r="${r}"]`); b && b.focus(); },
+  tsRemove: () => { const i = st.ts.i; closeTSheet($('#addTravBtn')); removeTraveler(i); },
+  back,
+};
+document.addEventListener('click', e => { const el = e.target.closest('[data-act]'); if (!el || !phone.contains(el)) return; if (el.disabled) return; const f = A[el.dataset.act]; f && f(el, e); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); back(); } });
+
+/* =================== cold start (AC-8) =================== */
+let launchId = 0;
+async function coldStart() {
+  const id = ++launchId;
+  resetLayers(); if (st.selected) { st.selected = null; st.expanded = null; $('#card').classList.remove('open'); }
+  Object.assign(cam, { lon: 35, lat: 18, s: 170 }); anim = null;
+  st.launch = { touched: false, opened: false }; st.pinVisible = false; st.pinSeen = false; st.pinDrop = null; st.hlLoaded = false; tripLayer = 0;
+  st.climReady = false; renderChrome(); say('[מערכת] הפעלה קרה');
+  await delay(600); if (id !== launchId) return;
+  say('[perf] globe-ready');
+  setTimeout(() => { if (id !== launchId) return; st.climReady = true; if (st.selected) renderCard(); }, $('#ckClimSlow').checked ? 2500 : 300);
+  const arrive = +$('#arrive').value;
+  if ($('#ckTouch').checked) setTimeout(() => { if (id === launchId) { markTouched(); lastInteract = performance.now(); say('[מערכת] המשתמש נגע בגלובוס'); } }, Math.min(400, arrive / 2));
+  await delay(arrive); if (id !== launchId) return;
+  loadPinAndHighlights();
+  const tr = pinTrip();
+  const why = !st.signedIn ? 'לא מחובר' : !st.online ? 'בלי רשת' : $('#ckConsent').checked ? 'ההסכמה לא עדכנית' : arrive > 3000 ? 'הנתונים הגיעו אחרי 3 שניות' : st.launch.touched ? 'המשתמש כבר נגע' : !tr ? 'אין נסיעה קרובה' : status(tr) !== 'active' ? 'הנסיעה הקרובה לא פעילה היום' : (st.searchOpen || st.sheet || st.form) ? 'משהו אחר פתוח' : null;
+  if (why) { say(`[מערכת] בלי פתיחה אוטומטית: ${why}`); return; }
+  st.launch.opened = true; openTripOnGlobe(tr, true);
+}
+
+/* =================== panel =================== */
+function syncPanel() {
+  document.querySelectorAll('.panel [data-p]').forEach(b => {
+    const p = b.dataset.p, v = b.dataset.v;
+    const cur = p === 'theme' ? st.theme : p === 'lang' ? lang : p === 'fs' ? String(st.fs) : p === 'reduce' ? (st.reduce ? '1' : '') : p === 'signed' ? (st.signedIn ? '1' : '0') : (st.online ? '1' : '0');
+    b.setAttribute('aria-pressed', String(cur === v));
+  });
+}
+function rerenderAll() { renderChrome(); if (st.selected) renderCard(); if (st.sheet) renderSheet(); if (st.form) renderForm(); if (st.cs) buildCity(); if (st.ts) renderTSheet(); if (st.picker) renderPicker(); if (st.searchOpen) renderSearch(); renderLabs(); }
+function signOut() { // AC-7/AC-8 sprint 2: pin + highlight removed at once, no fade
+  st.signedIn = false; st.hl = new Set(); st.hlLoaded = false; tripLayer = 0; st.pinVisible = false; st.pinDrop = null;
+  if (st.ts) closeTSheet(); if (st.cs) closeCity(); if (st.form) closeForm(); if (st.sheet) closeSheet();
+  if (st.selected) { st.card.status = 'signedout'; renderCard(); }
+}
+document.querySelectorAll('.panel [data-p]').forEach(b => b.addEventListener('click', () => {
+  const p = b.dataset.p, v = b.dataset.v, R = document.documentElement;
+  if (p === 'theme') { st.theme = v; R.dataset.theme = v; }
+  if (p === 'lang') { lang = v; R.lang = v; R.dir = v === 'he' ? 'rtl' : 'ltr'; }
+  if (p === 'fs') { st.fs = +v; R.style.setProperty('--fs', v); }
+  if (p === 'reduce') { st.reduce = !st.reduce; if (st.reduce) R.setAttribute('data-reduce', ''); else R.removeAttribute('data-reduce'); }
+  if (p === 'signed') { if (v === '1' && !st.signedIn) { st.signedIn = true; loadPinAndHighlights(); if (st.selected) { st.card.status = st.online ? 'ready' : 'offline'; } } else if (v === '0' && st.signedIn) signOut(); }
+  if (p === 'online') {
+    const was = st.online; st.online = v === '1';
+    if (st.online && !was) { if (!st.pinVisible) loadPinAndHighlights(); if (st.selected && st.card.status === 'offline') st.card.status = 'ready'; if (st.form && st.form.notice === 'offline') st.form.notice = null; }
+    if (!st.online && st.form && !st.form.notice) st.form.notice = 'offline';
+  }
+  syncPanel(); rerenderAll();
+}));
+$('#today').addEventListener('change', e => { // AC-6: one "day changed" event; the open My trips list waits for its next load
+  TODAY = e.target.value; say(`[מערכת] התאריך במכשיר התחלף ל-${TODAY}`);
+  if (st.selected) renderCard();
+});
+$('#pinVariant').addEventListener('change', e => { st.pinVariant = e.target.value; });
+$('#coldBtn').addEventListener('click', coldStart);
+function resetLayers() { st.dialog = null; st.picker = null; $('#sys').innerHTML = ''; if (st.ts) closeTSheet(); if (st.cs) closeCity(); if (st.form) closeForm(); if (st.sheet) closeSheet(); if (st.searchOpen) closeSearch(true); }
+function ensureSignedIn() { if (!st.signedIn) { st.signedIn = true; syncPanel(); loadPinAndHighlights(); renderChrome(); } if (!st.pinVisible) loadPinAndHighlights(); st.climReady = true; }
+function cardWith(adm0, tripId) { resetLayers(); ensureSignedIn(); st.launch.touched = true; selectCountry(adm0, tripId ? { expand: tripId } : {}); }
+const J = {
+  cardTHA: () => cardWith('THA', 't2'), cardGRC: () => cardWith('GRC', 't1'), cardJPN: () => cardWith('JPN', 't3'), cardISL: () => cardWith('ISL', 't7'),
+  cardMLT: () => cardWith('MLT', 't6'), cardFLK: () => cardWith('FLK'), cardATA: () => cardWith('ATA'),
+  sources: () => { cardWith('THA'); setTimeout(() => openSheet('sources'), 400); },
+  form: () => { cardWith('THA'); setTimeout(() => openForm('new', 'THA'), 350); },
+  edit: () => { const tr = st.trips.find(x => x.id === 't2'); if (!tr) return say('הנסיעה נמחקה בהדמיה. רעננו את הדף.'); cardWith('THA', 't2'); setTimeout(() => openForm('edit', 'THA', tr), 400); },
+  traveler: () => { J.edit(); setTimeout(() => st.form && openTSheet(0), 800); },
+  city: () => { J.edit(); setTimeout(() => st.form && openCity(), 800); },
+  cityFLK: () => { cardWith('FLK'); setTimeout(() => { openForm('new', 'FLK'); setTimeout(openCity, 400); }, 350); },
+  limits: () => { cardWith('THA'); setTimeout(() => { openForm('new', 'THA'); const f = st.form;
+    f.travelers = ['דנה', 'נועם', 'מיכל', 'אבי', 'רותם', 'עומר', 'שירה', 'Lior', 'אמא'].map((n, i) => ({ name: n, rel: ['partner', 'child', 'child', 'friend', 'friend', 'friend', 'other', 'friend', 'parent'][i] }));
+    f.cities = ['Bangkok', 'Chiang Mai', 'Chiang Rai', 'Bangkok', 'Krabi', 'Phuket', 'Ko Samui', 'Hua Hin', 'Pattaya', 'Bangkok'].map(n => cg('THA', n));
+    f.orig = snapForm(f); renderForm(); $('#formScroll').scrollTo({ top: 360 }); }, 350); },
+  dupAuto: () => { const tr = st.trips.find(x => x.id === 't2'); if (!tr) return; cardWith('THA', 't2'); setTimeout(() => openForm('dup', 'THA', tr), 400); },
+  dupManual: () => { const tr = st.trips.find(x => x.id === 't5'); if (!tr) return; cardWith('THA', 't5'); setTimeout(() => openForm('dup', 'THA', tr), 400); },
+  list: () => { resetLayers(); ensureSignedIn(); if (st.selected) closeCard(); openMyTrips(); },
+};
+document.querySelectorAll('.panel [data-j]').forEach(b => b.addEventListener('click', () => J[b.dataset.j]()));
+
+/* =================== labs: formatter + pin contrast =================== */
+function lum(hex) { const v = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; }
+function cr(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function blend(fg, bg, a) { const f = [1, 3, 5].map(i => parseInt(fg.slice(i, i + 2), 16)), g = [1, 3, 5].map(i => parseInt(bg.slice(i, i + 2), 16)); return '#' + f.map((v, i) => Math.round(v * a + g[i] * (1 - a)).toString(16).padStart(2, '0')).join(''); }
+const show = s => s.replace(/⁦/g, '⟨LRI⟩').replace(/⁩/g, '⟨PDI⟩');
+function renderLabs() {
+  const L = lang, ex = [['אוקטובר, בנגקוק (28.1)', [28.1]], ['−0.4: בלי "−0°"', [-0.4]], ['−2.5: הרחק מאפס', [-2.5]], ['4 חודשים, סאפורו', [-3.2, -2.7, 1.1, 7.3]], ['4 חודשים, הגבוה שלילי', [-12.4, -8, -3.1, -5]], ['4 חודשים, ערך אחד', [28, 28.4, 27.6, 28.2]]];
+  let rows = '';
+  for (const [name, v] of ex) {
+    const out = l => { lang = l; const r = v.map(roundT), lo = Math.min(...r), hi = Math.max(...r); return v.length === 1 ? [fmtT(r[0]), tA11y(r[0])] : [fmtTRange(lo, hi), tRangeA11y(lo, hi)]; };
+    const he = out('he'), en = out('en'); lang = L;
+    rows += `<tr><td>${esc(name)}</td><td dir="rtl" style="font-size:14px">${esc(he[0])}</td><td dir="ltr" style="font-size:14px;text-align:left">${esc(en[0])}</td><td dir="rtl">${esc(he[1])}</td></tr>`;
+  }
+  lang = L;
+  $('#fmtLab').innerHTML = `<table><tr><th>מקרה</th><th>עברית</th><th>English</th><th>TalkBack (עברית)</th></tr>${rows}</table>
+    <div style="margin-top:6px;color:#646E8A">התווים בפועל, לדוגמה: <span dir="ltr">${esc(show(fmtT(-3)))}</span> · המינוס הוא U+2212</div>`;
+  const bgs = [['אוקיינוס כהה', '#0A2A52'], ['אוקיינוס בהיר', '#0D3A70'], ['יער', '#284220'], ['יבשה בלי רשת', '#1F3A68'], ['מדבר', '#C29C69'], ['קרח', '#DEE5EB'], ['אטמוספרה', '#9FD0FF'],
+    ['בחירה על יער', blend('#FF7A57', '#284220', 0.3)], ['בחירה על מדבר', blend('#FF7A57', '#C29C69', 0.3)], ['בחירה על קרח', blend('#FF7A57', '#DEE5EB', 0.3)]];
+  $('#pinLab').innerHTML = `<table><tr><th>רקע</th><th>גוף #4FCFBE</th><th>קו #03060F</th><th>לפחות אחד ≥ 3</th></tr>${bgs.map(([n, h]) => { const b = cr('#4FCFBE', h), o = cr('#03060F', h); return `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${h};vertical-align:middle;margin-inline-end:4px"></span>${n} <span dir="ltr">${h}</span></td><td>${b.toFixed(2)}</td><td>${o.toFixed(2)}</td><td class="${Math.max(b, o) >= 3 ? 'ok' : 'bad'}">${Math.max(b, o) >= 3 ? '✓' : '✗'}</td></tr>`; }).join('')}</table>`;
+}
+
+/* =================== init =================== */
+renderChrome(); syncPanel(); renderLabs();
+document.addEventListener('visibilitychange', () => { pulseT0 = null; });
+setTimeout(coldStart, 300);
+</script>
+</body>
+</html>
