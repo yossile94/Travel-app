@@ -4,6 +4,7 @@
  * enters from the end side (left in Hebrew) over the sheet, which stays.
  */
 import NetInfo from '@react-native-community/netinfo';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -137,6 +138,8 @@ function PushScreen({
         style={[styles.screen, { backgroundColor: palette.canvas, paddingTop: insetsTop }, style]}
         testID={testID}
       >
+        {/* Light screen in light mode: dark status bar icons (as the consent screen). */}
+        <StatusBar style={colorScheme === 'light' ? 'dark' : 'light'} />
         <View style={styles.bar}>
           <Pressable
             accessibilityRole="button"

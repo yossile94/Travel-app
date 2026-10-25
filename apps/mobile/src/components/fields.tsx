@@ -264,7 +264,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
-  value: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 24, fontVariant: ['tabular-nums'] },
+  // Shrinks before the icon: a long date in a narrow field never runs into it.
+  value: {
+    flexShrink: 1,
+    fontFamily: fonts.regular,
+    fontSize: 16,
+    lineHeight: 24,
+    fontVariant: ['tabular-nums'],
+  },
   below: { flexDirection: 'row', gap: 8, marginTop: 6 },
   errorRow: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'flex-start' },
   grow: { flex: 1, textAlign: 'left' },

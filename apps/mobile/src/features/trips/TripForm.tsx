@@ -7,6 +7,7 @@
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import NetInfo from '@react-native-community/netinfo';
 import * as Crypto from 'expo-crypto';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -350,6 +351,8 @@ export function TripForm({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         testID="trip-form"
       >
+        {/* Light screen in light mode: dark status bar icons (as the consent screen). */}
+        <StatusBar style={colorScheme === 'light' ? 'dark' : 'light'} />
         <View style={styles.bar}>
           <Text
             ref={headingRef}
