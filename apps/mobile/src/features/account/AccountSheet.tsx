@@ -51,6 +51,8 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
   const name = displayName ?? user.name;
   const shownUser = { ...user, name };
   const [editing, setEditing] = useState(false);
+  /** While the name saves, back does nothing (design 8.2), so a failure is seen. */
+  const nameSaving = useRef(false);
   const [pushed, setPushed] = useState<Pushed>(null);
   const [exporting, setExporting] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
@@ -96,7 +98,7 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
       <BottomSheet
         {...sheet}
         visible={visible}
-        onBack={editing ? () => setEditing(false) : undefined}
+        onBack={editing ? () => !nameSaving.current && setEditing(false) : undefined}
         testID="account-sheet"
       >
         {editing ? (
@@ -105,7 +107,10 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
             colorScheme={sheet.colorScheme}
             onCancel={() => setEditing(false)}
             onSave={async (next) => {
-              const result = await renameProfile(next);
+              nameSaving.current = true;
+              const result = await renameProfile(next).finally(() => {
+                nameSaving.current = false;
+              });
               if (result === 'ok') {
                 setEditing(false);
                 onToast(t('nameEdit.saved'));
