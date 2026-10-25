@@ -146,6 +146,9 @@ canvas#globe { position: absolute; inset: 0; width: 411px; height: 914px; touch-
 .sec-lbl { font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t3); margin: 8px 0 2px; }
 .trow-wrap { border-radius: 12px; position: relative; }
 .trow-wrap.open { background: var(--alt); }
+/* README 2.1 (Raz): in dark, surfaceAlt equals the card surface, so the open row uses #1A2749 and Edit gets a border.control outline. */
+:root[data-theme="dark"] .trow-wrap.open { background: #1A2749; }
+:root[data-theme="dark"] .trow-wrap.open .btn.secondary { box-shadow: inset 0 0 0 1px var(--bctl); }
 .trow-wrap.flash { animation: flash 1200ms var(--ease-standard); }
 @keyframes flash { 0% { background: transparent; } 17% { background: var(--ok-sbg); } 50% { background: var(--ok-sbg); } 100% { background: transparent; } }
 :root[data-reduce] .trow-wrap.flash { animation: none; }
@@ -424,7 +427,7 @@ he: {
   'globe.selected': 'נבחרה: {{name}}', 'globe.closed': 'הכרטיס נסגר', 'globe.onlyDemo': 'בהדמיה אפשר לבחור את המדינות שמופיעות בחיפוש',
   'offline.pill': 'אין חיבור. הגלובוס עובד כרגיל',
   'card.destination': 'יעד', 'card.localTimeIn': 'שעה מקומית · {{city}}', 'card.currency': 'מטבע', 'card.close': 'סגירה',
-  'card.trips.title': 'הנסיעות שלך', 'card.trips.upcoming': 'קרובות', 'card.trips.past': 'שעברו', 'card.trips.new': 'נסיעה חדשה', 'card.trips.newA11y': 'נסיעה חדשה ל{{country}}',
+  'card.trips.title': 'הנסיעות שלך', 'card.trips.upcoming': 'קרובות', 'card.trips.past': 'שעברו', 'card.trips.new': 'נסיעה חדשה', 'card.trips.newA11y': 'נסיעה חדשה: {{country}}',
   'card.trips.loading': 'טוענים את הנסיעות', 'card.trips.error': 'לא הצלחנו לטעון את הנסיעות.', 'card.trips.retry': 'נסו שוב', 'card.trips.offline': 'צריך חיבור כדי לראות את הנסיעות.',
   'trips.active': 'בנסיעה עכשיו', 'card.trips.notes': 'הערות', 'card.trips.edit': 'עריכה', 'card.trips.delete': 'מחיקה', 'trips.activeA11y': ', בנסיעה עכשיו', 'trips.opened': 'נפתחה הנסיעה {{name}}',
   'tripForm.titleNew': 'נסיעה חדשה', 'tripForm.titleEdit': 'עריכת נסיעה', 'tripForm.close': 'סגירה', 'tripForm.destination': 'יעד', 'tripForm.destinationA11y': 'יעד: {{country}}. היעד קבוע ולא ניתן לשינוי.',
@@ -451,7 +454,7 @@ he: {
   'account.editName': 'עריכת השם', 'account.consents': 'ההסכמות שלי', 'account.export': 'הורדת הנתונים שלי', 'account.exportSub': 'קובץ JSON עם פרטי החשבון, הנסיעות ויומן ההסכמות.',
   'account.delete': 'מחיקת חשבון', 'account.signOut': 'התנתקות', 'account.signedOut': 'התנתקת מהחשבון', 'account.signedInAs': 'התחברת בתור {{name}}',
   'nameEdit.title': 'שינוי השם', 'nameEdit.label': 'שם תצוגה', 'nameEdit.hint': 'עד 60 תווים.', 'nameEdit.save': 'שמירה', 'nameEdit.saving': 'שומרים…', 'nameEdit.cancel': 'ביטול',
-  'nameEdit.required': 'צריך לכתוב שם.', 'nameEdit.offline': 'אין חיבור לאינטרנט. כדי לשמור את השם צריך חיבור.', 'nameEdit.error': 'לא הצלחנו לשמור את השם. נסו שוב.', 'nameEdit.saved': 'השם עודכן',
+  'nameEdit.required': 'צריך לכתוב שם.', 'nameEdit.tooLong': 'השם יכול להיות עד 60 תווים.', 'nameEdit.offline': 'אין חיבור לאינטרנט. כדי לשמור את השם צריך חיבור.', 'nameEdit.error': 'לא הצלחנו לשמור את השם. נסו שוב.', 'nameEdit.saved': 'השם עודכן',
   'signIn.title': 'התחברות', 'signIn.body': 'התחברו עם חשבון Google. הגלובוס והחיפוש זמינים גם בלי חשבון.', 'signIn.bodyTrip': 'כדי לשמור נסיעה צריך להתחבר עם חשבון Google.',
   'signIn.bodyMyTrips': 'כדי לראות ולשמור נסיעות צריך להתחבר עם חשבון Google.', 'signIn.google': 'המשך עם Google', 'signIn.connecting': 'מתחברים…',
   'signIn.next': 'בשלב הבא נבקש לאשר את תנאי השימוש ומדיניות הפרטיות.', 'signIn.cancelled': 'ההתחברות בוטלה. אפשר לנסות שוב.', 'signIn.offline': 'אין חיבור לאינטרנט. כדי להתחבר צריך חיבור.',
@@ -485,7 +488,7 @@ en: {
   'globe.selected': 'Selected: {{name}}', 'globe.closed': 'Card closed', 'globe.onlyDemo': 'In the prototype you can pick the countries listed in search',
   'offline.pill': 'Offline. The globe still works',
   'card.destination': 'Destination', 'card.localTimeIn': 'Local time · {{city}}', 'card.currency': 'Currency', 'card.close': 'Close',
-  'card.trips.title': 'Your trips', 'card.trips.upcoming': 'Upcoming', 'card.trips.past': 'Past', 'card.trips.new': 'New trip', 'card.trips.newA11y': 'New trip to {{country}}',
+  'card.trips.title': 'Your trips', 'card.trips.upcoming': 'Upcoming', 'card.trips.past': 'Past', 'card.trips.new': 'New trip', 'card.trips.newA11y': 'New trip: {{country}}',
   'card.trips.loading': 'Loading trips', 'card.trips.error': "Couldn't load your trips.", 'card.trips.retry': 'Try again', 'card.trips.offline': 'You need a connection to see your trips.',
   'trips.active': 'Happening now', 'card.trips.notes': 'Notes', 'card.trips.edit': 'Edit', 'card.trips.delete': 'Delete', 'trips.activeA11y': ', happening now', 'trips.opened': 'Opened {{name}}',
   'tripForm.titleNew': 'New trip', 'tripForm.titleEdit': 'Edit trip', 'tripForm.close': 'Close', 'tripForm.destination': 'Destination', 'tripForm.destinationA11y': "Destination: {{country}}. The destination can't be changed.",
@@ -512,7 +515,7 @@ en: {
   'account.editName': 'Edit name', 'account.consents': 'My consents', 'account.export': 'Download my data', 'account.exportSub': 'A JSON file with your account details, trips and consent log.',
   'account.delete': 'Delete account', 'account.signOut': 'Sign out', 'account.signedOut': 'You signed out', 'account.signedInAs': 'Signed in as {{name}}',
   'nameEdit.title': 'Change name', 'nameEdit.label': 'Display name', 'nameEdit.hint': 'Up to 60 characters.', 'nameEdit.save': 'Save', 'nameEdit.saving': 'Saving…', 'nameEdit.cancel': 'Cancel',
-  'nameEdit.required': 'Enter a name.', 'nameEdit.offline': "You're offline. Saving your name needs a connection.", 'nameEdit.error': "Couldn't save your name. Try again.", 'nameEdit.saved': 'Name updated',
+  'nameEdit.required': 'Enter a name.', 'nameEdit.tooLong': 'The name can be up to 60 characters.', 'nameEdit.offline': "You're offline. Saving your name needs a connection.", 'nameEdit.error': "Couldn't save your name. Try again.", 'nameEdit.saved': 'Name updated',
   'signIn.title': 'Sign in', 'signIn.body': 'Sign in with your Google account. The globe and search work without an account too.', 'signIn.bodyTrip': 'Sign in with Google to save a trip.',
   'signIn.bodyMyTrips': 'Sign in with Google to see and save your trips.', 'signIn.google': 'Continue with Google', 'signIn.connecting': 'Signing in…',
   'signIn.next': "Next, we'll ask you to accept the Terms of Use and Privacy Policy.", 'signIn.cancelled': 'Sign-in was cancelled. You can try again.', 'signIn.offline': "You're offline. Signing in needs a connection.",
@@ -670,7 +673,7 @@ const cv = $('#globe'), ctx = cv.getContext('2d');
 let geo = null, centroids = {};
 const cam = { lon: 35, lat: 18, s: 170, cy: 430 };
 let anim = null, lastT = performance.now(), dragging = null, lastInteract = 0;
-const alphaTrip = {}, alphaSel = {};
+const alphaSel = {}; let tripLayer = 0;
 function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
 (async () => {
   try {
@@ -733,7 +736,9 @@ function draw(dt) {
   ctx.fillStyle = st.online ? '#0F366B' : '#0E366F'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
   const trips = (st.signedIn && st.hlLoaded) ? st.hl : new Set();
   const tA = {}, sA = {};
-  C.forEach(c => { tA[c.adm0] = stepAlpha(alphaTrip, c.adm0, trips.has(c.adm0) && c.adm0 !== st.selected ? 1 : 0, dt); sA[c.adm0] = stepAlpha(alphaSel, c.adm0, c.adm0 === st.selected ? 1 : 0, dt); });
+  // README 7.6 (Raz): per-country trip changes are instant; only the whole trips layer fades in (600) on first load.
+  tripLayer = trips.size ? (st.reduce ? 1 : Math.min(1, tripLayer + dt / 600)) : tripLayer;
+  C.forEach(c => { tA[c.adm0] = (trips.has(c.adm0) && c.adm0 !== st.selected ? 1 : 0) * tripLayer; sA[c.adm0] = stepAlpha(alphaSel, c.adm0, c.adm0 === st.selected ? 1 : 0, dt); });
   if (geo && window.d3) {
     const proj = d3.geoOrthographic().scale(R).translate([cx, cy]).rotate([-cam.lon, -cam.lat]).clipAngle(90);
     const path = d3.geoPath(proj, ctx);
@@ -796,7 +801,7 @@ async function loadHighlights() {
   st.hl = new Set(st.trips.map(x => x.adm0)); st.hlLoaded = true;
 }
 function wipeLocal() { // AC-8: immediately, no fade
-  st.hl = new Set(); st.hlLoaded = false; for (const k in alphaTrip) alphaTrip[k] = 0;
+  st.hl = new Set(); st.hlLoaded = false; tripLayer = 0;
   st.list = null; st.card = { status: 'idle', notice: null, busyId: null }; st.expanded = null;
 }
 
@@ -816,6 +821,8 @@ let skelTimer;
 async function loadCardTrips(expandId) {
   if (!st.signedIn) { st.card.status = 'signedout'; renderCard(); return; }
   if (!st.online) { st.card.status = 'offline'; renderCard(); say(t('card.trips.offline')); return; }
+  // README 2.2 (Raz): no query when the unique-countries list says there are no trips here.
+  if (st.hlLoaded && !st.hl.has(st.selected) && !st.loadFail) { st.card.status = 'ready'; renderCard(); return; }
   st.card.status = 'pending'; renderCard();
   clearTimeout(skelTimer); skelTimer = setTimeout(() => { if (st.card.status === 'pending') { st.card.status = 'loading'; renderCard(); say(t('card.trips.loading')); } }, 150);
   await delay(450);
@@ -956,7 +963,7 @@ function renderSheet() {
     el.innerHTML = `<div class="handle"></div>${close}<h2 tabindex="-1">${t('nameEdit.title')}</h2>
       ${n.notice ? `<div class="notice" role="status">${I.info}<span>${t(n.notice)}</span></div>` : ''}
       <div class="field" style="margin-top:8px"><label for="nameIn">${t('nameEdit.label')}</label>
-        <input id="nameIn" class="input ${n.error ? 'err' : ''}" maxlength="60" value="${esc(n.value)}" ${n.saving ? 'disabled' : ''} aria-invalid="${!!n.error}">
+        <input id="nameIn" class="input ${n.error ? 'err' : ''}" maxlength="120" value="${esc(n.value)}" ${n.saving ? 'disabled' : ''} aria-invalid="${!!n.error}">
         ${n.error ? `<div class="ferr" role="alert">${I.warn}<span>${t(n.error)}</span></div>` : ''}
         <div class="meta"><span>${t('nameEdit.hint')}</span><span class="cnt" id="nameCnt">${len >= 50 ? `${len}/60` : ''}</span></div></div>
       <div style="margin-top:20px;display:flex;flex-direction:column;gap:4px"><button class="btn primary" data-act="saveName" ${n.saving ? 'aria-busy="true"' : ''}>${n.saving ? `<span class="spinner"></span>${t('nameEdit.saving')}` : t('nameEdit.save')}</button>
@@ -1065,10 +1072,10 @@ function renderForm() {
       <div class="dest" role="group" aria-label="${esc(t('tripForm.destinationA11y', { country: cname(c) }))}"><div style="flex:1;min-width:0" aria-hidden="true"><div class="lbl">${t('tripForm.destination')}</div><div class="dn">${esc(cname(c))}</div><div class="de">${ltr(c.en)}</div></div><span class="code" aria-hidden="true">${c.adm0}</span></div>
       <div class="dates">${dateBtn('start')}${dateBtn('end')}</div>
       <div class="field"><label for="fName">${t('tripForm.name')}</label>
-        <input id="fName" class="input ${f.errors.name ? 'err' : ''}" maxlength="80" value="${esc(f.name)}" placeholder="${t('tripForm.namePending')}" ${lock} ${f.gone ? 'disabled' : ''} aria-invalid="${!!f.errors.name}">
+        <input id="fName" class="input ${f.errors.name ? 'err' : ''}" maxlength="160" value="${esc(f.name)}" placeholder="${t('tripForm.namePending')}" ${lock} ${f.gone ? 'disabled' : ''} aria-invalid="${!!f.errors.name}">
         ${ferr(f, 'name')}<div class="meta"><span id="nameHelp">${f.nameAuto && f.start ? t('tripForm.nameAuto') : ''}</span><span class="cnt" id="nameCount">${nl >= 60 ? `${nl}/80` : ''}</span></div></div>
       <div class="field"><label for="fNotes">${t('tripForm.notes')}</label>
-        <textarea id="fNotes" class="input ${f.errors.notes ? 'err' : ''}" maxlength="2000" placeholder="${t('tripForm.notesPlaceholder')}" ${lock} ${f.gone ? 'disabled' : ''}>${esc(f.notes)}</textarea>
+        <textarea id="fNotes" class="input ${f.errors.notes ? 'err' : ''}" maxlength="4000" placeholder="${t('tripForm.notesPlaceholder')}" ${lock} ${f.gone ? 'disabled' : ''}>${esc(f.notes)}</textarea>
         ${ferr(f, 'notes')}<div class="meta"><span></span><span class="cnt" id="notesCount">${tl >= 1800 ? `${tl.toLocaleString('en-US')}/2,000` : ''}</span></div></div>
       ${edit && !f.gone ? `<button class="btn plain" style="margin-top:24px" data-act="askDeleteForm" ${lock} ${f.deleting ? 'aria-busy="true"' : ''}>${f.deleting ? '<span class="spinner"></span>' : I.trash}${t('tripForm.delete')}</button>` : ''}
     </div>
@@ -1176,6 +1183,7 @@ function editName() { st.nameEdit = { value: st.user.name, error: null, notice: 
 async function saveName() {
   const n = st.nameEdit; if (!n || n.saving) return; const v = n.value.trim();
   if (!v) { n.error = 'nameEdit.required'; renderSheet(); say(t('nameEdit.required')); $('#nameIn').focus(); return; }
+  if (cps(v) > 60) { n.error = 'nameEdit.tooLong'; renderSheet(); say(t('nameEdit.tooLong')); $('#nameIn').focus(); return; }
   if (v === st.user.name) { st.sheet = 'account'; st.nameEdit = null; renderSheet(); return; }
   if (!st.online) { n.notice = 'nameEdit.offline'; renderSheet(); say(t('nameEdit.offline')); return; }
   n.saving = true; n.notice = null; renderSheet(); await delay(600);
