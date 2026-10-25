@@ -15,11 +15,7 @@ import { loadTripPage, type Trip, type TripCursor, type TripSection } from './tr
 
 export type TripListStatus =
   /** Nothing asked: signed out, or the answer is known without asking (design 2.2). */
-  | 'idle'
-  | 'loading'
-  | 'ready'
-  | 'offline'
-  | 'error';
+  'idle' | 'loading' | 'ready' | 'offline' | 'error';
 
 export interface TripListState {
   status: TripListStatus;
@@ -135,7 +131,11 @@ export function useTripList({
       pastFirst.current = firstPast;
     } else {
       rowsPast = firstPast!.trips;
-      position.current = { section: 'past', cursor: firstPast!.next, done: firstPast!.next === null };
+      position.current = {
+        section: 'past',
+        cursor: firstPast!.next,
+        done: firstPast!.next === null,
+      };
     }
     setState({
       ...EMPTY,
@@ -161,7 +161,12 @@ export function useTripList({
     // Usually one page; two when upcoming ends exactly at a page boundary.
     for (;;) {
       const at = position.current;
-      const page = await loadTripPage({ section: at.section, today, cursor: at.cursor, countryAdm0 });
+      const page = await loadTripPage({
+        section: at.section,
+        today,
+        cursor: at.cursor,
+        countryAdm0,
+      });
       if (request.current !== id) return;
       if (!page.ok) {
         busy.current = false;

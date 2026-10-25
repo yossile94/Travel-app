@@ -34,6 +34,11 @@ export async function writeLocalAgreement(userId: string, agreed: AgreedVersions
   await AsyncStorage.setItem(localKey(userId), JSON.stringify(agreed));
 }
 
+/** Forgets this user's agreement on the device (account deleted: sprint 2 AC-16). */
+export async function removeLocalAgreement(userId: string): Promise<void> {
+  await AsyncStorage.removeItem(localKey(userId)).catch(() => {});
+}
+
 /** The versions in force, or null if the server can't be reached. */
 export async function fetchCurrentDocuments(): Promise<LegalDocument[] | null> {
   if (!supabase) return null;

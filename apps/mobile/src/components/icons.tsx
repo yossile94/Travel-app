@@ -153,7 +153,11 @@ export function GlobePlusIcon({ color, size = 48 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Circle cx={11} cy={12} r={8} stroke={color} strokeWidth={1.5} />
-      <Path d="M3 12h16M11 4c2.5 2.5 2.5 13.5 0 16M11 4c-2.5 2.5-2.5 13.5 0 16" stroke={color} strokeWidth={1.5} />
+      <Path
+        d="M3 12h16M11 4c2.5 2.5 2.5 13.5 0 16M11 4c-2.5 2.5-2.5 13.5 0 16"
+        stroke={color}
+        strokeWidth={1.5}
+      />
       <Path d="M19 2v5M16.5 4.5h5" stroke={color} {...stroke} />
     </Svg>
   );

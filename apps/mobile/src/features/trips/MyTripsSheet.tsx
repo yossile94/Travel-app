@@ -62,7 +62,8 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
   }, [state.showSkeleton, t]);
   const rowCount = state.upcoming.length + state.past.length;
   useEffect(() => {
-    if (state.status === 'offline') AccessibilityInfo.announceForAccessibility(t('myTrips.offline'));
+    if (state.status === 'offline')
+      AccessibilityInfo.announceForAccessibility(t('myTrips.offline'));
   }, [state.status, t]);
   useEffect(() => {
     if (rowCount > 20 && rowCount !== announcedMore.current) {
@@ -78,7 +79,8 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
       title: t('myTrips.upcoming'),
       data: state.upcoming.length > 0 ? state.upcoming : ['none'],
     });
-    if (state.past.length > 0) sections.push({ key: 'past', title: t('myTrips.past'), data: state.past });
+    if (state.past.length > 0)
+      sections.push({ key: 'past', title: t('myTrips.past'), data: state.past });
   }
 
   const renderTrip = (trip: Trip) => {
@@ -102,7 +104,9 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
         ]}
         testID={`my-trip-${trip.id}`}
       >
-        {active ? <View style={[styles.activeBar, { backgroundColor: palette.activeBar }]} /> : null}
+        {active ? (
+          <View style={[styles.activeBar, { backgroundColor: palette.activeBar }]} />
+        ) : null}
         <View style={styles.rowText}>
           <Text style={[styles.caption, { color: palette.textSecondary }]}>{countryName}</Text>
           <Text
@@ -154,7 +158,9 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
       {state.status === 'loading' ? (
         state.showSkeleton ? (
           <View style={styles.block} importantForAccessibility="no-hide-descendants">
-            <Text style={[styles.title3, { color: palette.textPrimary }]}>{t('myTrips.upcoming')}</Text>
+            <Text style={[styles.title3, { color: palette.textPrimary }]}>
+              {t('myTrips.upcoming')}
+            </Text>
             {[0, 1, 2].map((i) => (
               <View key={i} style={styles.skeletonRow}>
                 <View style={[styles.bar, { width: '30%', backgroundColor: palette.skeleton }]} />
@@ -198,7 +204,10 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
           stickySectionHeadersEnabled
           renderSectionHeader={({ section }) => (
             <View style={[styles.sectionHeader, { backgroundColor: palette.surface }]}>
-              <Text style={[styles.title3, { color: palette.textPrimary }]} accessibilityRole="header">
+              <Text
+                style={[styles.title3, { color: palette.textPrimary }]}
+                accessibilityRole="header"
+              >
                 {section.title}
               </Text>
             </View>
@@ -284,7 +293,13 @@ const styles = StyleSheet.create({
   },
   none: { paddingVertical: 12, paddingHorizontal: 16 },
   center: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 16, gap: 8 },
-  footer: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  footer: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   skeletonRow: { paddingVertical: 12, gap: 8 },
   bar: { height: 12, borderRadius: 6 },
 });

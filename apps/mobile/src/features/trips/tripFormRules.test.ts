@@ -33,7 +33,12 @@ describe('trip form (sprint 2 design 3.2, 3.3)', () => {
   });
 
   it('editing: automatic only if the name equals the derived one in this language (19.4)', () => {
-    const trip = { title: 'תאילנד אוגוסט 2027', startDate: '2027-08-12', endDate: '2027-08-20', notes: null };
+    const trip = {
+      title: 'תאילנד אוגוסט 2027',
+      startDate: '2027-08-12',
+      endDate: '2027-08-20',
+      notes: null,
+    };
     expect(formFromTrip(trip, 'תאילנד', t).nameAuto).toBe(true);
     const en = i18n.cloneInstance({ lng: 'en' });
     expect(formFromTrip(trip, 'Thailand', en.t.bind(en)).nameAuto).toBe(false);
@@ -56,11 +61,21 @@ describe('trip form (sprint 2 design 3.2, 3.3)', () => {
     });
     expect(firstErrorField(errors)).toBe('startDate');
     expect(
-      validateTripForm({ ...emptyForm(), startDate: '2027-08-05', endDate: '2027-08-01', title: 'x' }),
+      validateTripForm({
+        ...emptyForm(),
+        startDate: '2027-08-05',
+        endDate: '2027-08-01',
+        title: 'x',
+      }),
     ).toEqual({ endDate: 'tripForm.errors.returnBeforeDeparture' });
     // Same day is allowed.
     expect(
-      validateTripForm({ ...emptyForm(), startDate: '2027-08-05', endDate: '2027-08-05', title: 'x' }),
+      validateTripForm({
+        ...emptyForm(),
+        startDate: '2027-08-05',
+        endDate: '2027-08-05',
+        title: 'x',
+      }),
     ).toEqual({});
   });
 
@@ -81,7 +96,13 @@ describe('trip form (sprint 2 design 3.2, 3.3)', () => {
     expect(isFormChanged(initial, initial)).toBe(false);
     expect(isFormChanged({ ...initial, notes: 'x' }, initial)).toBe(true);
     expect(
-      tripFields({ ...initial, startDate: '2027-08-05', endDate: '2027-08-06', title: ' a ', notes: '  ' }),
+      tripFields({
+        ...initial,
+        startDate: '2027-08-05',
+        endDate: '2027-08-06',
+        title: ' a ',
+        notes: '  ',
+      }),
     ).toEqual({ title: 'a', startDate: '2027-08-05', endDate: '2027-08-06', notes: null });
   });
 });

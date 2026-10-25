@@ -258,7 +258,12 @@ const styles = StyleSheet.create({
   },
   multiline: { minHeight: 96, maxHeight: 8 * 24 + 24, textAlignVertical: 'top' },
   dateWrap: { flexGrow: 1, flexBasis: layout.dateFieldMinWidth },
-  dateField: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  dateField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   value: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 24, fontVariant: ['tabular-nums'] },
   below: { flexDirection: 'row', gap: 8, marginTop: 6 },
   errorRow: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'flex-start' },

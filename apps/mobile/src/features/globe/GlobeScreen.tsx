@@ -30,8 +30,10 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Toast } from '@/components/formControls';
+import { AccountSheet } from '@/features/account/AccountSheet';
+import { sweepExports } from '@/features/account/exportData';
 import { AccountButton } from '@/features/auth/AccountButton';
-import { AccountSheet, SignInSheet } from '@/features/auth/AccountSheets';
+import { SignInSheet } from '@/features/auth/AccountSheets';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ConsentScreen } from '@/features/auth/ConsentScreen';
 import { SearchBar } from '@/features/search/SearchBar';
@@ -146,7 +148,10 @@ export function GlobeScreen() {
   /** The trip to open in the card, when the card was opened from "My trips" (design 5.3). */
   const [openTripId, setOpenTripId] = useState<string | null>(null);
   const [tripToast, setTripToast] = useState<{ text: string; at: number } | null>(null);
-  const tripAdm0s = useMemo(() => (trips.countries ? [...trips.countries] : null), [trips.countries]);
+  const tripAdm0s = useMemo(
+    () => (trips.countries ? [...trips.countries] : null),
+    [trips.countries],
+  );
   // AC-8: leaving "signed in" closes the trips list at once. The form stays
   // through the consent screen (design 3.4) and closes only on sign-out.
   const [tripsForStatus, setTripsForStatus] = useState(auth.state.status);
@@ -463,10 +468,12 @@ export function GlobeScreen() {
   }, [detailedMounted, detailedDrawn]);
 
   // Sprint 2 design 7.5: the trip countries load once the globe is up, not before.
+  // Leftovers of an interrupted data export go then too (design 10.5).
   useEffect(() => {
-    if (globeReady) trips.start();
+    if (!globeReady) return;
+    trips.start();
+    sweepExports();
   }, [globeReady, trips]);
-
 
   const showTripToast = useCallback((text: string) => setTripToast({ text, at: Date.now() }), []);
 
@@ -636,7 +643,9 @@ export function GlobeScreen() {
                     maxListHeight={maxListHeight}
                     initiallyOpen={openTripId}
                     onNewTrip={newTrip}
-                    onEditTrip={(trip) => setTripForm({ kind: 'edit', country: selectedCountry, trip })}
+                    onEditTrip={(trip) =>
+                      setTripForm({ kind: 'edit', country: selectedCountry, trip })
+                    }
                     onToast={showTripToast}
                   />
                 )
@@ -654,7 +663,11 @@ export function GlobeScreen() {
 
       {(auth.state.status === 'signedOut' || auth.state.status === 'signedIn') && !searchOpen && (
         <AccountButton
-          user={auth.state.status === 'signedIn' ? auth.state.user : null}
+          user={
+            auth.state.status === 'signedIn'
+              ? { ...auth.state.user, name: auth.displayName ?? auth.state.user.name }
+              : null
+          }
           colorScheme={colorScheme}
           top={insets.top + layout.chromeRowTop}
           onPress={() => {
@@ -670,7 +683,9 @@ export function GlobeScreen() {
           user={auth.state.user}
           colorScheme={colorScheme}
           reduceMotion={reduceMotion === true}
+          insetsTop={insets.top}
           insetsBottom={insets.bottom}
+          onToast={showTripToast}
           onClose={() => {
             setAccountSheetOpen(false);
             setLastInteractionAt(Date.now());
@@ -761,8 +776,11 @@ export function GlobeScreen() {
           text={
             auth.notice.kind === 'signedIn'
               ? t('account.signedInAs', { name: auth.notice.name })
-              : t('account.signedOut')
+              : auth.notice.kind === 'deleted'
+                ? t('deleteAccount.done')
+                : t('account.signedOut')
           }
+          long={auth.notice.kind === 'deleted'}
           top={insets.top + layout.overlayTop}
           onDone={auth.clearNotice}
         />

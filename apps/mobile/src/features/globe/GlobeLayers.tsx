@@ -105,11 +105,10 @@ export const GlobeLayers = memo(function GlobeLayers({
   tripAdm0s,
 }: Props) {
   const highlight = useHighlight(highlightedAdm0, reduceMotion);
-  const trips = useMemo(() => tripStyles(tripAdm0s, highlightedAdm0, reduceMotion), [
-    tripAdm0s,
-    highlightedAdm0,
-    reduceMotion,
-  ]);
+  const trips = useMemo(
+    () => tripStyles(tripAdm0s, highlightedAdm0, reduceMotion),
+    [tripAdm0s, highlightedAdm0, reduceMotion],
+  );
 
   const highlightStyles = useMemo(() => {
     const fade = { duration: reduceMotion ? 0 : motion.highlight, delay: 0 };
@@ -344,7 +343,11 @@ type TripStyles = ReturnType<typeof tripStyles>;
  * is instant (a filter change); the whole layer fades in only the first time
  * the list arrives, and leaves at once on sign-out (7.5, 7.6).
  */
-function tripStyles(adm0s: readonly string[] | null, selected: string | null, reduceMotion: boolean) {
+function tripStyles(
+  adm0s: readonly string[] | null,
+  selected: string | null,
+  reduceMotion: boolean,
+) {
   const shown = adm0s !== null ? 1 : 0;
   const fade = { duration: shown && !reduceMotion ? motion.highlight : 0, delay: 0 };
   return {

@@ -140,7 +140,9 @@ export function CardTrips({
               expanded && { backgroundColor: palette.openRow, borderRadius: radius.md },
             ]}
           >
-            {active ? <View style={[styles.activeBar, { backgroundColor: palette.activeBar }]} /> : null}
+            {active ? (
+              <View style={[styles.activeBar, { backgroundColor: palette.activeBar }]} />
+            ) : null}
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ expanded, disabled: deleting === trip.id }}
@@ -229,8 +231,15 @@ export function CardTrips({
         <Skeleton colorScheme={colorScheme} />
       ) : state.status === 'error' ? (
         <View style={styles.message} accessibilityLiveRegion="polite">
-          <Text style={[styles.footnote, { color: palette.textSecondary }]}>{t('card.trips.error')}</Text>
-          <Button kind="text" label={t('card.trips.retry')} onPress={() => void reload()} colorScheme={colorScheme} />
+          <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+            {t('card.trips.error')}
+          </Text>
+          <Button
+            kind="text"
+            label={t('card.trips.retry')}
+            onPress={() => void reload()}
+            colorScheme={colorScheme}
+          />
         </View>
       ) : state.status === 'offline' ? (
         <View style={[styles.message, styles.offline]} accessibilityLiveRegion="polite">
@@ -270,7 +279,12 @@ export function CardTrips({
               <Text style={[styles.footnote, { color: palette.textSecondary }]}>
                 {t('myTrips.moreError')}
               </Text>
-              <Button kind="text" label={t('card.trips.retry')} onPress={() => void loadMore()} colorScheme={colorScheme} />
+              <Button
+                kind="text"
+                label={t('card.trips.retry')}
+                onPress={() => void loadMore()}
+                colorScheme={colorScheme}
+              />
             </View>
           ) : null}
         </ScrollView>
@@ -295,7 +309,10 @@ export function ActiveBadge({ colorScheme }: { colorScheme: ColorScheme }) {
   const { t } = useTranslation();
   const palette = colors[colorScheme];
   return (
-    <View style={[styles.badge, { backgroundColor: palette.successSubtleBg }]} importantForAccessibility="no">
+    <View
+      style={[styles.badge, { backgroundColor: palette.successSubtleBg }]}
+      importantForAccessibility="no"
+    >
       <View style={[styles.dot, { backgroundColor: palette.activeBar }]} />
       <Text style={[styles.caption, { color: palette.successSubtleFg }]}>{t('trips.active')}</Text>
     </View>
@@ -310,7 +327,9 @@ function Notes({ text, colorScheme }: { text: string; colorScheme: ColorScheme }
   const [long, setLong] = useState(false);
   return (
     <View>
-      <Text style={[styles.caption, { color: palette.textSecondary }]}>{t('card.trips.notes')}</Text>
+      <Text style={[styles.caption, { color: palette.textSecondary }]}>
+        {t('card.trips.notes')}
+      </Text>
       <Text
         style={[styles.callout, { color: palette.textPrimary }]}
         numberOfLines={all ? undefined : 6}
@@ -321,7 +340,12 @@ function Notes({ text, colorScheme }: { text: string; colorScheme: ColorScheme }
         {text}
       </Text>
       {long && !all ? (
-        <Button kind="text" label={t('card.trips.more')} onPress={() => setAll(true)} colorScheme={colorScheme} />
+        <Button
+          kind="text"
+          label={t('card.trips.more')}
+          onPress={() => setAll(true)}
+          colorScheme={colorScheme}
+        />
       ) : null}
     </View>
   );

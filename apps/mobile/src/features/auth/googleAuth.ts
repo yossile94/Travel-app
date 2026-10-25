@@ -72,3 +72,20 @@ export async function googleSignOut(): Promise<void> {
     // Signing out of Supabase is what matters; Google's state is a convenience.
   }
 }
+
+/**
+ * Revokes the app's access to the Google account (sprint 2 AC-16). Best
+ * effort and bounded: a failure or a slow answer never holds up the wipe.
+ */
+export async function googleRevoke(timeoutMs = 5000): Promise<void> {
+  try {
+    configure();
+    await Promise.race([
+      GoogleSignin.revokeAccess(),
+      new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+    ]);
+  } catch {
+    // Signed out locally regardless; the access lapses with the deleted account.
+  }
+  await googleSignOut();
+}

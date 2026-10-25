@@ -35,7 +35,16 @@ import { InlineNotice } from '@/components/formControls';
 import { TrashIcon } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import type { CountryInfo } from '@/features/globe/countryData';
-import { colors, fonts, highlightColor, layout, limits, radius, timing, type ColorScheme } from '@/theme/tokens';
+import {
+  colors,
+  fonts,
+  highlightColor,
+  layout,
+  limits,
+  radius,
+  timing,
+  type ColorScheme,
+} from '@/theme/tokens';
 
 import { codePointLength, formatDate, fromPgDate, toPgDate, todayPg } from './tripDates';
 import {
@@ -55,22 +64,14 @@ import {
 import { createTrip, deleteTrip, updateTrip, type Trip, type WriteResult } from './tripsApi';
 
 export type TripFormTarget =
-  | { kind: 'new'; country: CountryInfo }
-  | { kind: 'edit'; country: CountryInfo; trip: Trip };
+  { kind: 'new'; country: CountryInfo } | { kind: 'edit'; country: CountryInfo; trip: Trip };
 
 /** How the form ended, for the card and the toast. */
 export type TripFormResult =
   | { kind: 'created' | 'updated'; trip: Trip }
   | { kind: 'deleted'; trip: Trip; alreadyGone: boolean };
 
-type Notice =
-  | 'offline'
-  | 'saveError'
-  | 'gone'
-  | 'consent'
-  | 'deleteOffline'
-  | 'deleteError'
-  | null;
+type Notice = 'offline' | 'saveError' | 'gone' | 'consent' | 'deleteOffline' | 'deleteError' | null;
 
 /** "1,840": Hermes has no Intl, so no toLocaleString. */
 function thousands(n: number): string {
@@ -210,7 +211,9 @@ export function TripForm({ target, colorScheme, insetsTop, insetsBottom, onClose
     if (first) {
       const count = Object.keys(found).length;
       AccessibilityInfo.announceForAccessibility(
-        count === 1 ? t('tripForm.errors.summaryOne') : t('tripForm.errors.summaryMany', { n: count }),
+        count === 1
+          ? t('tripForm.errors.summaryOne')
+          : t('tripForm.errors.summaryMany', { n: count }),
       );
       focusField(first);
       return;
@@ -295,11 +298,11 @@ export function TripForm({ target, colorScheme, insetsTop, insetsBottom, onClose
           ? t('tripForm.goneElsewhere')
           : notice === 'consent'
             ? t('tripForm.consentNeeded')
-          : notice === 'deleteOffline'
-            ? t('tripDelete.offline')
-            : notice === 'deleteError'
-              ? t('tripDelete.error')
-              : null;
+            : notice === 'deleteOffline'
+              ? t('tripDelete.offline')
+              : notice === 'deleteError'
+                ? t('tripDelete.error')
+                : null;
 
   const titleLength = codePointLength(values.title.trim());
   const notesLength = codePointLength(values.notes.trim());
@@ -377,20 +380,28 @@ export function TripForm({ target, colorScheme, insetsTop, insetsBottom, onClose
               <Text style={[styles.caption, { color: palette.textSecondary }]}>
                 {t('tripForm.destination')}
               </Text>
-              <Text style={[styles.title2, { color: palette.textPrimary }]} maxFontSizeMultiplier={2}>
+              <Text
+                style={[styles.title2, { color: palette.textPrimary }]}
+                maxFontSizeMultiplier={2}
+              >
                 {target.country.nameHe}
               </Text>
               <Text style={[styles.footnote, { color: palette.textSecondary }]} numberOfLines={1}>
                 {`⁦${target.country.nameEn}⁩`}
               </Text>
             </View>
-            <Text style={[styles.code, { backgroundColor: palette.tag, color: palette.textPrimary }]}>
+            <Text
+              style={[styles.code, { backgroundColor: palette.tag, color: palette.textPrimary }]}
+            >
               {target.country.adm0}
             </Text>
           </View>
 
           <View style={styles.dates}>
-            <View onLayout={(e) => (fieldY.current.startDate = e.nativeEvent.layout.y)} style={styles.dateCell}>
+            <View
+              onLayout={(e) => (fieldY.current.startDate = e.nativeEvent.layout.y)}
+              style={styles.dateCell}
+            >
               <DateField
                 ref={startRef}
                 label={t('tripForm.departure')}
@@ -405,7 +416,10 @@ export function TripForm({ target, colorScheme, insetsTop, insetsBottom, onClose
                 testID="trip-form-start"
               />
             </View>
-            <View onLayout={(e) => (fieldY.current.endDate = e.nativeEvent.layout.y)} style={styles.dateCell}>
+            <View
+              onLayout={(e) => (fieldY.current.endDate = e.nativeEvent.layout.y)}
+              style={styles.dateCell}
+            >
               <DateField
                 ref={endRef}
                 label={t('tripForm.return')}
@@ -502,7 +516,12 @@ export function TripForm({ target, colorScheme, insetsTop, insetsBottom, onClose
           ]}
         >
           {notice === 'gone' ? (
-            <Button kind="secondary" label={t('tripForm.close')} onPress={onClose} colorScheme={colorScheme} />
+            <Button
+              kind="secondary"
+              label={t('tripForm.close')}
+              onPress={onClose}
+              colorScheme={colorScheme}
+            />
           ) : (
             <Button
               kind="primary"
@@ -531,7 +550,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  barTitle: { flex: 1, fontFamily: fonts.semibold, fontSize: 20, lineHeight: 26, textAlign: 'left' },
+  barTitle: {
+    flex: 1,
+    fontFamily: fonts.semibold,
+    fontSize: 20,
+    lineHeight: 26,
+    textAlign: 'left',
+  },
   close: {
     width: layout.touchTargetMin,
     height: layout.touchTargetMin,
