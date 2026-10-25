@@ -35,6 +35,12 @@ import { AccountSheet, SignInSheet } from '@/features/auth/AccountSheets';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ConsentScreen } from '@/features/auth/ConsentScreen';
 import { SearchBar } from '@/features/search/SearchBar';
+import { CardTrips } from '@/features/trips/CardTrips';
+import { MyTripsSheet } from '@/features/trips/MyTripsSheet';
+import { TripForm, type TripFormResult, type TripFormTarget } from '@/features/trips/TripForm';
+import { TripsButton } from '@/features/trips/TripsButton';
+import { useTrips } from '@/features/trips/TripsProvider';
+import type { Trip } from '@/features/trips/tripsApi';
 import { globe, layout, motion } from '@/theme/tokens';
 
 import { BoardingPassCard, CARD_GAP } from './BoardingPassCard';
@@ -96,6 +102,12 @@ const VEIL_FADE_IN = { duration: motion.reduceFadeIn, reduceMotion: ReduceMotion
 
 type CameraHandle = ComponentRef<typeof Camera>;
 
+/**
+ * What a signed-out tap asked for, done once sign-in (and consent) succeeds
+ * (sprint 2 design 2.3, 5.2). Dropped on any cancel or sign-out.
+ */
+type PendingIntent = { type: 'newTrip'; adm0: string } | { type: 'myTrips' } | null;
+
 /** Home screen globe (sprint 0, F-001) with country search (sprint 1, F-002). */
 export function GlobeScreen() {
   const { t } = useTranslation();
@@ -125,6 +137,27 @@ export function GlobeScreen() {
   const expired = auth.state.status === 'signedOut' && auth.state.expired;
   const sheetOpen = accountSheetOpen || expired;
   const consentShown = auth.state.status === 'needsConsent';
+
+  // Sprint 2 F-006: trips.
+  const trips = useTrips();
+  const [myTripsOpen, setMyTripsOpen] = useState(false);
+  const [tripForm, setTripForm] = useState<TripFormTarget | null>(null);
+  const [pendingIntent, setPendingIntent] = useState<PendingIntent>(null);
+  /** The trip to open in the card, when the card was opened from "My trips" (design 5.3). */
+  const [openTripId, setOpenTripId] = useState<string | null>(null);
+  const [tripToast, setTripToast] = useState<{ text: string; at: number } | null>(null);
+  const tripAdm0s = useMemo(() => (trips.countries ? [...trips.countries] : null), [trips.countries]);
+  // AC-8: leaving "signed in" closes the trips list at once. The form stays
+  // through the consent screen (design 3.4) and closes only on sign-out.
+  const [tripsForStatus, setTripsForStatus] = useState(auth.state.status);
+  if (tripsForStatus !== auth.state.status) {
+    setTripsForStatus(auth.state.status);
+    if (auth.state.status !== 'signedIn') setMyTripsOpen(false);
+    if (auth.state.status === 'signedOut') {
+      setTripForm(null);
+      setPendingIntent(null);
+    }
+  }
   // The first frame is drawn (first idle, or the fallback below). Before
   // that getCenter() answers [0, 0] rather than the default camera, so
   // rotation would jump the globe to 0°,0° (seen on device).
@@ -141,6 +174,15 @@ export function GlobeScreen() {
 
   const selectedAdm0 = selection.selected?.adm0 ?? null;
   const selectedCountry = selectedAdm0 ? countryByAdm0(selectedAdm0) : undefined;
+
+  // Sprint 2 design 2.3: after sign-in (and consent), do what the tap asked for.
+  if (auth.state.status === 'signedIn' && pendingIntent) {
+    setPendingIntent(null);
+    if (pendingIntent.type === 'myTrips') setMyTripsOpen(true);
+    else if (selectedCountry?.adm0 === pendingIntent.adm0) {
+      setTripForm({ kind: 'new', country: selectedCountry });
+    }
+  }
 
   const getCenter = useCallback(async (): Promise<[number, number] | null> => {
     try {
@@ -165,7 +207,9 @@ export function GlobeScreen() {
     !searchOpen &&
     // Design 5.1: the globe holds still behind the consent screen and sheets.
     !sheetOpen &&
-    !consentShown;
+    !consentShown &&
+    !myTripsOpen &&
+    !tripForm;
   useAutoRotation({ cameraRef, getCenter, allowed: rotationAllowed, lastInteractionAt });
 
   /** Cancels a native rotation segment in flight (a zero-length move stops every animator). */
@@ -418,6 +462,62 @@ export function GlobeScreen() {
     return () => clearTimeout(timer);
   }, [detailedMounted, detailedDrawn]);
 
+  // Sprint 2 design 7.5: the trip countries load once the globe is up, not before.
+  useEffect(() => {
+    if (globeReady) trips.start();
+  }, [globeReady, trips]);
+
+
+  const showTripToast = useCallback((text: string) => setTripToast({ text, at: Date.now() }), []);
+
+  const newTrip = useCallback(() => {
+    if (!selectedCountry) return;
+    if (auth.state.status === 'signedIn') {
+      setTripForm({ kind: 'new', country: selectedCountry });
+      return;
+    }
+    setPendingIntent({ type: 'newTrip', adm0: selectedCountry.adm0 });
+    setAccountSheetOpen(true);
+  }, [auth.state.status, selectedCountry]);
+
+  const openMyTrips = useCallback(() => {
+    if (rotationAllowedRef.current) stopRotation();
+    if (auth.state.status === 'signedIn') {
+      setMyTripsOpen(true);
+      return;
+    }
+    setPendingIntent({ type: 'myTrips' });
+    setAccountSheetOpen(true);
+  }, [auth.state.status, stopRotation]);
+
+  const tripFormDone = useCallback(
+    (result: TripFormResult) => {
+      setTripForm(null);
+      const { trip } = result;
+      if (result.kind === 'deleted') {
+        trips.changed({ adm0: trip.countryAdm0, has: null });
+        showTripToast(t(result.alreadyGone ? 'tripDelete.alreadyGone' : 'tripDelete.done'));
+        return;
+      }
+      trips.changed({ adm0: trip.countryAdm0, has: true });
+      showTripToast(t(result.kind === 'created' ? 'tripForm.saved' : 'tripForm.updated'));
+      AccessibilityInfo.announceForAccessibility(t('tripForm.savedA11y', { name: trip.title }));
+    },
+    [trips, showTripToast, t],
+  );
+
+  const openTripFromList = useCallback(
+    (trip: Trip) => {
+      setMyTripsOpen(false);
+      setOpenTripId(trip.id);
+      if (countryByAdm0(trip.countryAdm0)) {
+        dispatch({ type: 'countryTapped', country: { adm0: trip.countryAdm0 } });
+      }
+      AccessibilityInfo.announceForAccessibility(t('trips.opened', { name: trip.title }));
+    },
+    [t],
+  );
+
   // AC-14: Mapbox usage telemetry off. On Android this builds a throwaway
   // map view, so it waits for the globe to be up (review finding 6).
   useEffect(() => {
@@ -496,6 +596,7 @@ export function GlobeScreen() {
               oceanMaskUrl={oceanMask.url}
               highlightedAdm0={selectedAdm0}
               reduceMotion={reduceMotion === true}
+              tripAdm0s={tripAdm0s}
             />
           </MapView>
         )}
@@ -523,7 +624,28 @@ export function GlobeScreen() {
           colorScheme={colorScheme}
           reduceMotion={reduceMotion === true}
           bottomInset={insets.bottom}
-          onClose={() => dispatch({ type: 'backPressed' })}
+          topInset={insets.top}
+          coupon={
+            auth.state.status === 'signedIn' ||
+            auth.state.status === 'signedOut' ||
+            auth.state.status === 'needsConsent'
+              ? (maxListHeight) => (
+                  <CardTrips
+                    country={selectedCountry}
+                    colorScheme={colorScheme}
+                    maxListHeight={maxListHeight}
+                    initiallyOpen={openTripId}
+                    onNewTrip={newTrip}
+                    onEditTrip={(trip) => setTripForm({ kind: 'edit', country: selectedCountry, trip })}
+                    onToast={showTripToast}
+                  />
+                )
+              : undefined
+          }
+          onClose={() => {
+            setOpenTripId(null);
+            dispatch({ type: 'backPressed' });
+          }}
           onHeight={(height) => {
             cardHeight.current = height;
           }}
@@ -559,11 +681,14 @@ export function GlobeScreen() {
           key={expired ? 'expired' : 'signIn'}
           visible={sheetOpen}
           expired={expired}
+          reason={pendingIntent?.type ?? null}
           colorScheme={colorScheme}
           reduceMotion={reduceMotion === true}
           insetsBottom={insets.bottom}
           onClose={() => {
             setAccountSheetOpen(false);
+            // Design 2.3: closing sign-in drops what it was for; the card stays.
+            setPendingIntent(null);
             auth.acknowledgeExpiry();
             setLastInteractionAt(Date.now());
           }}
@@ -581,7 +706,57 @@ export function GlobeScreen() {
         />
       )}
 
-      {auth.notice && (
+      <TripsButton
+        visible={
+          (auth.state.status === 'signedIn' || auth.state.status === 'signedOut') &&
+          !selectedAdm0 &&
+          !searchOpen &&
+          !sheetOpen &&
+          !myTripsOpen &&
+          !tripForm
+        }
+        colorScheme={colorScheme}
+        reduceMotion={reduceMotion === true}
+        bottomInset={insets.bottom}
+        onPress={openMyTrips}
+      />
+
+      <MyTripsSheet
+        visible={myTripsOpen}
+        colorScheme={colorScheme}
+        reduceMotion={reduceMotion === true}
+        insetsTop={insets.top}
+        insetsBottom={insets.bottom}
+        onClose={() => {
+          setMyTripsOpen(false);
+          setLastInteractionAt(Date.now());
+        }}
+        onOpenTrip={openTripFromList}
+      />
+
+      {tripForm && (
+        <TripForm
+          key={tripForm.kind === 'edit' ? tripForm.trip.id : 'new-' + tripForm.country.adm0}
+          target={tripForm}
+          colorScheme={colorScheme}
+          insetsTop={insets.top}
+          insetsBottom={insets.bottom}
+          onClose={() => setTripForm(null)}
+          onDone={tripFormDone}
+        />
+      )}
+
+      {tripToast && !tripForm && (
+        <Toast
+          key={tripToast.at}
+          text={tripToast.text}
+          top={insets.top + layout.overlayTop}
+          onDone={() => setTripToast(null)}
+        />
+      )}
+
+      {/* Design 2.3: "signed in as" waits until the trip form closes. */}
+      {auth.notice && !tripForm && (
         <Toast
           text={
             auth.notice.kind === 'signedIn'

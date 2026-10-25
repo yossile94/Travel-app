@@ -28,7 +28,8 @@
       "offline": "You need a connection to see your trips.",
       "notes": "Notes",
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "more": "More"
     }
   },
   "timeDifference": {

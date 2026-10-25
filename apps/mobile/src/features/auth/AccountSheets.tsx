@@ -25,7 +25,16 @@ interface SheetProps {
 
 type SignInMessage = Exclude<SignInOutcome, 'done' | 'abandoned'> | 'expired' | null;
 
-export function SignInSheet({ visible, expired, ...sheet }: SheetProps & { expired: boolean }) {
+export function SignInSheet({
+  visible,
+  expired,
+  reason = null,
+  ...sheet
+}: SheetProps & {
+  expired: boolean;
+  /** Opened by a trips action: the body says why an account is needed (sprint 2 design 2.3, 5.2). */
+  reason?: 'newTrip' | 'myTrips' | null;
+}) {
   const { t } = useTranslation();
   const { signInWithGoogle, abandonSignIn } = useAuth();
   const palette = colors[sheet.colorScheme];
@@ -87,7 +96,15 @@ export function SignInSheet({ visible, expired, ...sheet }: SheetProps & { expir
       <Text style={[styles.title, { color: palette.textPrimary }]} accessibilityRole="header">
         {t('signIn.title')}
       </Text>
-      <Text style={[styles.body, { color: palette.textSecondary }]}>{t('signIn.body')}</Text>
+      <Text style={[styles.body, { color: palette.textSecondary }]}>
+        {t(
+          reason === 'newTrip'
+            ? 'signIn.bodyTrip'
+            : reason === 'myTrips'
+              ? 'signIn.bodyMyTrips'
+              : 'signIn.body',
+        )}
+      </Text>
       {notice ? (
         <View style={styles.block}>
           <InlineNotice text={notice} colorScheme={sheet.colorScheme} testID="sign-in-notice" />

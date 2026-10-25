@@ -25,6 +25,8 @@ interface Props {
   reduceMotion: boolean;
   insetsBottom: number;
   dismissable?: boolean;
+  /** The sheet grows with its content up to this height; a list inside then scrolls (sprint 2 design 5.1). */
+  maxHeight?: number;
   onClose: () => void;
   children: ReactNode;
   testID?: string;
@@ -38,6 +40,7 @@ export function BottomSheet({
   reduceMotion,
   insetsBottom,
   dismissable = true,
+  maxHeight,
   onClose,
   children,
   testID,
@@ -92,7 +95,7 @@ export function BottomSheet({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: palette.surface, paddingBottom: insetsBottom + 16 },
+          { backgroundColor: palette.surface, paddingBottom: insetsBottom + 16, maxHeight },
           sheetStyle,
         ]}
         accessibilityViewIsModal

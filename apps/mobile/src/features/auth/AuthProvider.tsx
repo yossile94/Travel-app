@@ -83,6 +83,12 @@ interface AuthContextValue {
   clearNotice: () => void;
   /** The "sign-in expired" sheet was seen and closed. */
   acknowledgeExpiry: () => void;
+  /**
+   * The server refused a write at the consent gate (42501, sprint 2 AC-9):
+   * read the documents again, which shows the consent screen for the new
+   * version. Anything open underneath stays open (design 3.4).
+   */
+  recheckConsent: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -393,6 +399,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const recheckConsent = useCallback(async () => {
+    const current = stateRef.current;
+    if (current.status !== 'signedIn') return;
+    await settle(current.user);
+  }, [settle]);
+
   const value = useMemo(
     () => ({
       state,
@@ -403,6 +415,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       clearNotice,
       acknowledgeExpiry,
+      recheckConsent,
     }),
     [
       state,
@@ -413,6 +426,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       clearNotice,
       acknowledgeExpiry,
+      recheckConsent,
     ],
   );
 

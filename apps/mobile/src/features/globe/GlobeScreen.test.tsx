@@ -171,8 +171,19 @@ const mockAuth = {
   signOut: jest.fn(async () => {}),
   clearNotice: jest.fn(),
   acknowledgeExpiry: jest.fn(),
+  recheckConsent: jest.fn(async () => {}),
 };
 jest.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => mockAuth }));
+
+// Sprint 2: the screen reads the trips context; these tests are about the globe.
+const mockTrips = {
+  countries: null as ReadonlySet<string> | null,
+  changes: 0,
+  changed: jest.fn(),
+  firstLoad: false,
+  start: jest.fn(),
+};
+jest.mock('@/features/trips/TripsProvider', () => ({ useTrips: () => mockTrips }));
 
 const BANGKOK_TAP: Hits = { country: { adm0: 'THA', code: 'TH' } };
 
