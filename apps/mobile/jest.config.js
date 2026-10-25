@@ -1,3 +1,8 @@
+// Trip dates are local calendar days (sprint 2 design 4.1): tests run in
+// Israel's time zone everywhere, CI (UTC) included, so the conversions are
+// checked where midnight is not midnight UTC.
+process.env.TZ = 'Asia/Jerusalem';
+
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'jest-expo',
