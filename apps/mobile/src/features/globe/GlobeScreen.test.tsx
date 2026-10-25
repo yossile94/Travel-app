@@ -677,7 +677,7 @@ describe('GlobeScreen', () => {
       mockAuth.state = { status: 'signedIn', user };
       await render(<GlobeScreen />);
       expect(screen.getByLabelText('החשבון של יוסי לוי')).toBeOnTheScreen();
-      expect(screen.getByText('י')).toBeOnTheScreen();
+      expect(screen.getByText('יל')).toBeOnTheScreen();
       await fireEvent.press(screen.getByTestId('account-button'));
       await fireEvent.press(screen.getByTestId('sign-out'));
       expect(mockAuth.signOut).toHaveBeenCalled();
