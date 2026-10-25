@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   I18nManager,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -41,8 +42,15 @@ export const CARD_GAP = 16;
  * ellipsized short and then cut at its start ("H GEORGIA …", sprint 1 QA).
  * A name keeps the spacing only when it surely fits the measured row;
  * otherwise it drops it, and Android ellipsizes it correctly at its end.
+ * iOS measures spacing correctly and always keeps it.
  */
-export function spaceEnglishName(name: string, fontScale: number, rowWidth: number): boolean {
+export function spaceEnglishName(
+  name: string,
+  fontScale: number,
+  rowWidth: number,
+  os: typeof Platform.OS = Platform.OS,
+): boolean {
+  if (os !== 'android') return true;
   return rowWidth > 0 && name.length * layout.cardNameEnSpacedCharWidth * fontScale <= rowWidth;
 }
 
