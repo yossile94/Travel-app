@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type LayoutChangeEvent,
 } from 'react-native';
@@ -34,6 +35,17 @@ const ACCELERATE = Easing.bezier(0.3, 0, 1, 1);
 /** Space between the card and the bottom inset (Android navigation bar). */
 export const CARD_GAP = 16;
 
+/**
+ * Whether the English name keeps its letter spacing. Android measures a
+ * spaced line without the spacing, so a name too long for its line was
+ * ellipsized short and then cut at its start ("H GEORGIA …", sprint 1 QA).
+ * A name keeps the spacing only when it surely fits the measured row;
+ * otherwise it drops it, and Android ellipsizes it correctly at its end.
+ */
+export function spaceEnglishName(name: string, fontScale: number, rowWidth: number): boolean {
+  return rowWidth > 0 && name.length * layout.cardNameEnSpacedCharWidth * fontScale <= rowWidth;
+}
+
 interface Props {
   country: CountryInfo;
   colorScheme: ColorScheme;
@@ -58,6 +70,8 @@ export function BoardingPassCard({
   hidden = false,
 }: Props) {
   const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const [nameEnWidth, setNameEnWidth] = useState(0);
   const palette = colors[colorScheme];
   const dark = colorScheme === 'dark';
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -166,9 +180,16 @@ export function BoardingPassCard({
               ("H GEORGIA …", sprint 1 QA). The outer view keeps the app's
               direction, so the space for the close button stays on its side. */}
           <View style={styles.clearOfClose}>
-            <View style={styles.nameEnRow}>
+            <View
+              style={styles.nameEnRow}
+              onLayout={(event) => setNameEnWidth(event.nativeEvent.layout.width)}
+            >
               <Text
-                style={[styles.nameEn, { color: palette.textSecondary }]}
+                style={[
+                  styles.nameEn,
+                  !spaceEnglishName(country.nameEn, fontScale, nameEnWidth) && styles.nameEnTight,
+                  { color: palette.textSecondary },
+                ]}
                 accessibilityLabel={country.nameEn}
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -328,6 +349,7 @@ const styles = StyleSheet.create({
   nameHe: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, marginTop: 4, textAlign: 'left' },
   nameHeLong: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
   nameEnRow: { direction: 'ltr' },
+  nameEnTight: { letterSpacing: 0 },
   nameEn: {
     fontFamily: fonts.medium,
     fontSize: 14,
