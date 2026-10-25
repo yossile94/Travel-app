@@ -63,6 +63,17 @@ const DEFAULT_CAMERA = { centerCoordinate: HOME_CENTER, zoomLevel: HOME_ZOOM };
 /** Card height before it has been measured, for the first flight's camera padding. */
 const ESTIMATED_CARD_HEIGHT = 184;
 
+/**
+ * AC-10 (Yossi, 2026-10-25): zoom is by pinch only. A double tap no longer
+ * zooms, so tapping twice quickly can't select a country and jump the map.
+ */
+const GESTURES = {
+  doubleTapToZoomInEnabled: false,
+  doubleTouchToZoomOutEnabled: false,
+  quickZoomEnabled: false,
+  pinchZoomEnabled: true,
+} as const;
+
 /** How long after "map loaded" the globe counts as ready if Mapbox never goes idle. */
 const GLOBE_READY_FALLBACK_MS = 5000;
 
@@ -466,6 +477,7 @@ export function GlobeScreen() {
             compassEnabled={false}
             pitchEnabled={false}
             rotateEnabled={false}
+            gestureSettings={GESTURES}
             logoPosition={logoPosition}
             attributionPosition={attributionPosition}
             accessibilityLabel={t('globe.a11yLabel')}
