@@ -144,7 +144,11 @@ function timeZoneFor(code) {
  * Corrections to CLDR's Hebrew currency names. CLDR 48 calls AFN "אפגני
  * אפגני"; "אפגני" is how it is written (sprint 1 AC-12).
  */
-const CURRENCY_NAME_FIXES = { AFN: 'אפגני' };
+const CURRENCY_NAME_FIXES = {
+  AFN: 'אפגני',
+  // CLDR says "הנסיכויות"; the country is "איחוד האמירויות הערביות" (sprint 1 QA).
+  AED: 'דירהם של איחוד האמירויות הערביות',
+};
 
 function currencyFor(code) {
   const currency = countryToCurrency[code];
