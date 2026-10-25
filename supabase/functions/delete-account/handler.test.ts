@@ -146,7 +146,11 @@ Deno.test('an invalid Google token is 403 and logs the failed claim, not the tok
 });
 
 Deno.test('Google\'s keys unreachable is 503, never "re-authentication failed"', async () => {
-  for (const failure of [joseError('ERR_JWKS_TIMEOUT'), new TypeError('fetch failed')]) {
+  for (const failure of [
+    joseError('ERR_JWKS_TIMEOUT'),
+    joseError('ERR_JOSE_GENERIC'),
+    new TypeError('fetch failed'),
+  ]) {
     const { handler, deleted } = setup({ verifyGoogle: () => Promise.reject(failure) });
     let result;
     await captureLogs(async () => {
@@ -202,6 +206,25 @@ Deno.test('refuses a body over 8 KB', async () => {
     (await call(handler, request({ idToken: 'google-token-me', pad: 'x'.repeat(9000) }))).status,
     413,
   );
+});
+
+Deno.test('stops reading a streamed body without Content-Length at 8 KB', async () => {
+  const { handler } = setup();
+  const big = new TextEncoder().encode(
+    JSON.stringify({ idToken: 'google-token-me', pad: 'x'.repeat(9000) }),
+  );
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (let i = 0; i < big.length; i += 1000) controller.enqueue(big.slice(i, i + 1000));
+      controller.close();
+    },
+  });
+  const req = new Request('http://localhost/delete-account', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${VALID}` },
+    body: stream,
+  });
+  assertEquals((await call(handler, req)).status, 413);
 });
 
 Deno.test('accepts only POST', async () => {

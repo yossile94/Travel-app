@@ -44,8 +44,15 @@ export interface Deps {
 const MAX_ID_TOKEN_LENGTH = 4096;
 const MAX_BODY_BYTES = 8 * 1024;
 
-/** jose's codes for a token that is simply not acceptable (as opposed to Google being unreachable). */
-const UNREACHABLE_GOOGLE_CODES = new Set(['ERR_JWKS_TIMEOUT', 'ERR_JWKS_INVALID']);
+/**
+ * jose's codes for Google's keys being unreachable or unusable (a non-200
+ * answer is ERR_JOSE_GENERIC), as opposed to a token that isn't acceptable.
+ */
+const UNREACHABLE_GOOGLE_CODES = new Set([
+  'ERR_JWKS_TIMEOUT',
+  'ERR_JWKS_INVALID',
+  'ERR_JOSE_GENERIC',
+]);
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -59,12 +66,36 @@ function looksLikeJwt(token: string): boolean {
   return /^[\w-]+\.[\w-]+\.[\w-]+$/.test(token);
 }
 
+/** The body as text, read no further than `limit` bytes (also without a Content-Length). */
+async function readCapped(req: Request, limit: number): Promise<string | 'too_large'> {
+  if (Number(req.headers.get('Content-Length') ?? 0) > limit) return 'too_large';
+  if (!req.body) return '';
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel();
+      return 'too_large';
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 async function idTokenFrom(req: Request): Promise<string | null | 'too_large'> {
-  const declared = Number(req.headers.get('Content-Length') ?? 0);
-  if (declared > MAX_BODY_BYTES) return 'too_large';
   try {
-    const text = await req.text();
-    if (text.length > MAX_BODY_BYTES) return 'too_large';
+    const text = await readCapped(req, MAX_BODY_BYTES);
+    if (text === 'too_large') return 'too_large';
     const body = JSON.parse(text) as { idToken?: unknown } | null;
     const token = body?.idToken;
     return typeof token === 'string' && token.length > 0 && token.length <= MAX_ID_TOKEN_LENGTH

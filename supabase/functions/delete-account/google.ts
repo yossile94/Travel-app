@@ -36,7 +36,11 @@ export async function verifyGoogleIdToken(
     currentDate: now,
   });
   if (typeof payload.sub !== 'string' || payload.sub.length === 0) {
-    throw new Error('Google token without a subject');
+    // A token-level refusal (403), like jose's own claim errors.
+    throw Object.assign(new Error('Google token without a subject'), {
+      code: 'ERR_JWT_CLAIM_VALIDATION_FAILED',
+      claim: 'sub',
+    });
   }
   return { sub: payload.sub };
 }
