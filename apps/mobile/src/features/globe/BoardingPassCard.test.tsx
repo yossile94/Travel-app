@@ -5,7 +5,7 @@ import { StyleSheet } from 'react-native';
 import '@/i18n';
 import { motion } from '@/theme/tokens';
 
-import { BoardingPassCard, isolateLtr, isolateOwn } from './BoardingPassCard';
+import { BoardingPassCard, isolateLtr, isolateOwn, spaceEnglishName } from './BoardingPassCard';
 import { countryByAdm0 } from './countryData';
 
 // 20:53 in Israel on 22 Oct 2026 (Israel on summer time, UTC+3).
@@ -100,6 +100,29 @@ describe('BoardingPassCard', () => {
     const outer = row.parent!;
     expect(StyleSheet.flatten(outer.props.style).direction).toBeUndefined();
     expect(StyleSheet.flatten(outer.props.style).paddingEnd).toBe(48);
+  });
+
+  it('keeps the letter spacing only for an English name that surely fits (sprint 1 QA)', async () => {
+    // Measured on the A73: the row is ~176 pt wide at 100%.
+    expect(spaceEnglishName('SAUDI ARABIA', 1, 176)).toBe(true);
+    expect(spaceEnglishName('UNITED ARAB EMIRATES', 1, 176)).toBe(false);
+    expect(spaceEnglishName('SAUDI ARABIA', 1.3, 176)).toBe(false);
+    // Before the row is measured, no spacing: never a wrongly cut name.
+    expect(spaceEnglishName('FIJI', 1, 0)).toBe(false);
+
+    await renderCard('SGS');
+    const nameEn = screen.getByTestId('card-name-en');
+    await fireEvent(nameEn.parent!, 'layout', { nativeEvent: { layout: { width: 176 } } });
+    expect(StyleSheet.flatten(screen.getByTestId('card-name-en').props.style).letterSpacing).toBe(
+      0,
+    );
+
+    await renderCard('FJI');
+    const fiji = screen.getByTestId('card-name-en');
+    await fireEvent(fiji.parent!, 'layout', { nativeEvent: { layout: { width: 176 } } });
+    expect(StyleSheet.flatten(screen.getByTestId('card-name-en').props.style).letterSpacing).toBe(
+      2,
+    );
   });
 
   it('gives the close button a 48 pt target', async () => {
