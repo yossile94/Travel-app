@@ -144,7 +144,7 @@
     "nameHe": "אנטארקטיקה",
     "nameEn": "Antarctica",
     "label": [35.8855, -79.8432],
-    "span": 97.92
+    "span": 83.22
   },
   "ATC": {
     "nameHe": "איי אשמור וקרטייה",
@@ -2289,7 +2289,7 @@
     "nameHe": "רוסיה",
     "nameEn": "Russia",
     "label": [44.6865, 58.2494],
-    "span": 77.56,
+    "span": 82.79,
     "timeZone": "Europe/Moscow",
     "city": "מוסקבה",
     "currency": {
