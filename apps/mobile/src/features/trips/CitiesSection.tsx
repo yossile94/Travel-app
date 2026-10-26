@@ -70,6 +70,8 @@ export function CitiesSection({
   const palette = colors[colorScheme];
   const [searching, setSearching] = useState(false);
   const addButton = useRef<ComponentRef<typeof Pressable>>(null);
+  const focusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(focusTimer.current), []);
   const removeButtons = useRef<(ComponentRef<typeof Pressable> | null)[]>([]);
   const focusAfterRemove = useRef<number | null>(null);
   useEffect(() => {
@@ -201,7 +203,9 @@ export function CitiesSection({
             AccessibilityInfo.announceForAccessibility(
               t('tripForm.cityAdded', { city: city.name }),
             );
-            setTimeout(() => {
+            // After the screen has gone, focus returns to "add" (design 5.2).
+            clearTimeout(focusTimer.current);
+            focusTimer.current = setTimeout(() => {
               const node = findNodeHandle(addButton.current);
               if (node) AccessibilityInfo.setAccessibilityFocus(node);
             }, 400);

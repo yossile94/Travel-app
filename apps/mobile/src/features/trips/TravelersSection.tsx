@@ -44,6 +44,8 @@ export function TravelersSection({
   const palette = colors[colorScheme];
   const [adding, setAdding] = useState(false);
   const addButton = useRef<ComponentRef<typeof Pressable>>(null);
+  const focusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(focusTimer.current), []);
   const removeButtons = useRef<(ComponentRef<typeof Pressable> | null)[]>([]);
   /** After a removal, focus moves to the row that took its place (design 6.4). */
   const focusAfterRemove = useRef<number | null>(null);
@@ -186,7 +188,9 @@ export function TravelersSection({
           AccessibilityInfo.announceForAccessibility(
             t('tripForm.travelerAdded', { name: traveler.name }),
           );
-          setTimeout(() => {
+          // After the sheet or screen has gone (design: focus returns to "add").
+          clearTimeout(focusTimer.current);
+          focusTimer.current = setTimeout(() => {
             const node = findNodeHandle(addButton.current);
             if (node) AccessibilityInfo.setAccessibilityFocus(node);
           }, 400);
