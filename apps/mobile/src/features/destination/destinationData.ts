@@ -24,6 +24,8 @@ export interface Advisory {
   entrySourceUrl: string | null;
   entryVerifiedAt: string | null;
   nscLevel: 1 | 2 | 3 | 4 | null;
+  /** Every level the text names: more than one means it varies by region. */
+  nscLevels: number[];
   nscText: string | null;
   nscUrl: string | null;
   mfaText: string | null;
@@ -61,7 +63,7 @@ async function readServer(): Promise<Stored | null> {
     supabase
       .from('country_advisories')
       .select(
-        'adm0, entry_status, entry_note, entry_source_url, entry_verified_at, nsc_level, nsc_text, nsc_url, mfa_text, mfa_url, fetched_at',
+        'adm0, entry_status, entry_note, entry_source_url, entry_verified_at, nsc_level, nsc_levels, nsc_text, nsc_url, mfa_text, mfa_url, fetched_at',
       ),
   ]);
   if (rates.error || advisories.error) {
@@ -84,6 +86,7 @@ async function readServer(): Promise<Stored | null> {
       entrySourceUrl: a.entry_source_url as string | null,
       entryVerifiedAt: a.entry_verified_at as string | null,
       nscLevel: (a.nsc_level as Advisory['nscLevel']) ?? null,
+      nscLevels: (a.nsc_levels as number[] | null) ?? [],
       nscText: a.nsc_text as string | null,
       nscUrl: a.nsc_url as string | null,
       mfaText: a.mfa_text as string | null,

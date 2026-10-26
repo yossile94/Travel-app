@@ -20,6 +20,8 @@ export interface WarningRecord {
 export interface Advisory {
   adm0: string;
   nsc_level: number | null;
+  /** Every level the text names, low to high. */
+  nsc_levels: number[];
   nsc_text: string | null;
   nsc_url: string | null;
   mfa_text: string | null;
@@ -38,7 +40,13 @@ const WORDS: [RegExp, number][] = [
 
 /** The highest NSC level (1-4) the text names, or null. */
 export function nscLevel(text: string | null): number | null {
-  if (!text) return null;
+  const all = nscLevels(text);
+  return all.length ? all[all.length - 1]! : null;
+}
+
+/** Every NSC level (1-4) the text names, low to high, each once. */
+export function nscLevels(text: string | null): number[] {
+  if (!text) return [];
   const levels: number[] = [];
   // A digit right after "רמה/רמת ...", "איום ...", or in parentheses: "(2)", "(3/4)".
   const contexts =
@@ -48,7 +56,7 @@ export function nscLevel(text: string | null): number | null {
     if (match[2]) levels.push(Number(match[2]));
   }
   for (const [pattern, level] of WORDS) if (pattern.test(text)) levels.push(level);
-  return levels.length ? Math.max(...levels) : null;
+  return [...new Set(levels)].sort((a, b) => a - b);
 }
 
 /** The official link inside the record's HTML: https on gov.il only. */
@@ -88,6 +96,7 @@ export function advisoriesFrom(records: WarningRecord[]): {
     const advisory = byArea.get(adm0) ?? {
       adm0,
       nsc_level: null,
+      nsc_levels: [],
       nsc_text: null,
       nsc_url: null,
       mfa_text: null,
@@ -103,10 +112,11 @@ export function advisoriesFrom(records: WarningRecord[]): {
         advisory.nsc_text = clean(advisory.nsc_text ? `${advisory.nsc_text}\n\n${text}` : text);
       }
       advisory.nsc_url ??= link;
-      const level = nscLevel(text);
-      if (level !== null && (advisory.nsc_level === null || level > advisory.nsc_level)) {
-        advisory.nsc_level = level;
-      }
+      const levels = [...new Set([...advisory.nsc_levels, ...nscLevels(text)])].sort(
+        (a, b) => a - b,
+      );
+      advisory.nsc_levels = levels;
+      advisory.nsc_level = levels.length ? levels[levels.length - 1]! : null;
     } else if (office.includes('חוץ') && text) {
       // The MFA can have several rows per country: kept together, in order.
       advisory.mfa_text = clean(advisory.mfa_text ? `${advisory.mfa_text}\n\n${text}` : text);

@@ -1,6 +1,6 @@
 import { assertEquals } from '@std/assert';
 
-import { advisoriesFrom, nscLevel, officialLink } from './advisories.ts';
+import { advisoriesFrom, nscLevel, nscLevels, officialLink } from './advisories.ts';
 
 Deno.test('reads the NSC level however it is written', () => {
   assertEquals(nscLevel('רמת איום מזדמן (2): המלצה לנקוט באמצעי זהירות מוגברים.'), 2);
@@ -18,6 +18,15 @@ Deno.test('reads the NSC level however it is written', () => {
   assertEquals(nscLevel('עלייה משמעותית בעוינות. איום בינוני: הימנעו מנסיעות שאינן חיוניות.'), 3);
   assertEquals(nscLevel('מצב משתנה, עקבו אחרי הודעות.'), null);
   assertEquals(nscLevel(null), null);
+});
+
+Deno.test('lists every level a text names, for "varies by region"', () => {
+  assertEquals(
+    nscLevels('רמת איום גבוהה (רמה 4) בדרום. איום מזדמן (רמה 2): שאר שטחי תאילנד.'),
+    [2, 4],
+  );
+  assertEquals(nscLevels('אין אזהרות'), [1]);
+  assertEquals(nscLevels(null), []);
 });
 
 Deno.test('keeps only https links on gov.il', () => {
@@ -65,6 +74,7 @@ Deno.test(
       {
         adm0: 'THA',
         nsc_level: 2,
+        nsc_levels: [2],
         nsc_text: 'איום מזדמן (רמה 2)',
         nsc_url: 'https://www.gov.il/he/pages/thailand1',
         mfa_text: 'שימרו על עירנות.\n\nבדקו את הגבול.',

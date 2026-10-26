@@ -42,6 +42,10 @@ create table public.country_advisories (
   -- From data.gov.il "travelwarnings" (NSC, MFA, Health), daily.
   -- nsc_level: the highest level named in the NSC text; null when the text names none.
   nsc_level smallint constraint country_advisories_level_check check (nsc_level between 1 and 4),
+  -- Every level the text names, low to high: {2,4} for "4 in the south, 2 elsewhere",
+  -- so the app can say the level varies by region (Sharona, design 6.3).
+  nsc_levels smallint[] constraint country_advisories_levels_check
+    check (nsc_levels <@ array[1, 2, 3, 4]::smallint[]),
   nsc_text text constraint country_advisories_nsc_text_check check (char_length(nsc_text) <= 4000),
   nsc_url text constraint country_advisories_nsc_url_check check (nsc_url ~ '^https://'),
   mfa_text text constraint country_advisories_mfa_text_check check (char_length(mfa_text) <= 4000),
