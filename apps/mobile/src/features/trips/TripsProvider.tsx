@@ -20,6 +20,13 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider';
 
 import { loadTripCountries, loadTripPage, type Trip } from './tripsApi';
+import {
+  CACHE_PAST_MAX,
+  CACHE_UPCOMING_MAX,
+  readTripsCache,
+  saveTripsCache,
+  type TripsCache,
+} from './tripsCache';
 import { useToday } from './useToday';
 
 interface TripsContextValue {
@@ -44,6 +51,13 @@ interface TripsContextValue {
   firstLoad: boolean;
   /** The globe is up: from now on the countries load (design 7.5, never before the first frame). */
   start: () => void;
+  /**
+   * Sprint 4 F-015: the trips saved on this device for this user, shown read
+   * only while offline; null when there is no copy.
+   */
+  cache: TripsCache | null;
+  /** Offline and showing the saved copy: writes are blocked (AC-14). */
+  fromCache: boolean;
 }
 
 const TripsContext = createContext<TripsContextValue | null>(null);
@@ -60,6 +74,12 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const [started, setStarted] = useState(false);
   const [countries, setCountries] = useState<ReadonlySet<string> | null>(null);
   const [nextTrip, setNextTrip] = useState<Trip | null>(null);
+  const [cache, setCache] = useState<TripsCache | null>(null);
+  const [fromCache, setFromCache] = useState(false);
+  const hasCache = useRef(false);
+  useEffect(() => {
+    hasCache.current = cache !== null;
+  }, [cache]);
   const today = useToday();
   /** The date a reload asks with; follows today (below). */
   const todayRef = useRef(today);
@@ -77,6 +97,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     setShownFor(userId);
     setCountries(null);
     setNextTrip(null);
+    setCache(null);
+    setFromCache(false);
     setFirstLoad(false);
   }
 
@@ -86,16 +108,45 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     const forUser = currentUser.current;
     if (!forUser) return;
     const id = ++sequence.current;
-    // The pin's trip comes with the countries (design 9.4): one more small query.
-    const [result, next] = await Promise.all([
+    // The pin's trip comes with the countries (design 9.4); the upcoming and
+    // past pages also fill the offline copy (sprint 4 F-015, AC-12).
+    const [result, next, past] = await Promise.all([
       loadTripCountries(),
-      loadTripPage({ section: 'upcoming', today: todayRef.current, pageSize: 1 }),
+      loadTripPage({ section: 'upcoming', today: todayRef.current, pageSize: CACHE_UPCOMING_MAX }),
+      loadTripPage({ section: 'past', today: todayRef.current, pageSize: CACHE_PAST_MAX }),
     ]);
-    if (id !== sequence.current || currentUser.current !== forUser || !result.ok) return;
+    if (id !== sequence.current || currentUser.current !== forUser) return;
+    if (!result.ok) {
+      // Offline: the saved copy, read only, if this user has one (AC-13).
+      if (result.reason !== 'offline') return;
+      const saved = await readTripsCache(forUser);
+      if (id !== sequence.current || currentUser.current !== forUser || !saved) return;
+      setCache(saved);
+      setFromCache(true);
+      setCountries(new Set(saved.countries));
+      setNextTrip(saved.nextTrip);
+      setFirstLoad(true);
+      return;
+    }
     setCountries(result.value);
     // A failed query shows no pin rather than one that may be gone (Dudi m6, Raz m4).
-    setNextTrip(next.ok ? (next.value.trips[0] ?? null) : null);
+    const nextValue = next.ok ? (next.value.trips[0] ?? null) : null;
+    setNextTrip(nextValue);
+    setFromCache(false);
     setFirstLoad(true);
+    if (next.ok && past.ok) {
+      const saved: TripsCache = {
+        userId: forUser,
+        savedAt: new Date().toISOString(),
+        upcoming: next.value.trips,
+        past: past.value.trips,
+        countries: [...result.value],
+        nextTrip: nextValue,
+        full: next.value.next !== null || past.value.next !== null,
+      };
+      setCache(saved);
+      void saveTripsCache(saved);
+    }
   }, []);
   // A new day changes which trip is next (design 3.4).
   useEffect(() => {
@@ -111,6 +162,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     let wasConnected: boolean | null = null;
     return NetInfo.addEventListener((net) => {
       const connected = net.isConnected === true;
+      // The network dropped after a load: the same read-only state (design 10.1).
+      if (net.isConnected === false && hasCache.current) setFromCache(true);
       if (wasConnected === false && connected) void reload();
       wasConnected = connected;
     });
@@ -137,8 +190,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const start = useCallback(() => setStarted(true), []);
 
   const value = useMemo(
-    () => ({ countries, nextTrip, today, changes, changed, firstLoad, start }),
-    [countries, nextTrip, today, changes, changed, firstLoad, start],
+    () => ({ countries, nextTrip, today, changes, changed, firstLoad, start, cache, fromCache }),
+    [countries, nextTrip, today, changes, changed, firstLoad, start, cache, fromCache],
   );
   return <TripsContext.Provider value={value}>{children}</TripsContext.Provider>;
 }

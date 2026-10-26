@@ -1,9 +1,19 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentRef,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   I18nManager,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -38,6 +48,16 @@ const DECELERATE = Easing.bezier(0.05, 0.7, 0.1, 1);
 const ACCELERATE = Easing.bezier(0.3, 0, 1, 1);
 /** Space between the card and the bottom inset (Android navigation bar). */
 export const CARD_GAP = 16;
+
+/** The card's own scroll, for a coupon in scroll mode (sprint 4 design 1.3, Raz change 4). */
+export const OuterScrollContext = createContext<OuterScroll | undefined>(undefined);
+
+export interface OuterScroll {
+  /** Grows each time the card's scroll comes within 48dp of its end. */
+  nearEnd: number;
+  /** Scrolls the card so a coupon row at `y` (from the coupon's top) starts 16dp from the top. */
+  scrollToRow: (y: number) => void;
+}
 
 /**
  * Whether the English name keeps its letter spacing. Android measures a
@@ -74,6 +94,11 @@ interface Props {
    * The coupon under the pass (sprint 2 design 2.1), given how tall its list
    * may grow before it scrolls.
    */
+  /**
+   * The coupon under the pass. In scroll mode (sprint 4 design 1.3) its list
+   * doesn't scroll by itself: OuterScrollContext tells it when the card's
+   * scroll nears the end (load more) and scrolls the card to a row.
+   */
   coupon?: (maxListHeight: number) => ReactNode;
   /** Today's local date, from the trips' shared "day changed" event (sprint 3 AC-6, AC-10). */
   today?: string;
@@ -109,6 +134,25 @@ export function BoardingPassCard({
   const palette = colors[colorScheme];
   const dark = colorScheme === 'dark';
   const [size, setSize] = useState({ width: 0, height: 0 });
+  // Sprint 4 design 1.3: with no room for even one trip row, the pass and the
+  // coupon scroll together; the close button stays put.
+  const maxCardHeight =
+    windowHeight -
+    (topInset + layout.overlayTop + layout.touchTargetMin) -
+    (bottomInset + CARD_GAP);
+  const scrollMode = coupon !== undefined && passHeight > 0 && maxListHeight < layout.tripRowMin;
+  const [content, setContent] = useState({ width: 0, height: 0 });
+  const outerRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const [nearEnd, setNearEnd] = useState(0);
+  const scrollToRow = useCallback(
+    (y: number) =>
+      outerRef.current?.scrollTo({ y: Math.max(0, passHeight + y - 16), animated: !reduceMotion }),
+    [passHeight, reduceMotion],
+  );
+  const outer = useMemo<OuterScroll | undefined>(
+    () => (scrollMode ? { nearEnd, scrollToRow } : undefined),
+    [scrollMode, nearEnd, scrollToRow],
+  );
 
   // Slide up from below (or fade, with reduced motion) when the card appears,
   // and back down when search takes the screen (200 ms, accelerating).
@@ -151,7 +195,7 @@ export function BoardingPassCard({
     onHeight?.(height);
   };
 
-  const notchX = I18nManager.isRTL ? STUB_WIDTH : size.width - STUB_WIDTH;
+  const notchX = I18nManager.isRTL ? STUB_WIDTH : content.width - STUB_WIDTH;
 
   return (
     <Animated.View
@@ -162,158 +206,181 @@ export function BoardingPassCard({
       accessibilityElementsHidden={hidden}
       testID="country-card"
     >
-      {size.width > 0 && (
-        <Svg width={size.width} height={size.height} style={StyleSheet.absoluteFill}>
-          <Path
-            d={boardingPassPath(size.width, size.height, {
-              cornerRadius: CORNER_RADIUS,
-              notchX,
-              notchRadius: NOTCH_RADIUS,
-              couponY: coupon && passHeight > 0 ? passHeight : undefined,
-            })}
-            fill={palette.surfaceRaised}
-            stroke={dark ? 'rgba(163,179,219,0.16)' : 'transparent'}
-          />
-          <Line
-            x1={notchX}
-            y1={NOTCH_RADIUS + 4}
-            x2={notchX}
-            y2={coupon && passHeight > 0 ? passHeight - 4 : size.height - NOTCH_RADIUS - 4}
-            stroke={dark ? 'rgba(244,231,208,0.22)' : 'rgba(18,28,54,0.22)'}
-            strokeWidth={2}
-            strokeDasharray="6 5"
-          />
-          {coupon && passHeight > 0 ? (
-            <Line
-              x1={NOTCH_RADIUS + 4}
-              y1={passHeight}
-              x2={size.width - NOTCH_RADIUS - 4}
-              y2={passHeight}
-              stroke={dark ? 'rgba(244,231,208,0.22)' : 'rgba(18,28,54,0.22)'}
-              strokeWidth={2}
-              strokeDasharray="6 5"
-            />
-          ) : null}
-        </Svg>
-      )}
+      <ScrollView
+        ref={outerRef}
+        scrollEnabled={scrollMode}
+        style={scrollMode ? { maxHeight: maxCardHeight } : undefined}
+        onScroll={(event) => {
+          if (!scrollMode) return;
+          const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 48) {
+            setNearEnd((n) => n + 1);
+          }
+        }}
+        scrollEventThrottle={100}
+        testID={scrollMode ? 'card-scroll-mode' : undefined}
+      >
+        <View onLayout={(event) => setContent(event.nativeEvent.layout)}>
+          {content.width > 0 && (
+            <Svg width={content.width} height={content.height} style={StyleSheet.absoluteFill}>
+              <Path
+                d={boardingPassPath(content.width, content.height, {
+                  cornerRadius: CORNER_RADIUS,
+                  notchX,
+                  notchRadius: NOTCH_RADIUS,
+                  couponY: coupon && passHeight > 0 ? passHeight : undefined,
+                })}
+                fill={palette.surfaceRaised}
+                stroke={dark ? 'rgba(163,179,219,0.16)' : 'transparent'}
+              />
+              <Line
+                x1={notchX}
+                y1={NOTCH_RADIUS + 4}
+                x2={notchX}
+                y2={coupon && passHeight > 0 ? passHeight - 4 : content.height - NOTCH_RADIUS - 4}
+                stroke={dark ? 'rgba(244,231,208,0.22)' : 'rgba(18,28,54,0.22)'}
+                strokeWidth={2}
+                strokeDasharray="6 5"
+              />
+              {coupon && passHeight > 0 ? (
+                <Line
+                  x1={NOTCH_RADIUS + 4}
+                  y1={passHeight}
+                  x2={content.width - NOTCH_RADIUS - 4}
+                  y2={passHeight}
+                  stroke={dark ? 'rgba(244,231,208,0.22)' : 'rgba(18,28,54,0.22)'}
+                  strokeWidth={2}
+                  strokeDasharray="6 5"
+                />
+              ) : null}
+            </Svg>
+          )}
 
-      <View style={styles.row} onLayout={(event) => setPassHeight(event.nativeEvent.layout.height)}>
-        <View style={styles.main}>
-          <View style={[styles.strip, { backgroundColor: highlightColor }]} />
-          <Text style={[styles.label, { color: palette.textSecondary }]}>
-            {t('card.destination')}
-          </Text>
-          {/* AC-11: at most two lines; long names step down a size, and the
-              full name stays in the label for the screen reader. */}
-          <Text
-            style={[
-              styles.nameHe,
-              country.nameHe.length > layout.cardNameStepDownChars && styles.nameHeLong,
-              styles.clearOfClose,
-              { color: palette.textPrimary },
-            ]}
-            accessibilityRole="header"
-            accessibilityLabel={country.nameHe}
-            numberOfLines={2}
-            ellipsizeMode="tail"
-            maxFontSizeMultiplier={1.6}
-            testID="card-name"
+          <View
+            style={styles.row}
+            onLayout={(event) => setPassHeight(event.nativeEvent.layout.height)}
           >
-            {country.nameHe}
-          </Text>
-          {/* The inner row is laid out left to right even in Hebrew: in an
+            <View style={styles.main}>
+              <View style={[styles.strip, { backgroundColor: highlightColor }]} />
+              <Text style={[styles.label, { color: palette.textSecondary }]}>
+                {t('card.destination')}
+              </Text>
+              {/* AC-11: at most two lines; long names step down a size, and the
+              full name stays in the label for the screen reader. */}
+              <Text
+                style={[
+                  styles.nameHe,
+                  country.nameHe.length > layout.cardNameStepDownChars && styles.nameHeLong,
+                  styles.clearOfClose,
+                  { color: palette.textPrimary },
+                ]}
+                accessibilityRole="header"
+                accessibilityLabel={country.nameHe}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+                maxFontSizeMultiplier={1.6}
+                testID="card-name"
+              >
+                {country.nameHe}
+              </Text>
+              {/* The inner row is laid out left to right even in Hebrew: in an
               RTL layout Android ellipsized the English name from the wrong end
               ("H GEORGIA …", sprint 1 QA). The outer view keeps the app's
               direction, so the space for the close button stays on its side. */}
-          <View style={styles.clearOfClose}>
-            <View
-              style={styles.nameEnRow}
-              onLayout={(event) => setNameEnWidth(event.nativeEvent.layout.width)}
-            >
-              <Text
-                style={[
-                  styles.nameEn,
-                  !spaceEnglishName(country.nameEn, fontScale, nameEnWidth) && styles.nameEnTight,
-                  { color: palette.textSecondary },
-                ]}
-                accessibilityLabel={country.nameEn}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                testID="card-name-en"
-              >
-                {country.nameEn}
-              </Text>
+              <View style={styles.clearOfClose}>
+                <View
+                  style={styles.nameEnRow}
+                  onLayout={(event) => setNameEnWidth(event.nativeEvent.layout.width)}
+                >
+                  <Text
+                    style={[
+                      styles.nameEn,
+                      !spaceEnglishName(country.nameEn, fontScale, nameEnWidth) &&
+                        styles.nameEnTight,
+                      { color: palette.textSecondary },
+                    ]}
+                    accessibilityLabel={country.nameEn}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    testID="card-name-en"
+                  >
+                    {country.nameEn}
+                  </Text>
+                </View>
+              </View>
+              {/* Sprint 4 design 1.1: can I enter, how safe is it, before the time and money. */}
+              <CardSafety
+                country={country}
+                colorScheme={colorScheme}
+                reduceMotion={reduceMotion}
+                insetsBottom={bottomInset}
+              />
+
+              <View style={styles.fields}>
+                {country.timeZone && <LocalTime country={country} colorScheme={colorScheme} />}
+                {country.currency && (
+                  <View testID="card-currency">
+                    <Text style={[styles.label, { color: palette.textSecondary }]}>
+                      {t('card.currency')}
+                    </Text>
+                    <Text style={[styles.value, { color: palette.textPrimary }]}>
+                      {country.currency.nameHe}
+                    </Text>
+                    <Text style={[styles.sub, { color: palette.textSecondary }]}>
+                      {isolateLtr(
+                        country.currency.symbol === country.currency.code
+                          ? country.currency.code
+                          : `${isolateOwn(country.currency.symbol)} · ${country.currency.code}`,
+                      )}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {/* Sprint 4 design 1.1: the rate under the fields, then the temperature, then "Sources". */}
+              <CardRateBlock
+                country={country}
+                colorScheme={colorScheme}
+                reduceMotion={reduceMotion}
+                insetsBottom={bottomInset}
+              />
+              <CardTemperature adm0={country.adm0} colorScheme={colorScheme} today={today} />
+              <CardSources
+                colorScheme={colorScheme}
+                reduceMotion={reduceMotion}
+                insetsBottom={bottomInset}
+              />
+            </View>
+
+            <View style={styles.stub}>
+              <SplitFlap
+                text={country.adm0}
+                reduceMotion={reduceMotion}
+                dark={dark}
+                accessibilityLabel={t('card.code', { code: country.adm0 })}
+              />
+              <Svg width={80} height={30} style={styles.barcode} importantForAccessibility="no">
+                {[0, 3, 5, 9, 12, 14, 18, 21, 23, 27, 30, 32, 36, 39, 41, 45, 48, 50, 54, 57].map(
+                  (x, i) => (
+                    <Rect
+                      key={x}
+                      x={x * 1.4}
+                      y={0}
+                      width={i % 3 === 0 ? 3 : 1.5}
+                      height={30}
+                      fill={palette.textPrimary}
+                      opacity={0.85}
+                    />
+                  ),
+                )}
+              </Svg>
             </View>
           </View>
-          {/* Sprint 4 design 1.1: can I enter, how safe is it, before the time and money. */}
-          <CardSafety
-            country={country}
-            colorScheme={colorScheme}
-            reduceMotion={reduceMotion}
-            insetsBottom={bottomInset}
-          />
 
-          <View style={styles.fields}>
-            {country.timeZone && <LocalTime country={country} colorScheme={colorScheme} />}
-            {country.currency && (
-              <View testID="card-currency">
-                <Text style={[styles.label, { color: palette.textSecondary }]}>
-                  {t('card.currency')}
-                </Text>
-                <Text style={[styles.value, { color: palette.textPrimary }]}>
-                  {country.currency.nameHe}
-                </Text>
-                <Text style={[styles.sub, { color: palette.textSecondary }]}>
-                  {isolateLtr(
-                    country.currency.symbol === country.currency.code
-                      ? country.currency.code
-                      : `${isolateOwn(country.currency.symbol)} · ${country.currency.code}`,
-                  )}
-                </Text>
-              </View>
-            )}
-          </View>
-          {/* Sprint 4 design 1.1: the rate under the fields, then the temperature, then "Sources". */}
-          <CardRateBlock
-            country={country}
-            colorScheme={colorScheme}
-            reduceMotion={reduceMotion}
-            insetsBottom={bottomInset}
-          />
-          <CardTemperature adm0={country.adm0} colorScheme={colorScheme} today={today} />
-          <CardSources
-            colorScheme={colorScheme}
-            reduceMotion={reduceMotion}
-            insetsBottom={bottomInset}
-          />
+          <OuterScrollContext.Provider value={outer}>
+            {coupon ? coupon(scrollMode ? Infinity : maxListHeight) : null}
+          </OuterScrollContext.Provider>
         </View>
-
-        <View style={styles.stub}>
-          <SplitFlap
-            text={country.adm0}
-            reduceMotion={reduceMotion}
-            dark={dark}
-            accessibilityLabel={t('card.code', { code: country.adm0 })}
-          />
-          <Svg width={80} height={30} style={styles.barcode} importantForAccessibility="no">
-            {[0, 3, 5, 9, 12, 14, 18, 21, 23, 27, 30, 32, 36, 39, 41, 45, 48, 50, 54, 57].map(
-              (x, i) => (
-                <Rect
-                  key={x}
-                  x={x * 1.4}
-                  y={0}
-                  width={i % 3 === 0 ? 3 : 1.5}
-                  height={30}
-                  fill={palette.textPrimary}
-                  opacity={0.85}
-                />
-              ),
-            )}
-          </Svg>
-        </View>
-      </View>
-
-      {coupon ? coupon(maxListHeight) : null}
+      </ScrollView>
 
       <Pressable
         onPress={onClose}

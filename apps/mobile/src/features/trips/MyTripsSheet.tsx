@@ -31,6 +31,7 @@ import { countryName } from './countryName';
 import { formatRange, formatRangeA11y, todayPg, travelerCount, tripStatus } from './tripDates';
 import type { Trip } from './tripsApi';
 import { useTrips } from './TripsProvider';
+import { cachedWhen } from './tripsCache';
 import { useTripList } from './useTripList';
 
 interface Props {
@@ -54,6 +55,7 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
     enabled: visible,
     // An open list changes only on its next load (AC-6, design 3.4; Raz R3).
     reloadKey: trips.changes,
+    cache: trips.cache,
     parallelFirstPage: true,
   });
   const today = todayPg();
@@ -172,7 +174,15 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
       <Text style={[styles.title2, { color: palette.textPrimary }]} accessibilityRole="header">
         {t('myTrips.title')}
       </Text>
-      {state.offlineStale ? (
+      {(trips.fromCache || state.fromCache) && trips.cache ? (
+        <View style={styles.block}>
+          <InlineNotice
+            text={t('offline.cachedAt', { when: cachedWhen(trips.cache.savedAt, t) })}
+            colorScheme={sheet.colorScheme}
+            testID="my-trips-cached"
+          />
+        </View>
+      ) : state.offlineStale ? (
         <View style={styles.block}>
           <InlineNotice text={t('myTrips.offlineStale')} colorScheme={sheet.colorScheme} />
         </View>

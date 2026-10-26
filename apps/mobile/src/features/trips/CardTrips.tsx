@@ -5,7 +5,7 @@
  * set says there are trips here, or isn't known yet (design 2.2, AC-10).
  */
 import NetInfo from '@react-native-community/netinfo';
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { useEffect, useRef, useState, type ComponentRef, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
@@ -35,7 +35,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { TripTemperature } from '@/features/climate/TripTemperature';
 import { useDestination } from '@/features/destination/destinationData';
 import { TripStatusLine } from '@/features/destination/DestinationFields';
-import { isolateOwn } from '@/features/globe/BoardingPassCard';
+import { isolateOwn, OuterScrollContext } from '@/features/globe/BoardingPassCard';
 import type { CountryInfo } from '@/features/globe/countryData';
 import { colors, fonts, layout, radius, timing, type ColorScheme } from '@/theme/tokens';
 
@@ -49,6 +49,7 @@ import {
 } from './tripDates';
 import { deleteTrip, type Trip } from './tripsApi';
 import { useTrips } from './TripsProvider';
+import { cachedWhen } from './tripsCache';
 import { useTripList } from './useTripList';
 
 interface Props {
@@ -58,6 +59,7 @@ interface Props {
   maxListHeight: number;
   /** Opened from "My trips": this trip starts expanded (design 5.3). */
   initiallyOpen?: string | null;
+
   /** Bumped on each request to open initiallyOpen, so the same trip opens again (the pin). */
   openSeq?: number;
   onNewTrip: () => void;
@@ -91,7 +93,16 @@ export function CardTrips({
     countryAdm0: country.adm0,
     // A new day moves trips between upcoming and past (design 3.4, Raz m2).
     reloadKey: `${trips.changes}:${trips.today}`,
+    cache: trips.cache,
   });
+  // Sprint 4 F-015: offline with the saved copy, every write is blocked (AC-14, design 10.3).
+  const readOnly = trips.fromCache || state.fromCache === true;
+  const [blockedAt, setBlockedAt] = useState<string | null>(null);
+  if (!readOnly && blockedAt !== null) setBlockedAt(null);
+  const guard = (at: string, action: () => void) => () => {
+    if (readOnly) setBlockedAt(at);
+    else action();
+  };
   const [open, setOpen] = useState<string | null>(initiallyOpen);
   // A new request opens the row again, even for the same trip (Raz, m1).
   const request = `${initiallyOpen ?? ''}:${openSeq}`;
@@ -112,11 +123,21 @@ export function CardTrips({
   // The trip opened from "My trips" scrolls into view once its row is laid out.
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const scrolledTo = useRef<string | null>(null);
+  // The card's scroll, in scroll mode (sprint 4 design 1.3): the list itself doesn't scroll.
+  const outer = useContext(OuterScrollContext);
+  const listTop = useRef(0);
   const onRowLayout = (id: string, y: number) => {
     if (id !== initiallyOpen || scrolledTo.current === request) return;
     scrolledTo.current = request;
-    scroll.current?.scrollTo({ y, animated: false });
+    // In scroll mode the card scrolls, not the list (design 1.3).
+    if (outer) outer.scrollToRow(listTop.current + y);
+    else scroll.current?.scrollTo({ y, animated: false });
   };
+  // Scroll mode: the card's scroll nearing its end loads the next page (Raz, change 4).
+  const nearEnd = outer?.nearEnd ?? 0;
+  useEffect(() => {
+    if (nearEnd > 0 && !readOnly) void loadMore();
+  }, [nearEnd, readOnly, loadMore]);
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
@@ -272,6 +293,13 @@ export function CardTrips({
                 {rowNotice?.id === trip.id ? (
                   <InlineNotice text={rowNotice.text} colorScheme={colorScheme} />
                 ) : null}
+                {blockedAt === trip.id ? (
+                  <InlineNotice
+                    text={t('offline.readOnly')}
+                    colorScheme={colorScheme}
+                    testID="card-trip-readonly"
+                  />
+                ) : null}
                 <View style={styles.actions}>
                   <Button
                     kind="secondary"
@@ -279,7 +307,8 @@ export function CardTrips({
                     label={t('card.trips.edit')}
                     icon={(color) => <PencilIcon color={color} size={20} />}
                     disabled={deleting !== null}
-                    onPress={() => onEditTrip(trip)}
+                    blocked={readOnly}
+                    onPress={guard(trip.id, () => onEditTrip(trip))}
                     colorScheme={colorScheme}
                     testID="card-trip-edit"
                   />
@@ -288,7 +317,8 @@ export function CardTrips({
                     label={t('card.trips.duplicate')}
                     icon={(color) => <CopyIcon color={color} size={20} />}
                     disabled={deleting !== null}
-                    onPress={() => onDuplicateTrip(trip)}
+                    blocked={readOnly}
+                    onPress={guard(trip.id, () => onDuplicateTrip(trip))}
                     colorScheme={colorScheme}
                     testID="card-trip-duplicate"
                   />
@@ -297,7 +327,8 @@ export function CardTrips({
                     label={t('card.trips.delete')}
                     icon={(color) => <TrashIcon color={color} size={20} />}
                     disabled={deleting !== null}
-                    onPress={() => remove(trip)}
+                    blocked={readOnly}
+                    onPress={guard(trip.id, () => remove(trip))}
                     colorScheme={colorScheme}
                     testID="card-trip-delete"
                   />
@@ -318,6 +349,17 @@ export function CardTrips({
         <Text style={[styles.caption, { color: palette.textSecondary }]} accessibilityRole="header">
           {t('card.trips.title')}
         </Text>
+      ) : null}
+      {readOnly && trips.cache ? (
+        <View style={[styles.message, styles.offline]} accessibilityLiveRegion="polite">
+          <CloudOffIcon color={palette.textTertiary} size={16} />
+          <Text
+            style={[styles.footnote, styles.grow, { color: palette.textSecondary }]}
+            testID="card-trips-cached"
+          >
+            {t('offline.cachedAt', { when: cachedWhen(trips.cache.savedAt, t) })}
+          </Text>
+        </View>
       ) : null}
 
       {state.status === 'loading' && state.showSkeleton ? (
@@ -346,7 +388,11 @@ export function CardTrips({
       {hasRows ? (
         <ScrollView
           ref={scroll}
-          style={{ maxHeight: Math.max(maxListHeight, layout.tripRowMin) }}
+          onLayout={(event) => {
+            listTop.current = event.nativeEvent.layout.y;
+          }}
+          scrollEnabled={!outer}
+          style={outer ? undefined : { maxHeight: Math.max(maxListHeight, layout.tripRowMin) }}
           nestedScrollEnabled
           onScroll={onScroll}
           scrollEventThrottle={100}
@@ -363,6 +409,11 @@ export function CardTrips({
             </Text>
           ) : null}
           {rows(state.past)}
+          {readOnly && trips.cache?.full ? (
+            <Text style={[styles.footnote, { color: palette.textTertiary }]}>
+              {t('offline.moreLater')}
+            </Text>
+          ) : null}
           {state.loadingMore ? (
             <View style={styles.more}>
               <ActivityIndicator size={20} color={palette.textTertiary} />
@@ -384,12 +435,16 @@ export function CardTrips({
       ) : null}
 
       <View style={hasRows || state.status !== 'idle' ? styles.ctaGap : undefined}>
+        {blockedAt === 'new' ? (
+          <InlineNotice text={t('offline.readOnly')} colorScheme={colorScheme} />
+        ) : null}
         <Button
           kind="cta"
           label={t('card.trips.new')}
           a11yLabel={t('card.trips.newA11y', { country: countryName(country, i18n.language) })}
           icon={(color) => <PlusIcon color={color} size={20} />}
-          onPress={onNewTrip}
+          blocked={readOnly}
+          onPress={guard('new', onNewTrip)}
           colorScheme={colorScheme}
           testID="card-new-trip"
         />

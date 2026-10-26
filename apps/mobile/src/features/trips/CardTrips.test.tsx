@@ -10,7 +10,15 @@ import type { Trip } from './tripsApi';
 jest.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => ({ state: { status: 'signedIn', user: { id: 'u1' } } }),
 }));
-const mockTrips = { countries: null, changes: 0, today: '2026-10-22', changed: jest.fn() };
+const mockTrips = {
+  countries: null,
+  changes: 0,
+  today: '2026-10-22',
+  changed: jest.fn(),
+  cache: null as null | { savedAt: string; full: boolean; upcoming: Trip[]; past: Trip[] },
+  fromCache: false,
+};
+const onEditTrip = jest.fn();
 jest.mock('./TripsProvider', () => ({ useTrips: () => mockTrips }));
 const mockList = {
   status: 'ready',
@@ -58,13 +66,16 @@ const card = (initiallyOpen: string | null = null, openSeq = 0) => (
     initiallyOpen={initiallyOpen}
     openSeq={openSeq}
     onNewTrip={jest.fn()}
-    onEditTrip={jest.fn()}
+    onEditTrip={onEditTrip}
     onDuplicateTrip={onDuplicateTrip}
     onToast={jest.fn()}
   />
 );
 
 beforeEach(() => {
+  mockTrips.cache = null;
+  mockTrips.fromCache = false;
+  onEditTrip.mockClear();
   mockList.upcoming = [];
   mockList.past = [];
   mockTrips.today = '2026-10-22';
@@ -148,5 +159,17 @@ describe('CardTrips (sprint 3 AC-3, AC-5, AC-6, AC-9)', () => {
     mockTrips.today = '2026-10-23';
     await render(card());
     expect(mockUseTripList.mock.lastCall![0].reloadKey).not.toBe(before);
+  });
+
+  it('offline with the saved copy: says so, and edits explain instead of opening (sprint 4 F-015)', async () => {
+    mockTrips.fromCache = true;
+    mockTrips.cache = { savedAt: new Date().toISOString(), full: false, upcoming: [], past: [] };
+    mockList.upcoming = [trip({})];
+    await render(card('t1'));
+    expect(screen.getByTestId('card-trips-cached')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('card-trip-edit'));
+    expect(onEditTrip).not.toHaveBeenCalled();
+    expect(screen.getByTestId('card-trip-readonly')).toBeOnTheScreen();
+    expect(screen.getByTestId('card-trip-edit').props.accessibilityState.disabled).toBe(true);
   });
 });

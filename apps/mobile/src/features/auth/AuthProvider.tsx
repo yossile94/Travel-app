@@ -34,6 +34,7 @@ import {
   type SaveResult,
 } from '@/features/account/accountApi';
 import { requestDeletion } from '@/features/account/deleteAccountApi';
+import { clearTripsCaches } from '@/features/trips/tripsCache';
 import { clearStoredSessions } from '@/lib/secureSessionStorage';
 import { supabase } from '@/lib/supabase';
 
@@ -183,6 +184,8 @@ async function localSignOut(): Promise<void> {
     await supabase?.auth.signOut({ scope: 'local' });
   } finally {
     await clearStoredSessions();
+    // Sprint 4 AC-13: the offline copy of the trips goes with the session.
+    await clearTripsCaches();
   }
 }
 
@@ -261,6 +264,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * consent copies. Trips live only in memory and go with the state.
    */
   const wipeDevice = useCallback(async (userId: string | null) => {
+    // Sprint 4 AC-13: a sign-out the user didn't make, or a deletion, clears the trips copy too.
+    await clearTripsCaches();
     if (!userId) return;
     await removeLocalAgreement(userId);
     await removeLocalChoices(userId);

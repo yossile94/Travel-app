@@ -31,6 +31,8 @@ export interface TripListState {
   showSkeleton: boolean;
   /** The network dropped after rows were shown (design 5.2). */
   offlineStale: boolean;
+  /** The rows are the saved offline copy (sprint 4 F-015). */
+  fromCache?: boolean;
 }
 
 const EMPTY: TripListState = {
@@ -66,11 +68,14 @@ export function useTripList({
   countryAdm0,
   reloadKey,
   parallelFirstPage = false,
+  cache = null,
 }: {
   enabled: boolean;
   countryAdm0?: string;
   reloadKey: number | string;
   parallelFirstPage?: boolean;
+  /** Sprint 4 F-015: the saved copy, shown read only when offline (AC-13, AC-14). */
+  cache?: { upcoming: Trip[]; past: Trip[] } | null;
 }) {
   const [state, setState] = useState<TripListState>(enabled ? LOADING : EMPTY);
   // AC-8: disabled (signed out) empties the list during render, before it draws.
@@ -84,6 +89,10 @@ export function useTripList({
   const pastFirst = useRef<PastPage | null>(null);
   const request = useRef(0);
   const busy = useRef(false);
+  const cacheRef = useRef(cache);
+  useEffect(() => {
+    cacheRef.current = cache;
+  }, [cache]);
 
   /** Reads the first page(s). Sets state only after answers arrive. */
   const fetchFirst = useCallback(async () => {
@@ -103,6 +112,21 @@ export function useTripList({
     if (!upcoming.ok) {
       clearTimeout(skeleton);
       busy.current = false;
+      const saved = cacheRef.current;
+      if (upcoming.reason === 'offline' && saved) {
+        // The saved copy, no "load more" (design 10.4).
+        const mine = (list: Trip[]) =>
+          countryAdm0 ? list.filter((trip) => trip.countryAdm0 === countryAdm0) : list;
+        position.current = { section: 'past', cursor: null, done: true };
+        setState({
+          ...EMPTY,
+          status: 'ready',
+          upcoming: mine(saved.upcoming),
+          past: mine(saved.past),
+          fromCache: true,
+        });
+        return;
+      }
       setState((s) =>
         s.status === 'ready' && upcoming.reason === 'offline'
           ? { ...s, offlineStale: true }
@@ -207,7 +231,6 @@ export function useTripList({
 
   useEffect(() => {
     // fetchFirst sets state only once the server has answered (after an await).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (enabled) void fetchFirst();
   }, [enabled, reloadKey, fetchFirst]);
 
