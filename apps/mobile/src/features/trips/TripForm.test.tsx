@@ -1,7 +1,7 @@
 import '@/i18n';
 
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 import { countryByAdm0 } from '@/features/globe/countryData';
@@ -112,9 +112,10 @@ describe('TripForm, duplicate (sprint 3 AC-9)', () => {
     await fireEvent.press(screen.getByTestId('trip-form-start'));
     if (mockDates.length) await fireEvent.press(screen.getByTestId('trip-form-end'));
     await fireEvent.press(screen.getByTestId('trip-form-save'));
-    expect(mockRecheck).toHaveBeenCalled();
+    // The save, the consent recheck and the notice are async: wait, don't race (QA F-1).
+    await waitFor(() => expect(mockRecheck).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByTestId('trip-form-notice')).toBeOnTheScreen());
     expect(onDone).not.toHaveBeenCalled();
-    expect(screen.getByTestId('trip-form-notice')).toBeOnTheScreen();
     expect(DateTimePickerAndroid.open).toHaveBeenCalled();
   });
 });
