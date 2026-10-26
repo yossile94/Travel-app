@@ -86,6 +86,11 @@ export function CardTrips({
     reloadKey: trips.changes,
   });
   const [open, setOpen] = useState<string | null>(initiallyOpen);
+  const [askedOpen, setAskedOpen] = useState(initiallyOpen);
+  if (askedOpen !== initiallyOpen) {
+    setAskedOpen(initiallyOpen);
+    if (initiallyOpen) setOpen(initiallyOpen);
+  }
   const [deleting, setDeleting] = useState<string | null>(null);
   const [rowNotice, setRowNotice] = useState<{ id: string; text: string } | null>(null);
   const today = todayPg();
