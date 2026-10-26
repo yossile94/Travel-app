@@ -99,7 +99,7 @@ interface Props {
    * doesn't scroll by itself: OuterScrollContext tells it when the card's
    * scroll nears the end (load more) and scrolls the card to a row.
    */
-  coupon?: (maxListHeight: number) => ReactNode;
+  coupon?: (maxListHeight: number, onNoticeHeight: (height: number) => void) => ReactNode;
   /** Today's local date, from the trips' shared "day changed" event (sprint 3 AC-6, AC-10). */
   today?: string;
 }
@@ -123,13 +123,17 @@ export function BoardingPassCard({
   const { t } = useTranslation();
   const { fontScale, height: windowHeight } = useWindowDimensions();
   const [passHeight, setPassHeight] = useState(0);
+  // Design 1.2: the coupon's "shown from last save" line, when it shows, is part
+  // of its fixed parts too (Raz, S4-M2).
+  const [noticeHeight, setNoticeHeight] = useState(0);
   // Design 2.1: the whole card stays below insets.top + 112 + 48.
   const maxListHeight =
     windowHeight -
     (topInset + layout.overlayTop + layout.touchTargetMin) -
     (bottomInset + CARD_GAP) -
     passHeight -
-    COUPON_CHROME;
+    COUPON_CHROME -
+    noticeHeight;
   const [nameEnWidth, setNameEnWidth] = useState(0);
   const palette = colors[colorScheme];
   const dark = colorScheme === 'dark';
@@ -377,7 +381,7 @@ export function BoardingPassCard({
           </View>
 
           <OuterScrollContext.Provider value={outer}>
-            {coupon ? coupon(scrollMode ? Infinity : maxListHeight) : null}
+            {coupon ? coupon(scrollMode ? Infinity : maxListHeight, setNoticeHeight) : null}
           </OuterScrollContext.Provider>
         </View>
       </ScrollView>

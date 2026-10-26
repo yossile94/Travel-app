@@ -120,7 +120,8 @@ export function SearchBar({
     list.push(...results.map((entry): Row => ({ kind: 'country', entry })));
     if (both) list.push({ kind: 'header', label: 'cities' });
     list.push(...cityList.map((city): Row => ({ kind: 'city', city })));
-    if (wantsCities && !citiesReady && slowQuery === query && results.length > 0) {
+    // Also with no country match: an empty panel would look like no results (Raz, S4-m13).
+    if (wantsCities && !citiesReady && slowQuery === query) {
       list.push({ kind: 'loading' });
     }
     return list;

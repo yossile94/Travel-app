@@ -57,6 +57,8 @@ interface Props {
   colorScheme: ColorScheme;
   /** How tall the trips list may grow before it scrolls (design 2.1: the card stays below the controls). */
   maxListHeight: number;
+  /** The offline notice's height, 0 when hidden: the card sizes the list with it (design 1.2). */
+  onNoticeHeight?: (height: number) => void;
   /** Opened from "My trips": this trip starts expanded (design 5.3). */
   initiallyOpen?: string | null;
 
@@ -73,6 +75,7 @@ export function CardTrips({
   country,
   colorScheme,
   maxListHeight,
+  onNoticeHeight,
   initiallyOpen = null,
   openSeq = 0,
   onNewTrip,
@@ -97,6 +100,10 @@ export function CardTrips({
   });
   // Sprint 4 F-015: offline with the saved copy, every write is blocked (AC-14, design 10.3).
   const readOnly = trips.fromCache || state.fromCache === true;
+  const showsCached = readOnly && trips.cache !== null;
+  useEffect(() => {
+    if (!showsCached) onNoticeHeight?.(0);
+  }, [showsCached, onNoticeHeight]);
   const [blockedAt, setBlockedAt] = useState<string | null>(null);
   if (!readOnly && blockedAt !== null) setBlockedAt(null);
   const guard = (at: string, action: () => void) => () => {
@@ -125,13 +132,16 @@ export function CardTrips({
   const scrolledTo = useRef<string | null>(null);
   // The card's scroll, in scroll mode (sprint 4 design 1.3): the list itself doesn't scroll.
   const outer = useContext(OuterScrollContext);
-  const listTop = useRef(0);
+  // The row can be laid out before the list: scroll once both are measured (Raz, S4-m15).
+  const listTop = useRef<number | null>(null);
+  const pendingRowY = useRef<number | null>(null);
   const onRowLayout = (id: string, y: number) => {
     if (id !== initiallyOpen || scrolledTo.current === request) return;
     scrolledTo.current = request;
     // In scroll mode the card scrolls, not the list (design 1.3).
-    if (outer) outer.scrollToRow(listTop.current + y);
-    else scroll.current?.scrollTo({ y, animated: false });
+    if (!outer) scroll.current?.scrollTo({ y, animated: false });
+    else if (listTop.current === null) pendingRowY.current = y;
+    else outer.scrollToRow(listTop.current + y);
   };
   // Scroll mode: the card's scroll nearing its end loads the next page (Raz, change 4).
   const nearEnd = outer?.nearEnd ?? 0;
@@ -141,6 +151,8 @@ export function CardTrips({
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    // Offline: no "load more" at all (design 10.4, Raz S4-m8).
+    if (readOnly) return;
     if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 48) void loadMore();
   };
 
@@ -350,8 +362,12 @@ export function CardTrips({
           {t('card.trips.title')}
         </Text>
       ) : null}
-      {readOnly && trips.cache ? (
-        <View style={[styles.message, styles.offline]} accessibilityLiveRegion="polite">
+      {showsCached && trips.cache ? (
+        <View
+          style={[styles.message, styles.offline]}
+          accessibilityLiveRegion="polite"
+          onLayout={(event) => onNoticeHeight?.(event.nativeEvent.layout.height)}
+        >
           <CloudOffIcon color={palette.textTertiary} size={16} />
           <Text
             style={[styles.footnote, styles.grow, { color: palette.textSecondary }]}
@@ -390,6 +406,10 @@ export function CardTrips({
           ref={scroll}
           onLayout={(event) => {
             listTop.current = event.nativeEvent.layout.y;
+            if (outer && pendingRowY.current !== null) {
+              outer.scrollToRow(listTop.current + pendingRowY.current);
+              pendingRowY.current = null;
+            }
           }}
           scrollEnabled={!outer}
           style={outer ? undefined : { maxHeight: Math.max(maxListHeight, layout.tripRowMin) }}
@@ -418,7 +438,7 @@ export function CardTrips({
             <View style={styles.more}>
               <ActivityIndicator size={20} color={palette.textTertiary} />
             </View>
-          ) : state.moreError ? (
+          ) : state.moreError && !readOnly ? (
             <View style={styles.message}>
               <Text style={[styles.footnote, { color: palette.textSecondary }]}>
                 {t('myTrips.moreError')}

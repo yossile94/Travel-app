@@ -9,7 +9,7 @@
  * first so the card never waits on the network for what it already has.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 import { supabase } from '@/lib/supabase';
 
@@ -111,10 +111,18 @@ let failed = false;
 let loading: Promise<Destination | null> | null = null;
 const listeners = new Set<(d: Destination | null) => void>();
 
+/** What useDestination shows; a new object only when something changed. */
+let snapshot: DestinationState = { data: null, failed: false };
+
+function notify() {
+  if (snapshot.data !== current || snapshot.failed !== failed) snapshot = { data: current, failed };
+  listeners.forEach((l) => l(current));
+}
+
 function publish(d: Destination) {
   current = d;
   failed = false;
-  listeners.forEach((l) => l(d));
+  notify();
 }
 
 /** The device copy at once, then this session's server read (once). */
@@ -122,7 +130,12 @@ export function loadDestination(): Promise<Destination | null> {
   loading ??= (async () => {
     const device = await readDevice();
     if (device && !current) publish(fromStored(device, 'device'));
-    const server = await readServer();
+    // A throw (no network inside the client) is a failed read, retried by a
+    // later card, not a rejected promise kept for the session (Raz, S4-m1).
+    const server = await readServer().catch((error: unknown) => {
+      console.warn('[destination] read failed', (error as Error)?.name);
+      return null;
+    });
     if (server) {
       publish(fromStored(server, 'server'));
       void AsyncStorage.setItem(KEY, JSON.stringify(server)).catch(() => {});
@@ -131,7 +144,7 @@ export function loadDestination(): Promise<Destination | null> {
       loading = null;
       if (!current) {
         failed = true;
-        listeners.forEach((l) => l(current));
+        notify();
       }
     }
     return current;
@@ -144,6 +157,7 @@ export function resetDestination() {
   current = null;
   loading = null;
   failed = false;
+  snapshot = { data: null, failed: false };
 }
 
 export interface DestinationState {
@@ -154,14 +168,19 @@ export interface DestinationState {
 
 /** The data for a card or a list; null until anything is known. */
 export function useDestination(): DestinationState {
-  const [state, setState] = useState<DestinationState>({ data: current, failed });
+  // A store, so an update published between render and subscribe is never
+  // missed (Raz, S4-m2).
+  const state = useSyncExternalStore(subscribe, () => snapshot);
   useEffect(() => {
-    const listener = (d: Destination | null) => setState({ data: d, failed });
-    listeners.add(listener);
     void loadDestination();
-    return () => {
-      listeners.delete(listener);
-    };
   }, []);
   return state;
+}
+
+function subscribe(onChange: () => void) {
+  const listener = () => onChange();
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }

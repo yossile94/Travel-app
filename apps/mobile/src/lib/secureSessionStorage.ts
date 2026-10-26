@@ -105,7 +105,9 @@ export const secureSessionStorage = {
     await pendingWrites.get(storageKey)?.catch(() => {});
     await pendingKeys.get(storageKey)?.catch(() => {});
     pendingKeys.delete(storageKey);
-    await AsyncStorage.removeItem(storageKey);
+    // The key first (AC-12, Raz S4-m14): if the second delete fails, what is
+    // left can't be read.
     await SecureStore.deleteItemAsync(keyName(storageKey));
+    await AsyncStorage.removeItem(storageKey);
   },
 };

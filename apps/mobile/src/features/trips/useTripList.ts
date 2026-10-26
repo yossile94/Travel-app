@@ -229,10 +229,13 @@ export function useTripList({
     position.current = { section: 'upcoming', cursor: null, done: true };
   }, [enabled]);
 
+  // A list opened offline before the provider read the saved copy reads again
+  // once it has one (Raz, S4-m7). Only its arrival counts, not each new copy.
+  const hasCache = cache !== null;
   useEffect(() => {
     // fetchFirst sets state only once the server has answered (after an await).
     if (enabled) void fetchFirst();
-  }, [enabled, reloadKey, fetchFirst]);
+  }, [enabled, reloadKey, hasCache, fetchFirst]);
 
   // Network back: offline lists load by themselves (AC-7); stale ones refresh.
   useEffect(() => {

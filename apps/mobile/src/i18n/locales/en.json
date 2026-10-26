@@ -515,7 +515,8 @@
     "official": "Official page on gov.il",
     "disclaimer": "Based on publications of Israel's National Security Council and Ministry of Foreign Affairs. It does not replace checking the official source.",
     "more": "More",
-    "unrecognized": "The NSC has published a notice. Level not recognised, see details"
+    "unrecognized": "The NSC has published a notice. Level not recognised, see details",
+    "noNsc": "The NSC has published nothing for this area"
   },
   "offline": {
     "cachedAt": "Showing the last saved copy · {{when}}",

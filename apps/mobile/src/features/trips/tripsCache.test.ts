@@ -7,6 +7,7 @@ import {
   clearTripsCaches,
   readTripsCache,
   saveTripsCache,
+  tripsCacheGeneration,
   type TripsCache,
 } from './tripsCache';
 import type { Trip } from './tripsApi';
@@ -95,6 +96,14 @@ describe('the offline copy of the trips (sprint 4 F-015)', () => {
     const saving = saveTripsCache(cache('user-1'));
     await clearTripsCaches();
     await saving;
+    expect(await readTripsCache('user-1')).toBeNull();
+    expect(mockKeys.size).toBe(0);
+  });
+
+  it('a reload that began before a sign-out writes nothing after it (Raz, S4-M1)', async () => {
+    const began = tripsCacheGeneration();
+    await clearTripsCaches();
+    await saveTripsCache(cache('user-1'), began);
     expect(await readTripsCache('user-1')).toBeNull();
     expect(mockKeys.size).toBe(0);
   });

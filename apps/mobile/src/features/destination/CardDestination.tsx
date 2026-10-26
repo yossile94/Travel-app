@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import { SourcesSheet } from '@/features/climate/SourcesSheet';
 import type { CountryInfo } from '@/features/globe/countryData';
+import { countryName } from '@/features/trips/countryName';
 import { colors, fonts, type ColorScheme } from '@/theme/tokens';
 
 import { useDestination } from './destinationData';
@@ -33,6 +34,7 @@ interface Props {
 export function CardSafety({ country, colorScheme, reduceMotion, insetsBottom }: Props) {
   const { data, failed } = useDestination();
   const offline = useOffline();
+  const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   if (country.adm0 === 'ISR') return null;
   const advisory = data?.advisories.get(country.adm0);
@@ -45,15 +47,15 @@ export function CardSafety({ country, colorScheme, reduceMotion, insetsBottom }:
       />
       <CardAdvisory
         advisory={advisory}
-        loading={!data && !failed}
+        loading={!data && (!failed || offline === null)}
         failed={failed}
-        offline={offline}
+        offline={offline === true}
         colorScheme={colorScheme}
         onOpen={() => setOpen(true)}
       />
       <TravelInfoSheet
         visible={open}
-        countryName={country.nameHe}
+        countryName={countryName(country, i18n.language)}
         advisory={advisory}
         colorScheme={colorScheme}
         reduceMotion={reduceMotion}
@@ -68,18 +70,21 @@ export function CardSafety({ country, colorScheme, reduceMotion, insetsBottom }:
 export function CardRateBlock({ country, colorScheme, reduceMotion, insetsBottom }: Props) {
   const { data, failed } = useDestination();
   const offline = useOffline();
+  const { i18n } = useTranslation();
   const [calc, setCalc] = useState<Rate | null>(null);
   const currency = country.currency;
   if (!currency) return null;
+  // The Hebrew name in Hebrew; the ISO code in English (Raz, S4-m5).
+  const currencyName = i18n.language === 'he' ? currency.nameHe : currency.code;
   return (
     <>
       <CardRate
         currency={currency.code}
-        currencyName={currency.nameHe}
+        currencyName={currencyName}
         rate={data?.rates.get(currency.code)}
-        loading={!data && !failed}
+        loading={!data && (!failed || offline === null)}
         failed={failed}
-        offline={offline}
+        offline={offline === true}
         colorScheme={colorScheme}
         onOpen={setCalc}
       />
@@ -87,7 +92,7 @@ export function CardRateBlock({ country, colorScheme, reduceMotion, insetsBottom
         visible={calc !== null}
         rate={calc}
         usdIls={data?.rates.get('USD')?.rateToIls ?? null}
-        currencyName={currency.nameHe}
+        currencyName={currencyName}
         colorScheme={colorScheme}
         reduceMotion={reduceMotion}
         insetsBottom={insetsBottom}

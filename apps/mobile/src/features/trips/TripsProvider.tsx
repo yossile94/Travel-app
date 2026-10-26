@@ -25,6 +25,7 @@ import {
   CACHE_UPCOMING_MAX,
   readTripsCache,
   saveTripsCache,
+  tripsCacheGeneration,
   type TripsCache,
 } from './tripsCache';
 import { useToday } from './useToday';
@@ -108,17 +109,26 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     const forUser = currentUser.current;
     if (!forUser) return;
     const id = ++sequence.current;
+    const generation = tripsCacheGeneration();
     // The pin's trip comes with the countries (design 9.4); the upcoming and
     // past pages also fill the offline copy (sprint 4 F-015, AC-12).
     const [result, next, past] = await Promise.all([
       loadTripCountries(),
-      loadTripPage({ section: 'upcoming', today: todayRef.current, pageSize: CACHE_UPCOMING_MAX }),
-      loadTripPage({ section: 'past', today: todayRef.current, pageSize: CACHE_PAST_MAX }),
+      loadTripPage({
+        section: 'upcoming',
+        today: todayRef.current,
+        pageSize: CACHE_UPCOMING_MAX + 1,
+      }),
+      loadTripPage({ section: 'past', today: todayRef.current, pageSize: CACHE_PAST_MAX + 1 }),
     ]);
     if (id !== sequence.current || currentUser.current !== forUser) return;
     if (!result.ok) {
       // Offline: the saved copy, read only, if this user has one (AC-13).
-      if (result.reason !== 'offline') return;
+      if (result.reason !== 'offline') {
+        // The server answered: not offline, so editing isn't blocked (Raz, S4-m9).
+        setFromCache(false);
+        return;
+      }
       const saved = await readTripsCache(forUser);
       if (id !== sequence.current || currentUser.current !== forUser || !saved) return;
       setCache(saved);
@@ -138,15 +148,18 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       const saved: TripsCache = {
         userId: forUser,
         savedAt: new Date().toISOString(),
-        upcoming: next.value.trips,
-        past: past.value.trips,
+        upcoming: next.value.trips.slice(0, CACHE_UPCOMING_MAX),
+        past: past.value.trips.slice(0, CACHE_PAST_MAX),
         countries: [...result.value],
         nextTrip: nextValue,
-        full: next.value.next !== null || past.value.next !== null,
+        // One more than kept was asked for: "more" only when it came (Raz, S4-m10).
+        full:
+          next.value.trips.length > CACHE_UPCOMING_MAX || past.value.trips.length > CACHE_PAST_MAX,
       };
       setCache(saved);
-      // Still the same user: a sign-out in between must not leave a copy (Dudi, e2).
-      if (currentUser.current === forUser) void saveTripsCache(saved);
+      // Still the same user, and no clear since the queries began: a sign-out in
+      // between must not leave a copy (Dudi e2, Raz S4-M1).
+      if (currentUser.current === forUser) void saveTripsCache(saved, generation);
     }
   }, []);
   // A new day changes which trip is next (design 3.4).

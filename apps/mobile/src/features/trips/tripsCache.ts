@@ -42,13 +42,20 @@ const keyOf = (userId: string) => `${PREFIX}${userId}`;
  */
 let generation = 0;
 
-export async function saveTripsCache(cache: TripsCache): Promise<void> {
+/** Taken when a reload starts, and handed to saveTripsCache (Raz, S4-M1). */
+export const tripsCacheGeneration = () => generation;
+
+/**
+ * `startedIn`: the generation when the data was first asked for. A clear since
+ * then (a sign-out while the queries ran) means nothing is written.
+ */
+export async function saveTripsCache(cache: TripsCache, startedIn = generation): Promise<void> {
+  if (generation !== startedIn) return;
   const value: TripsCache = {
     ...cache,
     upcoming: cache.upcoming.slice(0, CACHE_UPCOMING_MAX),
     past: cache.past.slice(0, CACHE_PAST_MAX),
   };
-  const startedIn = generation;
   try {
     await secureSessionStorage.setItem(keyOf(cache.userId), JSON.stringify(value));
     if (generation !== startedIn) {

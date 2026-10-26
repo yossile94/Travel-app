@@ -58,6 +58,7 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
     cache: trips.cache,
     parallelFirstPage: true,
   });
+  const readOnly = trips.fromCache || state.fromCache === true;
   const today = todayPg();
 
   // Announcements: loading once it lasts, then loaded / more loaded (design 5.2, 5.4).
@@ -174,7 +175,7 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
       <Text style={[styles.title2, { color: palette.textPrimary }]} accessibilityRole="header">
         {t('myTrips.title')}
       </Text>
-      {(trips.fromCache || state.fromCache) && trips.cache ? (
+      {readOnly && trips.cache ? (
         <View style={styles.block}>
           <InlineNotice
             text={t('offline.cachedAt', { when: cachedWhen(trips.cache.savedAt, t) })}
@@ -254,7 +255,8 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
               renderTrip(item)
             )
           }
-          onEndReached={() => void loadMore()}
+          // Offline: no "load more" at all (design 10.4, Raz S4-m8).
+          onEndReached={() => (readOnly ? undefined : void loadMore())}
           onEndReachedThreshold={0.5}
           ListFooterComponent={
             state.loadingMore ? (
@@ -264,7 +266,7 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
                   {t('myTrips.loadingMore')}
                 </Text>
               </View>
-            ) : state.moreError ? (
+            ) : state.moreError && !readOnly ? (
               <View style={styles.footer}>
                 <Text style={[styles.footnote, { color: palette.textSecondary }]}>
                   {t('myTrips.moreError')}

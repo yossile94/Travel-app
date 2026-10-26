@@ -81,6 +81,11 @@ jest.mock('./consentStore', () => ({
   removeLocalAgreement: jest.fn(async () => {}),
 }));
 
+jest.mock('@/features/trips/tripsCache', () => ({
+  clearTripsCaches: jest.fn(async () => {}),
+}));
+const tripsCache = jest.requireMock<Record<string, jest.Mock>>('@/features/trips/tripsCache');
+
 const googleUser = {
   id: 'user-1',
   email: 'dana@example.test',
@@ -298,6 +303,8 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
     expect(mockSupabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
     expect(result.current.notice).toEqual({ kind: 'signedOut' });
+    // The offline copy of the trips goes too (sprint 4 AC-13).
+    expect(tripsCache.clearTripsCaches).toHaveBeenCalled();
   });
 
   it('removes the stored session even when supabase-js returns early (QA D-1, AC-8)', async () => {
@@ -537,6 +544,7 @@ describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
     expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
     expect(result.current.notice).toEqual({ kind: 'deleted' });
     expect(result.current.displayName).toBeNull();
+    expect(tripsCache.clearTripsCaches).toHaveBeenCalled();
   });
 
   it('a defined refusal leaves the user signed in, and nothing is wiped', async () => {
@@ -656,5 +664,6 @@ describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
     expect(result.current.state).toEqual({ status: 'signedOut', expired: true });
     expect(store.removeLocalAgreement).toHaveBeenCalledWith('user-1');
     expect(account.removeLocalChoices).toHaveBeenCalledWith('user-1');
+    expect(tripsCache.clearTripsCaches).toHaveBeenCalled();
   });
 });

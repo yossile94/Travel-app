@@ -52,6 +52,8 @@ function checkedLongAgo(fetchedAt: string, now = Date.now()): boolean {
 export type AdvisoryState =
   | { kind: 'level'; level: 1 | 2 | 3 | 4; mixed: boolean }
   | { kind: 'unrecognized' }
+  /** Checked by the daily job, but the source has no NSC text for the area (Raz, S4-m4). */
+  | { kind: 'noNsc' }
   | { kind: 'pending' };
 
 export function advisoryState(advisory: Advisory | undefined | null): AdvisoryState {
@@ -59,7 +61,7 @@ export function advisoryState(advisory: Advisory | undefined | null): AdvisorySt
   if (advisory.nscLevel) {
     return { kind: 'level', level: advisory.nscLevel, mixed: advisory.nscLevels.length > 1 };
   }
-  return advisory.nscText ? { kind: 'unrecognized' } : { kind: 'pending' };
+  return advisory.nscText ? { kind: 'unrecognized' } : { kind: 'noNsc' };
 }
 
 // ------------------------------------------------------------------ entry
@@ -213,6 +215,13 @@ export function CardAdvisory({
         </Text>
       );
       a11y = `${t('advisory.label')}: ${t('advisory.unrecognized')}`;
+    } else if (state.kind === 'noNsc') {
+      // The sheet still has the Foreign Ministry's text, when there is one.
+      tappable = Boolean(advisory?.mfaText);
+      content = (
+        <Text style={[styles.callout, { color: palette.textPrimary }]}>{t('advisory.noNsc')}</Text>
+      );
+      a11y = `${t('advisory.label')}: ${t('advisory.noNsc')}`;
     } else {
       content = (
         <View>
@@ -230,6 +239,16 @@ export function CardAdvisory({
   const state = advisoryState(advisory);
   const fetched = advisory?.fetchedAt ?? null;
   const stale = fetched !== null && checkedLongAgo(fetched);
+  const rowMain = (
+    <View style={styles.rowMain}>
+      {content}
+      {state.kind === 'level' && state.mixed ? (
+        <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+          {t('advisory.mixed')}
+        </Text>
+      ) : null}
+    </View>
+  );
   return (
     <View style={styles.block} testID="card-advisory">
       <Text
@@ -238,28 +257,29 @@ export function CardAdvisory({
       >
         {t('advisory.label')}
       </Text>
-      <Pressable
-        accessibilityRole={tappable ? 'button' : undefined}
-        accessibilityLabel={a11y || undefined}
-        accessibilityHint={tappable ? t('advisory.rowHint') : undefined}
-        disabled={!tappable}
-        onPress={onOpen}
-        style={({ pressed }) => [
-          styles.row,
-          tappable && pressed && { backgroundColor: palette.pressed },
-        ]}
-        testID="card-advisory-row"
-      >
-        <View style={styles.rowMain}>
-          {content}
-          {state.kind === 'level' && state.mixed ? (
-            <Text style={[styles.footnote, { color: palette.textSecondary }]}>
-              {t('advisory.mixed')}
-            </Text>
-          ) : null}
+      {tappable ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={a11y || undefined}
+          accessibilityHint={t('advisory.rowHint')}
+          onPress={onOpen}
+          style={({ pressed }) => [styles.row, pressed && { backgroundColor: palette.pressed }]}
+          testID="card-advisory-row"
+        >
+          {rowMain}
+          <ChevronEndIcon color={palette.textTertiary} />
+        </Pressable>
+      ) : (
+        // Not a control: TalkBack reads the words, not "disabled" (Raz, S4-m6).
+        <View
+          accessible
+          accessibilityLabel={a11y || undefined}
+          style={styles.row}
+          testID="card-advisory-row"
+        >
+          {rowMain}
         </View>
-        {tappable ? <ChevronEndIcon color={palette.textTertiary} /> : null}
-      </Pressable>
+      )}
       {fetched && state.kind !== 'pending' ? (
         <View style={styles.updatedLine}>
           <Text style={[styles.footnote, { color: palette.textSecondary }]}>
@@ -293,6 +313,7 @@ export function TripStatusLine({
       level: t(state.mixed ? 'trips.statusLineUpTo' : 'trips.statusLineLevel', { n: state.level }),
     });
   } else if (state.kind === 'unrecognized') words = t('advisory.unrecognized');
+  else if (state.kind === 'noNsc') words = t('advisory.noNsc');
   else words = t('advisory.pending');
   const a11y = [
     hasEntry ? t(entry === 'banned' ? 'entry.bannedA11y' : 'entry.restrictedA11y') : null,
@@ -434,9 +455,9 @@ export function TravelInfoSheet({
                 </Text>
               ) : null}
             </View>
-          ) : state.kind === 'unrecognized' ? (
+          ) : state.kind === 'unrecognized' || state.kind === 'noNsc' ? (
             <Text style={[styles.body, { color: palette.textPrimary }]}>
-              {t('advisory.unrecognized')}
+              {t(state.kind === 'noNsc' ? 'advisory.noNsc' : 'advisory.unrecognized')}
             </Text>
           ) : (
             <Text style={[styles.body, { color: palette.textSecondary }]}>
@@ -826,9 +847,13 @@ function useDelayed(on: boolean, ms: number): boolean {
   return on && late;
 }
 
-/** Whether the device is offline now (for the first-run messages). */
-export function useOffline(): boolean {
-  const [offline, setOffline] = useState(false);
+/**
+ * Whether the device is offline now (for the first-run messages); null until
+ * NetInfo answers, so a first offline launch never flashes the error text
+ * first (Raz, S4-m3).
+ */
+export function useOffline(): boolean | null {
+  const [offline, setOffline] = useState<boolean | null>(null);
   useEffect(() => NetInfo.addEventListener((net) => setOffline(net.isConnected === false)), []);
   return offline;
 }
