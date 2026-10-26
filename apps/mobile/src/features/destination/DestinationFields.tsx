@@ -5,12 +5,12 @@
  */
 import NetInfo from '@react-native-community/netinfo';
 import type { TFunction } from 'i18next';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { BottomSheet } from '@/components/BottomSheet';
-import { Button } from '@/components/fields';
+import { Button, type TextInputHandle } from '@/components/fields';
 import {
   CalculatorIcon,
   ChevronEndIcon,
@@ -19,7 +19,7 @@ import {
   NoEntryIcon,
   WarningIcon,
 } from '@/components/icons';
-import { colors, fonts, radius, type ColorScheme } from '@/theme/tokens';
+import { colors, fonts, motion, radius, type ColorScheme } from '@/theme/tokens';
 
 import type { Advisory, EntryStatus } from './destinationData';
 import {
@@ -239,6 +239,11 @@ export function CardAdvisory({
   const state = advisoryState(advisory);
   const fetched = advisory?.fetchedAt ?? null;
   const stale = fetched !== null && checkedLongAgo(fetched);
+  // The row reads its check date too (design 6.3, QA S4 #7).
+  const rowA11y =
+    a11y && fetched && state.kind !== 'pending'
+      ? `${a11y}, ${t('advisory.checked', { date: dottedDate(fetched) })}`
+      : a11y;
   const rowMain = (
     <View style={styles.rowMain}>
       {content}
@@ -260,7 +265,7 @@ export function CardAdvisory({
       {tappable ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={a11y || undefined}
+          accessibilityLabel={rowA11y || undefined}
           accessibilityHint={t('advisory.rowHint')}
           onPress={onOpen}
           style={({ pressed }) => [styles.row, pressed && { backgroundColor: palette.pressed }]}
@@ -273,7 +278,7 @@ export function CardAdvisory({
         // Not a control: TalkBack reads the words, not "disabled" (Raz, S4-m6).
         <View
           accessible
-          accessibilityLabel={a11y || undefined}
+          accessibilityLabel={rowA11y || undefined}
           style={styles.row}
           testID="card-advisory-row"
         >
@@ -315,9 +320,14 @@ export function TripStatusLine({
   } else if (state.kind === 'unrecognized') words = t('advisory.unrecognized');
   else if (state.kind === 'noNsc') words = t('advisory.noNsc');
   else words = t('advisory.pending');
+  // Read as the card row is: "level 4 of 4, high threat" (design 8, QA S4 #7).
+  const spoken =
+    state.kind === 'level'
+      ? `${t('advisory.label')}: ${t(state.mixed ? 'advisory.levelOfUpTo' : 'advisory.levelOf', { n: state.level })}, ${t(`advisory.word.${state.level}`)}`
+      : words;
   const a11y = [
     hasEntry ? t(entry === 'banned' ? 'entry.bannedA11y' : 'entry.restrictedA11y') : null,
-    words,
+    spoken,
   ]
     .filter(Boolean)
     .join(', ');
@@ -342,6 +352,52 @@ export function TripStatusLine({
           {words}
         </Text>
       </View>
+    </View>
+  );
+}
+
+/** About 8 lines of body text in the sheet's width. */
+const LONG_TEXT = 360;
+
+/**
+ * An official text, capped at 8 lines with "עוד" when it is long (design 7.1,
+ * QA S4 #4). The full text stays in the accessibility label.
+ */
+function OfficialText({
+  text,
+  testID,
+  color,
+  link,
+}: {
+  text: string;
+  testID: string;
+  color: string;
+  link: string;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const clean = text.replace(/\n{3,}/g, '\n\n').trim();
+  const long = clean.length > LONG_TEXT;
+  return (
+    <View>
+      <Text
+        style={[styles.body, styles.rtl, { color }]}
+        numberOfLines={long && !open ? 8 : undefined}
+        accessibilityLabel={clean}
+        testID={testID}
+      >
+        {clean}
+      </Text>
+      {long && !open ? (
+        <Pressable
+          onPress={() => setOpen(true)}
+          accessibilityRole="button"
+          hitSlop={12}
+          testID={`${testID}-more`}
+        >
+          <Text style={[styles.callout, styles.rtl, { color: link }]}>{t('advisory.more')}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -371,9 +427,7 @@ export function TravelInfoSheet({
   const official = advisory?.nscUrl ?? advisory?.mfaUrl ?? null;
   const hebrewOnly = i18n.language !== 'he';
   const officialText = (text: string, testID: string) => (
-    <Text style={[styles.body, styles.rtl, { color: palette.textPrimary }]} testID={testID}>
-      {text.replace(/\n{3,}/g, '\n\n').trim()}
-    </Text>
+    <OfficialText text={text} testID={testID} color={palette.textPrimary} link={palette.link} />
   );
   return (
     <BottomSheet
@@ -655,6 +709,17 @@ export function CalculatorSheet({
 }) {
   const { t } = useTranslation();
   const palette = colors[colorScheme];
+  // autoFocus inside the opening sheet doesn't raise the Android keyboard:
+  // focus the local field once the sheet has slid in (design 4.1, QA S4 #3).
+  const localInput = useRef<TextInputHandle>(null);
+  useEffect(() => {
+    if (!visible) return;
+    const timer = setTimeout(
+      () => localInput.current?.focus(),
+      (reduceMotion ? motion.short : motion.sheet) + 50,
+    );
+    return () => clearTimeout(timer);
+  }, [visible, reduceMotion]);
   const line = rate ? rateLine(rate) : null;
   const unit = line ? line.amount.split(' ')[0]!.replace(/,/g, '') : '1';
   const [source, setSource] = useState<{ field: Field; text: string }>({
@@ -747,7 +812,7 @@ export function CalculatorSheet({
                 keyboardType="decimal-pad"
                 autoCorrect={false}
                 selectTextOnFocus
-                autoFocus={field === 'local'}
+                ref={field === 'local' ? localInput : undefined}
                 style={[styles.calcText, { color: palette.textPrimary }]}
                 testID={`calc-${field}`}
               />
