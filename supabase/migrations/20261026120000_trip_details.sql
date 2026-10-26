@@ -5,7 +5,8 @@
 -- leaves a later GeoNames build, or one typed in by hand, still shows.
 
 -- Text shown inside right-to-left UI: no control or bidi-control characters
--- (sprint 3 design 6.3, Raz). Used by both child tables. Written in escapes
+-- (sprint 3 design 6.3, Raz), nor zero-width, LRM/RLM/ALM, BOM or line and
+-- paragraph separators (Dudi, m1). Used by both child tables. Written in escapes
 -- only: raw bidi characters in source are invisible ("Trojan Source").
 -- Never "create or replace" it without re-validating existing rows: a CHECK
 -- doesn't run again on old data (ADR-007).
@@ -15,7 +16,7 @@ create function public.text_is_clean(t text)
   immutable
   set search_path = ''
 as $$
-  select t !~ '[\x01-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]';
+  select t !~ '[\x01-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]';
 $$;
 
 revoke execute on function public.text_is_clean(text) from public, anon;
@@ -33,7 +34,7 @@ create table public.trip_travelers (
   name text not null
     constraint trip_travelers_name_check
     check (
-      name = btrim(name) and name !~ '^\s|\s$'
+      name = btrim(name) and name !~ '^[\s\u00a0\u2007\u202f]|[\s\u00a0\u2007\u202f]$'
       and char_length(name) between 1 and 40 and public.text_is_clean(name)
     ),
   relation text
@@ -56,7 +57,7 @@ create table public.trip_cities (
   name text not null
     constraint trip_cities_name_check
     check (
-      name = btrim(name) and name !~ '^\s|\s$'
+      name = btrim(name) and name !~ '^[\s\u00a0\u2007\u202f]|[\s\u00a0\u2007\u202f]$'
       and char_length(name) between 1 and 60 and public.text_is_clean(name)
     ),
   primary key (trip_id, position),
@@ -170,7 +171,8 @@ begin
     if not found then
       -- Ours (a retry): write the current values. Not ours: RLS hides it.
       -- The country must match, so a reused id never rewrites another trip.
-      -- A retry arriving after a delete elsewhere re-creates nothing: 23505.
+      -- Deletes are hard (no tombstone until sprint 4), so a create retried
+      -- after a delete elsewhere inserts the trip again (Dudi, M2).
       update public.trips
       set title = p_title, start_date = p_start, end_date = p_end, notes = p_notes
       where id = p_id and country_adm0 = p_country_adm0;

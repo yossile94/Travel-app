@@ -9,7 +9,14 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
-import { NAME_MAX, areaOf, hebrewNames, inGeometry } from './build-cities.mjs';
+import {
+  NAME_MAX,
+  areaOf,
+  cleanName,
+  hebrewNames,
+  inGeometry,
+  isForbidden,
+} from './build-cities.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const data = JSON.parse(
@@ -80,6 +87,40 @@ describe('city list build (sprint 3 AC-4)', () => {
       }
     }
     assert.equal(data.areas.ISR[0][1], 'ירושלים');
+  });
+
+  it('no name has a character the database refuses, or space at an end (Raz, M1)', () => {
+    const bad = Object.values(data.areas)
+      .flat()
+      .flatMap((c) => [c[1], c[2], c[3]])
+      .filter((n) => n && ([...n].some((ch) => isForbidden(ch.codePointAt(0))) || n !== n.trim()));
+    assert.deepEqual(bad, []);
+  });
+
+  it('cleans hidden marks out of a name', () => {
+    const rlm = String.fromCodePoint(0x200f);
+    assert.equal(cleanName(rlm + 'נהריה '), 'נהריה');
+  });
+
+  it('a city 8 km off a coast far north still joins its country (Raz, m10)', () => {
+    const iceland = {
+      adm0: 'ISL',
+      box: [-24, 63.3, -13.5, 66.6],
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [-24, 63.3],
+            [-13.5, 63.3],
+            [-13.5, 66.6],
+            [-24, 66.6],
+            [-24, 63.3],
+          ],
+        ],
+      },
+    };
+    // 0.17 degrees of longitude west of the box at 64 degrees north is about 8.3 km.
+    assert.equal(areaOf([-24.17, 64], [iceland])?.adm0, 'ISL');
   });
 
   it('stays small: under 600 KB compressed (the 1 MB budget includes climate)', () => {

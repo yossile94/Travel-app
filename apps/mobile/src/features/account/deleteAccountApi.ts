@@ -56,8 +56,9 @@ export async function requestDeletion(idToken: string): Promise<DeleteAnswer> {
       return 'noAnswer';
     })
     .catch((): DeleteAnswer => 'noAnswer');
-  const timeout = new Promise<DeleteAnswer>((resolve) =>
-    setTimeout(() => resolve('noAnswer'), timing.accountDeleteTimeout + 1000),
-  );
-  return Promise.race([call, timeout]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<DeleteAnswer>((resolve) => {
+    timer = setTimeout(() => resolve('noAnswer'), timing.accountDeleteTimeout + 1000);
+  });
+  return Promise.race([call, timeout]).finally(() => clearTimeout(timer));
 }

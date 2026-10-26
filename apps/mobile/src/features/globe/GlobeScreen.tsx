@@ -148,7 +148,9 @@ export function GlobeScreen() {
   const [tripForm, setTripForm] = useState<TripFormTarget | null>(null);
   const [pendingIntent, setPendingIntent] = useState<PendingIntent>(null);
   /** The trip to open in the card, when the card was opened from "My trips" (design 5.3). */
-  const [openTrip, setOpenTrip] = useState<{ id: string; adm0: string } | null>(null);
+  // seq: every request counts, even for the same trip again (Raz, m1).
+  const [openTrip, setOpenTrip] = useState<{ id: string; adm0: string; seq: number } | null>(null);
+  const openSeq = useRef(0);
   const [tripToast, setTripToast] = useState<{ text: string; at: number } | null>(null);
   const tripAdm0s = useMemo(
     () => (trips.countries ? [...trips.countries] : null),
@@ -235,6 +237,7 @@ export function GlobeScreen() {
     !consentShown &&
     !myTripsOpen &&
     !tripForm;
+  const hasPinRef = useRef(false);
   const pinFeature = useMemo((): NextTripFeature | null => {
     const trip = auth.state.status === 'signedIn' ? trips.nextTrip : null;
     const country = trip ? countryByAdm0(trip.countryAdm0) : undefined;
@@ -242,6 +245,9 @@ export function GlobeScreen() {
       ? { adm0: trip.countryAdm0, tripId: trip.id, coordinate: country.label }
       : null;
   }, [auth.state.status, trips.nextTrip]);
+  useEffect(() => {
+    hasPinRef.current = pinFeature !== null;
+  }, [pinFeature]);
 
   // Sprint 3 AC-8: anything the user does before the trips arrive cancels
   // opening at the active trip.
@@ -383,13 +389,14 @@ export function GlobeScreen() {
   // When the card closes: back out to the whole globe (the padding persists
   // otherwise), and restart the 5 s idle countdown.
   const hadSelection = useRef(false);
-  const quietSelection = useRef(false);
+  /** The country opened at the active trip, announced on its own (design 10.2). */
+  const quietSelection = useRef<string | null>(null);
   useEffect(() => {
     if (selectedAdm0) {
       hadSelection.current = true;
       const country = countryByAdm0(selectedAdm0);
       // Opening at the active trip makes one announcement of its own (design 10.2).
-      if (quietSelection.current) quietSelection.current = false;
+      if (quietSelection.current === selectedAdm0) quietSelection.current = null;
       else if (country)
         AccessibilityInfo.announceForAccessibility(t('globe.selected', { name: country.nameHe }));
       return;
@@ -445,16 +452,19 @@ export function GlobeScreen() {
           { adm0?: string; code?: string | null } | undefined;
       };
 
-      // Sprint 3 design 9.5: the pin wins over the countries under it.
-      try {
-        const pin = (await map.queryRenderedFeaturesAtPoint(point, [], [NEXT_TRIP_HIT]))
-          ?.features[0]?.properties as { adm0?: string; tripId?: string } | undefined;
-        if (pin?.tripId && pin.adm0) {
-          pinTapRef.current(pin.adm0, pin.tripId);
-          return;
+      // Sprint 3 design 9.5: the pin wins over the countries under it. With
+      // no pin, no extra query before the countries (Raz, m6).
+      if (hasPinRef.current) {
+        try {
+          const pin = (await map.queryRenderedFeaturesAtPoint(point, [], [NEXT_TRIP_HIT]))
+            ?.features[0]?.properties as { adm0?: string; tripId?: string } | undefined;
+          if (pin?.tripId && pin.adm0) {
+            pinTapRef.current(pin.adm0, pin.tripId);
+            return;
+          }
+        } catch {
+          // No pin layer yet: carry on with the countries.
         }
-      } catch {
-        // No pin layer yet: carry on with the countries.
       }
 
       let wide, tight, country;
@@ -561,16 +571,19 @@ export function GlobeScreen() {
         return;
       }
       trips.changed({ adm0: trip.countryAdm0, has: true });
+      // A copy opens in the card in place of its source (design 8.9, Raz m8).
+      if (result.kind === 'created' && selectedAdm0 === trip.countryAdm0)
+        setOpenTrip({ id: trip.id, adm0: trip.countryAdm0, seq: ++openSeq.current });
       showTripToast(t(result.kind === 'created' ? 'tripForm.saved' : 'tripForm.updated'));
       AccessibilityInfo.announceForAccessibility(t('tripForm.savedA11y', { name: trip.title }));
     },
-    [trips, showTripToast, t],
+    [trips, selectedAdm0, showTripToast, t],
   );
 
   const openTripFromList = useCallback(
     (trip: Trip) => {
       setMyTripsOpen(false);
-      setOpenTrip({ id: trip.id, adm0: trip.countryAdm0 });
+      setOpenTrip({ id: trip.id, adm0: trip.countryAdm0, seq: ++openSeq.current });
       if (countryByAdm0(trip.countryAdm0)) {
         dispatch({ type: 'countryTapped', country: { adm0: trip.countryAdm0 } });
       }
@@ -584,7 +597,7 @@ export function GlobeScreen() {
   useEffect(() => {
     pinTapRef.current = (adm0, tripId) => {
       if (selectedAdm0 === adm0) {
-        setOpenTrip({ id: tripId, adm0 });
+        setOpenTrip({ id: tripId, adm0, seq: ++openSeq.current });
         return;
       }
       if (trips.nextTrip?.id === tripId) openTripFromList(trips.nextTrip);
@@ -595,6 +608,10 @@ export function GlobeScreen() {
   // within 3 s of the globe, nothing touched yet, and an active trip: open
   // it, once. Decided once, on the first answer.
   const autoDecided = useRef(false);
+  // Asked to accept the documents again at launch: nothing opens (design 10.1, Raz m7).
+  useEffect(() => {
+    if (auth.state.status === 'needsConsent') autoDecided.current = true;
+  }, [auth.state.status]);
   useEffect(() => {
     if (autoDecided.current || !globeReady || !trips.firstLoad || auth.state.status !== 'signedIn')
       return;
@@ -603,11 +620,10 @@ export function GlobeScreen() {
     const trip = trips.nextTrip;
     if (!trip || tripStatus(trip.startDate, trip.endDate, trips.today) !== 'active') return;
     if (!countryByAdm0(trip.countryAdm0)) return;
-    quietSelection.current = true;
+    quietSelection.current = trip.countryAdm0;
     // Once per launch, on the first answer from the server: it reacts to
     // that answer, so it can't happen during render.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOpenTrip({ id: trip.id, adm0: trip.countryAdm0 });
+    setOpenTrip({ id: trip.id, adm0: trip.countryAdm0, seq: ++openSeq.current });
     dispatch({ type: 'countryTapped', country: { adm0: trip.countryAdm0 } });
     AccessibilityInfo.announceForAccessibility(t('activeTrip.opened', { name: trip.title }));
   }, [globeReady, trips.firstLoad, trips.nextTrip, trips.today, auth.state.status, t]);
@@ -734,6 +750,7 @@ export function GlobeScreen() {
                     colorScheme={colorScheme}
                     maxListHeight={maxListHeight}
                     initiallyOpen={openTrip?.id ?? null}
+                    openSeq={openTrip?.seq ?? 0}
                     onNewTrip={newTrip}
                     onDuplicateTrip={(source) =>
                       setTripForm({ kind: 'duplicate', country: selectedCountry, source })

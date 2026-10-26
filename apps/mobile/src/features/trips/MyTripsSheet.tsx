@@ -52,7 +52,7 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
   const trips = useTrips();
   const { state, reload, loadMore } = useTripList({
     enabled: visible,
-    reloadKey: trips.changes,
+    reloadKey: `${trips.changes}:${trips.today}`,
     parallelFirstPage: true,
   });
   const today = todayPg();

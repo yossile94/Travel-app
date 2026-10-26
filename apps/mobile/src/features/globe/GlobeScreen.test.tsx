@@ -862,6 +862,58 @@ describe('GlobeScreen', () => {
       expect(screen.queryByTestId('country-card')).toBeNull();
     });
 
+    it('does not open when the user touched the globe first', async () => {
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.nextTrip = greece;
+      const view = await render(<GlobeScreen />);
+      const surface = screen.getByTestId('globe-touch-surface');
+      await fireEvent(surface, 'touchStart', { nativeEvent: { touches: [{}] } });
+      await fireEvent(surface, 'touchEnd', { nativeEvent: { touches: [] } });
+      mockTrips.firstLoad = true;
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByText('יוון')).toBeNull();
+    });
+
+    it('does not open when the trips arrive more than 3 s after the globe', async () => {
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.nextTrip = greece;
+      const view = await render(<GlobeScreen />);
+      await act(async () => jest.advanceTimersByTime(3_500));
+      mockTrips.firstLoad = true;
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByText('יוון')).toBeNull();
+    });
+
+    it('does not open after the user was asked to accept the documents (Raz, m7)', async () => {
+      mockAuth.state = {
+        status: 'needsConsent',
+        user: signedIn,
+        need: { kind: 'updated', docs: ['terms'] },
+        documents: [
+          { docType: 'terms', version: 1, url: null, publishedAt: '2026-10-24T00:00:00Z' },
+          { docType: 'privacy', version: 0, url: null, publishedAt: '2026-10-24T00:00:00Z' },
+        ],
+      };
+      mockTrips.nextTrip = greece;
+      const view = await render(<GlobeScreen />);
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.firstLoad = true;
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByText('יוון')).toBeNull();
+    });
+
+    it('opens once: closing the card leaves it closed', async () => {
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.firstLoad = true;
+      mockTrips.nextTrip = greece;
+      const view = await render(<GlobeScreen />);
+      expect(screen.getByText('יוון')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByTestId('card-close'));
+      await act(async () => jest.advanceTimersByTime(1_000));
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByText('יוון')).toBeNull();
+    });
+
     it('a tap on the pin opens its trip, over the country under it (AC-7)', async () => {
       mockAuth.state = { status: 'signedIn', user: signedIn };
       mockTrips.nextTrip = { ...greece, startDate: '2026-11-01', endDate: '2026-11-05' };

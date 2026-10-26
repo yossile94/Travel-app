@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(54);
+select plan(72);
 
 insert into auth.users (id, email)
 values
@@ -50,6 +50,19 @@ select table_privs_are('public', 'trip_cities', 'authenticated', array['SELECT',
 select ok(
   not has_column_privilege('authenticated', 'public.trip_travelers', 'user_id', 'INSERT'),
   'the owner of a traveler is set by the server'
+);
+select table_privs_are('public', 'trip_cities', 'anon', array[]::text[],
+  'signed-out clients have no privileges on cities');
+select ok(
+  not has_column_privilege('authenticated', 'public.trip_cities', 'user_id', 'INSERT'),
+  'the owner of a city is set by the server'
+);
+select ok(
+  not public.text_is_clean('a' || chr(8203)) and not public.text_is_clean(chr(8206) || 'a')
+  and not public.text_is_clean('a' || chr(8207)) and not public.text_is_clean('a' || chr(1564))
+  and not public.text_is_clean('a' || chr(8232)) and not public.text_is_clean('a' || chr(8233))
+  and not public.text_is_clean('a' || chr(8288)) and not public.text_is_clean(chr(65279) || 'a'),
+  'text_is_clean refuses zero-width, LRM/RLM/ALM, BOM and line separators (Dudi, m1)'
 );
 select has_index('public', 'trip_cities', 'trip_cities_user', array['user_id'],
   'cities are indexed by user for the export');
@@ -216,6 +229,59 @@ select throws_ok(
        jsonb_build_array(jsonb_build_object('name', 'דנה' || chr(10) || 'x')), '[]') $$,
   '23514', null, 'a newline in a name is refused'
 );
+select throws_ok(
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, jsonb_build_array(jsonb_build_object('name', 'דנה' || chr(160))), '[]') $$,
+  '23514', null, 'a no-break space at the end of a name is refused (Dudi, m2)'
+);
+select throws_ok(
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[]', jsonb_build_array(jsonb_build_object('name', chr(8239) || 'אילת'))) $$,
+  '23514', null, 'a narrow no-break space at the start of a city is refused'
+);
+select throws_ok(
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[{"name":"דנה","relation":5}]', '[]') $$,
+  '22023', null, 'a relation that is not text is refused'
+);
+select throws_ok(
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[]', '{"name":"x"}') $$,
+  '22023', null, 'cities that are not a list are refused'
+);
+select is(
+  public.save_trip('create', '00000000-0000-4000-8000-0000000003a5', 'THA', 'x', '2027-01-01', '2027-01-02', null, null, '[{"name":"פוקט","geonameId":null}]'),
+  'ok',
+  'no travelers (null) and an explicit null GeoNames id are accepted'
+);
+select results_eq(
+  $$ select (select count(*) from public.trip_travelers where trip_id = '00000000-0000-4000-8000-0000000003a5')::int,
+            (select geoname_id from public.trip_cities where trip_id = '00000000-0000-4000-8000-0000000003a5') $$,
+  $$ values (0, null::integer) $$,
+  '... saved as no travelers and a hand-typed city'
+);
+select is(
+  public.save_trip('create', '00000000-0000-4000-8000-0000000003a6', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[{"name":"דנה","relation":""}]', '[]'),
+  'ok',
+  'an empty relation is accepted ...'
+);
+select ok(
+  (select relation is null from public.trip_travelers where trip_id = '00000000-0000-4000-8000-0000000003a6'),
+  '... and stored as no relation'
+);
+select throws_ok(
+  $$ insert into public.trip_cities (trip_id, position, name)
+     values ('00000000-0000-4000-8000-0000000003a6', 10, 'x') $$,
+  '23514', null, 'a direct insert past the 10th city is refused'
+);
+select throws_ok(
+  $$ insert into public.trip_cities (trip_id, position, geoname_id, name)
+     values ('00000000-0000-4000-8000-0000000003a6', 0, 0, 'x') $$,
+  '23514', null, 'a GeoNames id of 0 is refused'
+);
+-- Deletes are hard until sprint 4: a create retried after a delete inserts again (Dudi, M2).
+delete from public.trips where id = '00000000-0000-4000-8000-0000000003a6';
+select is(
+  public.save_trip('create', '00000000-0000-4000-8000-0000000003a6', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[{"name":"דנה"}]', '[]'),
+  'ok',
+  'a create retried after the trip was deleted creates it again (no tombstone yet)'
+);
 select lives_ok(
   $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a3', 'ISL', 'איסלנד', '2027-01-01', '2027-01-02', null,
        jsonb_build_array(jsonb_build_object('name', repeat('א', 39) || '🏝')),
@@ -260,6 +326,11 @@ select throws_ok(
      values ('00000000-0000-4000-8000-0000000003a1', 5, 'פריצה') $$,
   '23503', null, 'a city cannot be attached to another user''s trip'
 );
+select throws_ok(
+  $$ insert into public.trip_travelers (trip_id, position, name)
+     values ('00000000-0000-4000-8000-0000000003a1', 5, 'פריצה') $$,
+  '23503', null, 'a traveler cannot be attached to another user''s trip'
+);
 select lives_ok(
   $$ delete from public.trip_travelers where trip_id = '00000000-0000-4000-8000-0000000003a1';
      delete from public.trip_cities where trip_id = '00000000-0000-4000-8000-0000000003a1' $$,
@@ -288,6 +359,10 @@ select is(
   '... with the hint the app maps to the consent screen'
 );
 select throws_ok(
+  $$ select public.save_trip('update', '00000000-0000-4000-8000-0000000003a1', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[]', '[]') $$,
+  '42501', null, 'an update without consent is refused too'
+);
+select throws_ok(
   $$ insert into public.trip_cities (trip_id, position, name)
      values ('00000000-0000-4000-8000-0000000003c9', 0, 'x') $$,
   '42501', null, 'a direct insert without consent is refused by RLS'
@@ -298,6 +373,15 @@ reset role;
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000003a');
 insert into public.consents (doc_type, doc_version, action, platform, app_version)
 values ('terms', 0, 'withdrawn', 'android', '0.4.0');
+select lives_ok(
+  $$ delete from public.trip_cities where trip_id = '00000000-0000-4000-8000-0000000003a3' $$,
+  'a direct delete of a city without consent runs ...'
+);
+select is(
+  (select count(*)::int from public.trip_cities where trip_id = '00000000-0000-4000-8000-0000000003a3'),
+  1,
+  '... and removes nothing'
+);
 select lives_ok(
   $$ delete from public.trips where id = '00000000-0000-4000-8000-0000000003a1' $$,
   'the owner deletes a trip without current consent'

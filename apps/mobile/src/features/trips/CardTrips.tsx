@@ -40,7 +40,6 @@ import { countryName } from './countryName';
 import {
   formatRange,
   formatRangeA11y,
-  todayPg,
   travelerCount,
   tripStatus,
   type TripStatus,
@@ -56,6 +55,8 @@ interface Props {
   maxListHeight: number;
   /** Opened from "My trips": this trip starts expanded (design 5.3). */
   initiallyOpen?: string | null;
+  /** Bumped on each request to open initiallyOpen, so the same trip opens again (the pin). */
+  openSeq?: number;
   onNewTrip: () => void;
   onEditTrip: (trip: Trip) => void;
   /** Sprint 3 AC-9: a new trip to the same country, copied without dates. */
@@ -68,6 +69,7 @@ export function CardTrips({
   colorScheme,
   maxListHeight,
   initiallyOpen = null,
+  openSeq = 0,
   onNewTrip,
   onEditTrip,
   onDuplicateTrip,
@@ -83,17 +85,20 @@ export function CardTrips({
   const { state, reload, loadMore } = useTripList({
     enabled: signedIn && !knownEmpty,
     countryAdm0: country.adm0,
-    reloadKey: trips.changes,
+    // A new day moves trips between upcoming and past (design 3.4, Raz m2).
+    reloadKey: `${trips.changes}:${trips.today}`,
   });
   const [open, setOpen] = useState<string | null>(initiallyOpen);
-  const [askedOpen, setAskedOpen] = useState(initiallyOpen);
-  if (askedOpen !== initiallyOpen) {
-    setAskedOpen(initiallyOpen);
+  // A new request opens the row again, even for the same trip (Raz, m1).
+  const request = `${initiallyOpen ?? ''}:${openSeq}`;
+  const [askedOpen, setAskedOpen] = useState(request);
+  if (askedOpen !== request) {
+    setAskedOpen(request);
     if (initiallyOpen) setOpen(initiallyOpen);
   }
   const [deleting, setDeleting] = useState<string | null>(null);
   const [rowNotice, setRowNotice] = useState<{ id: string; text: string } | null>(null);
-  const today = todayPg();
+  const today = trips.today;
 
   // Announce loading only once it lasts (design 2.2).
   useEffect(() => {
@@ -102,10 +107,10 @@ export function CardTrips({
 
   // The trip opened from "My trips" scrolls into view once its row is laid out.
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const scrolledTo = useRef(false);
+  const scrolledTo = useRef<string | null>(null);
   const onRowLayout = (id: string, y: number) => {
-    if (id !== initiallyOpen || scrolledTo.current) return;
-    scrolledTo.current = true;
+    if (id !== initiallyOpen || scrolledTo.current === request) return;
+    scrolledTo.current = request;
     scroll.current?.scrollTo({ y, animated: false });
   };
 

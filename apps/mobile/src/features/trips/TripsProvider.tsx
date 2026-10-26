@@ -93,7 +93,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     ]);
     if (id !== sequence.current || currentUser.current !== forUser || !result.ok) return;
     setCountries(result.value);
-    if (next.ok) setNextTrip(next.value.trips[0] ?? null);
+    // A failed query shows no pin rather than one that may be gone (Dudi m6, Raz m4).
+    setNextTrip(next.ok ? (next.value.trips[0] ?? null) : null);
     setFirstLoad(true);
   }, []);
   // A new day changes which trip is next (design 3.4).

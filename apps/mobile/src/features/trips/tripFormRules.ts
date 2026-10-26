@@ -173,13 +173,20 @@ export function tripFields(values: TripFormValues) {
   };
 }
 
-/** C0 and C1 controls and the bidi embeddings, overrides and isolates (design 6.3). */
-function isForbidden(codePoint: number): boolean {
+/**
+ * C0 and C1 controls, the bidi marks, embeddings, overrides and isolates
+ * (design 6.3), zero-width characters, the BOM and the line and paragraph
+ * separators: the same set as the server's text_is_clean (Dudi, m1).
+ */
+export function isForbidden(codePoint: number): boolean {
   return (
     codePoint <= 0x1f ||
     (codePoint >= 0x7f && codePoint <= 0x9f) ||
-    (codePoint >= 0x202a && codePoint <= 0x202e) ||
-    (codePoint >= 0x2066 && codePoint <= 0x2069)
+    codePoint === 0x61c ||
+    (codePoint >= 0x200b && codePoint <= 0x200f) ||
+    (codePoint >= 0x2028 && codePoint <= 0x202e) ||
+    (codePoint >= 0x2060 && codePoint <= 0x206f) ||
+    codePoint === 0xfeff
   );
 }
 

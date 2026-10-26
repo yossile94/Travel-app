@@ -91,6 +91,9 @@ function bboxOf(geometry) {
 const inBox = ([x, y], [x0, y0, x1, y1], pad = 0) =>
   x >= x0 - pad && x <= x1 + pad && y >= y0 - pad && y <= y1 + pad;
 
+const inBoxXY = ([x, y], [x0, y0, x1, y1], padX, padY) =>
+  x >= x0 - padX && x <= x1 + padX && y >= y0 - padY && y <= y1 + padY;
+
 /**
  * The area of a point: the polygon that contains it, else the nearest one
  * within 10 km. null for open sea; { adm0: null } for an area that can't be
@@ -103,7 +106,10 @@ export function areaOf(point, areas) {
   let best = null;
   let bestKm = NEAREST_KM;
   for (const area of areas) {
-    if (!inBox(point, area.box, 0.15)) continue;
+    // 10 km in degrees: longitude degrees shrink towards the poles (Raz, m10).
+    const lat = Math.min(Math.abs(point[1]), 85);
+    const padX = NEAREST_KM / (111.32 * Math.cos((lat * Math.PI) / 180));
+    if (!inBoxXY(point, area.box, padX, NEAREST_KM / 110.57)) continue;
     const km = distanceKm(point, area.geometry);
     if (km <= bestKm) {
       best = area;
@@ -114,6 +120,31 @@ export function areaOf(point, areas) {
 }
 
 // ------------------------------------------------------------------ names
+
+/**
+ * The characters the server's text_is_clean refuses (and the app's
+ * isForbidden): controls, bidi marks and isolates, zero-width, BOM, line
+ * separators. GeoNames has a few names with an RLM in them (Raz, M1).
+ */
+export function isForbidden(cp) {
+  return (
+    cp <= 0x1f ||
+    (cp >= 0x7f && cp <= 0x9f) ||
+    cp === 0x61c ||
+    (cp >= 0x200b && cp <= 0x200f) ||
+    (cp >= 0x2028 && cp <= 0x202e) ||
+    (cp >= 0x2060 && cp <= 0x206f) ||
+    cp === 0xfeff
+  );
+}
+
+/** A name as the database will accept it: no forbidden characters, trimmed. */
+export function cleanName(name) {
+  return [...name]
+    .filter((ch) => !isForbidden(ch.codePointAt(0)))
+    .join('')
+    .trim();
+}
 
 const HEBREW = /[\u05d0-\u05ea]/;
 const NIQQUD = /[\u0591-\u05c7]/;
@@ -130,7 +161,8 @@ export function hebrewNames(lines) {
     if (!HEBREW.test(name) || NIQQUD.test(name)) continue;
     const score = (preferred === '1' ? 2 : 0) + (short === '1' ? 1 : 0);
     const current = best.get(id);
-    if (!current || score > current.score) best.set(id, { name: name.trim(), score });
+    const clean = cleanName(name);
+    if (clean && (!current || score > current.score)) best.set(id, { name: clean, score });
   }
   return new Map([...best].map(([id, { name }]) => [id, name]));
 }
@@ -164,7 +196,7 @@ async function main() {
   for (const line of citiesText.split('\n')) {
     if (!line) continue;
     const c = line.split('\t');
-    const [id, name, ascii] = [c[0], c[1].trim(), c[2].trim()];
+    const [id, name, ascii] = [c[0], cleanName(c[1]), cleanName(c[2])];
     const point = [Number(c[5]), Number(c[4])];
     const population = Number(c[14]) || 0;
     const area = areaOf(point, areas);
@@ -178,6 +210,7 @@ async function main() {
     }
     const nameHe = he.get(id) ?? '';
     for (const n of [name, nameHe]) if ([...n].length > NAME_MAX) tooLong.push(`${id} ${n}`);
+    if (!name) throw new Error(`city ${id} has no name left after cleaning`);
     const list = byArea.get(area.adm0) ?? [];
     // [id, Hebrew name or "", English name, ASCII name if different, population].
     // No coordinates: the climate file maps cities to cells at build time.

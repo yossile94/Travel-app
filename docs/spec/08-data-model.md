@@ -7,12 +7,13 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
 | profiles | id (= auth.users, on delete cascade), display_name, created_at, updated_at | בעלים בלבד. בלי שם כמו בדרכון ובלי שפה (החלטת יוסי, 2026-10-25) |
 | consents | user_id, doc_type, doc_version, action, platform, app_version, created_at | Insert בלבד לבעלים; ללא Update/Delete. השרת קובע את user_id ואת created_at, ומאשר רק את הגרסה הנוכחית של התנאים והמדיניות. בלי מפתח זר ל-auth.users, כדי שהיומן יישאר אחרי מחיקת חשבון (ספרינט 1) |
 | legal_documents | doc_type (terms/privacy), version, url, published_at | קריאה לכולם, כתיבה לאדמין (service role) בלבד. הגרסה הנוכחית: המאוחרת שכבר פורסמה (התצוגה current_legal_documents). גרסה חדשה מחייבת הסכמה מחדש (ספרינט 1, AC-18) |
-| companions | user_id, display_name, birth_year | בעלים בלבד |
+| companions | user_id, display_name, birth_year | בעלים בלבד. **נדחה** (ADR-007): בספרינט 3 נוסעים נשמרים לכל נסיעה, בלי רשימת מלווים קבועה |
 | countries | iso2, name_he, name_en, name_local, aliases[], languages[], emergency_numbers | קריאה לכולם, כתיבה לאדמין |
 | missions | country_iso2, type, address, phones, hours, lat/lng, covers[], verified_at, source_url | קריאה לכולם, כתיבה לאדמין |
-| trips | id (UUID שנוצר במכשיר), user_id (on delete cascade), country_adm0 (קוד האזור בגלובוס, למשל THA; לא ISO, כי שטחים חולקים קוד ISO עם המדינה הריבונית), title, start_date, end_date, notes; status מספרינט 3 | בעלים בלבד. יצירה ועריכה רק עם הסכמה לגרסה הנוכחית; מחיקה תמיד (ספרינט 2) |
+| trips | id (UUID שנוצר במכשיר), user_id (on delete cascade), country_adm0 (קוד האזור בגלובוס, למשל THA; לא ISO, כי שטחים חולקים קוד ISO עם המדינה הריבונית), title, start_date, end_date, notes. הסטטוס (מתוכננת, בנסיעה, הסתיימה) מחושב בלקוח מהתאריכים ולא נשמר (ספרינט 3) | בעלים בלבד. יצירה ועריכה רק עם הסכמה לגרסה הנוכחית; מחיקה תמיד (ספרינט 2) |
 | account_deletions | user_id, deleted_at, reason (user_request / no_consent_30d) | בלי גישה ללקוח. כתיבה רק בפונקציית המחיקה בשרת. ממנה נספרת תקופת השמירה של consents (ספרינט 2) |
-| trip_travelers | trip_id, companion_id | דרך הבעלות על trip |
+| trip_travelers | trip_id, user_id, position (0–8), name (1–40), relation (partner/child/parent/friend/other או ריק) | בעלים בלבד, דרך מפתח זר מורכב (trip_id, user_id) ל-trips. Insert ו-Delete עם הסכמה, בלי Update. "אני" לא נשמר (ספרינט 3, ADR-007) |
+| trip_cities | trip_id, user_id, position (0–9), geoname_id (או ריק לעיר שנכתבה ידנית), name (1–60, תמונת מצב של השם) | כמו trip_travelers. הנסיעה נשמרת כולה בקריאה אחת, `save_trip` (ספרינט 3, ADR-007) |
 | flights | trip_id, flight_number, flight_date, pnr, seat, watch_key | דרך הבעלות על trip |
 | flight_watch | watch_key (מספר+תאריך), last_snapshot (jsonb), next_check_at | Service role בלבד |
 | flight_events | watch_key, field, old_value, new_value, detected_at | קריאה למשתמשים עם טיסה תואמת |

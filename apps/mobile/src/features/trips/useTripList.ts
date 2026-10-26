@@ -69,7 +69,7 @@ export function useTripList({
 }: {
   enabled: boolean;
   countryAdm0?: string;
-  reloadKey: number;
+  reloadKey: number | string;
   parallelFirstPage?: boolean;
 }) {
   const [state, setState] = useState<TripListState>(enabled ? LOADING : EMPTY);

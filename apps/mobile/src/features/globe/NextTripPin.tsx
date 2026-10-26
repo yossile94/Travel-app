@@ -57,7 +57,11 @@ export const PULSE_STEPS: { at: number; change: Partial<PulseState> }[] = [
 ];
 export const PULSE_CYCLE = PULSE.cycle;
 
-function usePulse(running: boolean): PulseState {
+/**
+ * Runs the steps with one timer at a time, so nothing piles up (Raz, m3).
+ * Exported for tests.
+ */
+export function usePulse(running: boolean): PulseState {
   const [state, setState] = useState<PulseState>(RESTING);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   useEffect(() => {
@@ -67,17 +71,21 @@ function usePulse(running: boolean): PulseState {
   const active = running && foreground;
   useEffect(() => {
     if (!active) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const cycle = () => {
-      for (const step of PULSE_STEPS) {
-        timers.push(setTimeout(() => setState((s) => ({ ...s, ...step.change })), step.at));
-      }
+    let timer: ReturnType<typeof setTimeout>;
+    const run = (index: number, cycleStart: number) => {
+      const step = PULSE_STEPS[index]!;
+      setState((s) => ({ ...s, ...step.change }));
+      const last = index === PULSE_STEPS.length - 1;
+      const nextStart = last ? cycleStart + PULSE.cycle : cycleStart;
+      const nextIndex = last ? 0 : index + 1;
+      timer = setTimeout(
+        () => run(nextIndex, nextStart),
+        nextStart + PULSE_STEPS[nextIndex]!.at - (cycleStart + step.at),
+      );
     };
-    cycle();
-    const interval = setInterval(cycle, PULSE.cycle);
+    run(0, 0);
     return () => {
-      clearInterval(interval);
-      timers.forEach(clearTimeout);
+      clearTimeout(timer);
       // Stopping hides the ring at once (design 9.4).
       setState(RESTING);
     };
@@ -86,6 +94,45 @@ function usePulse(running: boolean): PulseState {
 }
 
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
+// Fixed props as module constants: a pulse step re-renders only the ring,
+// and nothing else is sent to native again (Raz, M2).
+const IMAGES = { 'next-trip-pin': PIN_IMAGE };
+const PIN_STYLE = {
+  iconImage: 'next-trip-pin',
+  iconSize: 1,
+  iconAnchor: 'bottom' as const,
+  iconAllowOverlap: true,
+  iconIgnorePlacement: true,
+  iconPitchAlignment: 'viewport' as const,
+  iconRotationAlignment: 'viewport' as const,
+};
+const HIT_STYLE = {
+  circleRadius: 32,
+  circleColor: '#000000',
+  circleOpacity: 0,
+  circleStrokeWidth: 0,
+  circlePitchAlignment: 'viewport' as const,
+};
+
+/** The ring alone holds the pulse state. */
+const PulseRing = memo(function PulseRing({ running }: { running: boolean }) {
+  const pulse = usePulse(running);
+  const style = useMemo(
+    () => ({
+      circleRadius: pulse.radius,
+      circleRadiusTransition: { duration: pulse.radiusDuration, delay: 0 },
+      circleOpacity: 0,
+      circleStrokeColor: globe.trips.color,
+      circleStrokeWidth: 2,
+      circleStrokeOpacity: pulse.opacity,
+      circleStrokeOpacityTransition: { duration: pulse.opacityDuration, delay: 0 },
+      circlePitchAlignment: 'viewport' as const,
+      circlePitchScale: 'viewport' as const,
+    }),
+    [pulse],
+  );
+  return <CircleLayer id="next-trip-pulse" aboveLayerID="small-countries-ring" style={style} />;
+});
 
 export const NextTripPin = memo(function NextTripPin({
   feature,
@@ -96,7 +143,6 @@ export const NextTripPin = memo(function NextTripPin({
   pulseAllowed: boolean;
   reduceMotion: boolean;
 }) {
-  const pulse = usePulse(Boolean(feature) && pulseAllowed && !reduceMotion);
   const shape = useMemo(
     () =>
       feature
@@ -117,48 +163,13 @@ export const NextTripPin = memo(function NextTripPin({
 
   return (
     <>
-      <Images images={{ 'next-trip-pin': PIN_IMAGE }} />
+      <Images images={IMAGES} />
       {/* Mounted from the first render, empty until there is a trip (design 9.2). */}
       <ShapeSource id="next-trip" shape={shape}>
-        <CircleLayer
-          id="next-trip-pulse"
-          aboveLayerID="small-countries-ring"
-          style={{
-            circleRadius: pulse.radius,
-            circleRadiusTransition: { duration: pulse.radiusDuration, delay: 0 },
-            circleOpacity: 0,
-            circleStrokeColor: globe.trips.color,
-            circleStrokeWidth: 2,
-            circleStrokeOpacity: pulse.opacity,
-            circleStrokeOpacityTransition: { duration: pulse.opacityDuration, delay: 0 },
-            circlePitchAlignment: 'viewport',
-            circlePitchScale: 'viewport',
-          }}
-        />
-        <SymbolLayer
-          id="next-trip-pin"
-          aboveLayerID="next-trip-pulse"
-          style={{
-            iconImage: 'next-trip-pin',
-            iconSize: 1,
-            iconAnchor: 'bottom',
-            iconAllowOverlap: true,
-            iconIgnorePlacement: true,
-            iconPitchAlignment: 'viewport',
-            iconRotationAlignment: 'viewport',
-          }}
-        />
+        <PulseRing running={Boolean(feature) && pulseAllowed && !reduceMotion} />
+        <SymbolLayer id="next-trip-pin" aboveLayerID="next-trip-pulse" style={PIN_STYLE} />
         {/* Invisible, for the tap; queried before the countries (design 9.5). */}
-        <CircleLayer
-          id={NEXT_TRIP_HIT}
-          style={{
-            circleRadius: 32,
-            circleColor: '#000000',
-            circleOpacity: 0,
-            circleStrokeWidth: 0,
-            circlePitchAlignment: 'viewport',
-          }}
-        />
+        <CircleLayer id={NEXT_TRIP_HIT} style={HIT_STYLE} />
       </ShapeSource>
     </>
   );

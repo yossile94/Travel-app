@@ -105,6 +105,10 @@ describe('export (AC-14)', () => {
     });
     const trips = mockLog.filter((e) => e.table === 'trips');
     expect(trips).toHaveLength(2);
+    // Sprint 3: each trip carries its travelers and cities.
+    const columns = trips[0]!.calls.find((c) => c[0] === 'select')?.[1] as string;
+    expect(columns).toContain('trip_travelers(');
+    expect(columns).toContain('trip_cities(');
     expect(trips[1]!.calls).toContainEqual(['gt', 'id', 500]);
     for (const entry of [...trips, ...mockLog.filter((e) => e.table === 'consents')]) {
       expect(entry.calls).toContainEqual(['eq', 'user_id', 'user-1']);

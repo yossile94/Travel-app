@@ -5,6 +5,7 @@
  * query first, then by population. Pure, so every rule is unit-tested.
  * Ranges are built from code points: no invisible characters in the source.
  */
+import { isForbidden } from './tripFormRules';
 
 /** [id, Hebrew name or "", English name, ASCII name if different, population] (scripts/build-cities.mjs). */
 export type CityRow = [number, string, string, string, number];
@@ -71,11 +72,15 @@ export function normalize(text: string): string {
     .replace(COMBINING, '')
     .replace(HEBREW_POINTS, '')
     .replace(QUOTES, '');
-  return [...lowered]
-    .map((ch) => LETTER_MAP.get(ch) ?? ch)
-    .join('')
-    .replace(DASHES_AND_SPACES, ' ')
-    .trim();
+  return (
+    [...lowered]
+      // A hidden mark (an RLM in a GeoNames name, or a pasted one) never blocks a match (Raz, M1).
+      .filter((ch) => !isForbidden(ch.codePointAt(0)!))
+      .map((ch) => LETTER_MAP.get(ch) ?? ch)
+      .join('')
+      .replace(DASHES_AND_SPACES, ' ')
+      .trim()
+  );
 }
 
 export function entryOf([id, nameHe, nameEn, ascii, population]: CityRow): CityEntry {
