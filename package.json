@@ -22,7 +22,8 @@
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
     "build:search": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-search-index.mjs && prettier --write apps/mobile/src/features/search/searchIndex.json",
-    "build:climate": "node scripts/build-climate.mjs"
+    "build:climate": "node scripts/build-climate.mjs",
+    "build:airports": "node scripts/build-airports.mjs"
   },
   "allowScripts": {
     "@parcel/watcher": false,

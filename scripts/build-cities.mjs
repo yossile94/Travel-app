@@ -166,8 +166,16 @@ export function hebrewNames(lines) {
     const clean = cleanName(name);
     if (clean && (!current || score > current.score)) best.set(id, { name: clean, score });
   }
-  return new Map([...best].map(([id, { name }]) => [id, name]));
+  const names = new Map([...best].map(([id, { name }]) => [id, name]));
+  for (const [id, name] of Object.entries(HEBREW_FIXES)) names.set(id, name);
+  return names;
 }
+
+/**
+ * GeoNames rows that are wrong without a flag to filter them on: Istanbul's
+ * only Hebrew name there is "ביזנטיון", untagged as historic (sprint 5).
+ */
+export const HEBREW_FIXES = { 745044: 'איסטנבול' };
 
 // ------------------------------------------------------------------ build
 
