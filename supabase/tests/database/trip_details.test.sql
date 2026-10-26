@@ -16,7 +16,7 @@ create function pg_temp.sign_in(user_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', user_id, 'role', 'authenticated')::text, true);
   set local role authenticated;
 $$;
-create function pg_temp.save_hint(p_id uuid) returns text language plpgsql as $
+create function pg_temp.save_hint(p_id uuid) returns text language plpgsql as $$
 declare h text;
 begin
   perform public.save_trip('create', p_id, 'THA', 'x', '2027-01-01', '2027-01-02', null, '[]', '[]');
@@ -25,8 +25,8 @@ exception when others then
   get stacked diagnostics h = pg_exception_hint;
   return h;
 end;
-$;
-create function pg_temp.consent() returns void language sql as $
+$$;
+create function pg_temp.consent() returns void language sql as $$
   insert into public.consents (doc_type, doc_version, action, platform, app_version)
   values ('terms', 0, 'granted', 'android', '0.4.0'), ('privacy', 0, 'granted', 'android', '0.4.0');
 $$;
@@ -180,46 +180,46 @@ select throws_ok(
   '23514', null, 'a relation outside the list is refused'
 );
 select is_empty(
-  $ select 1 from public.trips where id = '00000000-0000-4000-8000-0000000003a2' $,
+  $$ select 1 from public.trips where id = '00000000-0000-4000-8000-0000000003a2' $$,
   'a refused save leaves nothing behind (one transaction)'
 );
 select throws_ok(
-  $ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '["דנה"]', '[]') $,
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '["דנה"]', '[]') $$,
   '22023', null, 'a traveler that is not an object is refused'
 );
 select throws_ok(
-  $ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[{"name":5}]', '[]') $,
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[{"name":5}]', '[]') $$,
   '22023', null, 'a name that is not text is refused'
 );
 select throws_ok(
-  $ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[{"relation":"child"}]', '[]') $,
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[{"relation":"child"}]', '[]') $$,
   '22023', null, 'a traveler without a name is refused'
 );
 select throws_ok(
-  $ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[]', '[{"name":"x","geonameId":"123"}]') $,
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[]', '[{"name":"x","geonameId":"123"}]') $$,
   '22023', null, 'a GeoNames id given as text is refused'
 );
 select throws_ok(
-  $ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[]', '[{"name":"x","geonameId":1.5}]') $,
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[]', '[{"name":"x","geonameId":1.5}]') $$,
   '22023', null, 'a GeoNames id that is not a whole number is refused'
 );
 select throws_ok(
-  $ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '{"name":"x"}', '[]') $,
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '{"name":"x"}', '[]') $$,
   '22023', null, 'travelers that are not a list are refused'
 );
 select throws_ok(
-  $ select public.save_trip('replace', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[]', '[]') $,
+  $$ select public.save_trip('replace', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null, '[]', '[]') $$,
   '22023', null, 'an unknown mode is refused'
 );
 select throws_ok(
-  $ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null,
-       jsonb_build_array(jsonb_build_object('name', 'דנה' || chr(10) || 'x')), '[]') $,
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a2', 'THA', 'x', '2027-01-01', '2027-01-02', null,
+       jsonb_build_array(jsonb_build_object('name', 'דנה' || chr(10) || 'x')), '[]') $$,
   '23514', null, 'a newline in a name is refused'
 );
 select lives_ok(
-  $ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a3', 'ISL', 'איסלנד', '2027-01-01', '2027-01-02', null,
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a3', 'ISL', 'איסלנד', '2027-01-01', '2027-01-02', null,
        jsonb_build_array(jsonb_build_object('name', repeat('א', 39) || '🏝')),
-       jsonb_build_array(jsonb_build_object('name', repeat('ב', 60)))) $,
+       jsonb_build_array(jsonb_build_object('name', repeat('ב', 60)))) $$,
   'exactly 40 and 60 characters (an emoji is one) are accepted'
 );
 select is(
@@ -229,13 +229,13 @@ select is(
   'a second save in a row ...'
 );
 select results_eq(
-  $ select (select string_agg(name, ',' order by position) from public.trip_travelers where trip_id = '00000000-0000-4000-8000-0000000003a3'),
-            (select string_agg(name, ',' order by position) from public.trip_cities where trip_id = '00000000-0000-4000-8000-0000000003a3') $,
-  $ values ('רון'::text, 'רייקיאוויק'::text) $,
+  $$ select (select string_agg(name, ',' order by position) from public.trip_travelers where trip_id = '00000000-0000-4000-8000-0000000003a3'),
+            (select string_agg(name, ',' order by position) from public.trip_cities where trip_id = '00000000-0000-4000-8000-0000000003a3') $$,
+  $$ values ('רון'::text, 'רייקיאוויק'::text) $$,
   '... replaces the details fully: only the last save remains'
 );
 select throws_ok(
-  $ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a3', 'GRC', 'x', '2027-01-01', '2027-01-02', null, '[]', '[]') $,
+  $$ select public.save_trip('create', '00000000-0000-4000-8000-0000000003a3', 'GRC', 'x', '2027-01-01', '2027-01-02', null, '[]', '[]') $$,
   '23505', null, 'a create retry with another country never rewrites the trip'
 );
 reset role;
@@ -261,16 +261,16 @@ select throws_ok(
   '23503', null, 'a city cannot be attached to another user''s trip'
 );
 select lives_ok(
-  $ delete from public.trip_travelers where trip_id = '00000000-0000-4000-8000-0000000003a1';
-     delete from public.trip_cities where trip_id = '00000000-0000-4000-8000-0000000003a1' $,
+  $$ delete from public.trip_travelers where trip_id = '00000000-0000-4000-8000-0000000003a1';
+     delete from public.trip_cities where trip_id = '00000000-0000-4000-8000-0000000003a1' $$,
   'a delete by another user runs'
 );
 reset role;
 select results_eq(
-  $ select (select count(*) from public.trip_travelers where trip_id = '00000000-0000-4000-8000-0000000003a1')::int,
+  $$ select (select count(*) from public.trip_travelers where trip_id = '00000000-0000-4000-8000-0000000003a1')::int,
             (select count(*) from public.trip_cities where trip_id = '00000000-0000-4000-8000-0000000003a1')::int,
-            (select title from public.trips where id = '00000000-0000-4000-8000-0000000003a1') $,
-  $ values (1, 2, 'ירח דבש בתאילנד'::text) $,
+            (select title from public.trips where id = '00000000-0000-4000-8000-0000000003a1') $$,
+  $$ values (1, 2, 'ירח דבש בתאילנד'::text) $$,
   '... and removes or changes nothing of A''s'
 );
 
@@ -288,8 +288,8 @@ select is(
   '... with the hint the app maps to the consent screen'
 );
 select throws_ok(
-  $ insert into public.trip_cities (trip_id, position, name)
-     values ('00000000-0000-4000-8000-0000000003c9', 0, 'x') $,
+  $$ insert into public.trip_cities (trip_id, position, name)
+     values ('00000000-0000-4000-8000-0000000003c9', 0, 'x') $$,
   '42501', null, 'a direct insert without consent is refused by RLS'
 );
 reset role;
