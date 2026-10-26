@@ -4,6 +4,7 @@
  * a newer document version, and at launch when this device has no record of
  * consent, even offline (AC-18a).
  */
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -130,6 +131,9 @@ export function ConsentScreen({
       onRequestClose={confirmLeave}
     >
       <View style={[styles.screen, { backgroundColor: palette.canvas, paddingTop: insetsTop }]}>
+        {/* Its own status bar: opened from the sign-in sheet and Google's picker,
+            the globe's switch doesn't reach this window (sprint 2 retest N-1). */}
+        <StatusBar style={colorScheme === 'light' ? 'dark' : 'light'} />
         <ScrollView contentContainerStyle={styles.content} testID="consent-screen">
           {draftVersion !== undefined ? (
             <View style={[styles.badge, { backgroundColor: palette.infoBg }]}>
