@@ -408,6 +408,17 @@ verify_jwt = false
 # Shared import map with pinned versions; deno.lock beside it pins their hashes.
 import_map = "./functions/deno.json"
 
+# Sprint 4 F-012 and F-013 (ADR-008): called by pg_cron once a day. They only
+# refresh public reference data and skip a run within the last hour, so no
+# JWT and no secret on the call.
+[functions.rates-daily]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.advisories-daily]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
 [analytics]
 # The local log pipeline (vector) keeps restarting on Windows; logs aren't needed locally.
 enabled = false
