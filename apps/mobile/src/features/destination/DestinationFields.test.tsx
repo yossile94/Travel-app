@@ -12,6 +12,7 @@ import {
   CardAdvisory,
   CardRate,
   EntryTag,
+  TravelInfoSheet,
 } from './DestinationFields';
 import type { Rate } from './rateFormat';
 
@@ -248,5 +249,34 @@ describe('CalculatorSheet (AC-2)', () => {
   it('USD has no dollar field', async () => {
     await show(rate({ currency: 'USD', rateToIls: 3.6, rateToUsd: 1 }));
     expect(screen.queryByTestId('calc-usd')).toBeNull();
+  });
+});
+
+describe('TravelInfoSheet texts (QA S4 #4)', () => {
+  const sheet = (nscText: string) =>
+    render(
+      <TravelInfoSheet
+        visible
+        countryName="תאילנד"
+        advisory={advisory({ nscText, nscLevel: 4, nscLevels: [4] })}
+        colorScheme="light"
+        reduceMotion
+        insetsBottom={0}
+        onClose={jest.fn()}
+      />,
+    );
+
+  it('caps a long text at 8 lines until "עוד" is tapped', async () => {
+    await sheet('מילה '.repeat(120));
+    expect(screen.getByTestId('sheet-nsc-text').props.numberOfLines).toBe(8);
+    await fireEvent.press(screen.getByTestId('sheet-nsc-text-more'));
+    expect(screen.getByTestId('sheet-nsc-text').props.numberOfLines).toBeUndefined();
+    expect(screen.queryByTestId('sheet-nsc-text-more')).toBeNull();
+  });
+
+  it('shows a short text whole, without "עוד"', async () => {
+    await sheet('קצר');
+    expect(screen.getByTestId('sheet-nsc-text').props.numberOfLines).toBeUndefined();
+    expect(screen.queryByTestId('sheet-nsc-text-more')).toBeNull();
   });
 });

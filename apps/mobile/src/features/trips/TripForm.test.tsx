@@ -10,6 +10,9 @@ import { TripForm } from './TripForm';
 import { saveTrip, type Trip } from './tripsApi';
 
 const mockRecheck = jest.fn(async () => true);
+// The full suite runs files in parallel; this form's save chain can be slow there (QA S4 #1).
+jest.setTimeout(15_000);
+
 jest.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => ({
     state: { status: 'signedIn', user: { id: 'u1' } },
@@ -118,11 +121,14 @@ describe('TripForm, duplicate (sprint 3 AC-9)', () => {
     await waitFor(() => expect(mockDates).toHaveLength(0));
     await fireEvent.press(screen.getByTestId('trip-form-save'));
     // The save, the consent recheck and the notice are async: wait, don't race (QA F-1).
-    // Under a full parallel run the form's async steps can take over a second.
-    const slow = { timeout: 5000 };
-    await waitFor(() => expect(saveTrip).toHaveBeenCalled(), slow);
-    await waitFor(() => expect(mockRecheck).toHaveBeenCalled(), slow);
-    await waitFor(() => expect(screen.getByTestId('trip-form-notice')).toBeOnTheScreen(), slow);
+    // Under a full parallel run the form's async steps can take seconds: one
+    // wait for the last step (the notice), inside the file's longer test
+    // timeout, instead of three waits that together outlast the default 5 s.
+    await waitFor(() => expect(screen.getByTestId('trip-form-notice')).toBeOnTheScreen(), {
+      timeout: 10_000,
+    });
+    expect(saveTrip).toHaveBeenCalled();
+    expect(mockRecheck).toHaveBeenCalled();
     expect(onDone).not.toHaveBeenCalled();
     expect(DateTimePickerAndroid.open).toHaveBeenCalled();
   });

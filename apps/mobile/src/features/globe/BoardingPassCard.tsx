@@ -393,6 +393,14 @@ export function BoardingPassCard({
         accessibilityLabel={t('card.close')}
         testID="card-close"
       >
+        {/* In scroll mode the content passes under the button: a round
+            surface keeps the × readable (design 1.3, QA S4 #2). */}
+        {scrollMode ? (
+          <View
+            testID="card-close-backdrop"
+            style={[styles.closeBackdrop, { backgroundColor: palette.surfaceRaised }]}
+          />
+        ) : null}
         <Svg width={20} height={20} viewBox="0 0 24 24">
           <Path
             d="M6 6l12 12M18 6L6 18"
@@ -516,4 +524,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  closeBackdrop: { position: 'absolute', width: 40, height: 40, borderRadius: 20 },
 });
