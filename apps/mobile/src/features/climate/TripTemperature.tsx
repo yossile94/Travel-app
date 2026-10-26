@@ -7,14 +7,12 @@
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import type { TripCity } from '@/features/trips/tripsApi';
 import { colors, fonts, type ColorScheme } from '@/theme/tokens';
 
 import { useClimate, type Climate } from './climateData';
 import { formatTemp, formatTempRange, tempA11y, tempRangeA11y, tripMonths } from './tempFormat';
-
-const isolateOwn = (text: string) =>
-  `${String.fromCodePoint(0x2068)}${text}${String.fromCodePoint(0x2069)}`;
 
 interface Props {
   countryAdm0: string;
@@ -33,7 +31,8 @@ export function tripClimatePoint(
 ): { normals: number[]; city: string | null } | null {
   for (const city of cities) {
     const normals = city.geonameId ? climate.city(city.geonameId) : null;
-    if (normals) return { normals, city: city.name };
+    // The saved name in its own direction: an English or typed name inside Hebrew (Raz, T6).
+    if (normals) return { normals, city: isolateOwn(city.name) };
   }
   const area = climate.area(countryAdm0);
   if (!area) return null;

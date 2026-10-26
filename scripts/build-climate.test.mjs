@@ -10,7 +10,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
-import { CAPITALS, cellOf, valueCell } from './build-climate.mjs';
+import { anomalousCells, CAPITALS, CITY_NORMALS, cellOf, valueCell } from './build-climate.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = join(root, 'apps', 'mobile', 'assets', 'data');
@@ -42,8 +42,8 @@ describe('climate build (sprint 3 AC-10 to AC-12)', () => {
   });
 
   // Published 1991-2020 daily means (January, July), within 2 degrees (AC-12).
-  // A 0.5 degree cell averages its land: where it also holds mountains, the
-  // value is lower (a known limit, ADR-007), so those get a wider band.
+  // Mountain cities get a wider band (AC-12's known limit). Eilat, at sea
+  // level in a mountain cell, comes from CITY_NORMALS (Raz, T1).
   const reference = [
     [293397, 'Tel Aviv', 13.6, 26.8, 2],
     [1609350, 'Bangkok', 27.0, 29.3, 2],
@@ -52,8 +52,10 @@ describe('climate build (sprint 3 AC-10 to AC-12)', () => {
     [1880252, 'Singapore', 26.7, 28.1, 2],
     [2562305, 'Valletta', 12.6, 26.6, 2],
     [1282027, 'Male', 28.0, 28.3, 2],
-    // Mountains in the cell: Edom and Sinai (Eilat), the Andes (Quito, La Paz).
-    [295277, 'Eilat', 16.0, 32.5, 6],
+    // A coastal capital outside the simplified polygon (Dudi, T1).
+    [3421319, 'Nuuk', -7.0, 7.0, 2],
+    [295277, 'Eilat', 16.0, 33.0, 2],
+    // Mountain cities: the Andes.
     [3652462, 'Quito', 14.0, 14.0, 4],
     [3911925, 'La Paz', 8.0, 6.0, 4],
   ];
@@ -65,6 +67,45 @@ describe('climate build (sprint 3 AC-10 to AC-12)', () => {
       assert.ok(Math.abs(month(slot, 6) - jul) <= band, `${name} Jul ${month(slot, 6)}`);
     });
   }
+
+  it('drops a cell whose year does not follow its neighbours (the Dead Sea, QA)', () => {
+    const season = [10, 12, 15, 19, 23, 26, 28, 28, 25, 21, 16, 12].map((v) => v * 100);
+    const flat = [20, 17, 18, 16, 15, 16, 17, 17, 16, 17, 17, 16].map((v) => v * 100);
+    const normals = new Map();
+    for (const cell of [0, 1, 2, 720, 722, 1440, 1441, 1442]) normals.set(cell + 1000, season);
+    normals.set(721 + 1000, flat);
+    assert.deepEqual([...anomalousCells(normals)], [1721]);
+    // Only two cells in the world, both in the Dead Sea basin.
+    assert.equal(data.source.anomalousCells.length, 2);
+  });
+
+  it('every Israeli city is warmer in July than in January', () => {
+    const cities = JSON.parse(readFileSync(join(dataDir, 'cities.dat'), 'utf8'));
+    for (const [cityId, , nameEn] of cities.areas.ISR) {
+      const slot = slotOf.get(cityId);
+      if (slot === undefined) continue;
+      assert.ok(
+        month(slot, 6) > month(slot, 0) + 5,
+        `${nameEn} ${month(slot, 0)} / ${month(slot, 6)}`,
+      );
+    }
+  });
+
+  it('city overrides keep their source', () => {
+    for (const [cityId, c] of Object.entries(CITY_NORMALS)) {
+      assert.equal(c.months.length, 12);
+      assert.match(data.source.cityNormals[cityId], /1991-2020/);
+    }
+  });
+
+  it('locks the areas shown at their label point, with no city (Dudi, T1)', () => {
+    const labelOnly = Object.entries(data.areas)
+      .filter(([, v]) => !v[1])
+      .map(([adm0]) => adm0)
+      .sort();
+    assert.deepEqual(labelOnly, ['BRI', 'GIB', 'HMD', 'IOT', 'SAH', 'UMI', 'VAT']);
+    assert.equal(data.areas.GRL[3], 'Nuuk');
+  });
 
   it('locks the areas with no value (the field is hidden there)', () => {
     assert.deepEqual(data.noValue, ['ATA', 'ATC', 'CLP', 'CSI']);

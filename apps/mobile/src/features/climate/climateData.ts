@@ -34,6 +34,12 @@ export interface Climate {
 }
 
 const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+/** Character code to its 6 bits, -1 elsewhere: one lookup per character (Raz, T3). */
+const BASE64_VALUE = (() => {
+  const table = new Int8Array(128).fill(-1);
+  for (let i = 0; i < BASE64.length; i++) table[BASE64.charCodeAt(i)] = i;
+  return table;
+})();
 
 /** base64 to bytes, without atob's binary string (Hermes): small and exact. */
 export function decodeBase64(text: string): Uint8Array {
@@ -43,7 +49,8 @@ export function decodeBase64(text: string): Uint8Array {
   let value = 0;
   let o = 0;
   for (let i = 0; i < clean.length; i++) {
-    const v = BASE64.indexOf(clean[i]!);
+    const code = clean.charCodeAt(i);
+    const v = code < 128 ? BASE64_VALUE[code]! : -1;
     if (v < 0) throw new Error('climate: bad base64');
     value = (value << 6) | v;
     bits += 6;
@@ -86,11 +93,14 @@ export function parseClimate(text: string): Climate {
 }
 
 let loading: Promise<Climate> | null = null;
+/** Once loaded, cards start ready: no empty first frame (Raz, T2). */
+let loaded: Climate | null = null;
 
 export function loadClimate(): Promise<Climate> {
   loading ??= (async () => {
     const asset = await Asset.fromModule(CLIMATE).downloadAsync();
-    return parseClimate(await new File(asset.localUri ?? asset.uri).text());
+    loaded = parseClimate(await new File(asset.localUri ?? asset.uri).text());
+    return loaded;
   })().catch((error: unknown) => {
     // A later card tries again.
     loading = null;
@@ -106,8 +116,11 @@ export type ClimateState =
 
 /** Design 1.2: nothing for 150 ms, then a skeleton, then the value; hidden on failure. */
 export function useClimate(): ClimateState {
-  const [state, setState] = useState<ClimateState>({ status: 'loading', showSkeleton: false });
+  const [state, setState] = useState<ClimateState>(() =>
+    loaded ? { status: 'ready', climate: loaded } : { status: 'loading', showSkeleton: false },
+  );
   useEffect(() => {
+    if (loaded) return;
     let live = true;
     const skeleton = setTimeout(() => {
       if (live) setState((s) => (s.status === 'loading' ? { ...s, showSkeleton: true } : s));

@@ -51,6 +51,7 @@ import { HOME_CENTER, HOME_ZOOM, flightDuration, zoomForSpan } from './camera';
 import { countryByAdm0 } from './countryData';
 import { GlobeLayers, LAYER } from './GlobeLayers';
 import { NEXT_TRIP_HIT, NextTripPin, type NextTripFeature } from './NextTripPin';
+import { loadClimate } from '@/features/climate/climateData';
 import { hasMapboxToken, turnOffMapboxTelemetryOnce } from './mapbox';
 import { logGlobeReady, markGlobeMounted, markMyTripsOpened } from './perfLog';
 import { resolveTap, type TapHits } from './resolveTap';
@@ -634,6 +635,14 @@ export function GlobeScreen() {
     AccessibilityInfo.announceForAccessibility(t('activeTrip.opened', { name: trip.title }));
   }, [globeReady, trips.firstLoad, trips.nextTrip, trips.today, auth.state.status, t]);
 
+  // Sprint 3 AC-12: the climate file loads once the globe is up, not before
+  // the first frame and not while the first card animates in (Raz, T3).
+  useEffect(() => {
+    if (!globeReady) return;
+    const timer = setTimeout(() => void loadClimate().catch(() => {}), 1000);
+    return () => clearTimeout(timer);
+  }, [globeReady]);
+
   // AC-14: Mapbox usage telemetry off. On Android this builds a throwaway
   // map view, so it waits for the globe to be up (review finding 6).
   useEffect(() => {
@@ -746,6 +755,7 @@ export function GlobeScreen() {
           reduceMotion={reduceMotion === true}
           bottomInset={insets.bottom}
           topInset={insets.top}
+          today={trips.today}
           coupon={
             auth.state.status === 'signedIn' ||
             auth.state.status === 'signedOut' ||

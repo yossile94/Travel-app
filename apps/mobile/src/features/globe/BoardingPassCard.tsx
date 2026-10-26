@@ -20,6 +20,7 @@ import Animated, {
 import Svg, { Line, Path, Rect } from 'react-native-svg';
 
 import { CardTemperature } from '@/features/climate/CardTemperature';
+import { todayPg } from '@/features/trips/tripDates';
 import { colors, fonts, highlightColor, layout, motion, type ColorScheme } from '@/theme/tokens';
 
 import { boardingPassPath } from './boardingPassPath';
@@ -73,6 +74,8 @@ interface Props {
    * may grow before it scrolls.
    */
   coupon?: (maxListHeight: number) => ReactNode;
+  /** Today's local date, from the trips' shared "day changed" event (sprint 3 AC-6, AC-10). */
+  today?: string;
 }
 
 /** The coupon's fixed parts around its list: padding, heading and "New trip" (design 2.1). */
@@ -89,6 +92,7 @@ export function BoardingPassCard({
   hidden = false,
   topInset = 0,
   coupon,
+  today = todayPg(),
 }: Props) {
   const { t } = useTranslation();
   const { fontScale, height: windowHeight } = useWindowDimensions();
@@ -266,6 +270,7 @@ export function BoardingPassCard({
               colorScheme={colorScheme}
               reduceMotion={reduceMotion}
               insetsBottom={bottomInset}
+              today={today}
             />
           </View>
         </View>

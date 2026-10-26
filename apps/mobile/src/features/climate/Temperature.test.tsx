@@ -23,8 +23,8 @@ const LRI = String.fromCodePoint(0x2066);
 const PDI = String.fromCodePoint(0x2069);
 const MINUS = String.fromCodePoint(0x2212);
 const strip = (s: string) => s.replace(new RegExp(`[${LRI}${PDI}]`, 'g'), '');
-const card = (adm0: string) => (
-  <CardTemperature adm0={adm0} colorScheme="light" reduceMotion insetsBottom={0} />
+const card = (adm0: string, today = '2026-10-26') => (
+  <CardTemperature adm0={adm0} colorScheme="light" reduceMotion insetsBottom={0} today={today} />
 );
 
 beforeEach(() => {
@@ -44,8 +44,7 @@ describe('the country card temperature (sprint 3 AC-10, AC-13)', () => {
   });
 
   it('a negative value keeps its minus sign, in an isolate', async () => {
-    jest.setSystemTime(new Date(2026, 0, 10, 12, 0));
-    await render(card('RUS'));
+    await render(card('RUS', '2026-01-10'));
     expect(screen.getByText('ממוצע יומי בינואר')).toBeOnTheScreen();
     const value = screen.getByTestId('card-temp-value').props.children as string;
     expect(value.startsWith(`${LRI}${MINUS}`)).toBe(true);
@@ -114,7 +113,10 @@ describe('the trip row temperature (sprint 3 AC-11)', () => {
       ]),
     );
     expect(screen.getByText('ממוצע יומי בנובמבר')).toBeOnTheScreen();
-    expect(screen.getByText("צ'יאנג מאי")).toBeOnTheScreen();
+    // In its own isolate (Raz, T6).
+    expect(
+      screen.getByText(`${String.fromCodePoint(0x2068)}צ'יאנג מאי${String.fromCodePoint(0x2069)}`),
+    ).toBeOnTheScreen();
   });
 
   it("two or three months: a column each, in time order, at the area's city", async () => {

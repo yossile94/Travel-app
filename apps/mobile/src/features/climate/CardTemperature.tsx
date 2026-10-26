@@ -4,35 +4,38 @@
  * when there is one, and "Sources". Hidden when the area has no value or
  * the file can't be read; a skeleton only if loading takes over 150 ms.
  */
-import { useState } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, findNodeHandle, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useToday } from '@/features/trips/useToday';
+import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import { colors, fonts, type ColorScheme } from '@/theme/tokens';
 
 import { useClimate } from './climateData';
 import { SourcesSheet } from './SourcesSheet';
 import { formatTemp, tempA11y } from './tempFormat';
 
-/** A name in its own direction (an English name inside Hebrew), as the card does. */
-const isolateOwn = (text: string) =>
-  `${String.fromCodePoint(0x2068)}${text}${String.fromCodePoint(0x2069)}`;
-
 interface Props {
   adm0: string;
   colorScheme: ColorScheme;
   reduceMotion: boolean;
   insetsBottom: number;
+  /** Today's local date ("YYYY-MM-DD"): the trips' shared "day changed" value (Raz, T5). */
+  today: string;
 }
 
-export function CardTemperature({ adm0, colorScheme, reduceMotion, insetsBottom }: Props) {
+export function CardTemperature({ adm0, colorScheme, reduceMotion, insetsBottom, today }: Props) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
   const state = useClimate();
-  // The local month, kept current by the same "day changed" event as the tags (design 1.2).
-  const today = useToday();
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const sourcesLink = useRef<ComponentRef<typeof Pressable>>(null);
+  const closeSources = () => {
+    setSourcesOpen(false);
+    // Focus goes back to "Sources" (design 1.3).
+    const node = findNodeHandle(sourcesLink.current);
+    if (node) AccessibilityInfo.setAccessibilityFocus(node);
+  };
 
   if (state.status === 'failed') return null;
   if (state.status === 'loading') {
@@ -80,16 +83,17 @@ export function CardTemperature({ adm0, colorScheme, reduceMotion, insetsBottom 
         accessibilityLabel={t('sources.linkA11y')}
         onPress={() => setSourcesOpen(true)}
         style={styles.sources}
+        ref={sourcesLink}
         testID="card-sources"
       >
-        <Text style={[styles.sub, { color: palette.link }]}>{t('sources.link')}</Text>
+        <Text style={[styles.footnote, { color: palette.link }]}>{t('sources.link')}</Text>
       </Pressable>
       <SourcesSheet
         visible={sourcesOpen}
         colorScheme={colorScheme}
         reduceMotion={reduceMotion}
         insetsBottom={insetsBottom}
-        onClose={() => setSourcesOpen(false)}
+        onClose={closeSources}
       />
     </View>
   );
@@ -105,8 +109,15 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
   sub: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, textAlign: 'left' },
+  footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, textAlign: 'left' },
   // A 48dp target that doesn't add 48dp to the card (design 1.1).
-  sources: { minHeight: 48, marginVertical: -14, justifyContent: 'center' },
+  sources: {
+    minHeight: 48,
+    minWidth: 48,
+    marginVertical: -14,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
   bar: { height: 12, borderRadius: 6, marginTop: 2 },
   barValue: { height: 18, marginTop: 6 },
 });
