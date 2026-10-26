@@ -54,6 +54,8 @@ describe('climate build (sprint 3 AC-10 to AC-12)', () => {
     [1282027, 'Male', 28.0, 28.3, 2],
     // A coastal capital outside the simplified polygon (Dudi, T1).
     [3421319, 'Nuuk', -7.0, 7.0, 2],
+    // Eilat's values are CITY_NORMALS, typed in from its source: this checks
+    // the entry and the wiring, not CRU (Dudi).
     [295277, 'Eilat', 16.0, 33.0, 2],
     // Mountain cities: the Andes.
     [3652462, 'Quito', 14.0, 14.0, 4],
