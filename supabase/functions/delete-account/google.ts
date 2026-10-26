@@ -7,6 +7,14 @@
  */
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
 
+/**
+ * Re-authentication window (AC-18): 60 minutes, not 5. Play services returns
+ * its cached token, up to an hour old, and the open-source sign-in library
+ * can't force a new one (Yossi, 2026-10-26; ADR-006 6). Google tokens live an
+ * hour, so in practice this equals the exp check.
+ */
+export const GOOGLE_TOKEN_MAX_AGE_SECONDS = 60 * 60;
+
 export const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
 
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));

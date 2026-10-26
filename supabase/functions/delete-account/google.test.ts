@@ -2,7 +2,7 @@
 import { assertEquals, assertRejects } from '@std/assert';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 
-import { verifyGoogleIdToken } from './google.ts';
+import { GOOGLE_TOKEN_MAX_AGE_SECONDS, verifyGoogleIdToken } from './google.ts';
 
 const AUDIENCE = 'web-client.apps.googleusercontent.com';
 const NOW = new Date('2026-10-25T20:00:00Z');
@@ -54,12 +54,22 @@ Deno.test('refuses a token from another issuer', async () => {
   await assertRejects(async () => verify(await token({ iss: 'https://evil.example' })));
 });
 
-Deno.test(
-  'refuses a token issued more than 5 minutes ago (not a fresh re-authentication)',
-  async () => {
-    await assertRejects(async () => verify(await token({}, 6 * 60)));
-  },
-);
+Deno.test('refuses a token issued outside the window it is given', async () => {
+  await assertRejects(async () => verify(await token({}, 6 * 60)));
+});
+
+Deno.test('the production window takes a cached token up to an hour old (sprint 3 QA B-1)', async () => {
+  const production = (idToken: string) =>
+    verifyGoogleIdToken(idToken, {
+      audience: AUDIENCE,
+      maxAgeSeconds: GOOGLE_TOKEN_MAX_AGE_SECONDS,
+      keys,
+      now: NOW,
+    });
+  assertEquals(GOOGLE_TOKEN_MAX_AGE_SECONDS, 3600);
+  assertEquals((await production(await token({}, 40 * 60))).sub, 'google-me');
+  await assertRejects(async () => production(await token({}, 61 * 60)));
+});
 
 Deno.test('refuses an expired token', async () => {
   await assertRejects(async () => verify(await token({}, 2 * 3600)));
