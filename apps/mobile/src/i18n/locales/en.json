@@ -53,11 +53,11 @@
   },
   "search": {
     "open": "Search for a country",
-    "placeholder": "Search for a country",
+    "placeholder": "Search a country or city",
     "close": "Close search",
     "clear": "Clear search",
-    "noResults": "No country found",
-    "noResultsHint": "Search by country name, in Hebrew or English.",
+    "noResults": "No country or city found",
+    "noResultsHint": "Search by country or city name, in Hebrew or English.",
     "more": "More results. Keep typing",
     "unavailable": "Search isn't available right now. You can pick a country by tapping the globe.",
     "countNone": "No country found",
@@ -65,7 +65,9 @@
     "countMany": "{{count}} countries found",
     "countMore": "Showing {{count}} countries. Keep typing to narrow down",
     "row": "{{name}}, {{nameEn}}",
-    "rowTerritory": "{{name}}, territory of {{parent}}, {{nameEn}}"
+    "rowTerritory": "{{name}}, territory of {{parent}}, {{nameEn}}",
+    "cityRow": "{{city}}, {{country}}",
+    "cityA11y": "The city {{city}}, {{country}}"
   },
   "sheet": {
     "close": "Close"

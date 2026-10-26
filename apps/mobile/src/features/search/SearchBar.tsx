@@ -32,7 +32,12 @@ import { colors, fonts, globe, layout, motion, radius, type ColorScheme } from '
 
 import { isolateLtr } from '../globe/BoardingPassCard';
 import { logSearchResults } from '../globe/perfLog';
+import { countryByAdm0 } from '../globe/countryData';
+import { searchAllCities, type GlobalCity } from '../trips/citiesData';
 import { searchCountries, type SearchEntry } from './search';
+
+/** A row of the results: a country, or a city that leads to its country (sprint 4 F-014). */
+type Row = { kind: 'country'; entry: SearchEntry } | { kind: 'city'; city: GlobalCity };
 
 interface Props {
   open: boolean;
@@ -68,6 +73,29 @@ export function SearchBar({
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const { results, more } = useMemo(() => searchCountries(query), [query]);
+  // Cities join when the city list is loaded; countries never wait for it (AC-11).
+  const [cities, setCities] = useState<{ query: string; list: GlobalCity[] }>({
+    query: '',
+    list: [],
+  });
+  useEffect(() => {
+    if (query.trim().length < 2) return;
+    let live = true;
+    searchAllCities(query, 5).then(
+      (list) => live && setCities({ query, list }),
+      () => {}, // No city list: countries only.
+    );
+    return () => {
+      live = false;
+    };
+  }, [query]);
+  const rows = useMemo<Row[]>(
+    () => [
+      ...results.map((entry): Row => ({ kind: 'country', entry })),
+      ...(cities.query === query ? cities.list : []).map((city): Row => ({ kind: 'city', city })),
+    ],
+    [results, cities, query],
+  );
 
   // The field stays on screen while it folds back into the button (design 2.4).
   const [closing, setClosing] = useState(false);
@@ -175,7 +203,7 @@ export function SearchBar({
   }, [onClose]);
 
   const select = useCallback(
-    (entry: SearchEntry) => {
+    (entry: { adm0: string }) => {
       Keyboard.dismiss();
       setQuery('');
       onSelect(entry.adm0);
@@ -316,7 +344,7 @@ export function SearchBar({
 
       {query ? (
         <Animated.View style={[styles.results, surface, { top }, listMaxHeight, resultsStyle]}>
-          {results.length === 0 ? (
+          {rows.length === 0 ? (
             <View style={styles.empty} testID="search-empty">
               <Text style={[styles.name, { color: palette.textPrimary }]}>
                 {t('search.noResults')}
@@ -327,16 +355,22 @@ export function SearchBar({
             </View>
           ) : (
             <FlatList
-              data={results}
-              keyExtractor={(entry) => entry.adm0}
+              data={rows}
+              keyExtractor={(row) =>
+                row.kind === 'country' ? row.entry.adm0 : `city-${row.city.id}`
+              }
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
               ItemSeparatorComponent={() => (
                 <View style={[styles.separator, { backgroundColor: palette.borderSubtle }]} />
               )}
-              renderItem={({ item }) => (
-                <ResultRow entry={item} colorScheme={colorScheme} onPress={select} />
-              )}
+              renderItem={({ item }) =>
+                item.kind === 'country' ? (
+                  <ResultRow entry={item.entry} colorScheme={colorScheme} onPress={select} />
+                ) : (
+                  <CityRow city={item.city} colorScheme={colorScheme} onPress={select} />
+                )
+              }
               ListFooterComponent={
                 more ? (
                   <Text style={[styles.more, { color: palette.textTertiary }]}>
@@ -397,6 +431,50 @@ function ResultRow({
         importantForAccessibility="no-hide-descendants"
       >
         <Text style={[styles.tagText, { color: palette.textSecondary }]}>{entry.adm0}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+/** "בנגקוק, תאילנד": a city leads to its country's card (sprint 4 F-014). */
+function CityRow({
+  city,
+  colorScheme,
+  onPress,
+}: {
+  city: GlobalCity;
+  colorScheme: ColorScheme;
+  onPress: (entry: { adm0: string }) => void;
+}) {
+  const { t } = useTranslation();
+  const palette = colors[colorScheme];
+  const country = countryByAdm0(city.adm0);
+  const countryHe = country?.nameHe ?? city.adm0;
+  const nameHe = city.nameHe || city.nameEn;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('search.cityA11y', { city: nameHe, country: countryHe })}
+      onPress={() => onPress(city)}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: palette.pressed }]}
+      testID={`search-city-${city.id}`}
+    >
+      <View style={styles.rowText}>
+        <Text style={[styles.name, { color: palette.textPrimary }]}>
+          {t('search.cityRow', {
+            city: city.nameHe || isolateLtr(city.nameEn),
+            country: countryHe,
+          })}
+        </Text>
+        <Text style={[styles.secondary, { color: palette.textSecondary }]}>
+          {isolateLtr(`${city.nameEn}, ${country?.nameEn ?? city.adm0}`)}
+        </Text>
+      </View>
+      <View
+        style={[styles.tag, { backgroundColor: palette.tag }]}
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Text style={[styles.tagText, { color: palette.textSecondary }]}>{city.adm0}</Text>
       </View>
     </Pressable>
   );

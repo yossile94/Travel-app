@@ -53,11 +53,11 @@
   },
   "search": {
     "open": "חיפוש מדינה",
-    "placeholder": "חיפוש מדינה",
+    "placeholder": "חיפוש מדינה או עיר",
     "close": "סגירת החיפוש",
     "clear": "ניקוי החיפוש",
-    "noResults": "לא נמצאה מדינה",
-    "noResultsHint": "החיפוש לפי שם מדינה, בעברית או באנגלית.",
+    "noResults": "לא נמצאה מדינה או עיר",
+    "noResultsHint": "החיפוש לפי שם מדינה או עיר, בעברית או באנגלית.",
     "more": "יש עוד תוצאות. המשיכו להקליד",
     "unavailable": "החיפוש לא זמין כרגע. אפשר לבחור מדינה בהקשה על הגלובוס.",
     "countNone": "לא נמצאה מדינה",
@@ -65,7 +65,9 @@
     "countMany": "נמצאו {{count}} מדינות",
     "countMore": "מוצגות {{count}} מדינות. המשיכו להקליד כדי לצמצם",
     "row": "{{name}}, {{nameEn}}",
-    "rowTerritory": "{{name}}, טריטוריה של {{parent}}, {{nameEn}}"
+    "rowTerritory": "{{name}}, טריטוריה של {{parent}}, {{nameEn}}",
+    "cityRow": "{{city}}, {{country}}",
+    "cityA11y": "העיר {{city}}, {{country}}"
   },
   "sheet": {
     "close": "סגירה"
