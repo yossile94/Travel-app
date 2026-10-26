@@ -70,11 +70,29 @@ export function isStale(fetchedAt: string, now = Date.now()): boolean {
  */
 export function parseAmount(text: string): number | null {
   const normal = text.trim().replace(',', '.');
-  if (!/^\d{1,12}(\.\d{0,2})?$/.test(normal)) return null;
+  if (!/^(\d{1,12}(\.\d{0,2})?|\.\d{1,2})$/.test(normal)) return null;
   return Number(normal);
 }
 
-/** A converted amount for the calculator: 2 decimals, thousands separated. */
-export function formatAmount(value: number): string {
-  return groupThousands(value.toFixed(2));
+/**
+ * A converted amount for a calculator field: 2 decimals, no thousands
+ * separators (the field can be edited; Raz, design change 6). Null when it
+ * has more than 12 whole digits ("—" in the field).
+ */
+export function formatAmount(value: number): string | null {
+  if (!Number.isFinite(value) || value >= 1e12) return null;
+  return value.toFixed(2);
+}
+
+const NBSP = String.fromCodePoint(0xa0);
+
+/**
+ * The whole line as one string, to show in one Text inside one LTR isolate:
+ * no-break spaces inside each part, so it can wrap only before "·" (Raz,
+ * design change 5).
+ */
+export function rateLineText(line: RateLine): string {
+  const keep = (s: string) => s.split(' ').join(NBSP);
+  const head = `${keep(line.amount)}${NBSP}=${NBSP}${keep(line.ils)}`;
+  return line.usd ? `${head} ·${NBSP}${keep(line.usd)}` : head;
 }

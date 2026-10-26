@@ -3,6 +3,8 @@ import '@/i18n';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 
+import { CardSources } from '@/features/destination/CardDestination';
+
 import { CardTemperature } from './CardTemperature';
 import { parseClimate, type ClimateState } from './climateData';
 import { TripTemperature } from './TripTemperature';
@@ -24,7 +26,7 @@ const PDI = String.fromCodePoint(0x2069);
 const MINUS = String.fromCodePoint(0x2212);
 const strip = (s: string) => s.replace(new RegExp(`[${LRI}${PDI}]`, 'g'), '');
 const card = (adm0: string, today = '2026-10-26') => (
-  <CardTemperature adm0={adm0} colorScheme="light" reduceMotion insetsBottom={0} today={today} />
+  <CardTemperature adm0={adm0} colorScheme="light" today={today} />
 );
 
 beforeEach(() => {
@@ -51,10 +53,9 @@ describe('the country card temperature (sprint 3 AC-10, AC-13)', () => {
     expect(value.endsWith(`°${PDI}`)).toBe(true);
   });
 
-  it('is hidden, with its sources link, where there is no value', async () => {
+  it('is hidden where there is no value', async () => {
     await render(card('ATA'));
     expect(screen.queryByTestId('card-temp')).toBeNull();
-    expect(screen.queryByTestId('card-sources')).toBeNull();
   });
 
   it('is hidden when the file failed, and shows a skeleton only after 150 ms', async () => {
@@ -74,7 +75,7 @@ describe('the country card temperature (sprint 3 AC-10, AC-13)', () => {
 
   it('"Sources" opens the credits word for word, with the licences as links', async () => {
     const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
-    await render(card('THA'));
+    await render(<CardSources colorScheme="light" reduceMotion insetsBottom={0} />);
     await fireEvent.press(screen.getByTestId('card-sources'));
     await act(async () => jest.advanceTimersByTime(500));
     expect(screen.getByTestId('sources-cities')).toHaveTextContent(

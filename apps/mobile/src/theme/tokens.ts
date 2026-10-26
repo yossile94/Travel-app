@@ -43,6 +43,16 @@ export const colors = {
     activeBar: '#0B7F73',
     textAlert: '#C81E16',
     skeleton: '#F4E7D0',
+    // Sprint 4 (design 5.1, 6.1): entry tags and the NSC bar. Red only for "no entry" and level 4.
+    entryBannedBg: '#C81E16',
+    entryBannedFg: '#FFFFFF',
+    entryRestrictedBg: '#FFF2EE',
+    entryRestrictedFg: '#A8381A',
+    advisory1: '#0B7F73',
+    advisory2: '#8F7550',
+    advisory3: '#B45309',
+    advisory4: '#C81E16',
+    advisoryEmpty: '#7D869E',
   },
   dark: {
     surfaceRaised: '#121C36',
@@ -80,6 +90,15 @@ export const colors = {
     activeBar: '#4FCFBE',
     textAlert: '#FF5D52',
     skeleton: '#1A2749',
+    entryBannedBg: '#FF5D52',
+    entryBannedFg: '#060B18',
+    entryRestrictedBg: '#1A2749',
+    entryRestrictedFg: '#FF9677',
+    advisory1: '#4FCFBE',
+    advisory2: '#D9BE90',
+    advisory3: '#FFA94D',
+    advisory4: '#FF5D52',
+    advisoryEmpty: '#7487BD',
   },
 } as const;
 

@@ -110,7 +110,12 @@ describe('TripForm, duplicate (sprint 3 AC-9)', () => {
     await render(form(jest.fn(), onDone));
     mockDates.push(new Date(2027, 2, 10), new Date(2027, 2, 14));
     await fireEvent.press(screen.getByTestId('trip-form-start'));
+    // The return picker opens by itself after the departure: let it run first (QA F-1).
+    await act(async () => {
+      await Promise.resolve();
+    });
     if (mockDates.length) await fireEvent.press(screen.getByTestId('trip-form-end'));
+    await waitFor(() => expect(mockDates).toHaveLength(0));
     await fireEvent.press(screen.getByTestId('trip-form-save'));
     // The save, the consent recheck and the notice are async: wait, don't race (QA F-1).
     await waitFor(() => expect(mockRecheck).toHaveBeenCalled());

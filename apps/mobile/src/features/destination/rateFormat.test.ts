@@ -3,6 +3,7 @@ import {
   isStale,
   parseAmount,
   rateLine,
+  rateLineText,
   twoSignificant,
   unitFor,
   type Rate,
@@ -84,7 +85,34 @@ describe('the calculator input (sprint 4 AC-2)', () => {
     expect(parseAmount('abc')).toBeNull();
   });
 
-  it('shows results with 2 decimals and thousands separators', () => {
-    expect(formatAmount(1234.5)).toBe('1,234.50');
+  it('shows results with 2 decimals', () => {
+    // No separators: the field stays editable (Raz, design change 6).
+    expect(formatAmount(1234.5)).toBe('1234.50');
+    expect(formatAmount(1e12)).toBeNull();
+    expect(parseAmount('.5')).toBe(0.5);
+  });
+});
+
+describe('the design table (sprint 4 design 3.4, USD/ILS 3.2)', () => {
+  const usdIls = 3.2;
+  const line = (code: string, toIls: number) => rateLine({ ...rate(code, toIls, toIls / usdIls) });
+  it.each([
+    ['EUR', 3.72, '1 EUR', '3.7 ₪', '1.2 $'],
+    ['THB', 0.11, '1 THB', '0.11 ₪', '0.034 $'],
+    ['THB', 0.0952, '10 THB', '0.95 ₪', '0.30 $'],
+    ['JPY', 0.0213, '10 JPY', '0.21 ₪', '0.067 $'],
+    ['VND', 0.000122, '1,000 VND', '0.12 ₪', '0.038 $'],
+    ['IDR', 0.000198, '1,000 IDR', '0.20 ₪', '0.062 $'],
+    ['XXX', 0.00999, '100 XXX', '1.0 ₪', '0.31 $'],
+    ['KWD', 12.3, '1 KWD', '12 ₪', '3.8 $'],
+  ])('%s at %f', (code, toIls, amount, ils, usd) => {
+    expect(line(code, toIls)).toEqual({ amount, ils, usd });
+  });
+
+  it('one string that wraps only before "·"', () => {
+    const nbsp = String.fromCodePoint(0xa0);
+    const text = rateLineText({ amount: '1,000 VND', ils: '0.12 ₪', usd: '0.038 $' });
+    expect(text).toBe(`1,000${nbsp}VND${nbsp}=${nbsp}0.12${nbsp}₪ ·${nbsp}0.038${nbsp}$`);
+    expect(text.split(' ')).toHaveLength(2);
   });
 });

@@ -16,6 +16,9 @@ export const LICENCES: [string, string][] = [
     'Open Government Licence v3.0',
     'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
   ],
+  // Sprint 4 (design 11): the rate attribution ER-API asks for, and the warnings dataset.
+  ['Rates By Exchange Rate API', 'https://www.exchangerate-api.com'],
+  ['data.gov.il', 'https://data.gov.il/dataset/travelwarnings'],
 ];
 
 interface Props {
@@ -64,6 +67,9 @@ export function SourcesSheet({ visible, onClose, ...sheet }: Props) {
       <Text style={[styles.title2, { color: palette.textPrimary }]} accessibilityRole="header">
         {t('sources.title')}
       </Text>
+      {credit(t('sources.advisories'), 'sources-advisories')}
+      {credit(t('sources.entry'), 'sources-entry')}
+      {credit(t('sources.rates'), 'sources-rates')}
       {credit(t('sources.cities'), 'sources-cities')}
       {credit(t('sources.climate'), 'sources-climate')}
     </BottomSheet>

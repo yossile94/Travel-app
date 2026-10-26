@@ -18,7 +18,7 @@
     --cta:#C8441F; --ctaFg:#fff; --sec:#EEF6FF; --secFg:#104C94; --dis:#E9EEFA; --disFg:#646E8A;
     --info:#EEF6FF; --infoFg:#104C94; --openRow:#FBF4E8; --scrim:rgba(6,11,24,.48);
     --banBg:#C81E16; --banFg:#fff; --resBg:#FFF2EE; --resFg:#A8381A;
-    --l1:#0B7F73; --l2:#8F7550; --l3:#C8441F; --l4:#C81E16; --empty:#7D869E;
+    --l1:#0B7F73; --l2:#8F7550; --l3:#B45309; --l4:#C81E16; --empty:#7D869E;
     --planBg:#EEF6FF; --planFg:#104C94;
   }
   .dark-vars {
@@ -28,7 +28,7 @@
     --cta:#FF7A57; --ctaFg:#060B18; --sec:#1A2749; --secFg:#A9D2FF; --dis:#1A2749; --disFg:#7487BD;
     --info:#1A2749; --infoFg:#A9D2FF; --openRow:#1A2749; --scrim:rgba(0,0,0,.6);
     --banBg:#FF5D52; --banFg:#060B18; --resBg:#1A2749; --resFg:#FF9677;
-    --l1:#4FCFBE; --l2:#D9BE90; --l3:#FF7A57; --l4:#FF5D52; --empty:#7487BD;
+    --l1:#4FCFBE; --l2:#D9BE90; --l3:#FFA94D; --l4:#FF5D52; --empty:#7487BD;
     --planBg:#1A2749; --planFg:#A9D2FF;
   }
   header.top { padding: 16px 24px; }
@@ -195,12 +195,22 @@ function sig2(x) {
 }
 function group(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 function rateUnits(rateToIls) { for (const u of UNITS) if (rateToIls * u >= 0.1) return u; return 10000; }
-function formatRateLine(rateToIls, usdIls, code) {
+/* README 3: rateParts is the unit-tested part; the line is assembled in the component. */
+function rateParts(rateToIls, usdIls, code) {
   if (code === 'ILS') return null;
-  if (code === 'USD') return iso('1 USD = ' + sig2(usdIls) + ' ₪');
+  if (code === 'USD') return { amount: '1 USD', ils: sig2(usdIls), usd: '' };
   const u = rateUnits(rateToIls);
   const ils = rateToIls * u;
-  return iso(group(u) + ' ' + code + ' = ' + sig2(ils) + ' ₪ · ' + sig2(ils / usdIls) + ' $');
+  return { amount: group(u) + ' ' + code, ils: sig2(ils), usd: sig2(ils / usdIls) };
+}
+/* One Text, one LTR isolate, NBSP inside each part, a normal space only before the middle dot (README 3.3). */
+const NB = ' ';
+function formatRateLine(rateToIls, usdIls, code) {
+  const p = rateParts(rateToIls, usdIls, code);
+  if (!p) return null;
+  const first = (p.amount + ' = ' + p.ils + ' ₪').replace(/ /g, NB);
+  if (!p.usd) return iso(first);
+  return iso(first + ' ' + ('· ' + p.usd + ' $').replace(/ /g, NB));
 }
 const USD_ILS = 3.2;
 
@@ -210,8 +220,8 @@ const fmtDate = (d) => iso(d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getF
 const state = { theme: 'light', scale: 1, clock: 0 };
 const daysOld = () => state.clock;
 
-const WORD = { 1: 'זהירות רגילה', 2: 'איום מזדמן', 3: 'איום בינוני', 4: 'איום גבוה' };
-const REC = { 1: 'אין אזהרה חריגה', 2: 'זהירות מוגברת', 3: 'להימנע מנסיעות שאינן חיוניות', 4: 'להימנע מהגעה' };
+const WORD = { 1: 'אין אזהרת מסע', 2: 'איום מזדמן', 3: 'איום בינוני', 4: 'איום גבוה' };
+const REC = { 1: 'זהירות רגילה', 2: 'זהירות מוגברת', 3: 'להימנע מנסיעות שאינן חיוניות', 4: 'להימנע מהגעה' };
 
 /* ---------- pieces ---------- */
 function bar(level, size) {
@@ -229,17 +239,17 @@ function advisoryRow(a) {
   const label = '<div class="caption">אזהרת מסע של המל"ל</div>';
   if (a.kind === 'pending') return '<div class="block">' + label + '<div class="callout t2" style="min-height:24px">בהשלמה</div><div class="footnote t3">עוד לא בדקנו את האזור הזה.</div></div>';
   if (a.kind === 'firstOffline') return '<div class="block">' + label + '<div class="body t2">☁︎ אזהרות המסע יוצגו כשיהיה חיבור</div></div>';
-  let line;
-  if (a.kind === 'none') line = '<span class="success" style="color:var(--success)">✔</span><span class="callout t1">אין אזהרת מסע מפורסמת</span>';
+  // ADR-008: (a) nsc_levels non-empty -> level = last value; (b) NSC text, nsc_levels empty; (c) pending (above).
+  let line, mixedLine = '';
+  if (a.kind === 'noLevel') line = '<span class="t2" aria-hidden="true">ⓘ</span><span class="callout t1">יש פרסום של המל"ל. הרמה לא זוהתה, לפרטים</span>';
   else {
-    const mixed = a.min && a.min < a.level;
-    const txt = (mixed ? 'עד רמה ' : 'רמה ') + a.level + ' · ' + WORD[a.level];
-    line = bar(a.level) + '<span class="callout ' + (a.level === 4 ? 'alertT' : 't1') + '" style="font-weight:' + (a.level === 4 ? 500 : 400) + '">' + txt + '</span>';
+    const levels = a.levels, level = levels[levels.length - 1], mixed = levels.length > 1;
+    const txt = (mixed ? 'עד רמה ' : 'רמה ') + level + ' · ' + WORD[level];
+    line = bar(level) + '<span class="callout ' + (level === 4 ? 'alertT' : 't1') + '" style="font-weight:' + (level === 4 ? 500 : 400) + '">' + txt + '</span>';
+    if (mixed) mixedLine = '<div class="footnote">הרמה משתנה לפי אזור</div>';
   }
-  const old = daysOld() > 30;
-  const mixedLine = a.min && a.min < a.level ? '<div class="footnote">הרמה משתנה לפי אזור</div>' : '';
-  const staleLine = old ? '<div class="meta"><span class="footnote">' + (a.kind === 'none' ? 'נבדק ב-' : 'עודכן ב-') + fmtDate(FETCHED) + '</span>' + stalePill() + '</div>' : '';
-  return '<div class="block">' + label + '<div class="press" data-open="advisory"><div class="grow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' + line + '</div><span class="chev">‹</span></div>' + mixedLine + staleLine + '</div>';
+  const checked = '<div class="meta"><span class="footnote">נבדק ב-' + fmtDate(FETCHED) + '</span>' + (daysOld() > 30 ? stalePill() : '') + '</div>';
+  return '<div class="block">' + label + '<div class="press" data-open="advisory"><div class="grow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' + line + '</div><span class="chev">‹</span></div>' + mixedLine + checked + '</div>';
 }
 function rateBlock(r) {
   const label = '<div class="caption">שער חליפין</div>';
@@ -292,7 +302,7 @@ function phone(inner, demo) {
 const THAI = {
   name: 'תאילנד', nameEn: 'Thailand', code: 'THA', city: 'בנגקוק', time: '14:32', diff: '4 שעות יותר מבישראל',
   currency: 'באט תאילנדי', symbol: '฿ · THB', temp: '28°',
-  advisory: { kind: 'level', level: 4, min: 2 },
+  advisory: { kind: 'level', levels: [2, 4] },
   rate: { kind: 'ok', code: 'THB', rate: 0.11, source: 'erapi' },
   trip: { name: 'תאילנד דצמבר 2026', dates: '20 בדצמבר 2026 – 5 בינואר 2027', open: true },
   statusLine: bar(4, 'sm') + '<span class="footnote alertT">אזהרת המל"ל: עד רמה 4</span>',
@@ -300,13 +310,23 @@ const THAI = {
 const MALDIVES = {
   name: 'מלדיביים', nameEn: 'Maldives', code: 'MDV', city: 'מאלה', time: '16:32', diff: '3 שעות יותר מבישראל',
   currency: 'רופיה מלדיבית', symbol: 'MVR', temp: '29°', entry: 'banned',
-  advisory: { kind: 'none' }, rate: { kind: 'ok', code: 'MVR', rate: 0.21, source: 'erapi' },
+  advisory: { kind: 'level', levels: [1] }, rate: { kind: 'ok', code: 'MVR', rate: 0.21, source: 'erapi' },
   trip: { name: 'מלדיביים מרץ 2027', dates: '3 במרץ 2027 – 10 במרץ 2027', open: false },
 };
 const EXAMPLE = {
   name: 'יעד לדוגמה', nameEn: 'Example', code: 'EXM', city: 'עיר הבירה', time: '13:32', diff: '1 שעה יותר מבישראל',
   currency: 'יורו', symbol: '€ · EUR', temp: '12°', entry: 'restricted',
   advisory: { kind: 'pending' }, rate: { kind: 'ok', code: 'EUR', rate: 3.72, source: 'boi' },
+};
+const LEVEL3 = {
+  name: 'יעד ב׳', nameEn: 'Example B', code: 'EXB', city: 'עיר הבירה', time: '15:32', diff: '2 שעות יותר מבישראל',
+  currency: 'דולר אמריקאי', symbol: '$ · USD', temp: '31°',
+  advisory: { kind: 'level', levels: [3] }, rate: { kind: 'ok', code: 'USD', rate: 3.2, source: 'boi' },
+};
+const NOLEVEL = {
+  name: 'יעד ג׳', nameEn: 'Example C', code: 'EXC', city: 'עיר הבירה', time: '12:32', diff: 'שעה פחות מבישראל',
+  currency: 'יורו', symbol: '€ · EUR', temp: '9°',
+  advisory: { kind: 'noLevel' }, rate: { kind: 'ok', code: 'EUR', rate: 3.72, source: 'boi' },
 };
 
 function cardScreen(c, opts) {
@@ -316,7 +336,6 @@ function cardScreen(c, opts) {
 function advisorySheet() {
   const nsc = 'רמת איום גבוהה (רמה 4) במחוזות הדרום: נאראתיוואט, יאלה, פטאני וחלקים ממחוז סונגקלה. מומלץ להימנע מהגעה לאזורים אלה.\nבשאר חלקי המדינה: איום מזדמן (רמה 2). מומלץ לנקוט זהירות מוגברת, במיוחד באזורי בילוי ובמקומות הומי אדם.';
   const mfa = 'מומלץ להירשם באתר משרד החוץ לפני הנסיעה ולשמור את פרטי הנציגות בבנגקוק.';
-  const health = 'מומלץ להתייעץ במרפאת מטיילים לגבי חיסונים, ולהקפיד על הגנה מפני יתושים.';
   const old = daysOld() > 30;
   const inner = '<div class="scrim"></div><div class="sheet"><div class="handle"></div>' +
     '<div class="sheetHead"><div class="grow"><div class="title2">כניסה ואזהרות מסע</div><div class="callout t2">תאילנד</div></div><div class="x">✕</div></div>' +
@@ -324,11 +343,10 @@ function advisorySheet() {
     '<div style="margin:12px 0 8px">' + bar(4, 'lg') + '</div>' +
     '<div class="bodyStrong alertT">עד רמה 4 מתוך 4</div><div class="body alertT">איום גבוה: להימנע מהגעה</div>' +
     '<div class="footnote">הרמה משתנה לפי אזור. הפירוט בטקסט למטה.</div>' +
-    '<div class="meta" style="margin-top:4px"><span class="footnote">עודכן ב-' + fmtDate(FETCHED) + '</span>' + (old ? stalePill() : '') + '</div>' +
+    '<div class="meta" style="margin-top:4px"><span class="footnote">נבדק ב-' + fmtDate(FETCHED) + '</span>' + (old ? stalePill() : '') + '</div>' +
     '<div class="caption" style="margin-top:16px">המל"ל</div><div class="body t1 govtext clamp">' + esc(nsc) + '</div>' +
     '<div class="caption" style="margin-top:12px">משרד החוץ</div><div class="body t1 govtext">' + esc(mfa) + '</div>' +
-    '<div class="caption" style="margin-top:12px">משרד הבריאות</div><div class="body t1 govtext">' + esc(health) + '</div>' +
-    '<button class="btn sec" style="width:100%;margin-top:16px">↗ לעמוד הרשמי ב-gov.il</button>' +
+    '<button class="btn sec" style="width:100%;margin-top:16px" title="nsc_url, אחרת mfa_url, אחרת מוסתר">↗ לעמוד הרשמי ב-gov.il</button>' +
     '<div class="footnote" style="margin-top:16px">המידע מבוסס על פרסומי המל"ל ומשרד החוץ, ואינו מחליף בדיקה במקור הרשמי</div>' +
     '</div>';
   return phone(inner, 'טקסטים להדגמה, לא הנוסח של gov.il');
@@ -338,6 +356,7 @@ function entrySheet() {
     '<div class="sheetHead"><div class="grow"><div class="title2">כניסה ואזהרות מסע</div><div class="callout t2">יעד לדוגמה</div></div><div class="x">✕</div></div>' +
     '<div style="margin-top:16px" class="title3">כניסה בדרכון ישראלי</div><div style="margin:8px 0">' + entryPill('restricted') + '</div>' +
     '<div class="body">הכניסה ליעד הזה בדרכון ישראלי אפשרית רק בתנאים מסוימים, למשל אישור מראש. התנאים מפורטים במקור.</div>' +
+    '<div class="body t1" style="margin-top:8px">נדרש אישור כניסה מראש, דרך הנציגות של היעד. (entry_note, להדגמה)</div>' +
     '<div class="meta" style="margin-top:4px"><span class="footnote">נבדק ב-' + fmtDate(new Date(2026, 9, 12)) + ' ·</span><span class="footnote link">לפרטים במקור ↗</span></div>' +
     '<hr><div class="title3">אזהרת מסע של המל"ל</div><div class="callout t2" style="margin-top:8px">בהשלמה</div><div class="body">עוד לא בדקנו את האזהרות לאזור הזה.</div>' +
     '<div class="footnote" style="margin-top:24px">המידע מבוסס על פרסומי המל"ל ומשרד החוץ, ואינו מחליף בדיקה במקור הרשמי</div></div>';
@@ -405,6 +424,15 @@ function searchScreen(loading) {
   return phone(inner, loading ? 'האינדקס עוד נטען (150ms+)' : 'תוצאות ותגים להדגמה');
 }
 
+/* README 9.1: English UI, one line per city ("Bangkok, Thailand"), displayName in English */
+function searchScreenEn() {
+  const res = (name, sub, code, entry) => '<div class="res"><div class="grow"><div class="bodyStrong">' + name + (sub ? '<span class="body t2" style="font-weight:400">' + sub + '</span>' : '') + '</div></div><div class="tags">' + (entry ? entryPill(entry).replace('אין כניסה', 'No entry') : '') + '<span class="pill code">' + code + '</span></div></div>';
+  const inner = '<div dir="ltr"><div class="sscrim"></div><div class="sfield"><span class="ic">←</span><span class="q">bang</span><span class="ic t2">⊗</span></div>' +
+    '<div class="results"><div class="group caption">Countries</div>' + res('Bangladesh', '', 'BGD') +
+    '<div class="group caption">Cities</div>' + res('Bangkok', ', Thailand', 'THA') + res('Bengaluru', ', India', 'IND') + res('Bangui', ', Central African Republic', 'CAF') + '</div></div>';
+  return phone(inner, 'English UI, demo');
+}
+
 /* README 10: my trips cached */
 function myTripsCached() {
   const row = (name, country, dates, code, status) => '<div class="res" style="min-height:72px"><div class="grow"><div class="bodyStrong">' + name + '</div><div class="footnote">' + country + ' · ' + dates + '</div></div><div class="tags" style="flex-direction:column;align-items:flex-end"><span class="pill code">' + code + '</span>' + status + '</div></div>';
@@ -422,15 +450,18 @@ function myTripsCached() {
 /* ---------- render ---------- */
 const screens = [
   ['1. כרטיס: תאילנד', 'רמה 4 אזורית ("עד"), שער מ-ER-API, נסיעה פתוחה עם שורת מצב (סעיפים 1, 2, 6, 8)', () => cardScreen(THAI)],
-  ['2. כרטיס: "אין כניסה"', 'תג אדום, "אין אזהרת מסע מפורסמת" (סעיפים 5, 6.3)', () => cardScreen(MALDIVES, { demo: 'נתוני הדגמה' })],
-  ['3. כרטיס: "כניסה מוגבלת" + "בהשלמה"', 'שער מבנק ישראל, אזהרה לא לחיצה (סעיפים 2.1, 5, 6.3)', () => cardScreen(EXAMPLE, { demo: 'יעד בדוי' })],
-  ['4. גיליון "כניסה ואזהרות מסע": תאילנד', 'סרגל מלא, טקסטים לפי גוף, קישור, אחריות (סעיף 7)', advisorySheet],
-  ['5. הגיליון: כניסה מוגבלת + בהשלמה', 'חלק הכניסה, "בהשלמה" בלי סרגל (סעיף 7.1)', entrySheet],
-  ['6. מחשבון מטבע (עובד)', 'נסו: 450, ‏12,5, הדבקה של "1,000" (סעיף 4)', calcSheet],
-  ['7. חיפוש "בנג": מדינות וערים', 'כותרות קבוצה, "עיר, מדינה", תגים (סעיף 9.1)', () => searchScreen(false)],
-  ['8. חיפוש "בנג": ערים בטעינה', 'המדינות מיד, הערים אחר כך (סעיף 9.2)', () => searchScreen(true)],
-  ['9. מצב טיסה: הכרטיס', '"מוצג מהשמירה האחרונה", כפתורים חסומים שמסבירים. הקישו על "עריכה" (סעיף 10)', () => cardScreen(THAI, { cached: true, demo: 'מצב טיסה' })],
-  ['10. מצב טיסה: "הנסיעות שלי"', 'InlineNotice, בלי "טען עוד" (סעיף 10.4)', myTripsCached],
+  ['2. כרטיס: "אין כניסה" ורמה 1', 'תג אדום, "רמה 1 · אין אזהרת מסע" (סעיפים 5, 6.3 א)', () => cardScreen(MALDIVES, { demo: 'נתוני הדגמה' })],
+  ['3. כרטיס: "כניסה מוגבלת" + "בהשלמה"', 'שער מבנק ישראל, אזהרה לא לחיצה, בלי תאריך (סעיפים 2.1, 5, 6.3 ג)', () => cardScreen(EXAMPLE, { demo: 'יעד בדוי' })],
+  ['4. כרטיס: רמה 3 (ענבר), USD', '"1 USD = 3.2 ₪" בלי "·" (סעיפים 2.2, 6.1)', () => cardScreen(LEVEL3, { demo: 'יעד בדוי' })],
+  ['5. כרטיס: "הרמה לא זוהתה"', 'מצב ב: בלי סרגל, לחיץ (סעיף 6.3 ב)', () => cardScreen(NOLEVEL, { demo: 'יעד בדוי' })],
+  ['6. גיליון "כניסה ואזהרות מסע": תאילנד', 'סרגל מלא, המל"ל ומשרד החוץ, קישור, אחריות (סעיף 7)', advisorySheet],
+  ['7. הגיליון: כניסה מוגבלת + בהשלמה', 'חלק הכניסה עם entry_note, "בהשלמה" בלי סרגל (סעיף 7.1)', entrySheet],
+  ['8. מחשבון מטבע (עובד)', 'נסו: 450, ‏12,5, ‏.5, הדבקה של "1,000" (סעיף 4)', calcSheet],
+  ['9. חיפוש "בנג": מדינות וערים', 'כותרות קבוצה, "עיר, מדינה", תגים (סעיף 9.1)', () => searchScreen(false)],
+  ['10. חיפוש "bang" באנגלית', 'שורה אחת לכל עיר: "Bangkok, Thailand" (סעיף 9.1)', searchScreenEn],
+  ['11. חיפוש "בנג": ערים בטעינה', 'המדינות מיד, הערים אחר כך (סעיף 9.2)', () => searchScreen(true)],
+  ['12. מצב טיסה: הכרטיס', '"מוצג מהשמירה האחרונה", כפתורים חסומים שמסבירים. הקישו על "עריכה" (סעיף 10)', () => cardScreen(THAI, { cached: true, demo: 'מצב טיסה' })],
+  ['13. מצב טיסה: "הנסיעות שלי"', 'InlineNotice, בלי "טען עוד" (סעיף 10.4)', myTripsCached],
 ];
 
 function render() {
@@ -467,9 +498,11 @@ function renderChecker() {
     ['X', 0.00999, '100 X = 1.0 ₪ · 0.31 $'],
     ['KWD', 12.3, '1 KWD = 12 ₪ · 3.8 $'],
   ];
-  const strip = (s) => s == null ? null : s.replace(/[⁦⁩]/g, '');
+  const strip = (s) => s == null ? null : s.replace(/[⁦⁩]/g, '').replace(/ /g, ' ');
+  // Component check (README 3.4): isolate at both ends, and the only normal space is right before the middle dot.
+  const breaksOk = (s) => s == null || (s[0] === '⁦' && s[s.length - 1] === '⁩' && (s.match(/ /g) || []).length === (s.includes('·') ? 1 : 0) && (!s.includes('·') || s.includes(' ·')));
   document.getElementById('checker').innerHTML = '<tr><th>מטבע</th><th>rateToIls</th><th>צפוי</th><th>מחושב</th><th></th></tr>' +
-    rows.map(([c, r, want]) => { const got = strip(formatRateLine(r, USD_ILS, c)); const ok = got === want;
+    rows.map(([c, r, want]) => { const raw = formatRateLine(r, USD_ILS, c); const got = strip(raw); const ok = got === want && breaksOk(raw);
       return '<tr><td>' + c + '</td><td class="mono">' + r + '</td><td class="mono ltr">' + esc(want == null ? '(אין שורה)' : want) + '</td><td class="mono ltr">' + esc(got == null ? '(אין שורה)' : got) + '</td><td class="' + (ok ? 'ok">✓' : 'bad">✗') + '</td></tr>'; }).join('') +
     '<tr><td colspan="5">אין שער: "אין שער זמין" · התקנה ראשונה בלי רשת: "השער יוצג כשיהיה חיבור" (סעיף 2.2)</td></tr>';
 }

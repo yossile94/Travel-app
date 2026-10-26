@@ -33,7 +33,8 @@
       "cities": "ערים",
       "citiesA11y": "ערים לפי הסדר: {{list}}",
       "duplicate": "שכפול"
-    }
+    },
+    "rate": "שער חליפין"
   },
   "timeDifference": {
     "same": "כמו בישראל",
@@ -52,11 +53,11 @@
     "hoursMinutes": "{{n}} שעות ו-{{m}} דקות"
   },
   "search": {
-    "open": "חיפוש מדינה",
+    "open": "חיפוש מדינה או עיר",
     "placeholder": "חיפוש מדינה או עיר",
     "close": "סגירת החיפוש",
     "clear": "ניקוי החיפוש",
-    "noResults": "לא נמצאה מדינה או עיר",
+    "noResults": "לא נמצאו מדינות או ערים",
     "noResultsHint": "החיפוש לפי שם מדינה או עיר, בעברית או באנגלית.",
     "more": "יש עוד תוצאות. המשיכו להקליד",
     "unavailable": "החיפוש לא זמין כרגע. אפשר לבחור מדינה בהקשה על הגלובוס.",
@@ -66,8 +67,17 @@
     "countMore": "מוצגות {{count}} מדינות. המשיכו להקליד כדי לצמצם",
     "row": "{{name}}, {{nameEn}}",
     "rowTerritory": "{{name}}, טריטוריה של {{parent}}, {{nameEn}}",
+    "groupCountries": "מדינות",
+    "groupCities": "ערים",
+    "cityHint": "פותח את הכרטיס של {{country}}",
+    "citiesLoading": "טוענים ערים…",
     "cityRow": "{{city}}, {{country}}",
-    "cityA11y": "העיר {{city}}, {{country}}"
+    "cityA11y": "{{city}}, {{country}}, {{cityEn}}",
+    "countFound": "נמצאו: {{parts}}",
+    "nCountryOne": "מדינה אחת",
+    "nCountryMany": "{{n}} מדינות",
+    "nCityOne": "עיר אחת",
+    "nCityMany": "{{n}} ערים"
   },
   "sheet": {
     "close": "סגירה"
@@ -143,7 +153,10 @@
     },
     "travelers": "{{n}} נוסעים",
     "rowA11yStatus": "{{name}}, {{dates}}, {{status}}",
-    "rowA11yTravelers": "{{name}}, {{dates}}, {{status}}, {{n}} נוסעים"
+    "rowA11yTravelers": "{{name}}, {{dates}}, {{status}}, {{n}} נוסעים",
+    "statusLine": "אזהרת המל\"ל: {{level}}",
+    "statusLineLevel": "רמה {{n}}",
+    "statusLineUpTo": "עד רמה {{n}}"
   },
   "tripForm": {
     "titleNew": "נסיעה חדשה",
@@ -333,7 +346,7 @@
     "deletedTitle": "מה נמחק מיד",
     "deletedAccount": "החשבון והשם שלך",
     "deletedTrips": "כל הנסיעות שלך",
-    "deletedDevice": "ההתחברות במכשיר הזה, והגישה של האפליקציה לחשבון Google",
+    "deletedDevice": "ההתחברות במכשיר הזה, הנסיעות שנשמרו בו, והגישה של האפליקציה לחשבון Google",
     "keptTitle": "מה נשמר",
     "kept": "יומן ההסכמות שלך נשמר כראיה משפטית לתקופה מוגבלת, לפי מדיניות הפרטיות.",
     "continue": "המשך",
@@ -368,7 +381,10 @@
     "linkA11y": "מקורות הנתונים",
     "title": "מקורות",
     "cities": "נתוני ערים: GeoNames (geonames.org), רישיון CC BY 4.0, עובדו.",
-    "climate": "נתוני אקלים: CRU TS v4.08, Climatic Research Unit, University of East Anglia (Harris, Jones, Osborn), דרך CEDA, רישיון Open Government Licence v3.0. הממוצעים לשנים 1991–2020 חושבו על ידינו."
+    "climate": "נתוני אקלים: CRU TS v4.08, Climatic Research Unit, University of East Anglia (Harris, Jones, Osborn), דרך CEDA, רישיון Open Government Licence v3.0. הממוצעים לשנים 1991–2020 חושבו על ידינו.",
+    "advisories": "אזהרות מסע: המאגר \"אזהרות מסע\" של gov.il באתר data.gov.il, לפי פרסומי המל\"ל ומשרד החוץ. הרמה בסרגל זוהתה על ידינו מתוך הטקסט.",
+    "entry": "סטטוס הכניסה בדרכון ישראלי: נאסף ונבדק על ידינו מול המקור שמופיע בכל יעד.",
+    "rates": "שערי מטבע: בנק ישראל (שער יציג) לדולר ולמטבעות שהוא מפרסם. לשאר המטבעות: Rates By Exchange Rate API, ומהם חישבנו את השער מול השקל. שער להמחשה בלבד; השער בבנק או בצ'יינג' יהיה שונה."
   },
   "temp": {
     "value": "⁦{{n}}°⁩",
@@ -417,5 +433,96 @@
     "cancel": "ביטול",
     "required": "צריך לכתוב שם.",
     "tooLong": "השם יכול להיות עד 40 תווים."
+  },
+  "rate": {
+    "line": "{{units}} {{code}} = {{ils}} ₪ · {{usd}} $",
+    "lineUsd": "1 USD = {{ils}} ₪",
+    "updated": "עודכן ב-{{date}}",
+    "attrErapi": "Rates By Exchange Rate API",
+    "attrBoi": "מקור: בנק ישראל",
+    "none": "אין שער זמין",
+    "firstOffline": "השער יוצג כשיהיה חיבור",
+    "error": "לא הצלחנו לטעון את השער",
+    "rowA11yOne": "שער חליפין: 1 {{currency}} שווה {{ils}} שקלים ו-{{usd}} דולר",
+    "rowA11yMany": "שער חליפין: {{units}} {{currency}} שווים {{ils}} שקלים ו-{{usd}} דולר",
+    "rowA11yUsd": "שער חליפין: 1 דולר אמריקאי שווה {{ils}} שקלים",
+    "rowHint": "פותח מחשבון"
+  },
+  "common": {
+    "maybeStale": "ייתכן שלא מעודכן"
+  },
+  "calc": {
+    "title": "מחשבון מטבע",
+    "ils": "שקל חדש · ILS",
+    "usd": "דולר אמריקאי · USD",
+    "local": "{{name}} · {{code}}",
+    "fieldA11y": "{{name}}, סכום",
+    "invalid": "אפשר להזין רק מספר, עם עד 2 ספרות אחרי הנקודה.",
+    "tooLarge": "מספר גדול מדי",
+    "disclaimer": "שער להמחשה בלבד; השער בבנק או בצ'יינג' יהיה שונה",
+    "close": "סגירה",
+    "ilsName": "שקל חדש",
+    "usdName": "דולר אמריקאי"
+  },
+  "entry": {
+    "banned": "אין כניסה",
+    "restricted": "כניסה מוגבלת",
+    "bannedA11y": "אין כניסה בדרכון ישראלי",
+    "restrictedA11y": "כניסה מוגבלת בדרכון ישראלי",
+    "tagHint": "פותח הסבר ומקור",
+    "title": "כניסה בדרכון ישראלי",
+    "bannedBody": "לפי המקור שבדקנו, אין כניסה ליעד הזה בדרכון ישראלי. אפשר עדיין לשמור נסיעה, אבל חשוב לבדוק במקור הרשמי לפני שמתכננים.",
+    "restrictedBody": "הכניסה ליעד הזה בדרכון ישראלי אפשרית רק בתנאים מסוימים, למשל אישור מראש. התנאים מפורטים במקור.",
+    "verified": "נבדק ב-{{date}}",
+    "sourceLink": "לפרטים במקור"
+  },
+  "advisory": {
+    "label": "אזהרת מסע של המל\"ל",
+    "level": "רמה {{n}} · {{word}}",
+    "levelUpTo": "עד רמה {{n}} · {{word}}",
+    "levelOf": "רמה {{n}} מתוך 4",
+    "levelOfUpTo": "עד רמה {{n}} מתוך 4",
+    "mixed": "הרמה משתנה לפי אזור",
+    "mixedSheet": "הרמה משתנה לפי אזור. הפירוט בטקסט למטה.",
+    "word": {
+      "1": "אין אזהרת מסע",
+      "2": "איום מזדמן",
+      "3": "איום בינוני",
+      "4": "איום גבוה"
+    },
+    "rec": {
+      "1": "זהירות רגילה",
+      "2": "זהירות מוגברת",
+      "3": "להימנע מנסיעות שאינן חיוניות",
+      "4": "להימנע מהגעה"
+    },
+    "wordRec": "{{word}}: {{rec}}",
+    "none": "אין אזהרת מסע מפורסמת",
+    "pending": "בהשלמה",
+    "pendingNote": "עוד לא בדקנו את האזור הזה.",
+    "pendingSheet": "עוד לא בדקנו את האזהרות לאזור הזה.",
+    "checked": "נבדק ב-{{date}}",
+    "firstOffline": "אזהרות המסע יוצגו כשיהיה חיבור",
+    "error": "לא הצלחנו לטעון את אזהרת המסע",
+    "rowA11y": "אזהרת מסע של המל\"ל: {{level}}, {{word}}",
+    "rowHint": "פותח פרטים ומקור",
+    "sheetTitle": "כניסה ואזהרות מסע",
+    "body": {
+      "nsc": "המל\"ל",
+      "mfa": "משרד החוץ"
+    },
+    "hebrewOnly": "",
+    "official": "לעמוד הרשמי ב-gov.il",
+    "disclaimer": "המידע מבוסס על פרסומי המל\"ל ומשרד החוץ, ואינו מחליף בדיקה במקור הרשמי",
+    "more": "עוד",
+    "unrecognized": "יש פרסום של המל\"ל. הרמה לא זוהתה, לפרטים"
+  },
+  "offline": {
+    "cachedAt": "מוצג מהשמירה האחרונה · {{when}}",
+    "whenToday": "היום, {{time}}",
+    "whenYesterday": "אתמול, {{time}}",
+    "readOnly": "בלי חיבור אפשר רק לצפות. עריכה תחזור כשיהיה חיבור.",
+    "readOnlyHint": "בלי חיבור אפשר רק לצפות",
+    "moreLater": "נסיעות נוספות יוצגו כשיהיה חיבור."
   }
 }

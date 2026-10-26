@@ -106,11 +106,14 @@ async function readDevice(): Promise<Stored | null> {
 }
 
 let current: Destination | null = null;
+/** The last server read failed and there is nothing on the device either. */
+let failed = false;
 let loading: Promise<Destination | null> | null = null;
-const listeners = new Set<(d: Destination) => void>();
+const listeners = new Set<(d: Destination | null) => void>();
 
 function publish(d: Destination) {
   current = d;
+  failed = false;
   listeners.forEach((l) => l(d));
 }
 
@@ -126,6 +129,10 @@ export function loadDestination(): Promise<Destination | null> {
     } else {
       // Offline or failed: a later card tries the server again.
       loading = null;
+      if (!current) {
+        failed = true;
+        listeners.forEach((l) => l(current));
+      }
     }
     return current;
   })();
@@ -136,17 +143,25 @@ export function loadDestination(): Promise<Destination | null> {
 export function resetDestination() {
   current = null;
   loading = null;
+  failed = false;
+}
+
+export interface DestinationState {
+  data: Destination | null;
+  /** Nothing to show: the read failed (or there was no network) and nothing is saved. */
+  failed: boolean;
 }
 
 /** The data for a card or a list; null until anything is known. */
-export function useDestination(): Destination | null {
-  const [data, setData] = useState<Destination | null>(current);
+export function useDestination(): DestinationState {
+  const [state, setState] = useState<DestinationState>({ data: current, failed });
   useEffect(() => {
-    listeners.add(setData);
+    const listener = (d: Destination | null) => setState({ data: d, failed });
+    listeners.add(listener);
     void loadDestination();
     return () => {
-      listeners.delete(setData);
+      listeners.delete(listener);
     };
   }, []);
-  return data;
+  return state;
 }

@@ -20,6 +20,7 @@ import Animated, {
 import Svg, { Line, Path, Rect } from 'react-native-svg';
 
 import { CardTemperature } from '@/features/climate/CardTemperature';
+import { CardRateBlock, CardSafety, CardSources } from '@/features/destination/CardDestination';
 import { todayPg } from '@/features/trips/tripDates';
 import { colors, fonts, highlightColor, layout, motion, type ColorScheme } from '@/theme/tokens';
 
@@ -244,6 +245,13 @@ export function BoardingPassCard({
               </Text>
             </View>
           </View>
+          {/* Sprint 4 design 1.1: can I enter, how safe is it, before the time and money. */}
+          <CardSafety
+            country={country}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsBottom={bottomInset}
+          />
 
           <View style={styles.fields}>
             {country.timeZone && <LocalTime country={country} colorScheme={colorScheme} />}
@@ -264,15 +272,20 @@ export function BoardingPassCard({
                 </Text>
               </View>
             )}
-            {/* Sprint 3 AC-10: always last, the least urgent of the fields (design 1.1). */}
-            <CardTemperature
-              adm0={country.adm0}
-              colorScheme={colorScheme}
-              reduceMotion={reduceMotion}
-              insetsBottom={bottomInset}
-              today={today}
-            />
           </View>
+          {/* Sprint 4 design 1.1: the rate under the fields, then the temperature, then "Sources". */}
+          <CardRateBlock
+            country={country}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsBottom={bottomInset}
+          />
+          <CardTemperature adm0={country.adm0} colorScheme={colorScheme} today={today} />
+          <CardSources
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsBottom={bottomInset}
+          />
         </View>
 
         <View style={styles.stub}>
