@@ -43,12 +43,15 @@ import { TripForm, type TripFormResult, type TripFormTarget } from '@/features/t
 import { TripsButton } from '@/features/trips/TripsButton';
 import { useTrips } from '@/features/trips/TripsProvider';
 import type { Trip } from '@/features/trips/tripsApi';
+import { tripStatus } from '@/features/trips/tripDates';
 import { globe, layout, motion } from '@/theme/tokens';
 
 import { BoardingPassCard, CARD_GAP } from './BoardingPassCard';
 import { HOME_CENTER, HOME_ZOOM, flightDuration, zoomForSpan } from './camera';
 import { countryByAdm0 } from './countryData';
 import { GlobeLayers, LAYER } from './GlobeLayers';
+import { NEXT_TRIP_HIT, NextTripPin, type NextTripFeature } from './NextTripPin';
+import { loadClimate } from '@/features/climate/climateData';
 import { hasMapboxToken, turnOffMapboxTelemetryOnce } from './mapbox';
 import { logGlobeReady, markGlobeMounted, markMyTripsOpened } from './perfLog';
 import { resolveTap, type TapHits } from './resolveTap';
@@ -146,7 +149,14 @@ export function GlobeScreen() {
   const [tripForm, setTripForm] = useState<TripFormTarget | null>(null);
   const [pendingIntent, setPendingIntent] = useState<PendingIntent>(null);
   /** The trip to open in the card, when the card was opened from "My trips" (design 5.3). */
-  const [openTrip, setOpenTrip] = useState<{ id: string; adm0: string } | null>(null);
+  // seq: every request counts, even for the same trip again (Raz, m1).
+  // id null: a request to collapse the open row (after a save, design 8.9).
+  const [openTrip, setOpenTrip] = useState<{
+    id: string | null;
+    adm0: string;
+    seq: number;
+  } | null>(null);
+  const openSeq = useRef(0);
   const [tripToast, setTripToast] = useState<{ text: string; at: number } | null>(null);
   const tripAdm0s = useMemo(
     () => (trips.countries ? [...trips.countries] : null),
@@ -220,6 +230,36 @@ export function GlobeScreen() {
     !consentShown &&
     !myTripsOpen &&
     !tripForm;
+  // Sprint 3 design 9.4: the pin's pulse runs only while the globe is free,
+  // with no idle wait (the reduced-motion check is the pin's own).
+  const pulseAllowed =
+    !E2E &&
+    globeReady &&
+    !selectedAdm0 &&
+    !selection.flying &&
+    !fingerDown &&
+    !searchOpen &&
+    !sheetOpen &&
+    !consentShown &&
+    !myTripsOpen &&
+    !tripForm;
+  const hasPinRef = useRef(false);
+  const pinFeature = useMemo((): NextTripFeature | null => {
+    const trip = auth.state.status === 'signedIn' ? trips.nextTrip : null;
+    const country = trip ? countryByAdm0(trip.countryAdm0) : undefined;
+    return trip && country
+      ? { adm0: trip.countryAdm0, tripId: trip.id, coordinate: country.label }
+      : null;
+  }, [auth.state.status, trips.nextTrip]);
+  useEffect(() => {
+    hasPinRef.current = pinFeature !== null;
+  }, [pinFeature]);
+
+  // Sprint 3 AC-8: anything the user does before the trips arrive cancels
+  // opening at the active trip.
+  const userInteracted = useRef(false);
+  /** Set below, once openTripFromList exists; read by the tap handler. */
+  const pinTapRef = useRef<(adm0: string, tripId: string) => void>(() => {});
   useAutoRotation({ cameraRef, getCenter, allowed: rotationAllowed, lastInteractionAt });
 
   /** Cancels a native rotation segment in flight (a zero-length move stops every animator). */
@@ -266,6 +306,7 @@ export function GlobeScreen() {
   const onTouchStart = useCallback((event: GestureResponderEvent) => {
     const { touches, pageX, pageY } = event.nativeEvent;
     setFingerDown(true);
+    userInteracted.current = true;
     if (touches.length > 1) {
       if (touchDown.current) touchDown.current.multiTouch = true;
       return;
@@ -354,11 +395,15 @@ export function GlobeScreen() {
   // When the card closes: back out to the whole globe (the padding persists
   // otherwise), and restart the 5 s idle countdown.
   const hadSelection = useRef(false);
+  /** The country opened at the active trip, announced on its own (design 10.2). */
+  const quietSelection = useRef<string | null>(null);
   useEffect(() => {
     if (selectedAdm0) {
       hadSelection.current = true;
       const country = countryByAdm0(selectedAdm0);
-      if (country)
+      // Opening at the active trip makes one announcement of its own (design 10.2).
+      if (quietSelection.current === selectedAdm0) quietSelection.current = null;
+      else if (country)
         AccessibilityInfo.announceForAccessibility(t('globe.selected', { name: country.nameHe }));
       return;
     }
@@ -387,6 +432,7 @@ export function GlobeScreen() {
 
   // Sprint 1 F-002: search pauses the globe; choosing a result is a tap on it.
   const openSearch = useCallback(() => {
+    userInteracted.current = true;
     if (rotationAllowedRef.current) stopRotation();
     setSearchOpen(true);
   }, [stopRotation]);
@@ -411,6 +457,21 @@ export function GlobeScreen() {
         return result?.features[0]?.properties as
           { adm0?: string; code?: string | null } | undefined;
       };
+
+      // Sprint 3 design 9.5: the pin wins over the countries under it. With
+      // no pin, no extra query before the countries (Raz, m6).
+      if (hasPinRef.current) {
+        try {
+          const pin = (await map.queryRenderedFeaturesAtPoint(point, [], [NEXT_TRIP_HIT]))
+            ?.features[0]?.properties as { adm0?: string; tripId?: string } | undefined;
+          if (pin?.tripId && pin.adm0) {
+            pinTapRef.current(pin.adm0, pin.tripId);
+            return;
+          }
+        } catch {
+          // No pin layer yet: carry on with the countries.
+        }
+      }
 
       let wide, tight, country;
       try {
@@ -453,9 +514,11 @@ export function GlobeScreen() {
   useEffect(markGlobeMounted, []);
   const mapReady = Boolean(countries.url || countries.error);
   const globeReadySent = useRef(false);
+  const globeReadyAt = useRef(0);
   const onGlobeReady = useCallback((reason: 'idle' | 'fallback') => {
     if (globeReadySent.current) return;
     globeReadySent.current = true;
+    globeReadyAt.current = Date.now();
     logGlobeReady(reason);
     setGlobeReady(true);
   }, []);
@@ -493,6 +556,7 @@ export function GlobeScreen() {
   }, [auth.state.status, selectedCountry]);
 
   const openMyTrips = useCallback(() => {
+    userInteracted.current = true;
     if (rotationAllowedRef.current) stopRotation();
     if (auth.state.status === 'signedIn') {
       markMyTripsOpened();
@@ -513,16 +577,20 @@ export function GlobeScreen() {
         return;
       }
       trips.changed({ adm0: trip.countryAdm0, has: true });
+      // A new trip or a copy: the open row (a copy's source) closes, and the
+      // new row doesn't open by itself (design 8.9, Raz R1).
+      if (result.kind === 'created' && selectedAdm0 === trip.countryAdm0)
+        setOpenTrip({ id: null, adm0: trip.countryAdm0, seq: ++openSeq.current });
       showTripToast(t(result.kind === 'created' ? 'tripForm.saved' : 'tripForm.updated'));
       AccessibilityInfo.announceForAccessibility(t('tripForm.savedA11y', { name: trip.title }));
     },
-    [trips, showTripToast, t],
+    [trips, selectedAdm0, showTripToast, t],
   );
 
   const openTripFromList = useCallback(
     (trip: Trip) => {
       setMyTripsOpen(false);
-      setOpenTrip({ id: trip.id, adm0: trip.countryAdm0 });
+      setOpenTrip({ id: trip.id, adm0: trip.countryAdm0, seq: ++openSeq.current });
       if (countryByAdm0(trip.countryAdm0)) {
         dispatch({ type: 'countryTapped', country: { adm0: trip.countryAdm0 } });
       }
@@ -530,6 +598,50 @@ export function GlobeScreen() {
     },
     [t],
   );
+
+  // Sprint 3 AC-7: a tap on the pin is a tap on that trip in My trips; on
+  // the country already open, the trip just opens in the card.
+  useEffect(() => {
+    pinTapRef.current = (adm0, tripId) => {
+      if (selectedAdm0 === adm0) {
+        setOpenTrip({ id: tripId, adm0, seq: ++openSeq.current });
+        return;
+      }
+      if (trips.nextTrip?.id === tripId) openTripFromList(trips.nextTrip);
+    };
+  }, [selectedAdm0, trips.nextTrip, openTripFromList]);
+
+  // Sprint 3 AC-8: a cold start, signed in with current consent, the trips
+  // within 3 s of the globe, nothing touched yet, and an active trip: open
+  // it, once. Decided once, on the first answer.
+  const autoDecided = useRef(false);
+  // Asked to accept the documents again at launch: nothing opens (design 10.1, Raz m7).
+  useEffect(() => {
+    if (auth.state.status === 'needsConsent') autoDecided.current = true;
+  }, [auth.state.status]);
+  useEffect(() => {
+    if (autoDecided.current || !globeReady || !trips.firstLoad || auth.state.status !== 'signedIn')
+      return;
+    autoDecided.current = true;
+    if (userInteracted.current || Date.now() - globeReadyAt.current > 3000) return;
+    const trip = trips.nextTrip;
+    if (!trip || tripStatus(trip.startDate, trip.endDate, trips.today) !== 'active') return;
+    if (!countryByAdm0(trip.countryAdm0)) return;
+    quietSelection.current = trip.countryAdm0;
+    // Once per launch, on the first answer from the server: it reacts to
+    // that answer, so it can't happen during render.
+    setOpenTrip({ id: trip.id, adm0: trip.countryAdm0, seq: ++openSeq.current });
+    dispatch({ type: 'countryTapped', country: { adm0: trip.countryAdm0 } });
+    AccessibilityInfo.announceForAccessibility(t('activeTrip.opened', { name: trip.title }));
+  }, [globeReady, trips.firstLoad, trips.nextTrip, trips.today, auth.state.status, t]);
+
+  // Sprint 3 AC-12: the climate file loads once the globe is up, not before
+  // the first frame and not while the first card animates in (Raz, T3).
+  useEffect(() => {
+    if (!globeReady) return;
+    const timer = setTimeout(() => void loadClimate().catch(() => {}), 1000);
+    return () => clearTimeout(timer);
+  }, [globeReady]);
 
   // AC-14: Mapbox usage telemetry off. On Android this builds a throwaway
   // map view, so it waits for the globe to be up (review finding 6).
@@ -611,6 +723,11 @@ export function GlobeScreen() {
               reduceMotion={reduceMotion === true}
               tripAdm0s={tripAdm0s}
             />
+            <NextTripPin
+              feature={pinFeature}
+              pulseAllowed={pulseAllowed}
+              reduceMotion={reduceMotion !== false}
+            />
           </MapView>
         )}
       </View>
@@ -638,6 +755,7 @@ export function GlobeScreen() {
           reduceMotion={reduceMotion === true}
           bottomInset={insets.bottom}
           topInset={insets.top}
+          today={trips.today}
           coupon={
             auth.state.status === 'signedIn' ||
             auth.state.status === 'signedOut' ||
@@ -648,7 +766,11 @@ export function GlobeScreen() {
                     colorScheme={colorScheme}
                     maxListHeight={maxListHeight}
                     initiallyOpen={openTrip?.id ?? null}
+                    openSeq={openTrip?.seq ?? 0}
                     onNewTrip={newTrip}
+                    onDuplicateTrip={(source) =>
+                      setTripForm({ kind: 'duplicate', country: selectedCountry, source })
+                    }
                     onEditTrip={(trip) =>
                       setTripForm({ kind: 'edit', country: selectedCountry, trip })
                     }
@@ -676,6 +798,7 @@ export function GlobeScreen() {
           colorScheme={colorScheme}
           top={insets.top + layout.chromeRowTop}
           onPress={() => {
+            userInteracted.current = true;
             if (rotationAllowedRef.current) stopRotation();
             setAccountSheetOpen(true);
           }}
@@ -756,9 +879,16 @@ export function GlobeScreen() {
 
       {tripForm && (
         <TripForm
-          key={tripForm.kind === 'edit' ? tripForm.trip.id : 'new-' + tripForm.country.adm0}
+          key={
+            tripForm.kind === 'edit'
+              ? tripForm.trip.id
+              : tripForm.kind === 'duplicate'
+                ? 'dup-' + tripForm.source.id
+                : 'new-' + tripForm.country.adm0
+          }
           target={tripForm}
           colorScheme={colorScheme}
+          reduceMotion={reduceMotion === true}
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
           onClose={() => setTripForm(null)}

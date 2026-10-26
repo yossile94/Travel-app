@@ -27,6 +27,8 @@ const trip = (id: string, startDate: string): Trip => ({
   startDate,
   endDate: startDate,
   notes: null,
+  travelers: [],
+  cities: [],
 });
 const page = (trips: Trip[], next: string | null): Answer => ({
   ok: true,

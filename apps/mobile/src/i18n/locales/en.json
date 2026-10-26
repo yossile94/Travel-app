@@ -29,7 +29,10 @@
       "notes": "Notes",
       "edit": "Edit",
       "delete": "Delete",
-      "more": "More"
+      "more": "More",
+      "cities": "Cities",
+      "citiesA11y": "Cities in order: {{list}}",
+      "duplicate": "Duplicate"
     }
   },
   "timeDifference": {
@@ -130,7 +133,15 @@
     "active": "Happening now",
     "rowA11y": "{{name}}, {{dates}}",
     "rowA11yActive": "{{name}}, {{dates}}, happening now",
-    "opened": "Opened {{name}}"
+    "opened": "Opened {{name}}",
+    "status": {
+      "planned": "Planned",
+      "active": "Happening now",
+      "ended": "Ended"
+    },
+    "travelers": "{{n}} travelers",
+    "rowA11yStatus": "{{name}}, {{dates}}, {{status}}",
+    "rowA11yTravelers": "{{name}}, {{dates}}, {{status}}, {{n}} travelers"
   },
   "tripForm": {
     "titleNew": "New trip",
@@ -179,7 +190,28 @@
     "discardConfirm": "Leave",
     "discardCancel": "Keep editing",
     "delete": "Delete trip",
-    "charsLeft": "{{n}} characters left"
+    "charsLeft": "{{n}} characters left",
+    "cities": "Cities",
+    "citiesHint": "In the order you'll visit",
+    "addCity": "Add a city",
+    "cityRowA11y": "City {{n}} of {{total}}: {{city}}",
+    "cityFree": "As written",
+    "cityRemove": "Remove {{city}}",
+    "citiesMax": "You can add up to 10 cities.",
+    "cityAdded": "Added {{city}} to cities",
+    "cityRemoved": "Removed {{city}} from cities",
+    "travelers": "Travelers",
+    "travelersHint": "Name and relation only. Names are saved with this trip only.",
+    "me": "Me",
+    "meNote": "Always on the trip",
+    "meA11y": "Me, always on the trip",
+    "addTraveler": "Add a traveler",
+    "travelersMax": "You can add up to 9 travelers.",
+    "travelerRowA11y": "{{name}}, {{relation}}",
+    "travelerRemove": "Remove {{name}}",
+    "travelerAdded": "Added {{name}} to travelers",
+    "travelerRemoved": "Removed {{name}} from travelers",
+    "duplicated": "This is a copy of “{{name}}”, without the dates."
   },
   "months": {
     "1": "January",
@@ -241,7 +273,9 @@
     "loadingMore": "Loading more trips…",
     "loadedMore": "More trips loaded",
     "moreError": "Couldn't load more trips.",
-    "rowHint": "Shows the trip on the globe"
+    "rowHint": "Shows the trip on the globe",
+    "rowA11y": "{{name}}, {{country}}, {{dates}}, {{status}}",
+    "rowA11yTravelers": "{{name}}, {{country}}, {{dates}}, {{status}}, {{n}} travelers"
   },
   "tripDelete": {
     "title": "Delete this trip?",
@@ -315,5 +349,71 @@
     "error": "Couldn't delete your account. Nothing was deleted. Try again in a moment.",
     "unavailable": "Couldn't confirm with Google right now. Nothing was deleted. Try again in a moment.",
     "noAnswer": "We didn't get an answer from the server. Try again."
+  },
+  "climate": {
+    "cardLabel": "Daily average in {{month}}",
+    "cardA11y": "{{label}}: {{value}}, {{city}}",
+    "cardA11yNoCity": "{{label}}: {{value}}",
+    "range": "Between {{low}} and {{high}}",
+    "rangeNegHigh": "Between {{low}} and {{high}}",
+    "rangeA11y": "between {{low}} and {{high}}",
+    "tripLabel": "Daily average",
+    "tripLabelRange": "Daily average over the trip months",
+    "tripA11yMonth": "{{month}} {{value}}"
+  },
+  "sources": {
+    "link": "Sources",
+    "linkA11y": "Data sources",
+    "title": "Sources",
+    "cities": "City data: GeoNames (geonames.org), CC BY 4.0 licence, modified.",
+    "climate": "Climate data: CRU TS v4.08, Climatic Research Unit, University of East Anglia (Harris, Jones, Osborn), via CEDA, Open Government Licence v3.0. The 1991–2020 averages were calculated by us."
+  },
+  "temp": {
+    "value": "⁦{{n}}°⁩",
+    "a11y": {
+      "one": "1 degree",
+      "many": "{{n}} degrees",
+      "minusOne": "minus 1 degree",
+      "minusMany": "minus {{n}} degrees"
+    }
+  },
+  "activeTrip": {
+    "opened": "Happening now: {{name}}"
+  },
+  "citySearch": {
+    "title": "Add a city",
+    "back": "Back",
+    "placeholder": "Search for a city",
+    "fieldA11y": "Search for a city, {{country}}",
+    "largest": "Largest cities",
+    "rowHint": "Adds it to the trip's cities",
+    "addAsWritten": "Add “{{q}}” as written",
+    "addAsWrittenNote": "No climate data for this city.",
+    "noResults": "We couldn't find “{{q}}” in the city list for {{country}}.",
+    "noCitiesTitle": "No city list for this area",
+    "noCitiesBody": "Type the place name and add it as written.",
+    "loading": "Loading the city list",
+    "loadError": "Couldn't load the city list. You can still add a city as written.",
+    "resultsOne": "1 city found",
+    "resultsMany": "{{n}} cities found",
+    "resultsNone": "No cities found",
+    "tooLong": "The city name can be up to 60 characters."
+  },
+  "traveler": {
+    "titleNew": "Who else is going?",
+    "name": "Name",
+    "relation": "Relation (optional)",
+    "relationHint": "Tap again to clear",
+    "rel": {
+      "partner": "Partner",
+      "child": "Child",
+      "parent": "Parent",
+      "friend": "Friend",
+      "other": "Other"
+    },
+    "add": "Add",
+    "cancel": "Cancel",
+    "required": "Enter a name.",
+    "tooLong": "The name can be up to 40 characters."
   }
 }

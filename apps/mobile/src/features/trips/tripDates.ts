@@ -92,3 +92,16 @@ export function defaultTripName(country: string, startDate: string, t: TFunction
 export function codePointLength(text: string): number {
   return [...text].length;
 }
+
+export type TripStatus = 'planned' | 'active' | 'ended';
+
+/** Sprint 3 AC-6: from the device's local date; no status column on the server. */
+export function tripStatus(startDate: string, endDate: string, today: string): TripStatus {
+  if (endDate < today) return 'ended';
+  return startDate <= today ? 'active' : 'planned';
+}
+
+/** "Me" counts: one traveler besides me is 2 (sprint 3 design 3.1). */
+export function travelerCount(travelers: readonly unknown[]): number {
+  return travelers.length + 1;
+}

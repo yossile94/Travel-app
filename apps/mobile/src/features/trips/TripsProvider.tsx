@@ -19,11 +19,19 @@ import {
 
 import { useAuth } from '@/features/auth/AuthProvider';
 
-import { loadTripCountries } from './tripsApi';
+import { loadTripCountries, loadTripPage, type Trip } from './tripsApi';
+import { useToday } from './useToday';
 
 interface TripsContextValue {
   /** Countries (adm0) with trips; null until loaded, or when signed out or offline at launch. */
   countries: ReadonlySet<string> | null;
+  /**
+   * Sprint 3 AC-7: the first trip in "upcoming" order (an active trip wins),
+   * for the pin; null when there is none, when signed out or offline at launch.
+   */
+  nextTrip: Trip | null;
+  /** Today's local date, kept current (sprint 3 AC-6). */
+  today: string;
   /** Grows after every save or delete; lists reload when it changes. */
   changes: number;
   /**
@@ -51,6 +59,10 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const userId = state.status === 'signedIn' ? state.user.id : null;
   const [started, setStarted] = useState(false);
   const [countries, setCountries] = useState<ReadonlySet<string> | null>(null);
+  const [nextTrip, setNextTrip] = useState<Trip | null>(null);
+  const today = useToday();
+  /** The date a reload asks with; follows today (below). */
+  const todayRef = useRef(today);
   const [changes, setChanges] = useState(0);
   const [firstLoad, setFirstLoad] = useState(false);
   /** Which user a request is for; an answer for anyone else is dropped. */
@@ -64,6 +76,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   if (shownFor !== userId) {
     setShownFor(userId);
     setCountries(null);
+    setNextTrip(null);
     setFirstLoad(false);
   }
 
@@ -73,11 +86,23 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     const forUser = currentUser.current;
     if (!forUser) return;
     const id = ++sequence.current;
-    const result = await loadTripCountries();
+    // The pin's trip comes with the countries (design 9.4): one more small query.
+    const [result, next] = await Promise.all([
+      loadTripCountries(),
+      loadTripPage({ section: 'upcoming', today: todayRef.current, pageSize: 1 }),
+    ]);
     if (id !== sequence.current || currentUser.current !== forUser || !result.ok) return;
     setCountries(result.value);
+    // A failed query shows no pin rather than one that may be gone (Dudi m6, Raz m4).
+    setNextTrip(next.ok ? (next.value.trips[0] ?? null) : null);
     setFirstLoad(true);
   }, []);
+  // A new day changes which trip is next (design 3.4).
+  useEffect(() => {
+    if (todayRef.current === today) return;
+    todayRef.current = today;
+    if (started && currentUser.current) void reload();
+  }, [today, started, reload]);
 
   // After the globe is up, and again whenever the network returns.
   useEffect(() => {
@@ -112,8 +137,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const start = useCallback(() => setStarted(true), []);
 
   const value = useMemo(
-    () => ({ countries, changes, changed, firstLoad, start }),
-    [countries, changes, changed, firstLoad, start],
+    () => ({ countries, nextTrip, today, changes, changed, firstLoad, start }),
+    [countries, nextTrip, today, changes, changed, firstLoad, start],
   );
   return <TripsContext.Provider value={value}>{children}</TripsContext.Provider>;
 }

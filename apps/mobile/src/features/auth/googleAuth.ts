@@ -91,14 +91,19 @@ export async function googleRevoke(timeoutMs = 5000): Promise<void> {
 }
 
 async function revokeThenChoose(): Promise<GoogleResult> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     configure();
     await Promise.race([
       GoogleSignin.revokeAccess(),
-      new Promise((resolve) => setTimeout(resolve, 5000)),
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, 5000);
+      }),
     ]);
   } catch {
     // Nothing to revoke (never signed in with Google on this device): fine.
+  } finally {
+    clearTimeout(timer);
   }
   await googleSignOut();
   return googleIdToken();

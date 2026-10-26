@@ -1,0 +1,100 @@
+appId: com.travelapp.companion
+name: A trip with cities and a traveler, shown in the card, then duplicated (sprint 3 AC-1..5, AC-9)
+tags: [sprint-3]
+# Runs on the A73 only, never in CI (ADR-003), after 06-trip-lifecycle signed
+# the test account in (no clearState here: the session is kept).
+#   maestro test .maestro/07-trip-details.yaml
+# Precondition: signed in, consent current, no trips to Thailand and no
+# active trip (AC-8 would open a card at launch).
+# The trip is dated today (the picker's default), so it is active. If the
+# flow stops before its last step, delete the Thailand trip by hand, or every
+# later launch opens it (Raz, R2).
+---
+- launchApp
+- openLink: travelapp://?lng=101.0732&lat=15.4597&zoom=4
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible:
+      id: country-card
+    timeout: 4000
+- tapOn:
+    id: card-new-trip
+- extendedWaitUntil:
+    visible:
+      id: trip-form
+    timeout: 5000
+
+# Dates: the system picker's defaults (today, then the return = departure).
+- tapOn:
+    id: trip-form-start
+- tapOn: אישור
+- tapOn: אישור
+
+# AC-4: a city from the bundled list, then one as written.
+- tapOn:
+    id: city-add
+- tapOn:
+    id: city-search-field
+- inputText: בנגקוק
+- tapOn:
+    id: city-result-1609350
+- tapOn:
+    id: city-add
+- tapOn:
+    id: city-search-field
+- inputText: כפר הדייגים
+- tapOn:
+    id: city-as-written
+
+# AC-1: a traveler with a relation.
+- tapOn:
+    id: traveler-add
+- tapOn:
+    id: traveler-name
+- inputText: דנה
+- tapOn:
+    id: traveler-rel-partner
+- tapOn:
+    id: traveler-save
+- assertVisible: דנה
+
+- tapOn:
+    id: trip-form-save
+- extendedWaitUntil:
+    notVisible:
+      id: trip-form
+    timeout: 15000
+
+# AC-3, AC-5: the row shows the traveler count; open, the cities in order.
+- assertVisible: 2 נוסעים
+- tapOn:
+    id: 'card-trip-[0-9a-f]{8}-.*'
+- assertVisible: '.*בנגקוק · .*כפר הדייגים.*'
+- takeScreenshot: s3-trip-details-row
+
+# AC-9: duplicate: the same details, no dates, and the copy notice.
+- tapOn:
+    id: card-trip-duplicate
+- extendedWaitUntil:
+    visible:
+      id: trip-form-duplicated
+    timeout: 5000
+- assertVisible: דנה
+- assertVisible: בנגקוק
+- takeScreenshot: s3-duplicate-form
+# Untouched: closes without "leave without saving?".
+- tapOn:
+    id: trip-form-close
+- assertNotVisible:
+    id: trip-form
+
+# Clean up: delete the trip, so the flow can run again. The source row is
+# still open (an untouched copy changes nothing).
+- tapOn:
+    id: card-trip-delete
+- tapOn: מחיקה
+- extendedWaitUntil:
+    visible: הנסיעה נמחקה
+    timeout: 10000

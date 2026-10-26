@@ -1,7 +1,9 @@
 import i18n from '@/i18n';
 
 import {
+  cleanTypedName,
   emptyForm,
+  formFromDuplicate,
   firstErrorField,
   formFromTrip,
   isFormChanged,
@@ -111,6 +113,57 @@ describe('trip form (sprint 2 design 3.2, 3.3)', () => {
         title: ' a ',
         notes: '  ',
       }),
-    ).toEqual({ title: 'a', startDate: '2027-08-05', endDate: '2027-08-06', notes: null });
+    ).toEqual({
+      title: 'a',
+      startDate: '2027-08-05',
+      endDate: '2027-08-06',
+      notes: null,
+      travelers: [],
+      cities: [],
+    });
+  });
+
+  it('a duplicate copies travelers, cities and notes, never the dates (sprint 3 AC-9)', () => {
+    const source = {
+      title: 'תאילנד דצמבר 2026',
+      notes: 'חיסונים',
+      travelers: [{ name: 'דנה', relation: 'partner' as const }],
+      cities: [
+        { geonameId: 1609350, name: 'בנגקוק' },
+        { geonameId: null, name: 'קו טאו' },
+      ],
+    };
+    const auto = formFromDuplicate(source, ['תאילנד דצמבר 2026', 'Thailand December 2026']);
+    expect(auto).toMatchObject({
+      startDate: null,
+      endDate: null,
+      title: '',
+      nameAuto: true,
+      notes: 'חיסונים',
+    });
+    expect(auto.travelers).toEqual(source.travelers);
+    expect(auto.cities).toEqual(source.cities);
+    expect(auto.travelers).not.toBe(source.travelers);
+    const manual = formFromDuplicate({ ...source, title: 'ירח דבש' }, ['תאילנד דצמבר 2026']);
+    expect(manual).toMatchObject({ title: 'ירח דבש', nameAuto: false });
+  });
+
+  it('drops control and bidi characters from typed names (sprint 3 design 6.3)', () => {
+    const rlo = String.fromCodePoint(0x202e);
+    const lri = String.fromCodePoint(0x2066);
+    expect(cleanTypedName('דנה' + rlo + ' כהן' + lri)).toBe('דנה כהן');
+    expect(cleanTypedName('a' + String.fromCodePoint(10) + 'b' + String.fromCodePoint(0x85))).toBe(
+      'ab',
+    );
+    expect(cleanTypedName('נועם 🏝')).toBe('נועם 🏝');
+  });
+});
+
+describe('cleanTypedName (Dudi, n1)', () => {
+  it('keeps the joiners inside an emoji sequence, drops a hidden mark', () => {
+    const zwj = String.fromCodePoint(0x200d);
+    const rlm = String.fromCodePoint(0x200f);
+    const family = ['👨', '👩', '👧'].join(zwj);
+    expect(cleanTypedName(rlm + family)).toBe(family);
   });
 });

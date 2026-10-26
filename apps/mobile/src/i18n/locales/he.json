@@ -29,7 +29,10 @@
       "notes": "הערות",
       "edit": "עריכה",
       "delete": "מחיקה",
-      "more": "עוד"
+      "more": "עוד",
+      "cities": "ערים",
+      "citiesA11y": "ערים לפי הסדר: {{list}}",
+      "duplicate": "שכפול"
     }
   },
   "timeDifference": {
@@ -130,7 +133,15 @@
     "active": "בנסיעה עכשיו",
     "rowA11y": "{{name}}, {{dates}}",
     "rowA11yActive": "{{name}}, {{dates}}, בנסיעה עכשיו",
-    "opened": "נפתחה הנסיעה {{name}}"
+    "opened": "נפתחה הנסיעה {{name}}",
+    "status": {
+      "planned": "מתוכננת",
+      "active": "בנסיעה עכשיו",
+      "ended": "הסתיימה"
+    },
+    "travelers": "{{n}} נוסעים",
+    "rowA11yStatus": "{{name}}, {{dates}}, {{status}}",
+    "rowA11yTravelers": "{{name}}, {{dates}}, {{status}}, {{n}} נוסעים"
   },
   "tripForm": {
     "titleNew": "נסיעה חדשה",
@@ -179,7 +190,28 @@
     "discardConfirm": "יציאה",
     "discardCancel": "המשך עריכה",
     "delete": "מחיקת הנסיעה",
-    "charsLeft": "נשארו {{n}} תווים"
+    "charsLeft": "נשארו {{n}} תווים",
+    "cities": "ערים",
+    "citiesHint": "לפי סדר הביקור",
+    "addCity": "הוספת עיר",
+    "cityRowA11y": "עיר {{n}} מתוך {{total}}: {{city}}",
+    "cityFree": "כמו שנכתב",
+    "cityRemove": "הסרת {{city}}",
+    "citiesMax": "אפשר להוסיף עד 10 ערים.",
+    "cityAdded": "הוספנו את {{city}} לערים",
+    "cityRemoved": "הסרנו את {{city}} מהערים",
+    "travelers": "נוסעים",
+    "travelersHint": "שם וקשר בלבד. השמות נשמרים רק בנסיעה הזו.",
+    "me": "אני",
+    "meNote": "תמיד בנסיעה",
+    "meA11y": "אני, תמיד בנסיעה",
+    "addTraveler": "הוספה לנוסעים",
+    "travelersMax": "אפשר להוסיף עד 9 נוסעים.",
+    "travelerRowA11y": "{{name}}, {{relation}}",
+    "travelerRemove": "הסרת {{name}}",
+    "travelerAdded": "הוספנו את {{name}} לנוסעים",
+    "travelerRemoved": "הסרנו את {{name}} מהנוסעים",
+    "duplicated": "זה עותק של „{{name}}”, בלי התאריכים."
   },
   "months": {
     "1": "ינואר",
@@ -241,7 +273,9 @@
     "loadingMore": "טוענים עוד נסיעות…",
     "loadedMore": "נטענו עוד נסיעות",
     "moreError": "לא הצלחנו לטעון עוד נסיעות.",
-    "rowHint": "מעביר לנסיעה על הגלובוס"
+    "rowHint": "מעביר לנסיעה על הגלובוס",
+    "rowA11y": "{{name}}, {{country}}, {{dates}}, {{status}}",
+    "rowA11yTravelers": "{{name}}, {{country}}, {{dates}}, {{status}}, {{n}} נוסעים"
   },
   "tripDelete": {
     "title": "למחוק את הנסיעה?",
@@ -315,5 +349,71 @@
     "error": "לא הצלחנו למחוק את החשבון. שום דבר לא נמחק. נסו שוב בעוד רגע.",
     "unavailable": "לא הצלחנו לאמת מול Google כרגע. שום דבר לא נמחק. נסו שוב בעוד רגע.",
     "noAnswer": "לא קיבלנו תשובה מהשרת. נסו שוב."
+  },
+  "climate": {
+    "cardLabel": "ממוצע יומי ב{{month}}",
+    "cardA11y": "{{label}}: {{value}}, {{city}}",
+    "cardA11yNoCity": "{{label}}: {{value}}",
+    "range": "בין {{low}} ל-{{high}}",
+    "rangeNegHigh": "בין {{low}} ובין {{high}}",
+    "rangeA11y": "בין {{low}} ובין {{high}}",
+    "tripLabel": "ממוצע יומי",
+    "tripLabelRange": "ממוצע יומי בחודשי הנסיעה",
+    "tripA11yMonth": "{{month}} {{value}}"
+  },
+  "sources": {
+    "link": "מקורות",
+    "linkA11y": "מקורות הנתונים",
+    "title": "מקורות",
+    "cities": "נתוני ערים: GeoNames (geonames.org), רישיון CC BY 4.0, עובדו.",
+    "climate": "נתוני אקלים: CRU TS v4.08, Climatic Research Unit, University of East Anglia (Harris, Jones, Osborn), דרך CEDA, רישיון Open Government Licence v3.0. הממוצעים לשנים 1991–2020 חושבו על ידינו."
+  },
+  "temp": {
+    "value": "⁦{{n}}°⁩",
+    "a11y": {
+      "one": "מעלה אחת",
+      "many": "{{n}} מעלות",
+      "minusOne": "מינוס מעלה אחת",
+      "minusMany": "מינוס {{n}} מעלות"
+    }
+  },
+  "activeTrip": {
+    "opened": "בנסיעה עכשיו: {{name}}"
+  },
+  "citySearch": {
+    "title": "הוספת עיר",
+    "back": "חזרה",
+    "placeholder": "חיפוש עיר",
+    "fieldA11y": "חיפוש עיר, {{country}}",
+    "largest": "ערים גדולות",
+    "rowHint": "מוסיף לערים בנסיעה",
+    "addAsWritten": "הוספת „{{q}}” כמו שנכתב",
+    "addAsWrittenNote": "בלי נתוני אקלים לעיר הזו.",
+    "noResults": "לא מצאנו את „{{q}}” ברשימת הערים של {{country}}.",
+    "noCitiesTitle": "אין רשימת ערים לאזור הזה",
+    "noCitiesBody": "אפשר לכתוב את שם המקום ולהוסיף אותו כמו שנכתב.",
+    "loading": "טוענים את רשימת הערים",
+    "loadError": "לא הצלחנו לטעון את רשימת הערים. אפשר להוסיף עיר כמו שהיא נכתבת.",
+    "resultsOne": "נמצאה עיר אחת",
+    "resultsMany": "נמצאו {{n}} ערים",
+    "resultsNone": "לא נמצאו ערים",
+    "tooLong": "שם העיר יכול להיות עד 60 תווים."
+  },
+  "traveler": {
+    "titleNew": "מי עוד בנסיעה?",
+    "name": "שם",
+    "relation": "קשר (לא חובה)",
+    "relationHint": "הקשה נוספת מבטלת את הבחירה",
+    "rel": {
+      "partner": "בן או בת זוג",
+      "child": "ילד או ילדה",
+      "parent": "הורה",
+      "friend": "חבר או חברה",
+      "other": "קשר אחר"
+    },
+    "add": "הוספה",
+    "cancel": "ביטול",
+    "required": "צריך לכתוב שם.",
+    "tooLong": "השם יכול להיות עד 40 תווים."
   }
 }

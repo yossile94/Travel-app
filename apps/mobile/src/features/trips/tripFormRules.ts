@@ -8,6 +8,7 @@ import type { TFunction } from 'i18next';
 import { limits } from '@/theme/tokens';
 
 import { codePointLength, defaultTripName } from './tripDates';
+import type { TripCity, TripTraveler } from './tripsApi';
 
 export interface TripFormValues {
   startDate: string | null;
@@ -16,6 +17,10 @@ export interface TripFormValues {
   notes: string;
   /** The name follows the departure date until the user types in it (3.2). */
   nameAuto: boolean;
+  /** Sprint 3: besides "me", in order (AC-1). */
+  travelers: TripTraveler[];
+  /** Sprint 3: in order (AC-4). */
+  cities: TripCity[];
 }
 
 export type TripFormField = 'startDate' | 'endDate' | 'title' | 'notes';
@@ -26,7 +31,15 @@ export type TripFormErrors = Partial<Record<TripFormField, string>>;
 export const FIELD_ORDER: readonly TripFormField[] = ['startDate', 'endDate', 'title', 'notes'];
 
 export function emptyForm(): TripFormValues {
-  return { startDate: null, endDate: null, title: '', notes: '', nameAuto: true };
+  return {
+    startDate: null,
+    endDate: null,
+    title: '',
+    notes: '',
+    nameAuto: true,
+    travelers: [],
+    cities: [],
+  };
 }
 
 /**
@@ -34,7 +47,14 @@ export function emptyForm(): TripFormValues {
  * name derived from its departure in the device's current language (19.4).
  */
 export function formFromTrip(
-  trip: { title: string; startDate: string; endDate: string; notes: string | null },
+  trip: {
+    title: string;
+    startDate: string;
+    endDate: string;
+    notes: string | null;
+    travelers?: TripTraveler[];
+    cities?: TripCity[];
+  },
   country: string,
   t: TFunction,
 ): TripFormValues {
@@ -44,6 +64,29 @@ export function formFromTrip(
     title: trip.title,
     notes: trip.notes ?? '',
     nameAuto: trip.title === defaultTripName(country, trip.startDate, t),
+    travelers: trip.travelers ?? [],
+    cities: trip.cities ?? [],
+  };
+}
+
+/**
+ * A copy of a trip (sprint 3 AC-9): travelers, cities and notes, no dates.
+ * The name stays automatic when the source's name was its own default name
+ * in any of `defaultNames` (Hebrew or English); otherwise it is copied.
+ */
+export function formFromDuplicate(
+  source: { title: string; notes: string | null; travelers: TripTraveler[]; cities: TripCity[] },
+  defaultNames: readonly string[],
+): TripFormValues {
+  const auto = defaultNames.includes(source.title);
+  return {
+    startDate: null,
+    endDate: null,
+    title: auto ? '' : source.title,
+    notes: source.notes ?? '',
+    nameAuto: auto,
+    travelers: source.travelers.map((traveler) => ({ ...traveler })),
+    cities: source.cities.map((city) => ({ ...city })),
   };
 }
 
@@ -106,7 +149,9 @@ export function isFormChanged(values: TripFormValues, initial: TripFormValues): 
     values.startDate !== initial.startDate ||
     values.endDate !== initial.endDate ||
     values.title !== initial.title ||
-    values.notes !== initial.notes
+    values.notes !== initial.notes ||
+    JSON.stringify(values.travelers) !== JSON.stringify(initial.travelers) ||
+    JSON.stringify(values.cities) !== JSON.stringify(initial.cities)
   );
 }
 
@@ -123,5 +168,36 @@ export function tripFields(values: TripFormValues) {
     startDate: values.startDate!,
     endDate: values.endDate!,
     notes: notes === '' ? null : notes,
+    travelers: values.travelers,
+    cities: values.cities,
   };
+}
+
+/**
+ * C0 and C1 controls, the bidi marks, embeddings, overrides and isolates
+ * (design 6.3), zero-width characters, the BOM and the line and paragraph
+ * separators: the same set as the server's text_is_clean (Dudi, m1).
+ */
+export function isForbidden(codePoint: number): boolean {
+  return (
+    codePoint <= 0x1f ||
+    (codePoint >= 0x7f && codePoint <= 0x9f) ||
+    codePoint === 0x61c ||
+    // Not ZWNJ/ZWJ (0x200c-d): emoji sequences and Persian spelling use them.
+    codePoint === 0x200b ||
+    codePoint === 0x200e ||
+    codePoint === 0x200f ||
+    (codePoint >= 0x2028 && codePoint <= 0x202e) ||
+    (codePoint >= 0x2060 && codePoint <= 0x206f) ||
+    codePoint === 0xfeff
+  );
+}
+
+/**
+ * A traveler's or a typed city's name as it is typed: characters that could
+ * reorder a whole line in the card are dropped, not reported (design 6.3).
+ * The server refuses them too (text_is_clean).
+ */
+export function cleanTypedName(text: string): string {
+  return [...text].filter((ch) => !isForbidden(ch.codePointAt(0)!)).join('');
 }

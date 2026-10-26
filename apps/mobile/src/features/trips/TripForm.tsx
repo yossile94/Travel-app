@@ -48,10 +48,20 @@ import {
 } from '@/theme/tokens';
 
 import { countryName } from './countryName';
-import { codePointLength, formatDate, fromPgDate, toPgDate, todayPg } from './tripDates';
+import { CitiesSection } from './CitiesSection';
+import { TravelersSection } from './TravelersSection';
+import {
+  codePointLength,
+  defaultTripName,
+  formatDate,
+  fromPgDate,
+  toPgDate,
+  todayPg,
+} from './tripDates';
 import {
   thousands,
   emptyForm,
+  formFromDuplicate,
   firstErrorField,
   formFromTrip,
   isFormChanged,
@@ -64,10 +74,13 @@ import {
   type TripFormField,
   type TripFormValues,
 } from './tripFormRules';
-import { createTrip, deleteTrip, updateTrip, type Trip, type WriteResult } from './tripsApi';
+import { deleteTrip, saveTrip, type Trip, type WriteResult } from './tripsApi';
 
 export type TripFormTarget =
-  { kind: 'new'; country: CountryInfo } | { kind: 'edit'; country: CountryInfo; trip: Trip };
+  | { kind: 'new'; country: CountryInfo }
+  | { kind: 'edit'; country: CountryInfo; trip: Trip }
+  /** Sprint 3 AC-9: a new trip, copied from `source` without its dates. */
+  | { kind: 'duplicate'; country: CountryInfo; source: Trip };
 
 /** How the form ended, for the card and the toast. */
 export type TripFormResult =
@@ -89,6 +102,7 @@ function withTimeout(write: Promise<WriteResult>, ms: number): Promise<WriteResu
 interface Props {
   target: TripFormTarget;
   colorScheme: ColorScheme;
+  reduceMotion: boolean;
   insetsTop: number;
   insetsBottom: number;
   onClose: () => void;
@@ -100,6 +114,7 @@ interface Props {
 export function TripForm({
   target,
   colorScheme,
+  reduceMotion,
   insetsTop,
   insetsBottom,
   onClose,
@@ -114,9 +129,21 @@ export function TripForm({
 
   // Made once, when the form opens (AC-3).
   const [tripId] = useState(() => (target.kind === 'edit' ? target.trip.id : Crypto.randomUUID()));
-  const [initial] = useState<TripFormValues>(() =>
-    target.kind === 'edit' ? formFromTrip(target.trip, country, t) : emptyForm(),
-  );
+  const [initial] = useState<TripFormValues>(() => {
+    if (target.kind === 'edit') return formFromTrip(target.trip, country, t);
+    if (target.kind === 'duplicate') {
+      // The source's own default name, in either language (AC-9).
+      const defaults = (['he', 'en'] as const).map((lng) =>
+        defaultTripName(
+          countryName(target.country, lng),
+          target.source.startDate,
+          i18n.getFixedT(lng),
+        ),
+      );
+      return formFromDuplicate(target.source, defaults);
+    }
+    return emptyForm();
+  });
   const [values, setValues] = useState(initial);
   const [submitted, setSubmitted] = useState(false);
   const [returnCleared, setReturnCleared] = useState(false);
@@ -249,7 +276,7 @@ export function TripForm({
     const fields = tripFields(values);
     const trip: Trip = { id: tripId, countryAdm0: target.country.adm0, ...fields };
     const result = await withTimeout(
-      editing ? updateTrip(tripId, fields) : createTrip(trip),
+      saveTrip(editing ? 'update' : 'create', trip),
       timing.tripSaveTimeout,
     );
     setBusy(null);
@@ -400,6 +427,13 @@ export function TripForm({
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
+          {target.kind === 'duplicate' ? (
+            <InlineNotice
+              text={t('tripForm.duplicated', { name: target.source.title })}
+              colorScheme={colorScheme}
+              testID="trip-form-duplicated"
+            />
+          ) : null}
           {noticeText ? (
             <InlineNotice text={noticeText} colorScheme={colorScheme} testID="trip-form-notice" />
           ) : null}
@@ -503,6 +537,26 @@ export function TripForm({
               testID="trip-form-name"
             />
           </View>
+
+          <CitiesSection
+            country={target.country}
+            cities={values.cities}
+            onChange={(cities) => setValues((v) => ({ ...v, cities }))}
+            disabled={locked}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsTop={insetsTop}
+            insetsBottom={insetsBottom}
+          />
+
+          <TravelersSection
+            travelers={values.travelers}
+            onChange={(travelers) => setValues((v) => ({ ...v, travelers }))}
+            disabled={locked}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsBottom={insetsBottom}
+          />
 
           <View onLayout={(e) => (fieldY.current.notes = e.nativeEvent.layout.y)}>
             <TextField

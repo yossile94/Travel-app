@@ -21,6 +21,8 @@ type Hits = {
   country?: { adm0: string; code: string | null };
   /** Under the detailed borders' hit layer, when it answers differently. */
   detailed?: { adm0: string; code: string | null };
+  /** Under the next-trip pin's hit layer (sprint 3). */
+  pin?: { adm0: string; tripId: string };
 };
 
 const mockMap = {
@@ -52,15 +54,17 @@ jest.mock('@rnmapbox/maps', () => {
   const featuresFor = (layers: string[]) => {
     const { hits } = mockMap;
     const answer = (layer: string) =>
-      layer === 'small-countries-hit-wide' && hits.wide
-        ? { adm0: hits.wide }
-        : layer === 'small-countries-hit-tight' && hits.tight
-          ? { adm0: hits.tight }
-          : layer === 'countries-detailed-hit'
-            ? (hits.detailed ?? null)
-            : layer === 'countries-coarse-hit'
-              ? (hits.country ?? null)
-              : null;
+      layer === 'next-trip-hit'
+        ? (hits.pin ?? null)
+        : layer === 'small-countries-hit-wide' && hits.wide
+          ? { adm0: hits.wide }
+          : layer === 'small-countries-hit-tight' && hits.tight
+            ? { adm0: hits.tight }
+            : layer === 'countries-detailed-hit'
+              ? (hits.detailed ?? null)
+              : layer === 'countries-coarse-hit'
+                ? (hits.country ?? null)
+                : null;
     const props = layers.map(answer).find(Boolean) ?? null;
     return { type: 'FeatureCollection', features: props ? [{ properties: props }] : [] };
   };
@@ -106,6 +110,9 @@ jest.mock('@rnmapbox/maps', () => {
     RasterSource: Children,
     RasterLayer: Nothing,
     ShapeSource: Children,
+    // Sprint 3: the next-trip pin (its own tests cover it).
+    SymbolLayer: Nothing,
+    Images: Nothing,
     FillLayer: ({
       id,
       minZoomLevel,
@@ -182,6 +189,8 @@ const mockTrips = {
   changed: jest.fn(),
   firstLoad: false,
   start: jest.fn(),
+  nextTrip: null as null | Record<string, unknown>,
+  today: '2026-10-22',
 };
 jest.mock('@/features/trips/TripsProvider', () => ({ useTrips: () => mockTrips }));
 
@@ -235,6 +244,8 @@ beforeEach(() => {
   mockReduceMotion = false;
   mockAuth.state = { status: 'unavailable' };
   mockAuth.notice = null;
+  mockTrips.firstLoad = false;
+  mockTrips.nextTrip = null;
 });
 afterEach(() => jest.useRealTimers());
 
@@ -811,6 +822,104 @@ describe('GlobeScreen', () => {
       countriesDetailedHit: 'countries-detailed-hit',
       smallHitWide: 'small-countries-hit-wide',
       smallHitTight: 'small-countries-hit-tight',
+    });
+  });
+
+  describe('the next trip (sprint 3 AC-7, AC-8)', () => {
+    const signedIn = { id: 'u1', name: 'יוסי לוי', email: 'y@example.test' };
+    const greece = {
+      id: 'trip-grc',
+      countryAdm0: 'GRC',
+      title: 'יוון אוקטובר 2026',
+      startDate: '2026-10-20',
+      endDate: '2026-10-30',
+      notes: null,
+      travelers: [],
+      cities: [],
+    };
+
+    it('opens the active trip at launch, with one announcement (AC-8)', async () => {
+      const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+      announce.mockClear();
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.firstLoad = true;
+      mockTrips.nextTrip = greece;
+      await render(<GlobeScreen />);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(screen.getByText('יוון')).toBeOnTheScreen();
+      const said = announce.mock.calls.map(([text]) => text);
+      expect(said).toContain('בנסיעה עכשיו: יוון אוקטובר 2026');
+      expect(said.some((text) => text.startsWith('נבחרה'))).toBe(false);
+    });
+
+    it('does not open a trip that is only planned', async () => {
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.firstLoad = true;
+      mockTrips.nextTrip = { ...greece, startDate: '2026-11-01', endDate: '2026-11-05' };
+      await render(<GlobeScreen />);
+      expect(screen.queryByTestId('country-card')).toBeNull();
+    });
+
+    it('does not open when the user touched the globe first', async () => {
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.nextTrip = greece;
+      const view = await render(<GlobeScreen />);
+      const surface = screen.getByTestId('globe-touch-surface');
+      await fireEvent(surface, 'touchStart', { nativeEvent: { touches: [{}] } });
+      await fireEvent(surface, 'touchEnd', { nativeEvent: { touches: [] } });
+      mockTrips.firstLoad = true;
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByText('יוון')).toBeNull();
+    });
+
+    it('does not open when the trips arrive more than 3 s after the globe', async () => {
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.nextTrip = greece;
+      const view = await render(<GlobeScreen />);
+      await act(async () => jest.advanceTimersByTime(3_500));
+      mockTrips.firstLoad = true;
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByText('יוון')).toBeNull();
+    });
+
+    it('does not open after the user was asked to accept the documents (Raz, m7)', async () => {
+      mockAuth.state = {
+        status: 'needsConsent',
+        user: signedIn,
+        need: { kind: 'updated', docs: ['terms'] },
+        documents: [
+          { docType: 'terms', version: 1, url: null, publishedAt: '2026-10-24T00:00:00Z' },
+          { docType: 'privacy', version: 0, url: null, publishedAt: '2026-10-24T00:00:00Z' },
+        ],
+      };
+      mockTrips.nextTrip = greece;
+      const view = await render(<GlobeScreen />);
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.firstLoad = true;
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByText('יוון')).toBeNull();
+    });
+
+    it('opens once: closing the card leaves it closed', async () => {
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.firstLoad = true;
+      mockTrips.nextTrip = greece;
+      const view = await render(<GlobeScreen />);
+      expect(screen.getByText('יוון')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByTestId('card-close'));
+      await act(async () => jest.advanceTimersByTime(1_000));
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByText('יוון')).toBeNull();
+    });
+
+    it('a tap on the pin opens its trip, over the country under it (AC-7)', async () => {
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.nextTrip = { ...greece, startDate: '2026-11-01', endDate: '2026-11-05' };
+      await render(<GlobeScreen />);
+      await tap({ pin: { adm0: 'GRC', tripId: 'trip-grc' }, country: { adm0: 'TUR', code: 'TR' } });
+      expect(screen.getByText('יוון')).toBeOnTheScreen();
     });
   });
 });

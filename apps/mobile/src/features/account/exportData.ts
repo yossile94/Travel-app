@@ -80,7 +80,9 @@ export async function buildExport(
   if (profileError) throw profileError;
   const trips = await readAll<{ id: string }>(
     'trips',
-    'id, country_adm0, title, start_date, end_date, notes, created_at, updated_at',
+    // Sprint 3: each trip with its travelers and cities (AC-3, AC-5).
+    'id, country_adm0, title, start_date, end_date, notes, created_at, updated_at, ' +
+      'trip_travelers(name, relation, position), trip_cities(geoname_id, name, position)',
     user.id,
     signal,
   );

@@ -21,14 +21,14 @@ import {
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
-import { AlertIcon, CloudOffIcon, GlobePlusIcon } from '@/components/icons';
+import { AlertIcon, CloudOffIcon, GlobePlusIcon, PeopleIcon } from '@/components/icons';
 import { countryByAdm0 } from '@/features/globe/countryData';
 import { logMyTripsShown } from '@/features/globe/perfLog';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
 
-import { ActiveBadge } from './CardTrips';
+import { StatusTag } from './CardTrips';
 import { countryName } from './countryName';
-import { formatRange, formatRangeA11y, isActive, todayPg } from './tripDates';
+import { formatRange, formatRangeA11y, todayPg, travelerCount, tripStatus } from './tripDates';
 import type { Trip } from './tripsApi';
 import { useTrips } from './TripsProvider';
 import { useTripList } from './useTripList';
@@ -52,6 +52,7 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
   const trips = useTrips();
   const { state, reload, loadMore } = useTripList({
     enabled: visible,
+    // An open list changes only on its next load (AC-6, design 3.4; Raz R3).
     reloadKey: trips.changes,
     parallelFirstPage: true,
   });
@@ -94,10 +95,15 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
   const renderTrip = (trip: Trip) => {
     const country = countryByAdm0(trip.countryAdm0);
     const name = country ? countryName(country, i18n.language) : trip.countryAdm0;
-    const active = isActive(trip.startDate, trip.endDate, today);
-    const a11y = t(active ? 'trips.rowA11yActive' : 'trips.rowA11y', {
-      name: `${trip.title}, ${name}`,
+    const status = tripStatus(trip.startDate, trip.endDate, today);
+    const active = status === 'active';
+    const people = travelerCount(trip.travelers);
+    const a11y = t(people >= 2 ? 'myTrips.rowA11yTravelers' : 'myTrips.rowA11y', {
+      name: trip.title,
+      country: name,
       dates: formatRangeA11y(trip.startDate, trip.endDate, t),
+      status: t(`trips.status.${status}`),
+      n: people,
     });
     return (
       <Pressable
@@ -127,12 +133,21 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
           <Text style={[styles.footnote, styles.tabular, { color: palette.textSecondary }]}>
             {formatRange(trip.startDate, trip.endDate, t)}
           </Text>
+          {/* Sprint 3 design 4: the traveler count from 2, a 4th line (QA M-1). */}
+          {people >= 2 ? (
+            <View style={styles.people} importantForAccessibility="no-hide-descendants">
+              <PeopleIcon color={palette.textSecondary} />
+              <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+                {t('trips.travelers', { n: people })}
+              </Text>
+            </View>
+          ) : null}
         </View>
         <View style={styles.end} importantForAccessibility="no-hide-descendants">
           <Text style={[styles.code, { backgroundColor: palette.tag, color: palette.textPrimary }]}>
             {trip.countryAdm0}
           </Text>
-          {active ? <ActiveBadge colorScheme={sheet.colorScheme} /> : null}
+          <StatusTag status={status} colorScheme={sheet.colorScheme} />
         </View>
       </Pressable>
     );
@@ -274,6 +289,7 @@ const styles = StyleSheet.create({
   bodyStrong: { fontFamily: fonts.medium, fontSize: 16, lineHeight: 22, textAlign: 'left' },
   footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, textAlign: 'left' },
   tabular: { fontVariant: ['tabular-nums'] },
+  people: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   block: { marginTop: 8 },
   placeholder: { height: 120 },
   list: { flexGrow: 0 },

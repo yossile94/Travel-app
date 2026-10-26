@@ -34,5 +34,5 @@ describe('DeleteAccountScreen (sprint 2 design 11)', () => {
     expect(screen.getByText('שלב 1 מתוך 2')).toBeTruthy();
     expect(screen.getByTestId('delete-account-continue')).toBeTruthy();
     expect(onBack).not.toHaveBeenCalled();
-  });
+  }, 15000); // The first render pays for transforming the screens on a cold run.
 });

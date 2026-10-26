@@ -1,13 +1,6 @@
 import NetInfo from '@react-native-community/netinfo';
 
-import {
-  createTrip,
-  deleteTrip,
-  loadTripCountries,
-  loadTripPage,
-  updateTrip,
-  type Trip,
-} from './tripsApi';
+import { deleteTrip, loadTripCountries, loadTripPage, saveTrip, type Trip } from './tripsApi';
 
 /** A query builder that records each call and answers with `mockAnswer`. */
 const mockCalls: [string, ...unknown[]][] = [];
@@ -34,8 +27,8 @@ jest.mock('@/lib/supabase', () => ({
       mockCalls.push(['from', table]);
       return mockBuilder();
     },
-    rpc: (fn: string) => {
-      mockCalls.push(['rpc', fn]);
+    rpc: (fn: string, args?: unknown) => {
+      mockCalls.push(args === undefined ? ['rpc', fn] : ['rpc', fn, args]);
       return Promise.resolve(mockAnswer.value);
     },
   },
@@ -57,6 +50,11 @@ const trip: Trip = {
   startDate: '2027-08-01',
   endDate: '2027-08-20',
   notes: null,
+  travelers: [{ name: 'דנה', relation: 'partner' }],
+  cities: [
+    { geonameId: 1609350, name: 'בנגקוק' },
+    { geonameId: null, name: 'קו טאו' },
+  ],
 };
 
 beforeEach(() => {
@@ -77,7 +75,11 @@ describe('trips on the server (sprint 2 F-006)', () => {
     });
     expect(mockCalls).toEqual([
       ['from', 'trips'],
-      ['select', 'id, country_adm0, title, start_date, end_date, notes'],
+      [
+        'select',
+        'id, country_adm0, title, start_date, end_date, notes, ' +
+          'trip_travelers(name, relation, position), trip_cities(geoname_id, name, position)',
+      ],
       ['gte', 'end_date', '2026-10-26'],
       ['or', 'start_date.gt.2026-12-01,and(start_date.eq.2026-12-01,id.gt.a)'],
       ['order', 'start_date', { ascending: true }],
@@ -129,54 +131,83 @@ describe('trips on the server (sprint 2 F-006)', () => {
     expect(result.ok && [...result.value]).toEqual(['THA', 'GRC']);
   });
 
-  it('creates with the form id; the same id again counts as saved (AC-3)', async () => {
-    expect(await createTrip(trip)).toBe('ok');
-    expect(mockCalls).toContainEqual([
-      'insert',
-      expect.objectContaining({ id: trip.id, country_adm0: 'THA', start_date: '2027-08-01' }),
+  it('saves the whole trip in one call, with its travelers and cities (sprint 3 AC-2, AC-5)', async () => {
+    mockAnswer.value = { data: 'ok', error: null };
+    expect(await saveTrip('create', trip)).toBe('ok');
+    expect(mockCalls).toEqual([
+      [
+        'rpc',
+        'save_trip',
+        {
+          p_mode: 'create',
+          p_id: trip.id,
+          p_country_adm0: 'THA',
+          p_title: trip.title,
+          p_start: '2027-08-01',
+          p_end: '2027-08-20',
+          p_notes: null,
+          p_travelers: [{ name: 'דנה', relation: 'partner' }],
+          p_cities: [
+            { geonameId: 1609350, name: 'בנגקוק' },
+            { geonameId: null, name: 'קו טאו' },
+          ],
+        },
+      ],
     ]);
   });
 
-  it('the same id again after a lost answer writes the current values over it (QA D-3)', async () => {
-    let calls = 0;
-    // insert → 23505 (the first save landed); the update that follows matches the row.
+  it('reads the travelers and cities from the list rows, in position order (Dudi)', async () => {
+    mockAnswer.value = {
+      data: [
+        {
+          ...row('b', '2027-01-01'),
+          trip_travelers: [
+            { name: 'נועם', relation: 'child', position: 1 },
+            { name: 'דנה', relation: null, position: 0 },
+          ],
+          trip_cities: [
+            { geoname_id: null, name: 'קו טאו', position: 1 },
+            { geoname_id: 1609350, name: 'בנגקוק', position: 0 },
+          ],
+        },
+      ],
+      error: null,
+    };
+    const result = await loadTripPage({ section: 'upcoming', today: '2026-10-26' });
+    expect(result.ok && result.value.trips[0]).toMatchObject({
+      travelers: [
+        { name: 'דנה', relation: null },
+        { name: 'נועם', relation: 'child' },
+      ],
+      cities: [
+        { geonameId: 1609350, name: 'בנגקוק' },
+        { geonameId: null, name: 'קו טאו' },
+      ],
+    });
+  });
+
+  it('only the consent gate refusal itself means "consent" (ADR-007)', async () => {
+    mockAnswer.value = { data: null, error: { code: '42501', hint: 'consent_required' } };
+    expect(await saveTrip('create', trip)).toBe('consent');
+    mockAnswer.value = { data: null, error: { code: '42501', hint: null } };
+    expect(await saveTrip('update', trip)).toBe('error');
     mockAnswer.value = { data: null, error: { code: '23505' } };
-    const original = mockAnswer.value;
-    Object.defineProperty(mockAnswer, 'value', {
-      configurable: true,
-      get: () => (calls++ === 0 ? original : { data: [{ id: trip.id }], error: null }),
-      set: () => {},
-    });
-    expect(await createTrip({ ...trip, title: 'שם חדש' })).toBe('ok');
-    expect(mockCalls).toContainEqual(['update', expect.objectContaining({ title: 'שם חדש' })]);
-    Object.defineProperty(mockAnswer, 'value', {
-      configurable: true,
-      writable: true,
-      value: { data: [], error: null },
-    });
+    expect(await saveTrip('create', trip)).toBe('error');
   });
 
-  it('maps the consent gate (42501) and other failures', async () => {
-    mockAnswer.value = { data: null, error: { code: '42501' } };
-    expect(await createTrip(trip)).toBe('consent');
-    expect(await updateTrip(trip.id, trip)).toBe('consent');
-    mockAnswer.value = { data: null, error: { code: '23514' } };
-    expect(await createTrip(trip)).toBe('error');
-  });
-
-  it('an update or delete that matches no row means "deleted elsewhere" (AC-6)', async () => {
+  it('an update of a trip deleted elsewhere is "gone" (AC-6 of sprint 2)', async () => {
+    mockAnswer.value = { data: 'gone', error: null };
+    expect(await saveTrip('update', trip)).toBe('gone');
     mockAnswer.value = { data: [], error: null };
-    expect(await updateTrip(trip.id, trip)).toBe('gone');
     expect(await deleteTrip(trip.id)).toBe('gone');
     mockAnswer.value = { data: [{ id: trip.id }], error: null };
-    expect(await updateTrip(trip.id, trip)).toBe('ok');
     expect(await deleteTrip(trip.id)).toBe('ok');
   });
 
   it('never writes offline', async () => {
     jest.mocked(NetInfo.fetch).mockResolvedValue({ isConnected: false } as never);
-    expect(await createTrip(trip)).toBe('offline');
-    expect(await updateTrip(trip.id, trip)).toBe('offline');
+    expect(await saveTrip('create', trip)).toBe('offline');
+    expect(await saveTrip('update', trip)).toBe('offline');
     expect(await deleteTrip(trip.id)).toBe('offline');
     expect(mockCalls).toEqual([]);
   });
