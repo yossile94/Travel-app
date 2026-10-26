@@ -11,6 +11,9 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
 | countries | iso2, name_he, name_en, name_local, aliases[], languages[], emergency_numbers | קריאה לכולם, כתיבה לאדמין |
 | missions | country_iso2, type, address, phones, hours, lat/lng, covers[], verified_at, source_url | קריאה לכולם, כתיבה לאדמין |
 | trips | id (UUID שנוצר במכשיר), user_id (on delete cascade), country_adm0 (קוד האזור בגלובוס, למשל THA; לא ISO, כי שטחים חולקים קוד ISO עם המדינה הריבונית), title, start_date, end_date, notes. הסטטוס (מתוכננת, בנסיעה, הסתיימה) מחושב בלקוח מהתאריכים ולא נשמר (ספרינט 3) | בעלים בלבד. יצירה ועריכה רק עם הסכמה לגרסה הנוכחית; מחיקה תמיד (ספרינט 2) |
+| exchange_rates | currency, rate_to_ils, rate_to_usd, source (boi / erapi), rate_date, fetched_at | קריאה לשער האחרון בלבד, דרך תצוגה. כתיבה ל-service role (ספרינט 4) |
+| country_advisories | adm0, entry_status, nsc_level, nsc_text, mfa_text, health_text, links, verified_at, fetched_at | קריאה לכולם, כתיבה ל-service role. במקום שדות בטבלה countries (ספרינט 4) |
+| country_advisory_changes | adm0, field, old_value, new_value, changed_at | בלי גישה ללקוח. בסיס ל-Push בעתיד (ספרינט 4) |
 | account_deletions | user_id, deleted_at, reason (user_request / no_consent_30d) | בלי גישה ללקוח. כתיבה רק בפונקציית המחיקה בשרת. ממנה נספרת תקופת השמירה של consents (ספרינט 2) |
 | trip_travelers | trip_id, user_id, position (0–8), name (1–40), relation (partner/child/parent/friend/other או ריק) | בעלים בלבד, דרך מפתח זר מורכב (trip_id, user_id) ל-trips. Insert ו-Delete עם הסכמה, בלי Update. "אני" לא נשמר (ספרינט 3, ADR-007) |
 | trip_cities | trip_id, user_id, position (0–9), geoname_id (או ריק לעיר שנכתבה ידנית), name (1–60, תמונת מצב של השם) | כמו trip_travelers. הנסיעה נשמרת כולה בקריאה אחת, `save_trip` (ספרינט 3, ADR-007) |

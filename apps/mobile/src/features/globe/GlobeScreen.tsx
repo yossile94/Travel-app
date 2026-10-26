@@ -760,11 +760,12 @@ export function GlobeScreen() {
             auth.state.status === 'signedIn' ||
             auth.state.status === 'signedOut' ||
             auth.state.status === 'needsConsent'
-              ? (maxListHeight) => (
+              ? (maxListHeight, onNoticeHeight) => (
                   <CardTrips
                     country={selectedCountry}
                     colorScheme={colorScheme}
                     maxListHeight={maxListHeight}
+                    onNoticeHeight={onNoticeHeight}
                     initiallyOpen={openTrip?.id ?? null}
                     openSeq={openTrip?.seq ?? 0}
                     onNewTrip={newTrip}

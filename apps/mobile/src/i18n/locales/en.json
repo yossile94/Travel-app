@@ -33,7 +33,8 @@
       "cities": "Cities",
       "citiesA11y": "Cities in order: {{list}}",
       "duplicate": "Duplicate"
-    }
+    },
+    "rate": "Exchange rate"
   },
   "timeDifference": {
     "same": "Same as Israel",
@@ -52,12 +53,12 @@
     "hoursMinutes": "{{n}} hours {{m}} minutes"
   },
   "search": {
-    "open": "Search for a country",
-    "placeholder": "Search for a country",
+    "open": "Search for a country or city",
+    "placeholder": "Search for a country or city",
     "close": "Close search",
     "clear": "Clear search",
-    "noResults": "No country found",
-    "noResultsHint": "Search by country name, in Hebrew or English.",
+    "noResults": "No countries or cities found",
+    "noResultsHint": "Search by country or city name, in Hebrew or English.",
     "more": "More results. Keep typing",
     "unavailable": "Search isn't available right now. You can pick a country by tapping the globe.",
     "countNone": "No country found",
@@ -65,7 +66,18 @@
     "countMany": "{{count}} countries found",
     "countMore": "Showing {{count}} countries. Keep typing to narrow down",
     "row": "{{name}}, {{nameEn}}",
-    "rowTerritory": "{{name}}, territory of {{parent}}, {{nameEn}}"
+    "rowTerritory": "{{name}}, territory of {{parent}}, {{nameEn}}",
+    "groupCountries": "Countries",
+    "groupCities": "Cities",
+    "cityHint": "Opens the card for {{country}}",
+    "citiesLoading": "Loading cities…",
+    "cityRow": "{{city}}, {{country}}",
+    "cityA11y": "{{city}}, {{country}}",
+    "countFound": "Found: {{parts}}",
+    "nCountryOne": "1 country",
+    "nCountryMany": "{{n}} countries",
+    "nCityOne": "1 city",
+    "nCityMany": "{{n}} cities"
   },
   "sheet": {
     "close": "Close"
@@ -141,7 +153,10 @@
     },
     "travelers": "{{n}} travelers",
     "rowA11yStatus": "{{name}}, {{dates}}, {{status}}",
-    "rowA11yTravelers": "{{name}}, {{dates}}, {{status}}, {{n}} travelers"
+    "rowA11yTravelers": "{{name}}, {{dates}}, {{status}}, {{n}} travelers",
+    "statusLine": "NSC warning: {{level}}",
+    "statusLineLevel": "level {{n}}",
+    "statusLineUpTo": "up to level {{n}}"
   },
   "tripForm": {
     "titleNew": "New trip",
@@ -331,7 +346,7 @@
     "deletedTitle": "Deleted right away",
     "deletedAccount": "Your account and name",
     "deletedTrips": "All your trips",
-    "deletedDevice": "Your sign-in on this device, and the app's access to your Google account",
+    "deletedDevice": "Sign-in on this device, the trips saved on it, and the app's access to your Google account",
     "keptTitle": "What we keep",
     "kept": "Your consent log is kept as legal evidence for a limited period, as set out in the Privacy Policy.",
     "continue": "Continue",
@@ -366,7 +381,10 @@
     "linkA11y": "Data sources",
     "title": "Sources",
     "cities": "City data: GeoNames (geonames.org), CC BY 4.0 licence, modified.",
-    "climate": "Climate data: CRU TS v4.08, Climatic Research Unit, University of East Anglia (Harris, Jones, Osborn), via CEDA, Open Government Licence v3.0. The 1991–2020 averages were calculated by us."
+    "climate": "Climate data: CRU TS v4.08, Climatic Research Unit, University of East Anglia (Harris, Jones, Osborn), via CEDA, Open Government Licence v3.0. The 1991–2020 averages were calculated by us.",
+    "advisories": "Travel warnings: gov.il's \"Travel warnings\" dataset on data.gov.il, based on publications of the National Security Council and the Ministry of Foreign Affairs. We identified the level in the bar from the text.",
+    "entry": "Entry on an Israeli passport: collected and checked by us against the source shown for each destination.",
+    "rates": "Exchange rates: Bank of Israel (representative rate) for the dollar and the currencies it publishes. Other currencies: Rates By Exchange Rate API, from which we calculated the rate against the shekel. For illustration only; the rate at a bank or exchange office will differ."
   },
   "temp": {
     "value": "⁦{{n}}°⁩",
@@ -415,5 +433,97 @@
     "cancel": "Cancel",
     "required": "Enter a name.",
     "tooLong": "The name can be up to 40 characters."
+  },
+  "rate": {
+    "line": "{{units}} {{code}} = {{ils}} ₪ · {{usd}} $",
+    "lineUsd": "1 USD = {{ils}} ₪",
+    "updated": "Updated {{date}}",
+    "attrErapi": "Rates By Exchange Rate API",
+    "attrBoi": "Source: Bank of Israel",
+    "none": "No rate available",
+    "firstOffline": "The rate will show once you're online",
+    "error": "Couldn't load the rate",
+    "rowA11yOne": "Exchange rate: 1 {{currency}} is {{ils}} shekels and {{usd}} dollars",
+    "rowA11yMany": "Exchange rate: {{units}} {{currency}} is {{ils}} shekels and {{usd}} dollars",
+    "rowA11yUsd": "Exchange rate: 1 US dollar is {{ils}} shekels",
+    "rowHint": "Opens the calculator"
+  },
+  "common": {
+    "maybeStale": "May be out of date"
+  },
+  "calc": {
+    "title": "Currency calculator",
+    "ils": "Israeli shekel · ILS",
+    "usd": "US dollar · USD",
+    "local": "{{name}} · {{code}}",
+    "fieldA11y": "Amount, {{name}}",
+    "invalid": "Numbers only, with up to 2 digits after the point.",
+    "tooLarge": "Number too large",
+    "disclaimer": "For illustration only; the rate at a bank or exchange office will differ",
+    "close": "Close",
+    "ilsName": "Israeli shekel",
+    "usdName": "US dollar"
+  },
+  "entry": {
+    "banned": "No entry",
+    "restricted": "Restricted entry",
+    "bannedA11y": "No entry on an Israeli passport",
+    "restrictedA11y": "Restricted entry on an Israeli passport",
+    "tagHint": "Opens details and source",
+    "title": "Entry on an Israeli passport",
+    "bannedBody": "According to the source we checked, this destination does not admit Israeli passport holders. You can still save a trip, but check the official source before planning.",
+    "restrictedBody": "Entry on an Israeli passport is possible only under certain conditions, such as prior approval. See the source for details.",
+    "verified": "Checked {{date}}",
+    "sourceLink": "Details at the source"
+  },
+  "advisory": {
+    "label": "Israeli NSC travel warning",
+    "level": "Level {{n}} · {{word}}",
+    "levelUpTo": "Up to level {{n}} · {{word}}",
+    "levelOf": "Level {{n}} of 4",
+    "levelOfUpTo": "Up to level {{n}} of 4",
+    "mixed": "The level varies by region",
+    "mixedSheet": "The level varies by region. Details in the text below.",
+    "word": {
+      "1": "No travel warning",
+      "2": "Occasional threat",
+      "3": "Moderate threat",
+      "4": "High threat"
+    },
+    "rec": {
+      "1": "Normal caution",
+      "2": "Increased caution",
+      "3": "Avoid non-essential travel",
+      "4": "Avoid travel"
+    },
+    "wordRec": "{{word}}: {{rec}}",
+    "none": "No published travel warning",
+    "pending": "Not checked yet",
+    "pendingNote": "We haven't checked this area yet.",
+    "pendingSheet": "We haven't checked the warnings for this area yet.",
+    "checked": "Checked {{date}}",
+    "firstOffline": "Travel warnings will show once you're online",
+    "error": "Couldn't load the travel warning",
+    "rowA11y": "Israeli NSC travel warning: {{level}}, {{word}}",
+    "rowHint": "Opens details and source",
+    "sheetTitle": "Entry and travel warnings",
+    "body": {
+      "nsc": "National Security Council",
+      "mfa": "Ministry of Foreign Affairs"
+    },
+    "hebrewOnly": "Official text, available in Hebrew only.",
+    "official": "Official page on gov.il",
+    "disclaimer": "Based on publications of Israel's National Security Council and Ministry of Foreign Affairs. It does not replace checking the official source.",
+    "more": "More",
+    "unrecognized": "The NSC has published a notice. Level not recognised, see details",
+    "noNsc": "The NSC has published nothing for this area"
+  },
+  "offline": {
+    "cachedAt": "Showing the last saved copy · {{when}}",
+    "whenToday": "today, {{time}}",
+    "whenYesterday": "yesterday, {{time}}",
+    "readOnly": "Offline, you can only view. Editing comes back once you're online.",
+    "readOnlyHint": "Offline, view only",
+    "moreLater": "More trips will show once you're online."
   }
 }

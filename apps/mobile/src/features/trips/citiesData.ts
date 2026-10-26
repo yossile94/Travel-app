@@ -6,7 +6,7 @@
 import { Asset } from 'expo-asset';
 import { File } from 'expo-file-system';
 
-import { entryOf, indexCities, type CityEntry, type CityRow } from './citySearch';
+import { entryOf, indexCities, searchCities, type CityEntry, type CityRow } from './citySearch';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const CITIES = require('../../../assets/data/cities.dat') as number;
@@ -38,6 +38,47 @@ export async function cityIndex(adm0: string): Promise<ReturnType<typeof indexCi
   const index = indexCities(rows.map(entryOf));
   indexes.set(adm0, index);
   return index;
+}
+
+export interface GlobalCity extends CityEntry {
+  adm0: string;
+}
+
+let globalIndex: Promise<{
+  index: ReturnType<typeof indexCities>;
+  areaOf: Map<number, string>;
+}> | null = null;
+
+/**
+ * Every city in one index, largest first (sprint 4 F-014: cities in the main
+ * search). Built once, on the first typed query, never before.
+ */
+export function globalCityIndex() {
+  globalIndex ??= loadAreas()
+    .then((areasMap) => {
+      const areaOf = new Map<number, string>();
+      const all: CityEntry[] = [];
+      for (const [adm0, rows] of areasMap) {
+        for (const row of rows) {
+          const city = entryOf(row);
+          areaOf.set(city.id, adm0);
+          all.push(city);
+        }
+      }
+      all.sort((a, b) => b.population - a.population);
+      return { index: indexCities(all), areaOf };
+    })
+    .catch((error: unknown) => {
+      globalIndex = null;
+      throw error;
+    });
+  return globalIndex;
+}
+
+/** Up to `limit` cities for a main-search query, each with its area. */
+export async function searchAllCities(query: string, limit = 5): Promise<GlobalCity[]> {
+  const { index, areaOf } = await globalCityIndex();
+  return searchCities(index, query, limit).map((city) => ({ ...city, adm0: areaOf.get(city.id)! }));
 }
 
 export type { CityEntry };

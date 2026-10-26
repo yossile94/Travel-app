@@ -3,10 +3,12 @@
  * section 2): a magnifier button that opens a full-width field, with results
  * that behave exactly like a tap on the globe.
  */
+import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
+  ActivityIndicator,
   BackHandler,
   Dimensions,
   FlatList,
@@ -32,7 +34,18 @@ import { colors, fonts, globe, layout, motion, radius, type ColorScheme } from '
 
 import { isolateLtr } from '../globe/BoardingPassCard';
 import { logSearchResults } from '../globe/perfLog';
+import { countryByAdm0 } from '../globe/countryData';
+import { useDestination, type EntryStatus } from '../destination/destinationData';
+import { EntryTag } from '../destination/DestinationFields';
+import { globalCityIndex, searchAllCities, type GlobalCity } from '../trips/citiesData';
 import { searchCountries, type SearchEntry } from './search';
+
+/** A row of the results: a country, or a city that leads to its country (sprint 4 F-014). */
+type Row =
+  | { kind: 'country'; entry: SearchEntry }
+  | { kind: 'city'; city: GlobalCity }
+  | { kind: 'header'; label: 'countries' | 'cities' }
+  | { kind: 'loading' };
 
 interface Props {
   open: boolean;
@@ -68,6 +81,53 @@ export function SearchBar({
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const { results, more } = useMemo(() => searchCountries(query), [query]);
+  // Cities join when the city list is loaded; countries never wait for it (AC-11).
+  const [cities, setCities] = useState<{ query: string; list: GlobalCity[] }>({
+    query: '',
+    list: [],
+  });
+  // The index is built when search opens, not at globe-ready (design 9.2).
+  useEffect(() => {
+    if (open) void globalCityIndex().catch(() => {});
+  }, [open]);
+  const wantsCities = query.trim().length >= 2;
+  const citiesReady = cities.query === query;
+  // "טוענים ערים…" only after 150 ms, so it never flashes (design 9.2).
+  const [slowQuery, setSlowQuery] = useState('');
+  useEffect(() => {
+    if (!wantsCities || citiesReady) return;
+    const timer = setTimeout(() => setSlowQuery(query), 150);
+    return () => clearTimeout(timer);
+  }, [query, wantsCities, citiesReady]);
+  useEffect(() => {
+    if (!wantsCities) return;
+    let live = true;
+    searchAllCities(query, 5).then(
+      (list) => live && setCities({ query, list }),
+      // No city list: countries only, and the search counts as done.
+      () => live && setCities({ query, list: [] }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [query, wantsCities]);
+  const cityList = useMemo(() => (cities.query === query ? cities.list : []), [cities, query]);
+  const rows = useMemo<Row[]>(() => {
+    const both = results.length > 0 && cityList.length > 0;
+    const list: Row[] = [];
+    // Group headings only when both groups show (design 9.1).
+    if (both) list.push({ kind: 'header', label: 'countries' });
+    list.push(...results.map((entry): Row => ({ kind: 'country', entry })));
+    if (both) list.push({ kind: 'header', label: 'cities' });
+    list.push(...cityList.map((city): Row => ({ kind: 'city', city })));
+    // Also with no country match: an empty panel would look like no results (Raz, S4-m13).
+    if (wantsCities && !citiesReady && slowQuery === query) {
+      list.push({ kind: 'loading' });
+    }
+    return list;
+  }, [results, cityList, wantsCities, citiesReady, slowQuery, query]);
+  const destination = useDestination();
+  const entryOf = (adm0: string) => destination.data?.advisories.get(adm0)?.entryStatus ?? null;
 
   // The field stays on screen while it folds back into the button (design 2.4).
   const [closing, setClosing] = useState(false);
@@ -175,7 +235,7 @@ export function SearchBar({
   }, [onClose]);
 
   const select = useCallback(
-    (entry: SearchEntry) => {
+    (entry: { adm0: string }) => {
       Keyboard.dismiss();
       setQuery('');
       onSelect(entry.adm0);
@@ -209,7 +269,7 @@ export function SearchBar({
     else close();
   }, [query, keyboardShown, close]);
 
-  const announcement = useAnnouncement(query, results.length, more);
+  const announcement = useAnnouncement(query, results.length, more, cityList.length);
 
   // The results end 8dp above the keyboard, or 16dp above the navigation bar.
   // The window doesn't resize for the keyboard (design 2.6), so this is computed.
@@ -284,10 +344,12 @@ export function SearchBar({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           onSubmitEditing={() => {
-            if (results[0]) select(results[0]);
+            // The first in the list: a country, or a city when no country matched (sprint 4 design 9.1).
+            const first = results[0] ?? cityList[0];
+            if (first) select(first);
           }}
           // Design 2.3: with no results the search key does nothing, keyboard included.
-          submitBehavior={results[0] ? 'blurAndSubmit' : 'submit'}
+          submitBehavior={results[0] || cityList[0] ? 'blurAndSubmit' : 'submit'}
           placeholder={t('search.placeholder')}
           placeholderTextColor={palette.textTertiary}
           accessibilityLabel={t('search.placeholder')}
@@ -316,7 +378,7 @@ export function SearchBar({
 
       {query ? (
         <Animated.View style={[styles.results, surface, { top }, listMaxHeight, resultsStyle]}>
-          {results.length === 0 ? (
+          {rows.length === 0 && !(wantsCities && !citiesReady) ? (
             <View style={styles.empty} testID="search-empty">
               <Text style={[styles.name, { color: palette.textPrimary }]}>
                 {t('search.noResults')}
@@ -327,16 +389,52 @@ export function SearchBar({
             </View>
           ) : (
             <FlatList
-              data={results}
-              keyExtractor={(entry) => entry.adm0}
+              data={rows}
+              keyExtractor={(row) =>
+                row.kind === 'country'
+                  ? row.entry.adm0
+                  : row.kind === 'city'
+                    ? `city-${row.city.id}`
+                    : row.kind === 'header'
+                      ? `header-${row.label}`
+                      : 'loading'
+              }
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
               ItemSeparatorComponent={() => (
                 <View style={[styles.separator, { backgroundColor: palette.borderSubtle }]} />
               )}
-              renderItem={({ item }) => (
-                <ResultRow entry={item} colorScheme={colorScheme} onPress={select} />
-              )}
+              renderItem={({ item }) =>
+                item.kind === 'country' ? (
+                  <ResultRow
+                    entry={item.entry}
+                    entry2={entryOf(item.entry.adm0)}
+                    colorScheme={colorScheme}
+                    onPress={select}
+                  />
+                ) : item.kind === 'city' ? (
+                  <CityRow
+                    city={item.city}
+                    entry={entryOf(item.city.adm0)}
+                    colorScheme={colorScheme}
+                    onPress={select}
+                  />
+                ) : item.kind === 'header' ? (
+                  <Text
+                    accessibilityRole="header"
+                    style={[styles.groupHeader, { color: palette.textTertiary }]}
+                  >
+                    {t(item.label === 'countries' ? 'search.groupCountries' : 'search.groupCities')}
+                  </Text>
+                ) : (
+                  <View style={styles.loadingRow} testID="search-cities-loading">
+                    <ActivityIndicator size={16} color={palette.textSecondary} />
+                    <Text style={[styles.secondary, { color: palette.textSecondary }]}>
+                      {t('search.citiesLoading')}
+                    </Text>
+                  </View>
+                )
+              }
               ListFooterComponent={
                 more ? (
                   <Text style={[styles.more, { color: palette.textTertiary }]}>
@@ -359,18 +457,22 @@ export function SearchBar({
 
 function ResultRow({
   entry,
+  entry2,
   colorScheme,
   onPress,
 }: {
   entry: SearchEntry;
+  /** The country's entry status (sprint 4 design 5.2). */
+  entry2: EntryStatus | null;
   colorScheme: ColorScheme;
   onPress: (entry: SearchEntry) => void;
 }) {
   const { t } = useTranslation();
   const palette = colors[colorScheme];
-  const label = entry.parentHe
+  const base = entry.parentHe
     ? t('search.rowTerritory', { name: entry.nameHe, parent: entry.parentHe, nameEn: entry.nameEn })
     : t('search.row', { name: entry.nameHe, nameEn: entry.nameEn });
+  const label = entryWords(base, entry2, t);
   return (
     <Pressable
       accessibilityRole="button"
@@ -392,6 +494,7 @@ function ResultRow({
           {isolateLtr(entry.nameEn)}
         </Text>
       </View>
+      <EntryTag status={entry2} colorScheme={colorScheme} />
       <View
         style={[styles.tag, { backgroundColor: palette.tag }]}
         importantForAccessibility="no-hide-descendants"
@@ -402,17 +505,102 @@ function ResultRow({
   );
 }
 
+/** The row's label with the entry status in words (design 5.3). */
+function entryWords(label: string, entry: EntryStatus | null, t: TFunction): string {
+  if (entry === 'banned') return `${label}, ${t('entry.bannedA11y')}`;
+  if (entry === 'restricted') return `${label}, ${t('entry.restrictedA11y')}`;
+  return label;
+}
+
+/**
+ * "בנגקוק, תאילנד" with "Bangkok" under it; in English one line, "Bangkok,
+ * Thailand". A city leads to its country's card (sprint 4 design 9.1).
+ */
+function CityRow({
+  city,
+  entry,
+  colorScheme,
+  onPress,
+}: {
+  city: GlobalCity;
+  entry: EntryStatus | null;
+  colorScheme: ColorScheme;
+  onPress: (entry: { adm0: string }) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const palette = colors[colorScheme];
+  const country = countryByAdm0(city.adm0);
+  const hebrew = i18n.language === 'he';
+  const countryName = hebrew ? (country?.nameHe ?? city.adm0) : (country?.nameEn ?? city.adm0);
+  const cityName = hebrew && city.nameHe ? city.nameHe : isolateLtr(city.nameEn);
+  const label = entryWords(
+    hebrew
+      ? t('search.cityA11y', {
+          city: city.nameHe || city.nameEn,
+          country: countryName,
+          cityEn: city.nameEn,
+        })
+      : t('search.cityA11y', { city: city.nameEn, country: countryName }),
+    entry,
+    t,
+  );
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={t('search.cityHint', { country: countryName })}
+      onPress={() => onPress(city)}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: palette.pressed }]}
+      testID={`search-city-${city.id}`}
+    >
+      <View style={styles.rowText}>
+        <Text style={[styles.name, { color: palette.textPrimary }]}>
+          {cityName}
+          <Text
+            style={[styles.parent, { color: palette.textSecondary }]}
+          >{`, ${countryName}`}</Text>
+        </Text>
+        {hebrew && city.nameHe ? (
+          <Text style={[styles.secondary, { color: palette.textSecondary }]}>
+            {isolateLtr(city.nameEn)}
+          </Text>
+        ) : null}
+      </View>
+      <EntryTag status={entry} colorScheme={colorScheme} />
+      <View
+        style={[styles.tag, { backgroundColor: palette.tag }]}
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Text style={[styles.tagText, { color: palette.textSecondary }]}>{city.adm0}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 /**
  * The live-region text: set only after typing pauses, and cleared as soon as
  * the field is, so a new search never starts by reading out the old count.
  */
-function useAnnouncement(query: string, count: number, more: boolean) {
+function useAnnouncement(query: string, count: number, more: boolean, cityCount = 0) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   if (!query && text) setText('');
   useEffect(() => {
     if (!query) return;
     const timer = setTimeout(() => {
+      // With cities: "נמצאו: 2 מדינות, 5 ערים" (design 9.4).
+      if (cityCount > 0) {
+        const parts = [
+          count === 0
+            ? null
+            : count === 1
+              ? t('search.nCountryOne')
+              : t('search.nCountryMany', { n: count }),
+          cityCount === 1 ? t('search.nCityOne') : t('search.nCityMany', { n: cityCount }),
+        ].filter(Boolean);
+        setText(t('search.countFound', { parts: parts.join(', ') }));
+        return;
+      }
       setText(
         count === 0
           ? t('search.countNone')
@@ -424,11 +612,27 @@ function useAnnouncement(query: string, count: number, more: boolean) {
       );
     }, motion.searchAnnounceDelay);
     return () => clearTimeout(timer);
-  }, [query, count, more, t]);
+  }, [query, count, more, cityCount, t]);
   return query ? text : '';
 }
 
 const styles = StyleSheet.create({
+  groupHeader: {
+    fontFamily: fonts.semibold,
+    fontSize: 12,
+    lineHeight: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    paddingHorizontal: 16,
+    textAlign: 'left',
+  },
+  loadingRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
   openButton: { position: 'absolute', start: layout.chromeEdge },
   scrim: {
     position: 'absolute',

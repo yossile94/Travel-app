@@ -175,6 +175,7 @@ export function Button({
   icon,
   a11yLabel,
   outlined = false,
+  blocked = false,
   testID,
 }: {
   kind: ButtonKind;
@@ -188,11 +189,17 @@ export function Button({
   a11yLabel?: string;
   /** A 1dp outline, for a secondary button on a surface of the same colour (design 2.1). */
   outlined?: boolean;
+  /**
+   * Looks and reads as disabled but still answers a tap, so it can say why
+   * (sprint 4 design 10.3: offline, view only).
+   */
+  blocked?: boolean;
   testID?: string;
 }) {
   const palette = colors[colorScheme];
-  const fg =
-    kind === 'primary'
+  const fg = blocked
+    ? palette.disabledFg
+    : kind === 'primary'
       ? palette.onPrimary
       : kind === 'cta'
         ? palette.ctaFg
@@ -202,23 +209,29 @@ export function Button({
             ? palette.link
             : palette.textPrimary;
   const bg = (pressed: boolean) =>
-    kind === 'primary'
-      ? palette.primary
-      : kind === 'cta'
-        ? pressed
-          ? palette.ctaPressed
-          : palette.ctaBg
-        : kind === 'secondary'
-          ? palette.secondaryBg
-          : pressed
-            ? palette.pressed
-            : 'transparent';
+    blocked
+      ? kind === 'text' || kind === 'link'
+        ? 'transparent'
+        : palette.disabledBg
+      : kind === 'primary'
+        ? palette.primary
+        : kind === 'cta'
+          ? pressed
+            ? palette.ctaPressed
+            : palette.ctaBg
+          : kind === 'secondary'
+            ? palette.secondaryBg
+            : pressed
+              ? palette.pressed
+              : 'transparent';
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={busy && busyLabel ? busyLabel : (a11yLabel ?? label)}
-      accessibilityState={{ disabled: disabled || busy, busy }}
-      disabled={disabled || busy}
+      accessibilityState={{ disabled: disabled || busy || blocked, busy }}
+      // Pressable's own `disabled` overrides accessibilityState.disabled, so it's
+      // left unset unless the button really can't be pressed (a blocked one can).
+      disabled={disabled || busy || undefined}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,

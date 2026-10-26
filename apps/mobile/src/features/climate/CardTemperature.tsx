@@ -1,41 +1,29 @@
 /**
  * The country card's temperature field (sprint 3 AC-10, AC-13; design 1):
- * the daily average for this month at the area's climate point, the city
- * when there is one, and "Sources". Hidden when the area has no value or
+ * the daily average for this month at the area's climate point, and the city
+ * when there is one ("Sources" is the card's own, sprint 4). Hidden when the area has no value or
  * the file can't be read; a skeleton only if loading takes over 150 ms.
  */
-import { useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AccessibilityInfo, findNodeHandle, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import { colors, fonts, type ColorScheme } from '@/theme/tokens';
 
 import { useClimate } from './climateData';
-import { SourcesSheet } from './SourcesSheet';
 import { formatTemp, tempA11y } from './tempFormat';
 
 interface Props {
   adm0: string;
   colorScheme: ColorScheme;
-  reduceMotion: boolean;
-  insetsBottom: number;
   /** Today's local date ("YYYY-MM-DD"): the trips' shared "day changed" value (Raz, T5). */
   today: string;
 }
 
-export function CardTemperature({ adm0, colorScheme, reduceMotion, insetsBottom, today }: Props) {
+export function CardTemperature({ adm0, colorScheme, today }: Props) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
   const state = useClimate();
-  const [sourcesOpen, setSourcesOpen] = useState(false);
-  const sourcesLink = useRef<ComponentRef<typeof Pressable>>(null);
-  const closeSources = () => {
-    setSourcesOpen(false);
-    // Focus goes back to "Sources" (design 1.3).
-    const node = findNodeHandle(sourcesLink.current);
-    if (node) AccessibilityInfo.setAccessibilityFocus(node);
-  };
 
   if (state.status === 'failed') return null;
   if (state.status === 'loading') {
@@ -59,7 +47,7 @@ export function CardTemperature({ adm0, colorScheme, reduceMotion, insetsBottom,
     : null;
 
   return (
-    <View testID="card-temp">
+    <View style={styles.block} testID="card-temp">
       <View
         accessible
         accessibilityLabel={
@@ -78,23 +66,6 @@ export function CardTemperature({ adm0, colorScheme, reduceMotion, insetsBottom,
           </Text>
         ) : null}
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('sources.linkA11y')}
-        onPress={() => setSourcesOpen(true)}
-        style={styles.sources}
-        ref={sourcesLink}
-        testID="card-sources"
-      >
-        <Text style={[styles.footnote, { color: palette.link }]}>{t('sources.link')}</Text>
-      </Pressable>
-      <SourcesSheet
-        visible={sourcesOpen}
-        colorScheme={colorScheme}
-        reduceMotion={reduceMotion}
-        insetsBottom={insetsBottom}
-        onClose={closeSources}
-      />
     </View>
   );
 }
@@ -109,15 +80,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
   sub: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, textAlign: 'left' },
-  footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, textAlign: 'left' },
-  // A 48dp target that doesn't add 48dp to the card (design 1.1).
-  sources: {
-    minHeight: 48,
-    minWidth: 48,
-    marginVertical: -14,
-    justifyContent: 'center',
-    alignSelf: 'flex-start',
-  },
+  block: { marginTop: 20 },
   bar: { height: 12, borderRadius: 6, marginTop: 2 },
   barValue: { height: 18, marginTop: 6 },
 });

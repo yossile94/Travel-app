@@ -205,3 +205,69 @@ export function PersonIcon({ color, size = 20 }: IconProps) {
     </Svg>
   );
 }
+
+/** No entry: a circle with a bar (sprint 4 design 5.1). Not mirrored. */
+export function NoEntryIcon({ color, size = 12 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={color} {...stroke} />
+      <Line x1={5.6} y1={5.6} x2={18.4} y2={18.4} stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** A warning triangle (sprint 4 design 5.1). Not mirrored. */
+export function WarningIcon({ color, size = 12 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3L2 20h20L12 3z" stroke={color} {...stroke} />
+      <Path d="M12 10v4M12 17v.5" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** A calculator (sprint 4 design 2.1). Not mirrored: it depicts an object. */
+export function CalculatorIcon({ color, size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M6 3h12a1 1 0 011 1v16a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"
+        stroke={color}
+        {...stroke}
+      />
+      <Path
+        d="M8 7h8M8 12h.5M12 12h.5M16 12h.5M8 16h.5M12 16h.5M16 16h.5"
+        stroke={color}
+        {...stroke}
+      />
+    </Svg>
+  );
+}
+
+/** A chevron toward the end of the line: points left in Hebrew (sprint 4 design 6.2). */
+export function ChevronEndIcon({ color, size = 16 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      style={I18nManager.isRTL ? { transform: [{ scaleX: -1 }] } : undefined}
+    >
+      <Path d="M9 6l6 6-6 6" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** An external link (sprint 4 design 7.1). Not mirrored. */
+export function ExternalLinkIcon({ color, size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"
+        stroke={color}
+        {...stroke}
+      />
+    </Svg>
+  );
+}
