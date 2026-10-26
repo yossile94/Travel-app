@@ -14,3 +14,5 @@ apps/mobile/expo-env.d.ts
 coverage/
 # Written by Deno; pins the Edge Functions' imports by hash.
 supabase/functions/deno.lock
+# Local git worktrees (each has its own generated files).
+.worktrees/
