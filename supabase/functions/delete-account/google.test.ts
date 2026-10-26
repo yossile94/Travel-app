@@ -58,18 +58,21 @@ Deno.test('refuses a token issued outside the window it is given', async () => {
   await assertRejects(async () => verify(await token({}, 6 * 60)));
 });
 
-Deno.test('the production window takes a cached token up to an hour old (sprint 3 QA B-1)', async () => {
-  const production = (idToken: string) =>
-    verifyGoogleIdToken(idToken, {
-      audience: AUDIENCE,
-      maxAgeSeconds: GOOGLE_TOKEN_MAX_AGE_SECONDS,
-      keys,
-      now: NOW,
-    });
-  assertEquals(GOOGLE_TOKEN_MAX_AGE_SECONDS, 3600);
-  assertEquals((await production(await token({}, 40 * 60))).sub, 'google-me');
-  await assertRejects(async () => production(await token({}, 61 * 60)));
-});
+Deno.test(
+  'the production window takes a cached token up to an hour old (sprint 3 QA B-1)',
+  async () => {
+    const production = (idToken: string) =>
+      verifyGoogleIdToken(idToken, {
+        audience: AUDIENCE,
+        maxAgeSeconds: GOOGLE_TOKEN_MAX_AGE_SECONDS,
+        keys,
+        now: NOW,
+      });
+    assertEquals(GOOGLE_TOKEN_MAX_AGE_SECONDS, 3600);
+    assertEquals((await production(await token({}, 40 * 60))).sub, 'google-me');
+    await assertRejects(async () => production(await token({}, 61 * 60)));
+  },
+);
 
 Deno.test('refuses an expired token', async () => {
   await assertRejects(async () => verify(await token({}, 2 * 3600)));
