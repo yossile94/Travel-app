@@ -148,3 +148,8 @@ export function resetFlightsStore(): void {
   state.clear();
   notify();
 }
+
+/** Whether a trip's flights, as last read, are any (the trip delete dialog, design 8.3). */
+export function tripHasFlights(tripId: string): boolean {
+  return (state.get(tripId)?.flights.length ?? 0) > 0;
+}

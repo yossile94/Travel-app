@@ -34,6 +34,7 @@ import {
   type SaveResult,
 } from '@/features/account/accountApi';
 import { requestDeletion } from '@/features/account/deleteAccountApi';
+import { resetFlightsStore } from '@/features/flights/flightsStore';
 import { clearTripsCaches } from '@/features/trips/tripsCache';
 import { clearStoredSessions } from '@/lib/secureSessionStorage';
 import { supabase } from '@/lib/supabase';
@@ -186,6 +187,7 @@ async function localSignOut(): Promise<void> {
     await clearStoredSessions();
     // Sprint 4 AC-13: the offline copy of the trips goes with the session.
     await clearTripsCaches();
+    resetFlightsStore();
   }
 }
 
@@ -266,6 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const wipeDevice = useCallback(async (userId: string | null) => {
     // Sprint 4 AC-13: a sign-out the user didn't make, or a deletion, clears the trips copy too.
     await clearTripsCaches();
+    resetFlightsStore();
     if (!userId) return;
     await removeLocalAgreement(userId);
     await removeLocalChoices(userId);

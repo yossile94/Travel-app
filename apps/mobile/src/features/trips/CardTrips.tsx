@@ -35,6 +35,8 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { TripTemperature } from '@/features/climate/TripTemperature';
 import { useDestination } from '@/features/destination/destinationData';
 import { TripStatusLine } from '@/features/destination/DestinationFields';
+import { FlightsSection } from '@/features/flights/FlightsSection';
+import { tripHasFlights } from '@/features/flights/flightsStore';
 import { isolateOwn, OuterScrollContext } from '@/features/globe/BoardingPassCard';
 import type { CountryInfo } from '@/features/globe/countryData';
 import { colors, fonts, layout, radius, timing, type ColorScheme } from '@/theme/tokens';
@@ -157,7 +159,9 @@ export function CardTrips({
   };
 
   const remove = (trip: Trip) => {
-    Alert.alert(t('tripDelete.title'), t('tripDelete.body', { name: trip.title }), [
+    // Design 8.3: the flights go with the trip, and the dialog says so.
+    const body = t('tripDelete.body', { name: trip.title });
+    Alert.alert(t('tripDelete.title'), tripHasFlights(trip.id) ? `${body} ${t('tripDelete.bodyFlights')}` : body, [
       { text: t('tripDelete.cancel'), style: 'cancel' },
       {
         text: t('tripDelete.confirm'),
@@ -278,6 +282,13 @@ export function CardTrips({
                 <TripStatusLine
                   advisory={destination.data?.advisories.get(trip.countryAdm0)}
                   colorScheme={colorScheme}
+                />
+                {/* Sprint 5 design 9.1: flights after the status line, before the cities. */}
+                <FlightsSection
+                  trip={trip}
+                  colorScheme={colorScheme}
+                  readOnly={readOnly}
+                  onToast={onToast}
                 />
                 {trip.cities.length > 0 ? (
                   <View

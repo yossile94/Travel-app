@@ -300,7 +300,8 @@
     "done": "Trip deleted",
     "alreadyGone": "This trip was already deleted on another device",
     "offline": "You're offline. Deleting a trip needs a connection.",
-    "error": "Couldn't delete the trip. Try again."
+    "error": "Couldn't delete the trip. Try again.",
+    "bodyFlights": "Its flights will be deleted too."
   },
   "nameEdit": {
     "title": "Change name",
