@@ -183,7 +183,10 @@ export function isForbidden(codePoint: number): boolean {
     codePoint <= 0x1f ||
     (codePoint >= 0x7f && codePoint <= 0x9f) ||
     codePoint === 0x61c ||
-    (codePoint >= 0x200b && codePoint <= 0x200f) ||
+    // Not ZWNJ/ZWJ (0x200c-d): emoji sequences and Persian spelling use them.
+    codePoint === 0x200b ||
+    codePoint === 0x200e ||
+    codePoint === 0x200f ||
     (codePoint >= 0x2028 && codePoint <= 0x202e) ||
     (codePoint >= 0x2060 && codePoint <= 0x206f) ||
     codePoint === 0xfeff

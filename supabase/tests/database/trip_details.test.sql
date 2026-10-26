@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(72);
+select plan(73);
 
 insert into auth.users (id, email)
 values
@@ -63,6 +63,11 @@ select ok(
   and not public.text_is_clean('a' || chr(8232)) and not public.text_is_clean('a' || chr(8233))
   and not public.text_is_clean('a' || chr(8288)) and not public.text_is_clean(chr(65279) || 'a'),
   'text_is_clean refuses zero-width, LRM/RLM/ALM, BOM and line separators (Dudi, m1)'
+);
+select ok(
+  public.text_is_clean('👨' || chr(8205) || '👩' || chr(8205) || '👧')
+  and public.text_is_clean('می' || chr(8204) || 'خواهم'),
+  'ZWJ (emoji sequences) and ZWNJ (Persian) are kept (Dudi, n1)'
 );
 select has_index('public', 'trip_cities', 'trip_cities_user', array['user_id'],
   'cities are indexed by user for the export');

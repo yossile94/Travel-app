@@ -158,3 +158,12 @@ describe('trip form (sprint 2 design 3.2, 3.3)', () => {
     expect(cleanTypedName('נועם 🏝')).toBe('נועם 🏝');
   });
 });
+
+describe('cleanTypedName (Dudi, n1)', () => {
+  it('keeps the joiners inside an emoji sequence, drops a hidden mark', () => {
+    const zwj = String.fromCodePoint(0x200d);
+    const rlm = String.fromCodePoint(0x200f);
+    const family = ['👨', '👩', '👧'].join(zwj);
+    expect(cleanTypedName(rlm + family)).toBe(family);
+  });
+});

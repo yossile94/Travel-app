@@ -134,6 +134,14 @@ describe('CardTrips (sprint 3 AC-3, AC-5, AC-6, AC-9)', () => {
     expect(screen.getByTestId('card-trip-duplicate')).toBeOnTheScreen();
   });
 
+  it('a collapse request closes the open row (after a save, design 8.9, Raz R1)', async () => {
+    mockList.upcoming = [trip({})];
+    const { rerender } = await render(card('t1', 1));
+    expect(screen.getByTestId('card-trip-duplicate')).toBeOnTheScreen();
+    await rerender(card(null, 2));
+    expect(screen.queryByTestId('card-trip-duplicate')).toBeNull();
+  });
+
   it('reads the list again when the day changes (design 3.4, Raz m2)', async () => {
     await render(card());
     const before = mockUseTripList.mock.lastCall![0].reloadKey;

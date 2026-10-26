@@ -131,7 +131,9 @@ export function isForbidden(cp) {
     cp <= 0x1f ||
     (cp >= 0x7f && cp <= 0x9f) ||
     cp === 0x61c ||
-    (cp >= 0x200b && cp <= 0x200f) ||
+    cp === 0x200b ||
+    cp === 0x200e ||
+    cp === 0x200f ||
     (cp >= 0x2028 && cp <= 0x202e) ||
     (cp >= 0x2060 && cp <= 0x206f) ||
     cp === 0xfeff

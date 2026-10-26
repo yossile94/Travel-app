@@ -6,6 +6,9 @@ tags: [sprint-3]
 #   maestro test .maestro/07-trip-details.yaml
 # Precondition: signed in, consent current, no trips to Thailand and no
 # active trip (AC-8 would open a card at launch).
+# The trip is dated today (the picker's default), so it is active. If the
+# flow stops before its last step, delete the Thailand trip by hand, or every
+# later launch opens it (Raz, R2).
 ---
 - launchApp
 - openLink: travelapp://?lng=101.0732&lat=15.4597&zoom=4
@@ -87,9 +90,8 @@ tags: [sprint-3]
 - assertNotVisible:
     id: trip-form
 
-# Clean up: delete the trip, so the flow can run again.
-- tapOn:
-    id: 'card-trip-[0-9a-f]{8}-.*'
+# Clean up: delete the trip, so the flow can run again. The source row is
+# still open (an untouched copy changes nothing).
 - tapOn:
     id: card-trip-delete
 - tapOn: מחיקה

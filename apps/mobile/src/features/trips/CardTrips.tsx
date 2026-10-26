@@ -94,7 +94,7 @@ export function CardTrips({
   const [askedOpen, setAskedOpen] = useState(request);
   if (askedOpen !== request) {
     setAskedOpen(request);
-    if (initiallyOpen) setOpen(initiallyOpen);
+    setOpen(initiallyOpen);
   }
   const [deleting, setDeleting] = useState<string | null>(null);
   const [rowNotice, setRowNotice] = useState<{ id: string; text: string } | null>(null);

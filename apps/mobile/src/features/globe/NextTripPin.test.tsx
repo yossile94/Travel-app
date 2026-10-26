@@ -1,9 +1,20 @@
-import { act, renderHook } from '@testing-library/react-native';
+import { act, render, renderHook, screen } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 
-import { PULSE_CYCLE, PULSE_STEPS, usePulse } from './NextTripPin';
+import { NextTripPin, PULSE_CYCLE, PULSE_STEPS, usePulse } from './NextTripPin';
 
-jest.mock('@rnmapbox/maps', () => ({}));
+jest.mock('@rnmapbox/maps', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  const React = jest.requireActual<typeof import('react')>('react');
+  const layer = (props: { id: string; style?: object; children?: unknown }) =>
+    React.createElement(
+      View,
+      { testID: `layer-${props.id}`, style: props.style },
+      props.children as never,
+    );
+  const Nothing = () => null;
+  return { CircleLayer: layer, SymbolLayer: layer, ShapeSource: layer, Images: Nothing };
+});
 
 describe('the pin pulse (Raz, R1)', () => {
   it('is three style updates per cycle, all inside it', () => {
@@ -75,5 +86,38 @@ describe('usePulse (design 9.4)', () => {
     expect(result.current.opacity).toBe(0);
     await act(async () => appStateListener?.('active'));
     expect(result.current.opacity).toBe(0.7);
+  });
+});
+
+describe('NextTripPin under reduced motion (design 9.4, Raz R6)', () => {
+  it('shows the pin with no pulse', async () => {
+    jest.useFakeTimers();
+    const original = Object.getOwnPropertyDescriptor(AppState, 'currentState');
+    Object.defineProperty(AppState, 'currentState', { value: 'active', configurable: true });
+    try {
+      await render(
+        <NextTripPin
+          feature={{ adm0: 'GRC', tripId: 't1', coordinate: [22, 39] }}
+          pulseAllowed
+          reduceMotion
+        />,
+      );
+      for (let i = 0; i < 3; i++) await act(async () => jest.advanceTimersByTime(PULSE_CYCLE));
+      const ring = screen.getByTestId('layer-next-trip-pulse');
+      expect(ring.props.style.circleStrokeOpacity).toBe(0);
+      expect(screen.getByTestId('layer-next-trip-pin')).toBeOnTheScreen();
+      // The same pin without reduced motion does pulse (the check above is real).
+      await screen.rerender(
+        <NextTripPin
+          feature={{ adm0: 'GRC', tripId: 't1', coordinate: [22, 39] }}
+          pulseAllowed
+          reduceMotion={false}
+        />,
+      );
+      expect(screen.getByTestId('layer-next-trip-pulse').props.style.circleStrokeOpacity).toBe(0.7);
+    } finally {
+      if (original) Object.defineProperty(AppState, 'currentState', original);
+      jest.useRealTimers();
+    }
   });
 });

@@ -70,13 +70,16 @@ describe('TripsProvider (sprint 2 AC-8, AC-10)', () => {
   });
 
   it('a sign-out drops everything at once, and a late answer stays dropped (AC-8)', async () => {
+    mockNext = { ok: true, value: { trips: [{ id: 'trip-1', countryAdm0: 'THA' }] } };
     const { result, rerender } = await renderHook(() => useTrips(), { wrapper });
     await act(async () => result.current.start());
     await answer(0, ['THA']);
+    expect(result.current.nextTrip).not.toBeNull();
     await act(async () => result.current.changed());
     mockAuth.state = { status: 'signedOut', expired: false };
     await rerender({});
     expect(result.current.countries).toBeNull();
+    expect(result.current.nextTrip).toBeNull();
     expect(result.current.firstLoad).toBe(false);
     await answer(1, ['THA', 'GRC']);
     expect(result.current.countries).toBeNull();

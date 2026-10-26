@@ -149,7 +149,12 @@ export function GlobeScreen() {
   const [pendingIntent, setPendingIntent] = useState<PendingIntent>(null);
   /** The trip to open in the card, when the card was opened from "My trips" (design 5.3). */
   // seq: every request counts, even for the same trip again (Raz, m1).
-  const [openTrip, setOpenTrip] = useState<{ id: string; adm0: string; seq: number } | null>(null);
+  // id null: a request to collapse the open row (after a save, design 8.9).
+  const [openTrip, setOpenTrip] = useState<{
+    id: string | null;
+    adm0: string;
+    seq: number;
+  } | null>(null);
   const openSeq = useRef(0);
   const [tripToast, setTripToast] = useState<{ text: string; at: number } | null>(null);
   const tripAdm0s = useMemo(
@@ -571,9 +576,10 @@ export function GlobeScreen() {
         return;
       }
       trips.changed({ adm0: trip.countryAdm0, has: true });
-      // A copy opens in the card in place of its source (design 8.9, Raz m8).
+      // A new trip or a copy: the open row (a copy's source) closes, and the
+      // new row doesn't open by itself (design 8.9, Raz R1).
       if (result.kind === 'created' && selectedAdm0 === trip.countryAdm0)
-        setOpenTrip({ id: trip.id, adm0: trip.countryAdm0, seq: ++openSeq.current });
+        setOpenTrip({ id: null, adm0: trip.countryAdm0, seq: ++openSeq.current });
       showTripToast(t(result.kind === 'created' ? 'tripForm.saved' : 'tripForm.updated'));
       AccessibilityInfo.announceForAccessibility(t('tripForm.savedA11y', { name: trip.title }));
     },

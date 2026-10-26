@@ -52,7 +52,8 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
   const trips = useTrips();
   const { state, reload, loadMore } = useTripList({
     enabled: visible,
-    reloadKey: `${trips.changes}:${trips.today}`,
+    // An open list changes only on its next load (AC-6, design 3.4; Raz R3).
+    reloadKey: trips.changes,
     parallelFirstPage: true,
   });
   const today = todayPg();

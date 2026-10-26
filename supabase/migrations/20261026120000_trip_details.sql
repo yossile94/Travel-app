@@ -6,7 +6,8 @@
 
 -- Text shown inside right-to-left UI: no control or bidi-control characters
 -- (sprint 3 design 6.3, Raz), nor zero-width, LRM/RLM/ALM, BOM or line and
--- paragraph separators (Dudi, m1). Used by both child tables. Written in escapes
+-- paragraph separators (Dudi, m1). ZWNJ and ZWJ stay: emoji sequences and
+-- Persian spelling need them (Dudi, n1). Used by both child tables. Written in escapes
 -- only: raw bidi characters in source are invisible ("Trojan Source").
 -- Never "create or replace" it without re-validating existing rows: a CHECK
 -- doesn't run again on old data (ADR-007).
@@ -16,7 +17,7 @@ create function public.text_is_clean(t text)
   immutable
   set search_path = ''
 as $$
-  select t !~ '[\x01-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]';
+  select t !~ '[\x01-\x1f\x7f-\x9f\u061c\u200b\u200e\u200f\u2028-\u202e\u2060-\u206f\ufeff]';
 $$;
 
 revoke execute on function public.text_is_clean(text) from public, anon;
