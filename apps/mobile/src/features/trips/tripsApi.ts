@@ -7,6 +7,21 @@ import NetInfo from '@react-native-community/netinfo';
 
 import { supabase } from '@/lib/supabase';
 
+/** How a traveler is related to the user (sprint 3 AC-1); the labels are translated. */
+export type TravelerRelation = 'partner' | 'child' | 'parent' | 'friend' | 'other';
+
+/** A traveler without an account (sprint 3 AC-1). "Me" is implicit, never stored. */
+export interface TripTraveler {
+  name: string;
+  relation: TravelerRelation | null;
+}
+
+/** A city of the trip (sprint 3 AC-4): from the bundled list, or typed in (no id). */
+export interface TripCity {
+  geonameId: number | null;
+  name: string;
+}
+
 export interface Trip {
   id: string;
   countryAdm0: string;
@@ -14,6 +29,10 @@ export interface Trip {
   startDate: string;
   endDate: string;
   notes: string | null;
+  /** In order, at most 9. */
+  travelers: TripTraveler[];
+  /** In order, at most 10; the same city may appear twice. */
+  cities: TripCity[];
 }
 
 export type TripSection = 'upcoming' | 'past';
@@ -43,7 +62,10 @@ export type WriteResult =
 
 export const TRIPS_PAGE_SIZE = 20;
 
-const COLUMNS = 'id, country_adm0, title, start_date, end_date, notes';
+// The travelers and cities come in the same request (sprint 3 AC-3: no request per row).
+const COLUMNS =
+  'id, country_adm0, title, start_date, end_date, notes, ' +
+  'trip_travelers(name, relation, position), trip_cities(geoname_id, name, position)';
 
 interface TripRow {
   id: string;
@@ -52,7 +74,12 @@ interface TripRow {
   start_date: string;
   end_date: string;
   notes: string | null;
+  trip_travelers?: { name: string; relation: TravelerRelation | null; position: number }[] | null;
+  trip_cities?: { geoname_id: number | null; name: string; position: number }[] | null;
 }
+
+/** Embedded rows come in no guaranteed order; position decides (Dudi). */
+const byPosition = (a: { position: number }, b: { position: number }) => a.position - b.position;
 
 function fromRow(row: TripRow): Trip {
   return {
@@ -62,6 +89,12 @@ function fromRow(row: TripRow): Trip {
     startDate: row.start_date,
     endDate: row.end_date,
     notes: row.notes,
+    travelers: [...(row.trip_travelers ?? [])]
+      .sort(byPosition)
+      .map(({ name, relation }) => ({ name, relation })),
+    cities: [...(row.trip_cities ?? [])]
+      .sort(byPosition)
+      .map(({ geoname_id, name }) => ({ geonameId: geoname_id, name })),
   };
 }
 
@@ -113,7 +146,7 @@ export async function loadTripPage({
     logFailure(`load ${section}`, error);
     return { ok: false, reason: 'error' };
   }
-  const trips = (data as TripRow[]).map(fromRow);
+  const trips = (data as unknown as TripRow[]).map(fromRow);
   const last = trips.at(-1);
   return {
     ok: true,
@@ -137,53 +170,41 @@ export async function loadTripCountries(): Promise<LoadResult<Set<string>>> {
 }
 
 function writeFailure(step: string, error: unknown): WriteResult {
-  const code = (error as { code?: unknown } | null)?.code;
-  if (code === '42501') return 'consent';
+  const { code, hint } = (error ?? {}) as { code?: unknown; hint?: unknown };
+  // Only the consent gate's own refusal opens the consent screen; a 42501
+  // from a missing grant is a bug, not a consent question (ADR-007).
+  if (code === '42501' && hint === 'consent_required') return 'consent';
   logFailure(step, error);
   return 'error';
 }
 
-/** Creates a trip with the id made when the form opened: a retry can't make a second one (AC-3). */
-export async function createTrip(trip: Trip): Promise<WriteResult> {
+/**
+ * Saves a whole trip, its travelers and cities, in one transaction
+ * (save_trip, ADR-007). A create uses the id made when the form opened, so a
+ * retry after a lost answer can't make a second trip (AC-3 of sprint 2);
+ * an update of a trip deleted elsewhere answers 'gone' (AC-6 of sprint 2).
+ * The country never changes after creation.
+ */
+export async function saveTrip(mode: 'create' | 'update', trip: Trip): Promise<WriteResult> {
   if (!supabase) return 'error';
   if (!(await online())) return 'offline';
-  const { error } = await supabase.from('trips').insert({
-    id: trip.id,
-    country_adm0: trip.countryAdm0,
-    title: trip.title,
-    start_date: trip.startDate,
-    end_date: trip.endDate,
-    notes: trip.notes,
+  const { data, error } = await supabase.rpc('save_trip', {
+    p_mode: mode,
+    p_id: trip.id,
+    p_country_adm0: trip.countryAdm0,
+    p_title: trip.title,
+    p_start: trip.startDate,
+    p_end: trip.endDate,
+    p_notes: trip.notes,
+    p_travelers: trip.travelers.map(({ name, relation }) => ({ name, relation })),
+    p_cities: trip.cities.map(({ geonameId, name }) => ({ geonameId, name })),
   });
-  if (!error) return 'ok';
-  // The same id again: the earlier attempt was saved and its answer was lost.
-  // The form may have changed since, so its current values are written now.
-  if ((error as { code?: string }).code === '23505') {
-    const updated = await updateTrip(trip.id, trip);
-    return updated;
-  }
-  return writeFailure('create', error);
-}
-
-/** Updates the fields the user may change; the country never changes (AC-2). */
-export async function updateTrip(
-  id: string,
-  fields: Pick<Trip, 'title' | 'startDate' | 'endDate' | 'notes'>,
-): Promise<WriteResult> {
-  if (!supabase) return 'error';
-  if (!(await online())) return 'offline';
-  const { data, error } = await supabase
-    .from('trips')
-    .update({
-      title: fields.title,
-      start_date: fields.startDate,
-      end_date: fields.endDate,
-      notes: fields.notes,
-    })
-    .eq('id', id)
-    .select('id');
-  if (error) return writeFailure('update', error);
-  return data && data.length > 0 ? 'ok' : 'gone';
+  if (error) return writeFailure(mode, error);
+  return data === 'gone'
+    ? 'gone'
+    : data === 'ok'
+      ? 'ok'
+      : writeFailure(mode, { code: 'unexpected' });
 }
 
 /** Deletes a trip; never gated by consent (AC-9). 'gone' means it was already deleted. */

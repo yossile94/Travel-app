@@ -64,7 +64,7 @@ import {
   type TripFormField,
   type TripFormValues,
 } from './tripFormRules';
-import { createTrip, deleteTrip, updateTrip, type Trip, type WriteResult } from './tripsApi';
+import { deleteTrip, saveTrip, type Trip, type WriteResult } from './tripsApi';
 
 export type TripFormTarget =
   { kind: 'new'; country: CountryInfo } | { kind: 'edit'; country: CountryInfo; trip: Trip };
@@ -249,7 +249,7 @@ export function TripForm({
     const fields = tripFields(values);
     const trip: Trip = { id: tripId, countryAdm0: target.country.adm0, ...fields };
     const result = await withTimeout(
-      editing ? updateTrip(tripId, fields) : createTrip(trip),
+      saveTrip(editing ? 'update' : 'create', trip),
       timing.tripSaveTimeout,
     );
     setBusy(null);

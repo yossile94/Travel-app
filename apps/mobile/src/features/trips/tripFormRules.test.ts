@@ -111,6 +111,13 @@ describe('trip form (sprint 2 design 3.2, 3.3)', () => {
         title: ' a ',
         notes: '  ',
       }),
-    ).toEqual({ title: 'a', startDate: '2027-08-05', endDate: '2027-08-06', notes: null });
+    ).toEqual({
+      title: 'a',
+      startDate: '2027-08-05',
+      endDate: '2027-08-06',
+      notes: null,
+      travelers: [],
+      cities: [],
+    });
   });
 });

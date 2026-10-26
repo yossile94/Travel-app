@@ -8,6 +8,7 @@ import type { TFunction } from 'i18next';
 import { limits } from '@/theme/tokens';
 
 import { codePointLength, defaultTripName } from './tripDates';
+import type { TripCity, TripTraveler } from './tripsApi';
 
 export interface TripFormValues {
   startDate: string | null;
@@ -16,6 +17,10 @@ export interface TripFormValues {
   notes: string;
   /** The name follows the departure date until the user types in it (3.2). */
   nameAuto: boolean;
+  /** Sprint 3: besides "me", in order (AC-1). */
+  travelers: TripTraveler[];
+  /** Sprint 3: in order (AC-4). */
+  cities: TripCity[];
 }
 
 export type TripFormField = 'startDate' | 'endDate' | 'title' | 'notes';
@@ -26,7 +31,15 @@ export type TripFormErrors = Partial<Record<TripFormField, string>>;
 export const FIELD_ORDER: readonly TripFormField[] = ['startDate', 'endDate', 'title', 'notes'];
 
 export function emptyForm(): TripFormValues {
-  return { startDate: null, endDate: null, title: '', notes: '', nameAuto: true };
+  return {
+    startDate: null,
+    endDate: null,
+    title: '',
+    notes: '',
+    nameAuto: true,
+    travelers: [],
+    cities: [],
+  };
 }
 
 /**
@@ -34,7 +47,14 @@ export function emptyForm(): TripFormValues {
  * name derived from its departure in the device's current language (19.4).
  */
 export function formFromTrip(
-  trip: { title: string; startDate: string; endDate: string; notes: string | null },
+  trip: {
+    title: string;
+    startDate: string;
+    endDate: string;
+    notes: string | null;
+    travelers?: TripTraveler[];
+    cities?: TripCity[];
+  },
   country: string,
   t: TFunction,
 ): TripFormValues {
@@ -44,6 +64,8 @@ export function formFromTrip(
     title: trip.title,
     notes: trip.notes ?? '',
     nameAuto: trip.title === defaultTripName(country, trip.startDate, t),
+    travelers: trip.travelers ?? [],
+    cities: trip.cities ?? [],
   };
 }
 
@@ -106,7 +128,9 @@ export function isFormChanged(values: TripFormValues, initial: TripFormValues): 
     values.startDate !== initial.startDate ||
     values.endDate !== initial.endDate ||
     values.title !== initial.title ||
-    values.notes !== initial.notes
+    values.notes !== initial.notes ||
+    JSON.stringify(values.travelers) !== JSON.stringify(initial.travelers) ||
+    JSON.stringify(values.cities) !== JSON.stringify(initial.cities)
   );
 }
 
@@ -123,5 +147,7 @@ export function tripFields(values: TripFormValues) {
     startDate: values.startDate!,
     endDate: values.endDate!,
     notes: notes === '' ? null : notes,
+    travelers: values.travelers,
+    cities: values.cities,
   };
 }
