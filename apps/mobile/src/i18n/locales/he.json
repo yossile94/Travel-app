@@ -226,7 +226,8 @@
     "travelerRemove": "הסרת {{name}}",
     "travelerAdded": "הוספנו את {{name}} לנוסעים",
     "travelerRemoved": "הסרנו את {{name}} מהנוסעים",
-    "duplicated": "זה עותק של „{{name}}”, בלי התאריכים."
+    "duplicated": "זה עותק של „{{name}}”, בלי התאריכים.",
+    "duplicatedNoFlights": "שכפלנו את „{{name}}”. הטיסות לא הועתקו."
   },
   "months": {
     "1": "ינואר",

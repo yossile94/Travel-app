@@ -80,9 +80,13 @@ export async function buildExport(
   if (profileError) throw profileError;
   const trips = await readAll<{ id: string }>(
     'trips',
-    // Sprint 3: each trip with its travelers and cities (AC-3, AC-5).
+    // Sprint 3: each trip with its travelers and cities (AC-3, AC-5); sprint 5: its flights.
     'id, country_adm0, title, start_date, end_date, notes, created_at, updated_at, ' +
-      'trip_travelers(name, relation, position), trip_cities(geoname_id, name, position)',
+      'trip_travelers(name, relation, position), trip_cities(geoname_id, name, position), ' +
+      // Sprint 5 AC-3: every flight field the user saved, booking code and seat included.
+      'flights(direction, flight_number_input, flight_number, dep_date_local, airline_name, ' +
+      'dep_iata, dep_tz, arr_iata, arr_tz, dep_sched, arr_sched, dep_terminal, dep_gate, ' +
+      'arr_terminal, pnr, seat, cabin, created_at, updated_at)',
     user.id,
     signal,
   );

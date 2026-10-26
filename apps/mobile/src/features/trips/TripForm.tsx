@@ -48,6 +48,9 @@ import {
 } from '@/theme/tokens';
 
 import { countryName } from './countryName';
+import { TripFormFlights } from '@/features/flights/TripFormFlights';
+import { tripHasFlights } from '@/features/flights/flightsStore';
+
 import { CitiesSection } from './CitiesSection';
 import { TravelersSection } from './TravelersSection';
 import {
@@ -429,7 +432,12 @@ export function TripForm({
         >
           {target.kind === 'duplicate' ? (
             <InlineNotice
-              text={t('tripForm.duplicated', { name: target.source.title })}
+              text={t(
+                tripHasFlights(target.source.id)
+                  ? 'tripForm.duplicatedNoFlights'
+                  : 'tripForm.duplicated',
+                { name: target.source.title },
+              )}
               colorScheme={colorScheme}
               testID="trip-form-duplicated"
             />
@@ -537,6 +545,24 @@ export function TripForm({
               testID="trip-form-name"
             />
           </View>
+
+          {/* Sprint 5 design 13: after the name, before the cities. */}
+          <TripFormFlights
+            trip={{
+              id: tripId,
+              title: target.kind === 'edit' ? target.trip.title : values.title,
+              countryAdm0: target.country.adm0,
+              startDate:
+                values.startDate ?? (target.kind === 'edit' ? target.trip.startDate : todayPg()),
+              endDate: values.endDate ?? (target.kind === 'edit' ? target.trip.endDate : todayPg()),
+            }}
+            saved={editing}
+            disabled={locked}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsTop={insetsTop}
+            insetsBottom={insetsBottom}
+          />
 
           <CitiesSection
             country={target.country}

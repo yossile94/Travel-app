@@ -161,47 +161,51 @@ export function CardTrips({
   const remove = (trip: Trip) => {
     // Design 8.3: the flights go with the trip, and the dialog says so.
     const body = t('tripDelete.body', { name: trip.title });
-    Alert.alert(t('tripDelete.title'), tripHasFlights(trip.id) ? `${body} ${t('tripDelete.bodyFlights')}` : body, [
-      { text: t('tripDelete.cancel'), style: 'cancel' },
-      {
-        text: t('tripDelete.confirm'),
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            const net = await NetInfo.fetch();
-            if (net.isConnected === false) {
-              setRowNotice({ id: trip.id, text: t('tripDelete.offline') });
-              return;
-            }
-            setDeleting(trip.id);
-            setRowNotice(null);
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            const result = await Promise.race([
-              deleteTrip(trip.id),
-              new Promise<'error'>((resolve) => {
-                timer = setTimeout(() => resolve('error'), timing.tripSaveTimeout);
-              }),
-            ]).finally(() => clearTimeout(timer));
-            setDeleting(null);
-            if (result === 'ok' || result === 'gone') {
-              setOpen(null);
-              const left = state.upcoming.length + state.past.length - 1;
-              trips.changed({
-                adm0: country.adm0,
-                // Unknown while more pages exist; the server answers right after.
-                has: left > 0 ? true : state.hasMore ? null : false,
-              });
-              onToast(t(result === 'gone' ? 'tripDelete.alreadyGone' : 'tripDelete.done'));
-            } else {
-              setRowNotice({
-                id: trip.id,
-                text: t(result === 'offline' ? 'tripDelete.offline' : 'tripDelete.error'),
-              });
-            }
-          })();
+    Alert.alert(
+      t('tripDelete.title'),
+      tripHasFlights(trip.id) ? `${body} ${t('tripDelete.bodyFlights')}` : body,
+      [
+        { text: t('tripDelete.cancel'), style: 'cancel' },
+        {
+          text: t('tripDelete.confirm'),
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              const net = await NetInfo.fetch();
+              if (net.isConnected === false) {
+                setRowNotice({ id: trip.id, text: t('tripDelete.offline') });
+                return;
+              }
+              setDeleting(trip.id);
+              setRowNotice(null);
+              let timer: ReturnType<typeof setTimeout> | undefined;
+              const result = await Promise.race([
+                deleteTrip(trip.id),
+                new Promise<'error'>((resolve) => {
+                  timer = setTimeout(() => resolve('error'), timing.tripSaveTimeout);
+                }),
+              ]).finally(() => clearTimeout(timer));
+              setDeleting(null);
+              if (result === 'ok' || result === 'gone') {
+                setOpen(null);
+                const left = state.upcoming.length + state.past.length - 1;
+                trips.changed({
+                  adm0: country.adm0,
+                  // Unknown while more pages exist; the server answers right after.
+                  has: left > 0 ? true : state.hasMore ? null : false,
+                });
+                onToast(t(result === 'gone' ? 'tripDelete.alreadyGone' : 'tripDelete.done'));
+              } else {
+                setRowNotice({
+                  id: trip.id,
+                  text: t(result === 'offline' ? 'tripDelete.offline' : 'tripDelete.error'),
+                });
+              }
+            })();
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const rows = (list: Trip[]) =>

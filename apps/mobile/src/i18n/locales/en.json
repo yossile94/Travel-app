@@ -226,7 +226,8 @@
     "travelerRemove": "Remove {{name}}",
     "travelerAdded": "Added {{name}} to travelers",
     "travelerRemoved": "Removed {{name}} from travelers",
-    "duplicated": "This is a copy of “{{name}}”, without the dates."
+    "duplicated": "This is a copy of “{{name}}”, without the dates.",
+    "duplicatedNoFlights": "We duplicated \"{{name}}\". Flights weren't copied."
   },
   "months": {
     "1": "January",
