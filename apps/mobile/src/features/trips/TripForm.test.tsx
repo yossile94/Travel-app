@@ -1,7 +1,7 @@
 import '@/i18n';
 
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 import { countryByAdm0 } from '@/features/globe/countryData';
@@ -65,6 +65,7 @@ beforeEach(() => {
   jest.mocked(saveTrip).mockResolvedValue('ok');
   mockRecheck.mockClear();
   mockDates.length = 0;
+  jest.mocked(DateTimePickerAndroid.open).mockClear();
 });
 
 describe('TripForm, duplicate (sprint 3 AC-9)', () => {
@@ -91,12 +92,12 @@ describe('TripForm, duplicate (sprint 3 AC-9)', () => {
     await render(form(jest.fn(), onDone));
     mockDates.push(new Date(2027, 2, 10), new Date(2027, 2, 14));
     await fireEvent.press(screen.getByTestId('trip-form-start'));
-    await act(async () => {
-      await Promise.resolve();
+    // The return picker opens by itself after the departure (see below, QA S4 #1).
+    await waitFor(() => expect(DateTimePickerAndroid.open).toHaveBeenCalledTimes(2), {
+      timeout: 5000,
     });
-    if (mockDates.length) await fireEvent.press(screen.getByTestId('trip-form-end'));
     await fireEvent.press(screen.getByTestId('trip-form-save'));
-    expect(saveTrip).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(saveTrip).toHaveBeenCalledTimes(1));
     const [mode, trip] = jest.mocked(saveTrip).mock.calls[0]!;
     expect(mode).toBe('create');
     expect(trip.id).not.toBe(source.id);
@@ -113,12 +114,13 @@ describe('TripForm, duplicate (sprint 3 AC-9)', () => {
     await render(form(jest.fn(), onDone));
     mockDates.push(new Date(2027, 2, 10), new Date(2027, 2, 14));
     await fireEvent.press(screen.getByTestId('trip-form-start'));
-    // The return picker opens by itself after the departure: let it run first (QA F-1).
-    await act(async () => {
-      await Promise.resolve();
+    // The return picker opens by itself 300 ms after the departure (design
+    // 4.1): wait for it to take the second date. Pressing the return field
+    // as well raced that timer and could leave the return empty (QA S4 #1).
+    await waitFor(() => expect(DateTimePickerAndroid.open).toHaveBeenCalledTimes(2), {
+      timeout: 5000,
     });
-    if (mockDates.length) await fireEvent.press(screen.getByTestId('trip-form-end'));
-    await waitFor(() => expect(mockDates).toHaveLength(0));
+    expect(mockDates).toHaveLength(0);
     await fireEvent.press(screen.getByTestId('trip-form-save'));
     // The save, the consent recheck and the notice are async: wait, don't race (QA F-1).
     // Under a full parallel run the form's async steps can take seconds: one

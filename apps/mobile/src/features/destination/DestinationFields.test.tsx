@@ -1,7 +1,7 @@
 import i18n from '@/i18n';
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet, TextInput } from 'react-native';
 
 import { colors } from '@/theme/tokens';
 
@@ -13,6 +13,7 @@ import {
   CardRate,
   EntryTag,
   TravelInfoSheet,
+  TripStatusLine,
 } from './DestinationFields';
 import type { Rate } from './rateFormat';
 
@@ -278,5 +279,55 @@ describe('TravelInfoSheet texts (QA S4 #4)', () => {
     await sheet('קצר');
     expect(screen.getByTestId('sheet-nsc-text').props.numberOfLines).toBeUndefined();
     expect(screen.queryByTestId('sheet-nsc-text-more')).toBeNull();
+  });
+});
+
+describe('focus and labels (QA S4 #3, #7)', () => {
+  it('focuses the local field once the calculator has slid in', async () => {
+    jest.useFakeTimers();
+    try {
+      const focus = jest.spyOn(TextInput.prototype, 'focus');
+      await render(
+        <CalculatorSheet
+          visible
+          rate={rate()}
+          usdIls={3.6}
+          currencyName="יורו"
+          colorScheme="light"
+          reduceMotion={false}
+          insetsBottom={0}
+          onClose={jest.fn()}
+        />,
+      );
+      expect(focus).not.toHaveBeenCalled();
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      expect(focus).toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('the advisory row and the trip line say the full level', async () => {
+    await render(
+      <>
+        <CardAdvisory
+          advisory={advisory({ nscLevel: 4, nscLevels: [4] })}
+          loading={false}
+          failed={false}
+          offline={false}
+          colorScheme="light"
+          onOpen={jest.fn()}
+        />
+        <TripStatusLine advisory={advisory({ nscLevel: 4, nscLevels: [4] })} colorScheme="light" />
+      </>,
+    );
+    const row = screen.getByTestId('card-advisory-row').props.accessibilityLabel as string;
+    expect(row).toContain(t('advisory.levelOf', { n: 4 }));
+    expect(row).toContain(t('advisory.checked', { date: '' }).trim().slice(0, 4));
+    const line = screen.getByTestId('trip-status-line').props.accessibilityLabel as string;
+    expect(line).toContain(t('advisory.levelOf', { n: 4 }));
+    expect(line).toContain(t('advisory.word.4'));
   });
 });

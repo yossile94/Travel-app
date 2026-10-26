@@ -356,7 +356,6 @@ export function TripStatusLine({
   );
 }
 
-/** "כניסה ואזהרות מסע" (design 7): the entry part, the NSC part, the texts, the source. */
 /** About 8 lines of body text in the sheet's width. */
 const LONG_TEXT = 360;
 
@@ -403,6 +402,7 @@ function OfficialText({
   );
 }
 
+/** "כניסה ואזהרות מסע" (design 7): the entry part, the NSC part, the texts, the source. */
 export function TravelInfoSheet({
   visible,
   countryName,
