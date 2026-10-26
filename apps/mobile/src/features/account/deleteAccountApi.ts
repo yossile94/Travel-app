@@ -13,7 +13,7 @@ export type DeleteAnswer =
   | 'deleted'
   /** 401: no valid session. Never "deleted". */
   | 'unauthorized'
-  /** 403 reauth_failed: the Google token is bad or older than 5 minutes. */
+  /** 403 reauth_failed: the Google token is bad or outside the server's window (ADR-006 6). */
   | 'reauthFailed'
   /** 403 wrong_account: a valid token for another Google account (AC-18). */
   | 'wrongAccount'

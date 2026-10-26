@@ -8,17 +8,9 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-import { verifyGoogleIdToken } from './google.ts';
+import { GOOGLE_TOKEN_MAX_AGE_SECONDS, verifyGoogleIdToken } from './google.ts';
 import { createHandler } from './handler.ts';
 import { deleteUserWith, lookupFrom, type Rpc } from './session.ts';
-
-/**
- * Re-authentication (AC-18): an unexpired Google token of the same identity,
- * chosen in the account picker, issued in the last 60 minutes. Not 5: Play
- * services returns its cached token, up to an hour old, and the open-source
- * sign-in library can't force a new one (Yossi, 2026-10-26; ADR-006 6).
- */
-const GOOGLE_TOKEN_MAX_AGE_SECONDS = 60 * 60;
 
 function required(name: string): string {
   const value = Deno.env.get(name);
