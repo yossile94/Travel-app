@@ -1,6 +1,7 @@
 import i18n from '@/i18n';
 
 import {
+  cleanTypedName,
   emptyForm,
   formFromDuplicate,
   firstErrorField,
@@ -145,5 +146,15 @@ describe('trip form (sprint 2 design 3.2, 3.3)', () => {
     expect(auto.travelers).not.toBe(source.travelers);
     const manual = formFromDuplicate({ ...source, title: 'ירח דבש' }, ['תאילנד דצמבר 2026']);
     expect(manual).toMatchObject({ title: 'ירח דבש', nameAuto: false });
+  });
+
+  it('drops control and bidi characters from typed names (sprint 3 design 6.3)', () => {
+    const rlo = String.fromCodePoint(0x202e);
+    const lri = String.fromCodePoint(0x2066);
+    expect(cleanTypedName('דנה' + rlo + ' כהן' + lri)).toBe('דנה כהן');
+    expect(cleanTypedName('a' + String.fromCodePoint(10) + 'b' + String.fromCodePoint(0x85))).toBe(
+      'ab',
+    );
+    expect(cleanTypedName('נועם 🏝')).toBe('נועם 🏝');
   });
 });

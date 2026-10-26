@@ -48,6 +48,7 @@ import {
 } from '@/theme/tokens';
 
 import { countryName } from './countryName';
+import { TravelersSection } from './TravelersSection';
 import {
   codePointLength,
   defaultTripName,
@@ -100,6 +101,7 @@ function withTimeout(write: Promise<WriteResult>, ms: number): Promise<WriteResu
 interface Props {
   target: TripFormTarget;
   colorScheme: ColorScheme;
+  reduceMotion: boolean;
   insetsTop: number;
   insetsBottom: number;
   onClose: () => void;
@@ -111,6 +113,7 @@ interface Props {
 export function TripForm({
   target,
   colorScheme,
+  reduceMotion,
   insetsTop,
   insetsBottom,
   onClose,
@@ -533,6 +536,15 @@ export function TripForm({
               testID="trip-form-name"
             />
           </View>
+
+          <TravelersSection
+            travelers={values.travelers}
+            onChange={(travelers) => setValues((v) => ({ ...v, travelers }))}
+            disabled={locked}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsBottom={insetsBottom}
+          />
 
           <View onLayout={(e) => (fieldY.current.notes = e.nativeEvent.layout.y)}>
             <TextField

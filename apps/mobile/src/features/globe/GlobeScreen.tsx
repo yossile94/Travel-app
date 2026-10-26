@@ -768,6 +768,7 @@ export function GlobeScreen() {
           }
           target={tripForm}
           colorScheme={colorScheme}
+          reduceMotion={reduceMotion === true}
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
           onClose={() => setTripForm(null)}

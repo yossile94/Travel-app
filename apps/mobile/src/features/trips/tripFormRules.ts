@@ -172,3 +172,22 @@ export function tripFields(values: TripFormValues) {
     cities: values.cities,
   };
 }
+
+/** C0 and C1 controls and the bidi embeddings, overrides and isolates (design 6.3). */
+function isForbidden(codePoint: number): boolean {
+  return (
+    codePoint <= 0x1f ||
+    (codePoint >= 0x7f && codePoint <= 0x9f) ||
+    (codePoint >= 0x202a && codePoint <= 0x202e) ||
+    (codePoint >= 0x2066 && codePoint <= 0x2069)
+  );
+}
+
+/**
+ * A traveler's or a typed city's name as it is typed: characters that could
+ * reorder a whole line in the card are dropped, not reported (design 6.3).
+ * The server refuses them too (text_is_clean).
+ */
+export function cleanTypedName(text: string): string {
+  return [...text].filter((ch) => !isForbidden(ch.codePointAt(0)!)).join('');
+}
