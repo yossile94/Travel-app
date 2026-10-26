@@ -74,6 +74,18 @@ Deno.test(
   },
 );
 
+Deno.test('two spellings of one area: texts together, the highest level (Dudi, d5)', () => {
+  const { advisories } = advisoriesFrom([
+    { country: 'מקדוניה', משרד: 'מל"ל', recommendations: 'רמה 3', details: null },
+    { country: 'צפון מקדוניה', משרד: 'מל"ל', recommendations: 'אין אזהרות', details: null },
+  ]);
+  assertEquals(advisories.length, 1);
+  assertEquals(advisories[0]!.nsc_level, 3);
+  assertEquals(advisories[0]!.nsc_text, 'רמה 3
+
+אין אזהרות');
+});
+
 Deno.test('the names map covers both spellings the dataset uses', () => {
   const { advisories } = advisoriesFrom([
     { country: 'צפון מקדוניה', משרד: 'מל"ל', recommendations: 'אין אזהרות', details: null },

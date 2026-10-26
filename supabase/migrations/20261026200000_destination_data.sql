@@ -42,9 +42,9 @@ create table public.country_advisories (
   -- From data.gov.il "travelwarnings" (NSC, MFA, Health), daily.
   -- nsc_level: the highest level named in the NSC text; null when the text names none.
   nsc_level smallint constraint country_advisories_level_check check (nsc_level between 1 and 4),
-  nsc_text text,
+  nsc_text text constraint country_advisories_nsc_text_check check (char_length(nsc_text) <= 4000),
   nsc_url text constraint country_advisories_nsc_url_check check (nsc_url ~ '^https://'),
-  mfa_text text,
+  mfa_text text constraint country_advisories_mfa_text_check check (char_length(mfa_text) <= 4000),
   mfa_url text constraint country_advisories_mfa_url_check check (mfa_url ~ '^https://'),
   -- When the daily job last saw this area in the dataset; null: never (not checked yet).
   fetched_at timestamptz,
@@ -105,6 +105,67 @@ create trigger country_advisories_changes
   after update on public.country_advisories
   for each row execute function public.record_advisory_change();
 
--- The daily jobs call the Edge Functions over HTTP (the schedule itself is
--- per environment, with its own URL: ADR-008).
+-- ------------------------------------------------------------------- jobs
+-- The daily jobs call the Edge Functions over HTTP. A function claims its run
+-- here first, atomically: at most one run an hour per job, whoever calls and
+-- however many calls arrive at once, and a failed run counts too, so a
+-- missing source is not hammered (Dudi, sprint 4 D1; ADR-008).
+create table public.job_runs (
+  name text primary key constraint job_runs_name_check check (name in ('rates', 'advisories')),
+  claimed_at timestamptz not null
+);
+
+alter table public.job_runs enable row level security;
+revoke all on public.job_runs from anon, authenticated;
+
+create function public.claim_job_run(p_name text)
+  returns boolean
+  language sql
+  security definer
+  set search_path = ''
+as $$
+  insert into public.job_runs as j (name, claimed_at)
+  values (p_name, now())
+  on conflict (name) do update set claimed_at = now()
+    where j.claimed_at < now() - interval '1 hour'
+  returning true;
+$$;
+
+revoke execute on function public.claim_job_run(text) from public, anon, authenticated;
+grant execute on function public.claim_job_run(text) to service_role;
+
+-- The schedule (UTC): rates 14:15 with a retry at 15:15 (the Bank of Israel
+-- publishes around 13:20 UTC); advisories 14:30 and 15:30. A retry after a
+-- good run is a no-op (the claim). The project URL comes from this
+-- environment's Vault ("project_url"), set once per environment (ADR-008).
 create extension if not exists pg_net with schema extensions;
+create extension if not exists pg_cron;
+
+create function public.call_daily_job(p_function text)
+  returns void
+  language plpgsql
+  security definer
+  set search_path = ''
+as $$
+declare
+  base text := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url');
+begin
+  if base is null then
+    raise warning 'call_daily_job: no project_url in Vault';
+    return;
+  end if;
+  perform net.http_post(
+    url := base || '/functions/v1/' || p_function,
+    headers := '{"Content-Type": "application/json"}'::jsonb,
+    body := '{}'::jsonb,
+    timeout_milliseconds := 30000
+  );
+end;
+$$;
+
+revoke execute on function public.call_daily_job(text) from public, anon, authenticated;
+
+select cron.schedule('rates-daily', '15 14 * * *', $$select public.call_daily_job('rates-daily')$$);
+select cron.schedule('rates-daily-retry', '15 15 * * *', $$select public.call_daily_job('rates-daily')$$);
+select cron.schedule('advisories-daily', '30 14 * * *', $$select public.call_daily_job('advisories-daily')$$);
+select cron.schedule('advisories-daily-retry', '30 15 * * *', $$select public.call_daily_job('advisories-daily')$$);

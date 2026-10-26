@@ -2,8 +2,8 @@
  * rates-daily (sprint 4 F-012, ADR-008): once a day, pg_cron calls this to
  * store the latest exchange rates: the Bank of Israel, then ExchangeRate-API
  * (free, no key) for the rest. verify_jwt is off and the call carries no
- * secret: it only refreshes public data, and a run within the last hour is
- * skipped. Only the latest rate per currency is kept (ER-API terms).
+ * secret: it only refreshes public data, and a run is claimed in the
+ * database first (at most one an hour). Only the latest rate per currency is kept (ER-API terms).
  */
 import { createClient } from '@supabase/supabase-js';
 
@@ -11,7 +11,6 @@ import { ratesFrom, type BoiRate, type ErApiAnswer } from './rates.ts';
 
 const BOI = 'https://boi.org.il/PublicApi/GetExchangeRates';
 const ERAPI = 'https://open.er-api.com/v6/latest/USD';
-const MIN_INTERVAL_MS = 60 * 60 * 1000;
 
 function required(name: string): string {
   const value = Deno.env.get(name);
@@ -41,15 +40,16 @@ async function getJson<T>(url: string): Promise<T> {
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
 
-  const { data: last } = await admin
-    .from('exchange_rates')
-    .select('fetched_at')
-    .order('fetched_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (last?.fetched_at && Date.now() - Date.parse(last.fetched_at) < MIN_INTERVAL_MS) {
-    return json(200, { skipped: 'recent' });
+  // One run an hour at most, claimed atomically (ADR-008): parallel or
+  // repeated calls, and calls after a failed run, are no-ops.
+  const { data: claimed, error: claimError } = await admin.rpc('claim_job_run', {
+    p_name: 'rates',
+  });
+  if (claimError) {
+    console.error('[rates-daily] claim failed', claimError.code);
+    return json(500, { error: 'claim_failed' });
   }
+  if (claimed !== true) return json(200, { skipped: 'recent' });
 
   let rows;
   try {

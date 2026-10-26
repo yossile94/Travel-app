@@ -2,8 +2,8 @@
  * advisories-daily (sprint 4 F-013, ADR-008): once a day, pg_cron calls this
  * to read data.gov.il "travelwarnings" and store one advisory per globe area.
  * verify_jwt is off and the call carries no secret: it only refreshes public
- * data, and a run within the last hour is skipped, so a stray call costs a
- * no-op. Entry status (by hand) is never touched here.
+ * data, and a run is claimed in the database first (at most one an hour), so
+ * a stray call costs a no-op. Entry status (by hand) is never touched here.
  */
 import { createClient } from '@supabase/supabase-js';
 
@@ -11,7 +11,6 @@ import { advisoriesFrom, type WarningRecord } from './advisories.ts';
 
 const DATASET =
   'https://data.gov.il/api/3/action/datastore_search?resource_id=2a01d234-b2b0-4d46-baa0-cec05c401e7d&limit=2000';
-const MIN_INTERVAL_MS = 60 * 60 * 1000;
 
 function required(name: string): string {
   const value = Deno.env.get(name);
@@ -35,15 +34,16 @@ const json = (status: number, body: Record<string, unknown>) =>
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
 
-  const { data: last } = await admin
-    .from('country_advisories')
-    .select('fetched_at')
-    .order('fetched_at', { ascending: false, nullsFirst: false })
-    .limit(1)
-    .maybeSingle();
-  if (last?.fetched_at && Date.now() - Date.parse(last.fetched_at) < MIN_INTERVAL_MS) {
-    return json(200, { skipped: 'recent' });
+  // One run an hour at most, claimed atomically (ADR-008): parallel or
+  // repeated calls, and calls after a failed run, are no-ops.
+  const { data: claimed, error: claimError } = await admin.rpc('claim_job_run', {
+    p_name: 'advisories',
+  });
+  if (claimError) {
+    console.error('[advisories-daily] claim failed', claimError.code);
+    return json(500, { error: 'claim_failed' });
   }
+  if (claimed !== true) return json(200, { skipped: 'recent' });
 
   let records: WarningRecord[];
   try {

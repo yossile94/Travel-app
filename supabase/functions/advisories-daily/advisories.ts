@@ -97,9 +97,22 @@ export function advisoriesFrom(records: WarningRecord[]): {
     const text = clean(record.recommendations);
     const link = officialLink(record.details);
     if (office.includes('ל"ל')) {
-      advisory.nsc_text = text;
-      advisory.nsc_url = link;
-      advisory.nsc_level = nscLevel(text);
+      // Two spellings of one country map to the same area (Dudi, d5): the
+      // texts are kept together and the highest level counts.
+      if (text) {
+        advisory.nsc_text = clean(
+          advisory.nsc_text
+            ? `${advisory.nsc_text}
+
+${text}`
+            : text,
+        );
+      }
+      advisory.nsc_url ??= link;
+      const level = nscLevel(text);
+      if (level !== null && (advisory.nsc_level === null || level > advisory.nsc_level)) {
+        advisory.nsc_level = level;
+      }
     } else if (office.includes('חוץ') && text) {
       // The MFA can have several rows per country: kept together, in order.
       advisory.mfa_text = clean(advisory.mfa_text ? `${advisory.mfa_text}\n\n${text}` : text);

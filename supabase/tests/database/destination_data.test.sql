@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(26);
 
 -- ---------------------------------------------------------------- structure
 select ok(
@@ -21,6 +21,25 @@ select table_privs_are('public', 'country_advisories', 'anon', array['SELECT'],
   'signed-out clients only read advisories');
 select table_privs_are('public', 'country_advisory_changes', 'authenticated', array[]::text[],
   'clients never see the change log');
+select table_privs_are('public', 'country_advisory_changes', 'anon', array[]::text[],
+  'nor do signed-out clients');
+select table_privs_are('public', 'country_advisories', 'authenticated', array['SELECT'],
+  'signed-in clients only read advisories');
+select table_privs_are('public', 'job_runs', 'anon', array[]::text[],
+  'clients never see the job runs');
+select ok(
+  (select prosecdef and proconfig @> array['search_path=""'] from pg_proc
+   where oid = 'public.record_advisory_change()'::regprocedure)
+  and not has_function_privilege('authenticated', 'public.record_advisory_change()', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.claim_job_run(text)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.call_daily_job(text)', 'EXECUTE'),
+  'the trigger and job functions run as their owner and clients cannot call them'
+);
+select is(
+  (select count(*)::int from cron.job where jobname like '%-daily%'),
+  4,
+  'four daily jobs are scheduled (two jobs and their retries)'
+);
 
 -- ------------------------------------------------------------- as service
 insert into public.exchange_rates (currency, rate_to_ils, rate_to_usd, source, rate_date)
@@ -70,6 +89,16 @@ select is(
   (select count(*)::int from public.country_advisory_changes where adm0 = 'THA' and field = 'entry_status'),
   1,
   'an entry status change is recorded'
+);
+
+-- A run is claimed once an hour, whoever asks (ADR-008).
+select ok(public.claim_job_run('rates'), 'the first claim of the hour wins');
+select ok(public.claim_job_run('rates') is null, 'a second claim within the hour is refused');
+update public.country_advisories set nsc_level = null where adm0 = 'THA';
+select ok(
+  (select new_value is null and old_value = '4' from public.country_advisory_changes
+   where adm0 = 'THA' and field = 'nsc_level' order by id desc limit 1),
+  'a level that goes away is recorded too'
 );
 
 -- -------------------------------------------------------------- as a client
