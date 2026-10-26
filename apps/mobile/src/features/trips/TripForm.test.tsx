@@ -118,8 +118,11 @@ describe('TripForm, duplicate (sprint 3 AC-9)', () => {
     await waitFor(() => expect(mockDates).toHaveLength(0));
     await fireEvent.press(screen.getByTestId('trip-form-save'));
     // The save, the consent recheck and the notice are async: wait, don't race (QA F-1).
-    await waitFor(() => expect(mockRecheck).toHaveBeenCalled());
-    await waitFor(() => expect(screen.getByTestId('trip-form-notice')).toBeOnTheScreen());
+    // Under a full parallel run the form's async steps can take over a second.
+    const slow = { timeout: 5000 };
+    await waitFor(() => expect(saveTrip).toHaveBeenCalled(), slow);
+    await waitFor(() => expect(mockRecheck).toHaveBeenCalled(), slow);
+    await waitFor(() => expect(screen.getByTestId('trip-form-notice')).toBeOnTheScreen(), slow);
     expect(onDone).not.toHaveBeenCalled();
     expect(DateTimePickerAndroid.open).toHaveBeenCalled();
   });
