@@ -21,7 +21,7 @@ import {
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
-import { AlertIcon, CloudOffIcon, GlobePlusIcon } from '@/components/icons';
+import { AlertIcon, CloudOffIcon, GlobePlusIcon, PeopleIcon } from '@/components/icons';
 import { countryByAdm0 } from '@/features/globe/countryData';
 import { logMyTripsShown } from '@/features/globe/perfLog';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
@@ -133,6 +133,15 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
           <Text style={[styles.footnote, styles.tabular, { color: palette.textSecondary }]}>
             {formatRange(trip.startDate, trip.endDate, t)}
           </Text>
+          {/* Sprint 3 design 4: the traveler count from 2, a 4th line (QA M-1). */}
+          {people >= 2 ? (
+            <View style={styles.people} importantForAccessibility="no-hide-descendants">
+              <PeopleIcon color={palette.textSecondary} />
+              <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+                {t('trips.travelers', { n: people })}
+              </Text>
+            </View>
+          ) : null}
         </View>
         <View style={styles.end} importantForAccessibility="no-hide-descendants">
           <Text style={[styles.code, { backgroundColor: palette.tag, color: palette.textPrimary }]}>
@@ -280,6 +289,7 @@ const styles = StyleSheet.create({
   bodyStrong: { fontFamily: fonts.medium, fontSize: 16, lineHeight: 22, textAlign: 'left' },
   footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, textAlign: 'left' },
   tabular: { fontVariant: ['tabular-nums'] },
+  people: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   block: { marginTop: 8 },
   placeholder: { height: 120 },
   list: { flexGrow: 0 },
