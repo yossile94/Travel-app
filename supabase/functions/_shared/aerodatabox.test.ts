@@ -73,6 +73,15 @@ Deno.test('an error answer is reported with its status and still costs units', a
   );
 });
 
+Deno.test('a network error or timeout is status 0, never a throw', async () => {
+  const fake = (() => Promise.reject(new TypeError('network'))) as typeof fetch;
+  assertEquals(await aeroDataBox('k', fake).flightsByNumber('LY81', '2026-10-27'), {
+    ok: false,
+    status: 0,
+    units: 2,
+  });
+});
+
 Deno.test('the cron secret: right, wrong, missing, and unset', async () => {
   const req = (h?: string) => new Request('http://x', { headers: h ? { 'x-cron-secret': h } : {} });
   assertEquals(await hasCronSecret(req('s3cret'), 's3cret'), true);

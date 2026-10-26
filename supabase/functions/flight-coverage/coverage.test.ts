@@ -1,7 +1,7 @@
 import { assertEquals } from '@std/assert';
 
 import type { FlightSnapshot, MovementTimes } from '../_shared/aerodatabox.ts';
-import { pickFlights, verdict } from './coverage.ts';
+import { gateResult, pickFlights, retryAt, tlvDate, verdict } from './coverage.ts';
 
 const side = (over: Partial<MovementTimes> = {}): MovementTimes => ({
   iata: 'TLV',
@@ -63,4 +63,50 @@ Deno.test('a schedule-only time is not live', () => {
 
 Deno.test('a missing probe fails the flight', () => {
   assertEquals(verdict({ early: null, late: null, after: null }).pass, false);
+});
+
+Deno.test('the local date at TLV, across midnight', () => {
+  assertEquals(tlvDate('2026-10-27T21:30:00.000Z'), '2026-10-27');
+  assertEquals(tlvDate('2026-10-27T22:30:00.000Z'), '2026-10-28');
+});
+
+Deno.test(
+  'a flight delayed past the +30 probe gets one more, 30 minutes after its new time',
+  () => {
+    const late = flight('LY1', 8, {
+      status: 'Delayed',
+      departure: side({ revisedUtc: '2026-10-27T09:10:00.000Z' }),
+    });
+    assertEquals(retryAt(late, new Date('2026-10-27T08:30:00Z')), '2026-10-27T09:40:00.000Z');
+    assertEquals(
+      retryAt(flight('LY1', 8, { status: 'Departed' }), new Date('2026-10-27T08:30:00Z')),
+      null,
+    );
+    assertEquals(retryAt(flight('LY1', 8), new Date('2026-10-27T08:30:00Z')), null);
+  },
+);
+
+Deno.test('the gate counts passes, leaves cancelled flights out, and departs on the retry', () => {
+  const gate = flight('X', 8, { departure: side({ gate: 'B4' }) });
+  const rows = [
+    { flight_number: 'LY1', probe_kind: 'early' as const, snapshot: gate },
+    {
+      flight_number: 'LY1',
+      probe_kind: 'after' as const,
+      snapshot: flight('LY1', 8, { status: 'Delayed' }),
+    },
+    {
+      flight_number: 'LY1',
+      probe_kind: 'retry' as const,
+      snapshot: flight('LY1', 8, { status: 'Departed' }),
+    },
+    {
+      flight_number: 'IZ1',
+      probe_kind: 'early' as const,
+      snapshot: flight('IZ1', 8, { status: 'Canceled' }),
+    },
+    { flight_number: '6H1', probe_kind: 'early' as const, snapshot: null },
+  ];
+  const result = gateResult(rows);
+  assertEquals([result.counted, result.passed, result.gate], [2, 1, false]);
 });

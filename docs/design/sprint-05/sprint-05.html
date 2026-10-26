@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ספרינט 5: הטיסות שלי · הדמיה</title>
+<!-- Local preview only: no SRI, not for hosting. Works offline with the system font. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --s: 1; }
+  body { margin: 0; font-family: Rubik, system-ui, sans-serif; background: #e9eefa; color: #121C36; }
+  body.dark { background: #03060F; color: #F3F6FC; }
+  .light-vars {
+    --canvas:#FFFBF5; --surface:#FFFFFF; --raised:#FFFFFF; --tag:#FBF4E8; --pressed:#FBF4E8;
+    --t1:#121C36; --t2:#4A5573; --t3:#646E8A; --link:#1561BC; --alert:#C81E16;
+    --border:#F4E7D0; --control:#7D869E; --skeleton:#F4E7D0; --primary:#1561BC; --onPrimary:#fff;
+    --cta:#C8441F; --ctaFg:#fff; --sec:#EEF6FF; --secFg:#104C94; --dis:#E9EEFA; --disFg:#646E8A;
+    --info:#EEF6FF; --infoFg:#104C94; --openRow:#FBF4E8; --scrim:rgba(6,11,24,.48);
+    --okBg:#E8FAF7; --okFg:#0A665D; --alSubBg:#FFF0EF; --alSubFg:#A0170F; --alBg:#C81E16; --alFg:#fff;
+    --planBg:#EEF6FF; --planFg:#104C94; --endBg:#FBF4E8; --endFg:#4A5573; --focus:#1F78DB;
+  }
+  .dark-vars {
+    --canvas:#060B18; --surface:#0B1326; --raised:#121C36; --tag:#1A2749; --pressed:#1A2749;
+    --t1:#F3F6FC; --t2:#A3B3DB; --t3:#7487BD; --link:#6FB3FA; --alert:#FF5D52;
+    --border:#1A2749; --control:#7487BD; --skeleton:#1A2749; --primary:#6FB3FA; --onPrimary:#060B18;
+    --cta:#FF7A57; --ctaFg:#060B18; --sec:#1A2749; --secFg:#A9D2FF; --dis:#1A2749; --disFg:#7487BD;
+    --info:#1A2749; --infoFg:#A9D2FF; --openRow:#1A2749; --scrim:rgba(0,0,0,.6);
+    --okBg:#0D2B2E; --okFg:#8FE3D6; --alSubBg:#3A1414; --alSubFg:#FF8A80; --alBg:#FF5D52; --alFg:#060B18;
+    --planBg:#1A2749; --planFg:#A9D2FF; --endBg:#1A2749; --endFg:#A3B3DB; --focus:#6FB3FA;
+  }
+  header.top { padding: 16px 24px; }
+  header.top h1 { font-size: 22px; margin: 0 0 4px; }
+  header.top p { margin: 0; font-size: 14px; opacity: .8; }
+  .panel { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center;
+    padding: 10px 24px; background: rgba(255,255,255,.92); border-bottom: 1px solid #ced8f0; font-size: 14px; color:#121C36; }
+  body.dark .panel { background: rgba(18,28,54,.95); border-color: #24355F; color:#F3F6FC; }
+  .panel label { display: inline-flex; gap: 6px; align-items: center; }
+  .panel select { font: inherit; padding: 4px 8px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 32px; padding: 24px; align-items: flex-start; }
+  figure { margin: 0; }
+  figcaption { font-size: 14px; font-weight: 600; margin-bottom: 8px; max-width: 411px; }
+  figcaption small { display: block; font-weight: 400; opacity: .75; }
+  .phone { width: 411px; height: 914px; position: relative; overflow: hidden; border-radius: 28px;
+    background: radial-gradient(circle at 50% 30%, #1F3A68 0 34%, #0A1A3C 35% 60%, #03060F 61%);
+    box-shadow: 0 10px 40px rgba(0,0,0,.25); color: var(--t1); }
+  .phone.flat { background: var(--canvas); }
+  .navbar { position: absolute; bottom: 0; left: 0; right: 0; height: 48px; background: rgba(3,6,15,.6); }
+  .phone.flat .navbar { background: var(--canvas); border-top: 1px solid var(--border); }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .ltr { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+
+  .caption { font-size: calc(12px * var(--s)); line-height: 1.33; font-weight: 500; color: var(--t2); }
+  .footnote { font-size: calc(13px * var(--s)); line-height: 1.38; color: var(--t2); }
+  .callout { font-size: calc(15px * var(--s)); line-height: 1.47; }
+  .body { font-size: calc(16px * var(--s)); line-height: 1.5; }
+  .bodyStrong { font-size: calc(16px * var(--s)); line-height: 1.5; font-weight: 500; }
+  .title2 { font-size: calc(22px * min(var(--s),1.6)); line-height: 1.27; font-weight: 600; }
+  .title3 { font-size: calc(18px * var(--s)); line-height: 1.33; font-weight: 600; }
+  .numeric { font-size: calc(17px * var(--s)); line-height: 1.3; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .code { font-weight: 500; letter-spacing: 1.6px; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; display: inline-block; }
+  .t1 { color: var(--t1); } .t2 { color: var(--t2); } .t3 { color: var(--t3); } .alertT { color: var(--alert); font-weight: 500; }
+  .strike { text-decoration: line-through; }
+
+  /* country card + coupon (as sprint 4) */
+  .card { position: absolute; left: 12px; right: 12px; bottom: 64px; max-height: 662px; background: var(--raised);
+    border-radius: 18px; box-shadow: 0 12px 28px rgba(0,0,0,.45); overflow-y: auto; }
+  .dark-vars .card { outline: 1px solid rgba(163,179,219,.16); }
+  .pass { position: relative; padding: 22px 20px 14px; }
+  .strip { position: absolute; top: 0; inset-inline: 0; height: 4px; background: #FF7A57; border-radius: 18px 18px 0 0; }
+  .cname { font-size: calc(28px * min(var(--s), 1.6)); font-weight: 700; }
+  .cclose { position: sticky; top: 4px; float: left; width: 40px; height: 40px; margin: 4px; border-radius: 50%; background: var(--raised); display: grid; place-items: center; z-index: 3; }
+  [dir=ltr] .cclose { float: right; }
+  .coupon { border-top: 2px dashed rgba(18,28,54,.22); padding: 12px 16px; }
+  .dark-vars .coupon { border-color: rgba(244,231,208,.22); }
+  .trip { padding: 10px 12px; border-radius: 12px; }
+  .trip.open { background: var(--openRow); }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 2px 8px; font-size: calc(12px * var(--s)); line-height: 1.33; font-weight: 500; white-space: nowrap; }
+  .pill svg { width: 12px; height: 12px; flex: none; }
+  .p-ok { background: var(--okBg); color: var(--okFg); } .p-alsub { background: var(--alSubBg); color: var(--alSubFg); }
+  .p-al { background: var(--alBg); color: var(--alFg); } .p-plan { background: var(--planBg); color: var(--planFg); }
+  .p-end { background: var(--endBg); color: var(--endFg); }
+  .p-code { background: var(--tag); color: var(--t2); letter-spacing: 1px; direction: ltr; }
+  .section { margin-top: 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .btn { flex: 1 1 96px; min-height: 48px; border-radius: 999px; border: 0; font: inherit; font-size: calc(16px * var(--s)); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; }
+  .btn.pri { background: var(--primary); color: var(--onPrimary); width: 100%; }
+  .btn.sec { background: var(--sec); color: var(--secFg); }
+  .dark-vars .btn.sec { outline: 1px solid var(--control); }
+  .btn.text { background: transparent; color: var(--t1); flex: 0 0 auto; }
+  .btn.cta { background: var(--cta); color: var(--ctaFg); width: 100%; }
+  .btn.blocked { background: var(--dis); color: var(--disFg); }
+  .btn.text.blocked, .btn.link.blocked { background: transparent; }
+  .btn.busy::before { content: ""; width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: spin 1s linear infinite; }
+  .linkrow { display: flex; align-items: center; gap: 8px; min-height: 48px; color: var(--link); font-weight: 500; font-size: calc(16px * var(--s)); cursor: pointer; }
+  .linkrow.blocked { color: var(--disFg); }
+  .link { color: var(--link); text-decoration: underline; cursor: pointer; }
+  .notice { display: flex; gap: 8px; background: var(--info); color: var(--infoFg); border-radius: 12px; padding: 12px; margin-top: 8px; font-size: calc(15px * var(--s)); line-height: 1.4; }
+  .offline { display: flex; gap: 6px; align-items: flex-start; margin: 4px 0 8px; }
+  .skel { background: var(--skeleton); border-radius: 4px; animation: pulse 1s ease-in-out infinite alternate; display: inline-block; }
+  @keyframes pulse { from { opacity: .55 } to { opacity: 1 } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* flight row */
+  .frow { background: var(--surface); border-radius: 12px; padding: 12px; margin-top: 8px; cursor: pointer; }
+  .dark-vars .frow { outline: 1px solid var(--border); }
+  .frow:hover { background: var(--pressed); }
+  .fhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; align-items: center; }
+  .fhead .tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .route { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .route .line { flex: 1; border-top: 1px dashed var(--control); position: relative; height: 0; }
+  .route .plane { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); color: var(--t3); background: var(--surface); padding: 0 2px; }
+  [dir=rtl] .route .plane svg { transform: scaleX(-1); }
+  .cols { display: flex; justify-content: space-between; gap: 8px; margin-top: 2px; }
+  .cols > div:last-child { text-align: end; }
+  .off { font-size: calc(12px * var(--s)); color: var(--t2); vertical-align: super; margin-inline-start: 2px; }
+  .ftrack { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+  .chev { color: var(--t3); }
+  [dir=ltr] .chev { transform: scaleX(-1); display: inline-block; }
+  body.big .cols { flex-direction: column; }
+  body.big .cols > div:last-child { text-align: start; }
+
+  /* sheets */
+  .scrim { position: absolute; inset: 0; background: var(--scrim); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--raised); border-radius: 28px 28px 0 0; padding: 8px 20px 64px; max-height: 840px; overflow-y: auto; box-sizing: border-box; }
+  .dark-vars .sheet { outline: 1px solid var(--border); }
+  .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--control); margin: 4px auto 8px; opacity: .6; }
+  .sheetHead { display: flex; align-items: flex-start; } .sheetHead .grow { flex: 1; }
+  .x { width: 48px; height: 48px; display: grid; place-items: center; font-size: 20px; margin-inline-end: -12px; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
+  .ev { display: flex; gap: 8px; padding: 6px 0; }
+  .ev .ic { width: 20px; flex: none; color: var(--t2); padding-top: 3px; }
+
+  /* push screens */
+  .screen { position: absolute; inset: 0; background: var(--canvas); display: flex; flex-direction: column; }
+  .bar { display: flex; align-items: center; gap: 4px; min-height: 56px; padding: 28px 4px 0; }
+  .bar .back { width: 48px; height: 48px; display: grid; place-items: center; }
+  [dir=ltr] .bar .back svg { transform: scaleX(-1); }
+  .content { flex: 1; overflow-y: auto; padding: 8px 16px 96px; }
+  .footer { position: absolute; left: 0; right: 0; bottom: 48px; padding: 12px 16px; background: var(--canvas); border-top: 1px solid var(--border); }
+  .label { font-size: calc(12px * var(--s)); font-weight: 600; color: var(--t2); margin: 16px 0 6px; }
+  .input { min-height: 56px; box-sizing: border-box; border: 1px solid var(--control); border-radius: 8px; background: var(--surface); padding: 0 14px; display: flex; align-items: center; gap: 8px; font-size: calc(16px * var(--s)); }
+  .input.focus { border: 2px solid var(--focus); padding: 0 13px; }
+  .input.err { border: 2px solid var(--alert); padding: 0 13px; }
+  .input .val { flex: 1; min-width: 0; }
+  .input .ph { flex: 1; color: var(--t3); }
+  .input .ic { color: var(--t2); }
+  .help { font-size: calc(13px * var(--s)); color: var(--t2); margin-top: 6px; }
+  .errT { font-size: calc(13px * var(--s)); color: var(--alert); margin-top: 6px; display: flex; gap: 6px; }
+  .two { display: flex; flex-wrap: wrap; gap: 0 12px; } .two > div { flex: 1 1 160px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { min-height: 40px; box-sizing: border-box; border-radius: 999px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--control); font-size: calc(15px * var(--s)); cursor: pointer; }
+  .chip.on { background: var(--primary); color: var(--onPrimary); border-color: transparent; }
+  .grouph { font-size: calc(18px * var(--s)); font-weight: 600; margin: 24px 0 0; }
+  .list { background: var(--surface); border-radius: 16px; overflow: hidden; }
+  .dark-vars .list { outline: 1px solid var(--border); }
+  .li { min-height: 56px; display: flex; align-items: center; gap: 8px; padding: 8px 16px; box-sizing: border-box; border-top: 1px solid var(--border); cursor: pointer; }
+  .li:first-child { border-top: 0; }
+  .li .grow { flex: 1; min-width: 0; }
+  .sfield { flex: 1; min-height: 48px; border-radius: 999px; background: var(--surface); border: 2px solid var(--focus); display: flex; align-items: center; padding: 0 14px; gap: 8px; font-size: calc(16px * var(--s)); margin-inline-end: 12px; }
+  .summary { display: flex; align-items: center; background: var(--surface); border-radius: 12px; padding: 4px 4px 4px 0; padding-inline-start: 14px; min-height: 56px; box-sizing: border-box; margin-top: 12px; }
+  .dark-vars .summary { outline: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>ספרינט 5: הטיסות שלי · הדמיה</h1>
+  <p>מסכים סטטיים ב-411dp (A73). המספרים, השעות והקודים להדגמה בלבד. המסמך: README.md באותה תיקייה.</p>
+</header>
+<div class="panel">
+  <label>ערכת צבע <select id="theme"><option value="light">בהיר</option><option value="dark">כהה</option></select></label>
+  <label>גופן <select id="scale"><option value="1">100%</option><option value="1.3">130%</option><option value="2">200%</option></select></label>
+  <label>שפה <select id="lang"><option value="he">עברית</option><option value="en">English (כרטיס וגיליון)</option></select></label>
+  <label>מצב הטיסה LY81 <select id="state">
+    <option value="onTime">בזמן</option>
+    <option value="delayed" selected>נדחתה + השער הוחלף</option>
+    <option value="cancelled">בוטלה</option>
+    <option value="diverted">הוסטה</option>
+    <option value="departed">המריאה</option>
+    <option value="landed">נחתה</option>
+    <option value="paused">המעקב מושהה</option>
+    <option value="notChecked">עוד לא נבדקה</option>
+    <option value="notFound">הספק לא מצא</option>
+    <option value="untracked">בלי מעקב (נוספה אחרי ההמראה)</option>
+    <option value="ended">המעקב הסתיים (אחרי 7 ימים)</option>
+  </select></label>
+</div>
+<div class="grid" id="grid"></div>
+
+<script>
+const I = {
+  plane: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" transform="rotate(90 12 12)"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
+  noentry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="12" r="9"/><path d="M6 6l12 12"/></svg>',
+  divert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 20V10a4 4 0 0 1 4-4h8l-3-3M18 6l-3 3"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 19h16M6 15l12-8"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 19h16M6 7l12 8"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  back: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
+  chev: '<span class="chev">‹</span>',
+  cloud: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M7 18h10a4 4 0 0 0 1-7.9A6 6 0 0 0 8.3 7"/></svg>',
+  eye: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  cal: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  time: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
+  alert: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>',
+  search: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+};
+const L = (s) => `<span class="ltr">${s}</span>`;
+
+const T = {
+  he: {
+    flights: 'טיסות', add: '+ הוספת טיסה', outbound: 'הלוך', ret: 'חזור', elal: 'אל על',
+    il: (t, d) => `(בישראל ${t}${d ? ', ' + d : ''})`, term: 'טרמינל', gate: 'שער', seat: 'מושב',
+    tags: { onTime: 'בזמן', delayed: 'נדחתה', gateChanged: 'השער הוחלף', cancelled: 'בוטלה', diverted: 'הוסטה', departed: 'המריאה', landed: 'נחתה', paused: 'המעקב מושהה', untracked: 'בלי מעקב' },
+    upd: (n) => `עודכן לפני ${n} דק'`, upd2h: 'עודכן לפני שעתיים',
+    notChecked: 'עוד לא בדקנו שינויים בטיסה הזו.', paused: 'המעקב מושהה זמנית. הפרטים שהזנתם נשמרו.',
+    notFound: 'לא מצאנו את הטיסה אצל ספק הנתונים, ולכן אין עדכונים. הפרטים שהזנתם נשמרו.',
+    untracked: 'הטיסה נוספה אחרי ההמראה, ולכן אין לה מעקב שינויים.', ended: 'המעקב הסתיים.',
+    history: 'היסטוריית שינויים', depLater: (a, b) => `ההמראה נדחתה: מ-${L(a)} ל-${L(b)}`, gateEv: (a, b) => `השער הוחלף: מ-${L(a)} ל-${L(b)}`,
+    cancelledEv: 'הטיסה בוטלה', divertedEv: `הטיסה הוסטה לאתונה (${L('ATH')})`, detected: (w) => `זוהה ${w}`, today: (t) => `היום, ${L(t)}`,
+    booking: 'פרטי הזמנה', pnr: 'קוד הזמנה', show: 'הצגה', hide: 'הסתרה', seatClass: `מושב ${L('34A')} · מחלקת תיירים`,
+    edit: 'עריכה', del: 'מחיקה', dep: 'המראה', arr: 'נחיתה', tlv: 'תל אביב · נתב"ג', bkk: 'בנגקוק · סוברנבומי',
+    trips: 'הנסיעות שלך', tripName: 'תאילנד דצמבר 2026', tripDates: '20 בדצמבר 2026 – 5 בינואר 2027', planned: 'מתוכננת',
+    cities: 'ערים', cityList: "בנגקוק · צ'יאנג מאי", dup: 'שכפול', newTrip: '+ נסיעה חדשה', operated: '',
+  },
+  en: {
+    flights: 'Flights', add: '+ Add a flight', outbound: 'Outbound', ret: 'Return', elal: 'El Al',
+    il: (t, d) => `(Israel ${t}${d ? ', ' + d : ''})`, term: 'Terminal', gate: 'Gate', seat: 'Seat',
+    tags: { onTime: 'On time', delayed: 'Delayed', gateChanged: 'Gate changed', cancelled: 'Cancelled', diverted: 'Diverted', departed: 'Departed', landed: 'Landed', paused: 'Tracking paused', untracked: 'Not tracked' },
+    upd: (n) => `Updated ${n} min ago`, upd2h: 'Updated 2 hours ago',
+    notChecked: "We haven't checked this flight for changes yet.", paused: 'Tracking is paused for now. Your details are saved.',
+    notFound: "The flight data provider couldn't find this flight, so there are no updates. Your details are saved.",
+    untracked: "This flight was added after departure, so changes aren't tracked.", ended: 'Tracking has ended.',
+    history: 'Change history', depLater: (a, b) => `Departure delayed: ${a} to ${b}`, gateEv: (a, b) => `Gate changed: ${a} to ${b}`,
+    cancelledEv: 'Flight cancelled', divertedEv: 'Flight diverted to Athens (ATH)', detected: (w) => `Detected ${w}`, today: (t) => `today, ${t}`,
+    booking: 'Booking details', pnr: 'Booking code', show: 'Show', hide: 'Hide', seatClass: 'Seat 34A · Economy class',
+    edit: 'Edit', del: 'Delete', dep: 'Departure', arr: 'Arrival', tlv: 'Tel Aviv · Ben Gurion', bkk: 'Bangkok · Suvarnabhumi',
+    trips: 'Your trips', tripName: 'Thailand December 2026', tripDates: '20 December 2026 – 5 January 2027', planned: 'Planned',
+    cities: 'Cities', cityList: 'Bangkok · Chiang Mai', dup: 'Duplicate', newTrip: '+ New trip',
+  },
+};
+
+const TAG = {
+  onTime: ['p-ok', I.check], delayed: ['p-alsub', I.clock], gateChanged: ['p-alsub', I.swap],
+  cancelled: ['p-al', I.noentry], diverted: ['p-al', I.divert], departed: ['p-plan', I.up],
+  landed: ['p-end', I.down], paused: ['p-end', I.pause], untracked: ['p-end', ''],
+};
+
+const S = { theme: 'light', scale: 1, lang: 'he', state: 'delayed', pnrShown: false };
+
+// LY81 scenarios. Times local; BKK is Israel + 5 in December.
+function ly81(state) {
+  const base = { dep: '21:40', arr: '13:15', arrIl: '08:15', gate: 'B4', tags: [], track: 'upd', mins: 4, depOld: null, arrOld: null, gateChanged: false, events: [] };
+  switch (state) {
+    case 'onTime': return { ...base, tags: ['onTime'] };
+    case 'delayed': return { ...base, dep: '23:10', depOld: '21:40', arr: '14:45', arrIl: '09:45', arrOld: '13:15', gate: 'B6', gateChanged: true, tags: ['delayed', 'gateChanged'],
+      events: [['clock', 'dep'], ['swap', 'gate']] };
+    case 'cancelled': return { ...base, tags: ['cancelled'], events: [['noentry', 'cancelled']] };
+    case 'diverted': return { ...base, tags: ['diverted'], mins: 9, events: [['divert', 'diverted']] };
+    case 'departed': return { ...base, dep: '21:52', tags: ['departed'], mins: 12 };
+    case 'landed': return { ...base, dep: '21:52', arr: '13:05', arrIl: '08:05', tags: ['landed'], mins: 31 };
+    case 'paused': return { ...base, tags: ['paused'], track: 'paused' };
+    case 'notChecked': return { ...base, track: 'notChecked' };
+    case 'notFound': return { ...base, gate: null, track: 'notFound' };
+    case 'untracked': return { ...base, gate: null, tags: ['untracked'], track: 'untracked' };
+    case 'ended': return { ...base, track: 'ended' };
+  }
+}
+
+function tags(list, t) {
+  return list.map((k) => `<span class="pill ${TAG[k][0]}">${TAG[k][1]}${t.tags[k]}</span>`).join('');
+}
+function trackLine(f, t) {
+  if (f.track === 'upd') return t.upd(f.mins);
+  if (f.track === 'paused') return `${t.paused} ${t.upd2h}`;
+  return t[f.track];
+}
+
+function flightRow(t, f, which) {
+  const isOut = which === 'out';
+  const num = isOut ? 'LY81' : 'LY82';
+  const dir = isOut ? t.outbound : t.ret;
+  const date = isOut ? '20.12' : '5.1';
+  const o = isOut ? 'TLV' : 'BKK', d = isOut ? 'BKK' : 'TLV';
+  const depT = f.depOld ? `<span class="numeric alertT">${L(f.dep)}</span> <span class="footnote t2 strike">${L(f.depOld)}</span>` : `<span class="numeric">${L(f.dep)}</span>`;
+  const arrT = f.arrOld ? `<span class="footnote t2 strike">${L(f.arrOld)}</span> <span class="numeric alertT">${L(f.arr)}</span>` : `<span class="numeric">${L(f.arr)}</span>`;
+  const depIl = isOut ? '' : `<div class="footnote">${t.il(L(f.depIl || '10:05'))}</div>`;
+  const arrIl = isOut ? `<div class="footnote">${t.il(L(f.arrIl))}</div>` : '';
+  const gate = f.gate ? `${t.term} ${L(isOut ? '3' : '1')} · ${t.gate} <span class="${f.gateChanged ? 'alertT' : ''}">${L(f.gate)}</span> · ${t.seat} ${L('34A')}` : `${t.seat} ${L('34A')}`;
+  return `<div class="frow" data-open="sheet" title="testID: card-flight-${num}">
+    <div class="fhead"><span class="caption">${dir} · ${L(date)}</span><span class="tags">${tags(f.tags, t)}</span></div>
+    <div style="margin-top:2px"><span class="code callout t1">${num}</span> <span class="callout t2">· ${t.elal}</span></div>
+    <div class="route"><span class="code title3">${o}</span><span class="line"><span class="plane">${I.plane}</span></span><span class="code title3">${d}</span></div>
+    <div class="cols"><div>${depT}${depIl}</div><div>${arrT}${isOut ? '<span class="off">' + L('+1') + '</span>' : ''}${arrIl}</div></div>
+    <div class="footnote" style="margin-top:4px">${gate}</div>
+    <div class="ftrack"><span class="footnote">${trackLine(f, t)}</span>${I.chev}</div>
+  </div>`;
+}
+
+function card(inner, opts = {}) {
+  const t = T[S.lang];
+  return `<div class="card">
+    <span class="cclose">×</span>
+    <div class="pass"><div class="strip"></div><div class="caption">${S.lang === 'he' ? 'יעד' : 'Destination'}</div><div class="cname">${S.lang === 'he' ? 'תאילנד' : 'Thailand'}</div></div>
+    <div class="coupon">
+      ${opts.cached ? `<div class="offline">${I.cloud}<span class="footnote">${S.lang === 'he' ? 'מוצג מהשמירה האחרונה · היום, 09:12' : 'Showing the last saved copy · today, 09:12'}</span></div>` : ''}
+      <div class="caption">${t.trips}</div>
+      <div class="trip open" style="margin-top:6px">
+        <div class="bodyStrong">${t.tripName}</div>
+        <div class="footnote tnum">${t.tripDates}</div>
+        <div class="meta" style="margin-top:4px"><span class="pill p-plan">${t.planned}</span></div>
+        ${inner}
+        <div class="section"><div class="caption">${t.cities}</div><div class="callout">${t.cityList}</div></div>
+        <div class="actions"><button class="btn sec ${opts.cached ? 'blocked' : ''}">${t.edit}</button><button class="btn text ${opts.cached ? 'blocked' : ''}">${t.dup}</button><button class="btn text ${opts.cached ? 'blocked' : ''}">${t.del}</button></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn cta ${opts.cached ? 'blocked' : ''}">${t.newTrip}</button></div>
+    </div>
+  </div>`;
+}
+
+function flightsSection(t, opts = {}) {
+  const f = ly81(S.state);
+  const ret = { dep: '15:05', depIl: '10:05', arr: '20:30', gate: null, tags: [], track: 'notChecked' };
+  if (opts.empty) {
+    return `<div class="section"><div class="caption">${t.flights}</div>
+      <div class="linkrow">${t.add}</div>
+      <div class="footnote">${S.lang === 'he' ? 'מספר טיסה ותאריך מספיקים. את השאר נמלא.' : "A flight number and date are enough. We'll fill in the rest."}</div></div>`;
+  }
+  if (opts.loading) {
+    const sk = `<div class="frow"><div class="fhead"><span class="caption">${t.outbound} · ${L('20.12')}</span><span class="skel" style="width:56px;height:20px"></span></div>
+      <div><span class="code callout">LY81</span> <span class="callout t2">· ${t.elal}</span></div>
+      <div class="route"><span class="code title3">TLV</span><span class="line"><span class="plane">${I.plane}</span></span><span class="code title3">BKK</span></div>
+      <div class="cols"><div><span class="numeric">${L('21:40')}</span></div><div><span class="numeric">${L('13:15')}</span><span class="off">${L('+1')}</span><div class="footnote">${t.il(L('08:15'))}</div></div></div>
+      <div class="ftrack"><span class="skel" style="width:96px;height:12px"></span></div></div>`;
+    return `<div class="section"><div class="caption">${t.flights}</div>${sk}
+      <div class="footnote" style="margin-top:8px">${S.lang === 'he' ? 'לא הצלחנו לטעון את מצב הטיסות.' : "We couldn't load flight status."} <span class="link">${S.lang === 'he' ? 'נסו שוב' : 'Try again'}</span> <span class="t3">(${S.lang === 'he' ? 'מצב שגיאה, להדגמה יחד עם השלד' : 'error state, shown with the skeleton'})</span></div>
+      <div class="linkrow">${t.add}</div></div>`;
+  }
+  return `<div class="section"><div class="caption">${t.flights}</div>
+    ${flightRow(t, f, 'out')}${flightRow(t, ret, 'ret')}
+    <div class="linkrow ${opts.cached ? 'blocked' : ''}">${t.add}</div>
+    ${opts.cached ? `<div class="notice">${I.info}<span>${S.lang === 'he' ? 'בלי חיבור אפשר רק לצפות. עריכה תחזור כשיהיה חיבור.' : "Offline, you can only view. Editing comes back once you're online."}</span></div>` : ''}
+    <div class="footnote"><span class="link">${L('Flight data by AeroDataBox')}</span></div></div>`;
+}
+
+function flightSheet() {
+  const t = T[S.lang];
+  const f = ly81(S.state);
+  const evs = f.events.map(([ic, k]) => {
+    const txt = k === 'dep' ? t.depLater('21:40', '23:10') : k === 'gate' ? t.gateEv('B4', 'B6') : k === 'cancelled' ? t.cancelledEv : t.divertedEv;
+    const red = ic === 'noentry' || ic === 'divert';
+    return `<div class="ev"><span class="ic" style="${red ? 'color:var(--alert)' : ''}">${I[ic]}</span><div><div class="body">${txt}</div><div class="footnote">${t.detected(t.today(k === 'gate' ? '20:20' : '21:05'))}</div></div></div>`;
+  }).join('');
+  return `<div class="scrim"></div><div class="sheet">
+    <div class="handle"></div>
+    <div class="sheetHead"><div class="grow"><span class="title2 code">LY81</span> <span class="body">· ${t.outbound}</span><div class="callout t2">${t.elal}</div></div><span class="x">×</span></div>
+    <div class="meta" style="margin-top:6px">${tags(f.tags, t)}</div>
+    <div class="footnote" style="margin-top:4px">${trackLine(f, t)}</div>
+    <div class="caption" style="margin-top:16px">${t.dep}</div>
+    <div class="body">${t.tlv} · <span class="code">TLV</span></div>
+    <div>${L('20.12.2026')} · ${f.depOld ? `<span class="numeric alertT">${L(f.dep)}</span> <span class="footnote strike">${L(f.depOld)}</span>` : `<span class="numeric">${L(f.dep)}</span>`}</div>
+    <div class="footnote">${t.term} ${L('3')}${f.gate ? ` · ${t.gate} <span class="${f.gateChanged ? 'alertT' : ''}">${L(f.gate)}</span>` : ''}</div>
+    <div class="caption" style="margin-top:12px">${t.arr}</div>
+    <div class="body">${t.bkk} · <span class="code">BKK</span></div>
+    <div>${L('21.12.2026')} · <span class="numeric ${f.arrOld ? 'alertT' : ''}">${L(f.arr)}</span> <span class="footnote">${t.il(L(f.arrIl))}</span></div>
+    <div class="footnote">${t.term} ${L('1')}</div>
+    ${evs ? `<hr><div class="title3">${t.history}</div>${evs}` : ''}
+    <hr><div class="title3">${t.booking}</div>
+    <div class="caption" style="margin-top:8px">${t.pnr}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;min-height:48px">
+      <span class="code body" id="pnrVal">${S.pnrShown ? 'ABC123' : '••••••'}</span>
+      <button class="btn text" id="pnrBtn">${I.eye}${S.pnrShown ? t.hide : t.show}</button></div>
+    <div class="footnote">${t.seatClass}</div>
+    <hr><div class="footnote"><span class="link">${L('Flight data by AeroDataBox')}</span></div>
+    <div class="actions"><button class="btn sec">✎ ${t.edit}</button><button class="btn text">🗑 ${t.del}</button></div>
+  </div>`;
+}
+
+function field(label, value, o = {}) {
+  return `<div class="label">${label}</div>
+    <div class="input ${o.cls || ''}">${value ? `<span class="val ${o.ltr ? 'code' : ''}">${value}</span>` : `<span class="ph">${o.ph || 'אין נתון'}</span>`}${o.icon || ''}</div>
+    ${o.err ? `<div class="errT">${I.alert}<span>${o.err}</span></div>` : o.help ? `<div class="help">${o.help}</div>` : ''}
+    ${o.warn ? `<div class="notice">${I.info}<span>${o.warn}</span></div>` : ''}`;
+}
+const dirChips = (sel) => `<div class="label">כיוון</div><div class="chips">
+  ${['הלוך', 'חזור', 'פנים-יעד'].map((x, i) => `<span class="chip ${i === sel ? 'on' : ''}">${i === sel ? '✓ ' : ''}${x}</span>`).join('')}</div>`;
+const bar = (title, sub) => `<div class="bar"><span class="back">${I.back}</span><div><div class="title3">${title}</div>${sub ? `<div class="footnote">${sub}</div>` : ''}</div></div>`;
+
+function step1(opts = {}) {
+  return `<div class="screen">${bar('הוספת טיסה', 'תאילנד דצמבר 2026')}
+    <div class="content">
+      ${dirChips(0)}
+      ${field('מספר טיסה', 'LY81', { ltr: true, cls: 'focus', help: 'קוד החברה ומספר, למשל LY81' })}
+      ${field('תאריך ההמראה', L('20.12.2026'), { icon: `<span class="ic">${I.cal}</span>`, help: 'לפי השעון המקומי בשדה המוצא' })}
+      ${opts.legs ? legs() : `<div style="margin-top:24px"><button class="btn pri ${opts.busy ? 'busy' : ''}">${opts.busy ? 'מחפשים…' : 'חיפוש טיסה'}</button></div>
+      <div style="margin-top:4px"><button class="btn text">הזנה ידנית</button></div>`}
+    </div><div class="navbar"></div></div>`;
+}
+function legs() {
+  const row = (a, b, ca, cb, t) => `<div class="li" style="min-height:72px"><div class="grow">
+    <div class="bodyStrong"><span class="code">${a}</span> <span class="chev">‹</span> <span class="code">${b}</span></div>
+    <div class="footnote">${ca} · ${cb}</div><div class="numeric">${L(t)}</div></div>${I.chev}</div>`;
+  return `<div class="body" style="margin-top:20px">לטיסה הזו יש כמה קטעים. בחרו את הקטע שלכם.</div>
+    <div class="list" style="margin-top:8px">${row('TLV', 'ATH', 'תל אביב', 'אתונה', '06:10 – 08:45')}${row('ATH', 'JFK', 'אתונה', 'ניו יורק', '10:30 – 14:05')}</div>
+    <button class="btn text" style="margin-top:4px">הזנה ידנית</button>`;
+}
+function step2(manual) {
+  const cal = `<span class="ic">${I.cal}</span>`, clk = `<span class="ic">${I.time}</span>`, chv = `<span class="code footnote t2">%s</span>${I.chev}`;
+  const ph = manual ? 'לא חובה' : 'אין נתון';
+  return `<div class="screen">${bar('הוספת טיסה')}
+    <div class="content">
+      <div class="notice">${I.info}<span>${manual ? 'לא מצאנו את LY81 ב-20.12.2026. אפשר להזין את הפרטים ידנית.' : 'מילאנו את מה שמצאנו. אפשר לערוך כל שדה.'}</span></div>
+      ${manual ? '<div class="notice">' + I.info + '<span>הטיסה הזו כבר המריאה. נשמור אותה בלי מעקב שינויים.</span></div>' : ''}
+      <div class="summary"><span class="grow"><span class="code">LY81</span> · ${L(manual ? '18.12.2026' : '20.12.2026')}</span><button class="btn text">שינוי</button></div>
+      ${dirChips(0)}
+      ${field('חברת התעופה', manual ? '' : 'El Al', { ph })}
+      <div class="grouph">המראה</div>
+      ${field('שדה המוצא', 'תל אביב · נתב"ג', { icon: chv.replace('%s', 'TLV') })}
+      <div class="two"><div>${field('תאריך', L(manual ? '18.12.2026' : '20.12.2026'), { icon: cal, warn: manual ? 'התאריך מחוץ לתאריכי הנסיעה (20.12–5.1). אפשר לשמור בכל זאת.' : '' })}</div>
+        <div>${field('שעה מקומית', manual ? L('02:30') : L('21:40'), { icon: clk, help: 'שעון תל אביב (TLV)' })}</div></div>
+      ${manual ? `<div class="notice">${I.info}<span>ב-26.3.2027 השעון בתל אביב מדלג מ-02:00 ל-03:00, ולכן אין שעה 02:30. נשמור 03:30.</span></div>` : ''}
+      <div class="two"><div>${field('טרמינל', manual ? '' : '3', { ph, ltr: true })}</div><div>${field('שער', '', { ph })}</div></div>
+      <div class="grouph">נחיתה</div>
+      ${field('שדה היעד', manual ? '' : 'בנגקוק · סוברנבומי', { ph: 'בחירה', icon: manual ? I.chev : chv.replace('%s', 'BKK'), cls: manual ? 'err' : '', err: manual ? 'צריך לבחור שדה יעד.' : '' })}
+      <div class="two"><div>${field('תאריך', manual ? '' : L('21.12.2026'), { icon: cal, ph })}</div>
+        <div>${field('שעה מקומית', manual ? '' : L('13:15'), { icon: clk, ph: manual ? '—' : 'אין נתון', help: manual ? 'קודם בוחרים שדה, ואז השעה היא לפי השעון שלו' : 'שעון בנגקוק (BKK)' })}</div></div>
+      ${field('טרמינל', '', { ph })}
+      <div class="grouph">פרטי הזמנה</div>
+      ${field('קוד הזמנה (לא חובה)', manual ? 'AB1' : '••••••', { ltr: true, icon: `<span class="ic">${I.eye}</span>`, cls: manual ? 'err' : '', err: manual ? 'קוד הזמנה הוא 5–8 אותיות באנגלית וספרות.' : '' })}
+      ${field('מושב (לא חובה)', '34A', { ltr: true })}
+      <div class="label">מחלקה (לא חובה)</div><div class="chips"><span class="chip on">✓ תיירים</span><span class="chip">פרימיום</span><span class="chip">עסקים</span><span class="chip">ראשונה</span></div>
+      <div class="footnote" style="margin-top:16px">קוד ההזמנה לא נשלח לספק הנתונים ונשמר רק בחשבון שלכם.</div>
+    </div>
+    <div class="footer"><button class="btn pri">שמירת הטיסה</button></div><div class="navbar"></div></div>`;
+}
+function airportPicker() {
+  const r = (a, b, c) => `<div class="li"><div class="grow"><div class="bodyStrong">${a}</div><div class="footnote">${L(b)}</div></div><span class="pill p-code">${c}</span></div>`;
+  return `<div class="screen"><div class="bar"><span class="back">${I.back}</span><div class="sfield">${I.search}<span class="t3">עיר, שם השדה או קוד</span></div></div>
+    <div class="content">
+      <div class="caption" style="color:var(--t3);margin:12px 0 4px">שדות בתאילנד</div>
+      <div class="list">${r('בנגקוק · סוברנבומי', 'Suvarnabhumi Airport', 'BKK')}${r('בנגקוק · דון מואנג', 'Don Mueang International Airport', 'DMK')}${r('פוקט', 'Phuket International Airport', 'HKT')}${r("צ'יאנג מאי", 'Chiang Mai International Airport', 'CNX')}</div>
+      <div class="caption" style="color:var(--t3);margin:12px 0 4px">ישראל</div>
+      <div class="list">${r('תל אביב · נתב"ג', 'Ben Gurion Airport', 'TLV')}${r('אילת · רמון', 'Ramon Airport', 'ETM')}</div>
+    </div><div class="navbar"></div></div>`;
+}
+function returnPrompt() {
+  return `<div class="scrim"></div><div class="sheet" style="padding-bottom:72px">
+    <div class="handle"></div>
+    <div class="sheetHead"><div class="grow title2">להוסיף גם את טיסת החזור?</div><span class="x">×</span></div>
+    <div class="body t2" style="margin-top:8px">נמלא מראש את תאריך החזרה של הנסיעה, ${L('5.1.2027')}.</div>
+    <div style="margin-top:20px"><button class="btn pri">הוספת טיסת החזור</button></div>
+    <div style="margin-top:4px"><button class="btn text">לא עכשיו</button></div></div>`;
+}
+function tripForm() {
+  const r = (a, b) => `<div class="li"><div class="grow"><div class="body">${a}</div><div class="footnote">${b}</div></div>${I.chev}</div>`;
+  return `<div class="screen"><div class="bar" style="justify-content:space-between;padding-inline:16px 4px"><span class="title3">עריכת נסיעה</span><span class="x">×</span></div>
+    <div class="content">
+      <div class="label">שם הנסיעה</div><div class="input"><span class="val">תאילנד דצמבר 2026</span></div>
+      <div class="label" style="margin-top:24px">טיסות</div>
+      <div class="list">${r(`הלוך · <span class="code">LY81</span> · ${L('20.12')}`, `<span class="code">TLV</span> ‹ <span class="code">BKK</span> · ${L('21:40')}`)}${r(`חזור · <span class="code">LY82</span> · ${L('5.1')}`, `<span class="code">BKK</span> ‹ <span class="code">TLV</span> · ${L('15:05')}`)}
+        <div class="li"><span class="linkrow">+ הוספת טיסה</span></div></div>
+      <div class="help">טיסות נשמרות מיד, בנפרד מ"שמירת השינויים".</div>
+      <div class="label" style="margin-top:24px">ערים</div>
+      <div class="list"><div class="li"><span class="grow body">(1) בנגקוק</span></div><div class="li"><span class="linkrow">+ הוספת עיר</span></div></div>
+      <div class="label" style="margin-top:24px">טיסות (בנסיעה חדשה)</div>
+      <div class="help" style="margin-top:0">אפשר להוסיף טיסות אחרי ששומרים את הנסיעה.</div>
+    </div><div class="footer"><button class="btn pri">שמירת השינויים</button></div><div class="navbar"></div></div>`;
+}
+
+function phone(title, sub, inner, opts = {}) {
+  const dir = opts.ltrAware && S.lang === 'en' ? 'ltr' : 'rtl';
+  return `<figure><figcaption>${title}<small>${sub}</small></figcaption>
+    <div class="phone ${opts.flat ? 'flat' : ''} ${S.theme}-vars" dir="${dir}">${inner}${opts.flat ? '' : '<div class="navbar"></div>'}</div></figure>`;
+}
+
+function render() {
+  document.body.className = (S.theme === 'dark' ? 'dark' : '') + (S.scale >= 1.6 ? ' big' : '');
+  document.documentElement.style.setProperty('--s', S.scale);
+  const t = T[S.lang];
+  const g = document.getElementById('grid');
+  g.innerHTML = [
+    phone('1. כרטיס: נסיעה פתוחה עם שתי טיסות', 'testID: card-flights, card-flight-${id}. החליפו "מצב הטיסה" בפאנל. ב-200% העמודות נערמות (9.9).', card(flightsSection(t)), { ltrAware: true }),
+    phone('2. גיליון הטיסה', 'פרטים, היסטוריה (כשיש שינויים), קוד הזמנה מוסתר. "הצגה" עובד. testID: flight-sheet.', card(flightsSection(t)) + flightSheet(), { ltrAware: true }),
+    phone('3. נסיעה בלי טיסות (ריק)', 'testID: card-flight-add, card-flights-empty-help. בלי קרדיט.', card(flightsSection(t, { empty: true })), { ltrAware: true }),
+    phone('4. טעינה ושגיאת מעקב', 'הערכים השמורים מיד, שלד במקום התגים ושורת המעקב. testID: card-flight-${id}-skeleton, card-flights-retry.', card(flightsSection(t, { loading: true })), { ltrAware: true }),
+    phone('5. בלי רשת: קריאה בלבד', 'מהעותק המוצפן. "הוספת טיסה" חסומה אבל מסבירה. testID: card-flight-readonly.', card(flightsSection(t, { cached: true }), { cached: true }), { ltrAware: true }),
+    phone('6. הוספת טיסה, שלב 1', 'כיוון, מספר ותאריך. testID: flight-number, flight-date, flight-search, flight-manual.', step1(), { flat: true }),
+    phone('7. "מחפשים…" ובחירת קטע', 'משמאל: אחרי החיפוש, כשיש כמה קטעים. testID: flight-legs, flight-leg-0.', step1({ legs: true }), { flat: true }),
+    phone('8. שלב 2: מולא, עם "אין נתון"', 'השער והטרמינל בנחיתה חסרים. testID: flight-notice-found.', step2(false), { flat: true }),
+    phone('9. שלב 2: ידני, עם אזהרות ושגיאות', 'טיסה שעברה, מחוץ לנסיעה, דילוג שעון (אזהרות), יעד חסר וקוד הזמנה לא תקין (שגיאות). כולן יחד להדגמה, גם כשהתאריכים לא מתיישבים זה עם זה.', step2(true), { flat: true }),
+    phone('10. בחירת שדה תעופה', 'בלי שאילתה: שדות במדינה, ואז ישראל. testID: airport-result-BKK.', airportPicker(), { flat: true }),
+    phone('11. "להוסיף גם את טיסת החזור?"', 'אחרי שמירת הלוך, רק כשאין חזור. testID: return-prompt-add / -later.', card(flightsSection(t)) + returnPrompt()),
+    phone('12. טופס הנסיעה: מקטע "טיסות"', 'בעריכה: רשימה לחיצה. בנסיעה חדשה: שורת עזרה בלבד.', tripForm(), { flat: true }),
+  ].join('');
+  const b = document.getElementById('pnrBtn');
+  if (b) b.onclick = () => { S.pnrShown = !S.pnrShown; render(); };
+}
+for (const id of ['theme', 'scale', 'lang', 'state']) {
+  document.getElementById(id).onchange = (e) => { S[id] = id === 'scale' ? Number(e.target.value) : e.target.value; render(); };
+}
+render();
+</script>
+</body>
+</html>

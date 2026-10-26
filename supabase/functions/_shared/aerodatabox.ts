@@ -112,15 +112,21 @@ export function toSnapshot(raw: RawFlight, fidsSide?: 'departure' | 'arrival'): 
 }
 
 export function aeroDataBox(key: string, fetchFn: typeof fetch = fetch): FlightProvider {
+  // Never throws (Raz, gate #1): a network error or timeout is status 0, so
+  // callers always record the attempt they already paid for.
   const get = async (path: string, units: number) => {
-    const response = await fetchFn(`https://${HOST}${path}`, {
-      headers: { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': HOST },
-      signal: AbortSignal.timeout(20_000),
-    });
-    // 204: the provider knows no such flight. RapidAPI bills it all the same.
-    if (response.status === 204) return { ok: true as const, body: null, units };
-    if (!response.ok) return { ok: false as const, status: response.status, units };
-    return { ok: true as const, body: (await response.json()) as unknown, units };
+    try {
+      const response = await fetchFn(`https://${HOST}${path}`, {
+        headers: { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': HOST },
+        signal: AbortSignal.timeout(20_000),
+      });
+      // 204: the provider knows no such flight. RapidAPI bills it all the same.
+      if (response.status === 204) return { ok: true as const, body: null, units };
+      if (!response.ok) return { ok: false as const, status: response.status, units };
+      return { ok: true as const, body: (await response.json()) as unknown, units };
+    } catch {
+      return { ok: false as const, status: 0, units };
+    }
   };
   return {
     async flightsByNumber(number, dateLocal) {

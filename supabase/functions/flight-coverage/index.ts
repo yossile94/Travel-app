@@ -13,7 +13,7 @@ import { createClient } from '@supabase/supabase-js';
 
 import { aeroDataBox, UNITS } from '../_shared/aerodatabox.ts';
 import { hasCronSecret } from '../_shared/cronAuth.ts';
-import { pickFlights, PROBES } from './coverage.ts';
+import { gateResult, pickFlights, PROBES, retryAt, tlvDate, type GateRow } from './coverage.ts';
 
 function required(name: string): string {
   const value = Deno.env.get(name);
@@ -36,6 +36,7 @@ const json = (status: number, body: Record<string, unknown>) =>
 
 const LOCAL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const MAX_PER_TICK = 20;
+const STALE_MS = 15 * 60_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Spends units only within the month's cap (ADR-010); false when it is reached. */
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
       PROBES.map((p) => ({
         flight_number: f.number,
         airline: f.airlineIata,
-        dep_date_local: body.fromLocal!.slice(0, 10),
+        dep_date_local: tlvDate(f.departure.scheduledUtc!),
         sched_dep_utc: f.departure.scheduledUtc,
         probe_kind: p.kind,
         probe_at: new Date(
@@ -107,7 +108,7 @@ Deno.serve(async (req) => {
   if (body.action === 'tick') {
     const { data: due, error } = await admin
       .from('flight_coverage_probes')
-      .select('id, flight_number, dep_date_local')
+      .select('id, flight_number, dep_date_local, sched_dep_utc, probe_kind, probe_at')
       .is('done_at', null)
       .lte('probe_at', new Date().toISOString())
       .order('probe_at')
@@ -115,18 +116,54 @@ Deno.serve(async (req) => {
     if (error) return json(500, { error: 'read_failed' });
     let done = 0;
     for (const probe of due ?? []) {
+      // A probe that missed its time (the cron was down) would skew the gate:
+      // closed without a call (Dudi, #11).
+      if (Date.parse(probe.probe_at) < Date.now() - STALE_MS) {
+        await admin
+          .from('flight_coverage_probes')
+          .update({ done_at: new Date().toISOString() })
+          .eq('id', probe.id);
+        continue;
+      }
       if (done > 0) await sleep(1100);
       if (!(await spend(UNITS.flight))) break;
       const answer = await provider.flightsByNumber(probe.flight_number, probe.dep_date_local);
       // The leg that leaves TLV; the answer may hold several legs.
       const leg = answer.ok ? (answer.value.find((f) => f.departure.iata === 'TLV') ?? null) : null;
-      await admin
+      const { error: writeError } = await admin
         .from('flight_coverage_probes')
         .update({ done_at: new Date().toISOString(), http_ok: answer.ok, snapshot: leg })
         .eq('id', probe.id);
+      // Stop rather than spend again on a probe that may run twice (Dudi, #5).
+      if (writeError) {
+        console.error('[flight-coverage] write failed', writeError.code);
+        return json(500, { error: 'write_failed', done });
+      }
+      const again = probe.probe_kind === 'after' && leg ? retryAt(leg, new Date()) : null;
+      if (again) {
+        await admin.from('flight_coverage_probes').upsert(
+          {
+            flight_number: probe.flight_number,
+            airline: probe.flight_number.slice(0, 2),
+            dep_date_local: probe.dep_date_local,
+            sched_dep_utc: probe.sched_dep_utc,
+            probe_kind: 'retry',
+            probe_at: again,
+          },
+          { onConflict: 'flight_number,dep_date_local,probe_kind', ignoreDuplicates: true },
+        );
+      }
       done += 1;
     }
     return json(200, { done });
+  }
+
+  if (body.action === 'evaluate') {
+    const { data, error } = await admin
+      .from('flight_coverage_probes')
+      .select('flight_number, probe_kind, snapshot');
+    if (error) return json(500, { error: 'read_failed' });
+    return json(200, gateResult((data ?? []) as GateRow[]));
   }
 
   return json(400, { error: 'bad_action' });
