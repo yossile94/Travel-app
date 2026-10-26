@@ -33,6 +33,8 @@ import {
 } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { TripTemperature } from '@/features/climate/TripTemperature';
+import { useDestination } from '@/features/destination/destinationData';
+import { TripStatusLine } from '@/features/destination/DestinationFields';
 import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import type { CountryInfo } from '@/features/globe/countryData';
 import { colors, fonts, layout, radius, timing, type ColorScheme } from '@/theme/tokens';
@@ -80,6 +82,7 @@ export function CardTrips({
   const palette = colors[colorScheme];
   const { state: auth } = useAuth();
   const trips = useTrips();
+  const destination = useDestination();
   const signedIn = auth.status === 'signedIn';
   // Design 2.2: the countries set already says "no trips here": no query, no skeleton.
   const knownEmpty = trips.countries !== null && !trips.countries.has(country.adm0);
@@ -238,6 +241,11 @@ export function CardTrips({
             </Pressable>
             {expanded ? (
               <View style={styles.details}>
+                {/* Sprint 4 design 8: entry and NSC warning first, not tappable. */}
+                <TripStatusLine
+                  advisory={destination.data?.advisories.get(trip.countryAdm0)}
+                  colorScheme={colorScheme}
+                />
                 {trip.cities.length > 0 ? (
                   <View
                     accessible

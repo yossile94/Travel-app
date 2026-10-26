@@ -39,7 +39,7 @@ create table public.country_advisories (
   entry_note text constraint country_advisories_entry_note_check check (char_length(entry_note) <= 500),
   entry_source_url text constraint country_advisories_entry_url_check check (entry_source_url ~ '^https://'),
   entry_verified_at date,
-  -- From data.gov.il "travelwarnings" (NSC, MFA, Health), daily.
+  -- From data.gov.il "travelwarnings" (NSC and MFA texts), daily.
   -- nsc_level: the highest level named in the NSC text; null when the text names none.
   nsc_level smallint constraint country_advisories_level_check check (nsc_level between 1 and 4),
   -- Every level the text names, low to high: {2,4} for "4 in the south, 2 elsewhere",

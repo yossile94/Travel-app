@@ -7,6 +7,7 @@ import { SearchBar } from './SearchBar';
 const mockCities = jest.fn();
 jest.mock('../trips/citiesData', () => ({
   searchAllCities: (query: string, limit: number) => mockCities(query, limit),
+  globalCityIndex: () => Promise.resolve(),
 }));
 
 const bar = (onSelect = jest.fn()) => (
