@@ -90,4 +90,12 @@ describe('the offline copy of the trips (sprint 4 F-015)', () => {
     expect(strip(cachedWhen(saved, t, new Date(2026, 9, 27, 9, 0)))).toBe('אתמול, 14:32');
     expect(strip(cachedWhen(saved, t, new Date(2026, 9, 29, 9, 0)))).toBe('26.10.2026');
   });
+
+  it('a save racing a sign-out leaves nothing behind (Dudi, e2)', async () => {
+    const saving = saveTripsCache(cache('user-1'));
+    await clearTripsCaches();
+    await saving;
+    expect(await readTripsCache('user-1')).toBeNull();
+    expect(mockKeys.size).toBe(0);
+  });
 });

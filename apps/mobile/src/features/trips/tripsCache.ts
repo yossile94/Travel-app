@@ -35,14 +35,25 @@ export interface TripsCache {
 
 const keyOf = (userId: string) => `${PREFIX}${userId}`;
 
+/**
+ * Grows on every clear. A save that started before a clear (a reload in
+ * flight at sign-out) removes what it wrote, so nothing outlives the clear
+ * (Dudi, e2).
+ */
+let generation = 0;
+
 export async function saveTripsCache(cache: TripsCache): Promise<void> {
   const value: TripsCache = {
     ...cache,
     upcoming: cache.upcoming.slice(0, CACHE_UPCOMING_MAX),
     past: cache.past.slice(0, CACHE_PAST_MAX),
   };
+  const startedIn = generation;
   try {
     await secureSessionStorage.setItem(keyOf(cache.userId), JSON.stringify(value));
+    if (generation !== startedIn) {
+      await secureSessionStorage.removeItem(keyOf(cache.userId)).catch(() => {});
+    }
   } catch (error) {
     // A cache that can't be written is only a missing offline copy.
     console.warn('[trips] cache write failed', (error as Error)?.name);
@@ -63,6 +74,7 @@ export async function readTripsCache(userId: string): Promise<TripsCache | null>
 
 /** Every user's copy and its key (sign-out, deletion: AC-13). */
 export async function clearTripsCaches(): Promise<void> {
+  generation += 1;
   try {
     const keys = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith(PREFIX));
     await Promise.all(keys.map((key) => secureSessionStorage.removeItem(key).catch(() => {})));

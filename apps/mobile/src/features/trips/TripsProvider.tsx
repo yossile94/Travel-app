@@ -145,7 +145,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
         full: next.value.next !== null || past.value.next !== null,
       };
       setCache(saved);
-      void saveTripsCache(saved);
+      // Still the same user: a sign-out in between must not leave a copy (Dudi, e2).
+      if (currentUser.current === forUser) void saveTripsCache(saved);
     }
   }, []);
   // A new day changes which trip is next (design 3.4).

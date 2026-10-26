@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(27);
 
 -- ---------------------------------------------------------------- structure
 select ok(
@@ -94,6 +94,8 @@ select is(
 -- A run is claimed once an hour, whoever asks (ADR-008).
 select ok(public.claim_job_run('rates'), 'the first claim of the hour wins');
 select ok(public.claim_job_run('rates') is null, 'a second claim within the hour is refused');
+update public.job_runs set claimed_at = now() - interval '59 minutes 59 seconds' where name = 'rates';
+select ok(public.claim_job_run('rates'), 'the retry an hour later always runs, even a little early (Dudi, E1)');
 update public.country_advisories set nsc_level = null where adm0 = 'THA';
 select ok(
   (select new_value is null and old_value = '4' from public.country_advisory_changes
