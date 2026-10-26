@@ -4,7 +4,7 @@ process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = 'web-client.apps.googleuserconten
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { GoogleSignin, statusCodes } =
   require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
-const { googleFreshIdToken, googleIdToken, idTokenAgeSeconds } =
+const { googleFreshIdToken, googleIdToken } =
   require('./googleAuth') as typeof import('./googleAuth');
 /* eslint-enable @typescript-eslint/no-require-imports */
 
@@ -74,16 +74,7 @@ describe('a fresh token for account deletion (sprint 2 AC-18, QA on the A73)', (
   });
   afterEach(() => jest.restoreAllMocks());
 
-  it('reads the age of a token from its iat', () => {
-    expect(idTokenAgeSeconds(tokenIssuedAt(now / 1000 - 90), now)).toBe(90);
-    expect(idTokenAgeSeconds('not-a-jwt', now)).toBeNull();
-    // base64url without padding, as Google sends it (review 1).
-    const body = btoa(JSON.stringify({ iat: now / 1000 - 30, x: 'y' })).replace(/=+$/, '');
-    expect(body.length % 4).not.toBe(0);
-    expect(idTokenAgeSeconds(`h.${body}.s`, now)).toBe(30);
-  });
-
-  it('revokes first, so Google issues a new token', async () => {
+  it('revokes first, so the account picker always shows', async () => {
     jest.spyOn(GoogleSignin, 'signIn').mockResolvedValue({
       type: 'success',
       data: { idToken: tokenIssuedAt(now / 1000 - 5) },
@@ -95,14 +86,14 @@ describe('a fresh token for account deletion (sprint 2 AC-18, QA on the A73)', (
     );
   });
 
-  it('a token that still looks old gets one more round, then goes to the server (review)', async () => {
+  it('asks once, even when the token Google returns is not new (sprint 3 QA B-1)', async () => {
     jest.spyOn(GoogleSignin, 'signIn').mockResolvedValue({
       type: 'success',
       data: { idToken: tokenIssuedAt(now / 1000 - 40 * 60) },
     } as never);
     const result = await googleFreshIdToken();
-    // Two rounds; the device clock may be wrong, so the token is sent anyway.
-    expect(GoogleSignin.revokeAccess).toHaveBeenCalledTimes(2);
+    // One picker; the server judges the token (ADR-006 6).
+    expect(GoogleSignin.signIn).toHaveBeenCalledTimes(1);
     expect(result.kind).toBe('token');
   });
 

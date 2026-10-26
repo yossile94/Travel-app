@@ -90,28 +90,6 @@ export async function googleRevoke(timeoutMs = 5000): Promise<void> {
   await googleSignOut();
 }
 
-/** Seconds since a Google ID token was issued (its `iat`), or null if unreadable. */
-export function idTokenAgeSeconds(idToken: string, nowMs = Date.now()): number | null {
-  try {
-    const payload = idToken.split('.')[1];
-    if (!payload) return null;
-    // base64url without padding: Hermes' atob needs both fixed.
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const json = atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4));
-    const iat = (JSON.parse(json) as { iat?: unknown }).iat;
-    return typeof iat === 'number' ? Math.round(nowMs / 1000 - iat) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * A token that looks older than this gets one more revoke-and-choose round.
- * Only a hint: the device clock may be off, so the server's 5-minute window
- * (ADR-006 6) is the one gate (review).
- */
-const FRESH_TOKEN_HINT_S = 4 * 60;
-
 async function revokeThenChoose(): Promise<GoogleResult> {
   try {
     configure();
@@ -127,17 +105,13 @@ async function revokeThenChoose(): Promise<GoogleResult> {
 }
 
 /**
- * A Google ID token issued just now, for account deletion (sprint 2 AC-18).
- * Signing out of Google isn't enough: Play services hands back its cached
- * token, up to an hour old, and the server refuses it (sprint 2 QA, device).
- * Revoking the app's access first makes Google issue a new one.
+ * A Google ID token for account deletion (sprint 2 AC-18), after an explicit
+ * choice of the account: access is revoked first, so the picker always shows.
+ * Play services may still hand back its cached token (up to an hour old; it
+ * can't be forced without a nonce, which this library doesn't offer), so the
+ * server accepts an unexpired token of the same Google identity, up to 60
+ * minutes old (ADR-006 6; Yossi, 2026-10-26, sprint 3 QA B-1). One picker.
  */
 export async function googleFreshIdToken(): Promise<GoogleResult> {
-  const first = await revokeThenChoose();
-  if (first.kind !== 'token') return first;
-  const age = idTokenAgeSeconds(first.idToken);
-  if (age === null || age <= FRESH_TOKEN_HINT_S) return first;
-  // Still looks cached: one more round, then the server decides.
-  const second = await revokeThenChoose();
-  return second.kind === 'token' ? second : first;
+  return revokeThenChoose();
 }
