@@ -70,6 +70,27 @@ export function formFromTrip(
 }
 
 /**
+ * A copy of a trip (sprint 3 AC-9): travelers, cities and notes, no dates.
+ * The name stays automatic when the source's name was its own default name
+ * in any of `defaultNames` (Hebrew or English); otherwise it is copied.
+ */
+export function formFromDuplicate(
+  source: { title: string; notes: string | null; travelers: TripTraveler[]; cities: TripCity[] },
+  defaultNames: readonly string[],
+): TripFormValues {
+  const auto = defaultNames.includes(source.title);
+  return {
+    startDate: null,
+    endDate: null,
+    title: auto ? '' : source.title,
+    notes: source.notes ?? '',
+    nameAuto: auto,
+    travelers: source.travelers.map((traveler) => ({ ...traveler })),
+    cities: source.cities.map((city) => ({ ...city })),
+  };
+}
+
+/**
  * A new departure date. A return date before it is cleared (`returnCleared`,
  * shown as help, not an error), and an automatic name follows the date.
  */

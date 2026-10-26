@@ -2,6 +2,7 @@ import i18n from '@/i18n';
 
 import {
   emptyForm,
+  formFromDuplicate,
   firstErrorField,
   formFromTrip,
   isFormChanged,
@@ -119,5 +120,30 @@ describe('trip form (sprint 2 design 3.2, 3.3)', () => {
       travelers: [],
       cities: [],
     });
+  });
+
+  it('a duplicate copies travelers, cities and notes, never the dates (sprint 3 AC-9)', () => {
+    const source = {
+      title: 'תאילנד דצמבר 2026',
+      notes: 'חיסונים',
+      travelers: [{ name: 'דנה', relation: 'partner' as const }],
+      cities: [
+        { geonameId: 1609350, name: 'בנגקוק' },
+        { geonameId: null, name: 'קו טאו' },
+      ],
+    };
+    const auto = formFromDuplicate(source, ['תאילנד דצמבר 2026', 'Thailand December 2026']);
+    expect(auto).toMatchObject({
+      startDate: null,
+      endDate: null,
+      title: '',
+      nameAuto: true,
+      notes: 'חיסונים',
+    });
+    expect(auto.travelers).toEqual(source.travelers);
+    expect(auto.cities).toEqual(source.cities);
+    expect(auto.travelers).not.toBe(source.travelers);
+    const manual = formFromDuplicate({ ...source, title: 'ירח דבש' }, ['תאילנד דצמבר 2026']);
+    expect(manual).toMatchObject({ title: 'ירח דבש', nameAuto: false });
   });
 });

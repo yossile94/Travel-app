@@ -10,6 +10,8 @@ import {
   isActive,
   isPast,
   toPgDate,
+  travelerCount,
+  tripStatus,
 } from './tripDates';
 
 const t = i18n.t.bind(i18n);
@@ -83,5 +85,18 @@ describe('trip dates (sprint 2 design 4.1, 4.3)', () => {
     expect(codePointLength('🏝️ חופשה')).toBe(8);
     expect('🏝'.length).toBe(2);
     expect(codePointLength('🏝')).toBe(1);
+  });
+
+  it('tells planned, active and ended apart by the local date (sprint 3 AC-6)', () => {
+    const today = '2026-10-26';
+    expect(tripStatus('2026-11-01', '2026-11-05', today)).toBe('planned');
+    expect(tripStatus('2026-10-26', '2026-10-30', today)).toBe('active');
+    expect(tripStatus('2026-10-20', '2026-10-26', today)).toBe('active');
+    expect(tripStatus('2026-10-20', '2026-10-25', today)).toBe('ended');
+  });
+
+  it('counts me among the travelers (sprint 3 AC-3)', () => {
+    expect(travelerCount([])).toBe(1);
+    expect(travelerCount([{ name: 'דנה' }])).toBe(2);
   });
 });

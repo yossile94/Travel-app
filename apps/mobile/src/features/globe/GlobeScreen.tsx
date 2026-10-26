@@ -649,6 +649,9 @@ export function GlobeScreen() {
                     maxListHeight={maxListHeight}
                     initiallyOpen={openTrip?.id ?? null}
                     onNewTrip={newTrip}
+                    onDuplicateTrip={(source) =>
+                      setTripForm({ kind: 'duplicate', country: selectedCountry, source })
+                    }
                     onEditTrip={(trip) =>
                       setTripForm({ kind: 'edit', country: selectedCountry, trip })
                     }
@@ -756,7 +759,13 @@ export function GlobeScreen() {
 
       {tripForm && (
         <TripForm
-          key={tripForm.kind === 'edit' ? tripForm.trip.id : 'new-' + tripForm.country.adm0}
+          key={
+            tripForm.kind === 'edit'
+              ? tripForm.trip.id
+              : tripForm.kind === 'duplicate'
+                ? 'dup-' + tripForm.source.id
+                : 'new-' + tripForm.country.adm0
+          }
           target={tripForm}
           colorScheme={colorScheme}
           insetsTop={insets.top}

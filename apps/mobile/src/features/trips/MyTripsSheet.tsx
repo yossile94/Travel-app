@@ -26,9 +26,9 @@ import { countryByAdm0 } from '@/features/globe/countryData';
 import { logMyTripsShown } from '@/features/globe/perfLog';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
 
-import { ActiveBadge } from './CardTrips';
+import { StatusTag } from './CardTrips';
 import { countryName } from './countryName';
-import { formatRange, formatRangeA11y, isActive, todayPg } from './tripDates';
+import { formatRange, formatRangeA11y, todayPg, travelerCount, tripStatus } from './tripDates';
 import type { Trip } from './tripsApi';
 import { useTrips } from './TripsProvider';
 import { useTripList } from './useTripList';
@@ -94,10 +94,15 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
   const renderTrip = (trip: Trip) => {
     const country = countryByAdm0(trip.countryAdm0);
     const name = country ? countryName(country, i18n.language) : trip.countryAdm0;
-    const active = isActive(trip.startDate, trip.endDate, today);
-    const a11y = t(active ? 'trips.rowA11yActive' : 'trips.rowA11y', {
-      name: `${trip.title}, ${name}`,
+    const status = tripStatus(trip.startDate, trip.endDate, today);
+    const active = status === 'active';
+    const people = travelerCount(trip.travelers);
+    const a11y = t(people >= 2 ? 'myTrips.rowA11yTravelers' : 'myTrips.rowA11y', {
+      name: trip.title,
+      country: name,
       dates: formatRangeA11y(trip.startDate, trip.endDate, t),
+      status: t(`trips.status.${status}`),
+      n: people,
     });
     return (
       <Pressable
@@ -132,7 +137,7 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
           <Text style={[styles.code, { backgroundColor: palette.tag, color: palette.textPrimary }]}>
             {trip.countryAdm0}
           </Text>
-          {active ? <ActiveBadge colorScheme={sheet.colorScheme} /> : null}
+          <StatusTag status={status} colorScheme={sheet.colorScheme} />
         </View>
       </Pressable>
     );

@@ -48,10 +48,18 @@ import {
 } from '@/theme/tokens';
 
 import { countryName } from './countryName';
-import { codePointLength, formatDate, fromPgDate, toPgDate, todayPg } from './tripDates';
+import {
+  codePointLength,
+  defaultTripName,
+  formatDate,
+  fromPgDate,
+  toPgDate,
+  todayPg,
+} from './tripDates';
 import {
   thousands,
   emptyForm,
+  formFromDuplicate,
   firstErrorField,
   formFromTrip,
   isFormChanged,
@@ -67,7 +75,10 @@ import {
 import { deleteTrip, saveTrip, type Trip, type WriteResult } from './tripsApi';
 
 export type TripFormTarget =
-  { kind: 'new'; country: CountryInfo } | { kind: 'edit'; country: CountryInfo; trip: Trip };
+  | { kind: 'new'; country: CountryInfo }
+  | { kind: 'edit'; country: CountryInfo; trip: Trip }
+  /** Sprint 3 AC-9: a new trip, copied from `source` without its dates. */
+  | { kind: 'duplicate'; country: CountryInfo; source: Trip };
 
 /** How the form ended, for the card and the toast. */
 export type TripFormResult =
@@ -114,9 +125,21 @@ export function TripForm({
 
   // Made once, when the form opens (AC-3).
   const [tripId] = useState(() => (target.kind === 'edit' ? target.trip.id : Crypto.randomUUID()));
-  const [initial] = useState<TripFormValues>(() =>
-    target.kind === 'edit' ? formFromTrip(target.trip, country, t) : emptyForm(),
-  );
+  const [initial] = useState<TripFormValues>(() => {
+    if (target.kind === 'edit') return formFromTrip(target.trip, country, t);
+    if (target.kind === 'duplicate') {
+      // The source's own default name, in either language (AC-9).
+      const defaults = (['he', 'en'] as const).map((lng) =>
+        defaultTripName(
+          countryName(target.country, lng),
+          target.source.startDate,
+          i18n.getFixedT(lng),
+        ),
+      );
+      return formFromDuplicate(target.source, defaults);
+    }
+    return emptyForm();
+  });
   const [values, setValues] = useState(initial);
   const [submitted, setSubmitted] = useState(false);
   const [returnCleared, setReturnCleared] = useState(false);
@@ -400,6 +423,13 @@ export function TripForm({
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
+          {target.kind === 'duplicate' ? (
+            <InlineNotice
+              text={t('tripForm.duplicated', { name: target.source.title })}
+              colorScheme={colorScheme}
+              testID="trip-form-duplicated"
+            />
+          ) : null}
           {noticeText ? (
             <InlineNotice text={noticeText} colorScheme={colorScheme} testID="trip-form-notice" />
           ) : null}

@@ -162,3 +162,46 @@ export function GlobePlusIcon({ color, size = 48 }: IconProps) {
     </Svg>
   );
 }
+
+/** Two people: the traveler count. Not mirrored: an object. */
+export function PeopleIcon({ color, size = 16 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={9} cy={8} r={3.5} stroke={color} {...stroke} />
+      <Path
+        d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15.5 4.8a3.5 3.5 0 010 6.4M18 14.4c1.8.9 3 2.9 3 5.6"
+        stroke={color}
+        {...stroke}
+      />
+    </Svg>
+  );
+}
+
+/** Two pages: "Duplicate". Not mirrored: an object. */
+export function CopyIcon({ color, size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M8 8h11v12H8zM5 16V4h11" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** A circle with a minus: remove an item from a list (not ×, which closes screens). */
+export function MinusCircleIcon({ color, size = 24 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={color} {...stroke} />
+      <Path d="M8 12h8" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** A person: "me" in the travelers list. */
+export function PersonIcon({ color, size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={8} r={4} stroke={color} {...stroke} />
+      <Path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke={color} {...stroke} />
+    </Svg>
+  );
+}

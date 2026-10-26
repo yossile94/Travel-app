@@ -22,13 +22,29 @@ import {
 
 import { Button } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
-import { ChevronDownIcon, CloudOffIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import {
+  ChevronDownIcon,
+  CloudOffIcon,
+  CopyIcon,
+  PencilIcon,
+  PeopleIcon,
+  PlusIcon,
+  TrashIcon,
+} from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import type { CountryInfo } from '@/features/globe/countryData';
 import { colors, fonts, layout, radius, timing, type ColorScheme } from '@/theme/tokens';
 
 import { countryName } from './countryName';
-import { formatRange, formatRangeA11y, isActive, todayPg } from './tripDates';
+import {
+  formatRange,
+  formatRangeA11y,
+  todayPg,
+  travelerCount,
+  tripStatus,
+  type TripStatus,
+} from './tripDates';
 import { deleteTrip, type Trip } from './tripsApi';
 import { useTrips } from './TripsProvider';
 import { useTripList } from './useTripList';
@@ -42,6 +58,8 @@ interface Props {
   initiallyOpen?: string | null;
   onNewTrip: () => void;
   onEditTrip: (trip: Trip) => void;
+  /** Sprint 3 AC-9: a new trip to the same country, copied without dates. */
+  onDuplicateTrip: (trip: Trip) => void;
   onToast: (text: string) => void;
 }
 
@@ -52,6 +70,7 @@ export function CardTrips({
   initiallyOpen = null,
   onNewTrip,
   onEditTrip,
+  onDuplicateTrip,
   onToast,
 }: Props) {
   const { t, i18n } = useTranslation();
@@ -137,8 +156,10 @@ export function CardTrips({
   const rows = (list: Trip[]) =>
     list.map((trip) => {
       const expanded = open === trip.id;
-      const active = isActive(trip.startDate, trip.endDate, today);
+      const status = tripStatus(trip.startDate, trip.endDate, today);
+      const active = status === 'active';
       const dates = formatRange(trip.startDate, trip.endDate, t);
+      const people = travelerCount(trip.travelers);
       return (
         <View key={trip.id} onLayout={(e) => onRowLayout(trip.id, e.nativeEvent.layout.y)}>
           <View
@@ -153,10 +174,15 @@ export function CardTrips({
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ expanded, disabled: deleting === trip.id }}
-              accessibilityLabel={t(active ? 'trips.rowA11yActive' : 'trips.rowA11y', {
-                name: trip.title,
-                dates: formatRangeA11y(trip.startDate, trip.endDate, t),
-              })}
+              accessibilityLabel={t(
+                people >= 2 ? 'trips.rowA11yTravelers' : 'trips.rowA11yStatus',
+                {
+                  name: trip.title,
+                  dates: formatRangeA11y(trip.startDate, trip.endDate, t),
+                  status: t(`trips.status.${status}`),
+                  n: people,
+                },
+              )}
               disabled={deleting === trip.id}
               onPress={() => {
                 setRowNotice(null);
@@ -179,7 +205,17 @@ export function CardTrips({
                 <Text style={[styles.footnote, styles.tabular, { color: palette.textSecondary }]}>
                   {dates}
                 </Text>
-                {active ? <ActiveBadge colorScheme={colorScheme} /> : null}
+                <View style={styles.meta} importantForAccessibility="no-hide-descendants">
+                  <StatusTag status={status} colorScheme={colorScheme} />
+                  {people >= 2 ? (
+                    <View style={styles.people}>
+                      <PeopleIcon color={palette.textSecondary} />
+                      <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+                        {t('trips.travelers', { n: people })}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
               {deleting === trip.id ? (
                 <ActivityIndicator size={20} color={palette.textTertiary} />
@@ -191,6 +227,21 @@ export function CardTrips({
             </Pressable>
             {expanded ? (
               <View style={styles.details}>
+                {trip.cities.length > 0 ? (
+                  <View
+                    accessible
+                    accessibilityLabel={t('card.trips.citiesA11y', {
+                      list: trip.cities.map((city) => city.name).join(', '),
+                    })}
+                  >
+                    <Text style={[styles.caption, { color: palette.textSecondary }]}>
+                      {t('card.trips.cities')}
+                    </Text>
+                    <Text style={[styles.callout, { color: palette.textPrimary }]}>
+                      {trip.cities.map((city) => isolateOwn(city.name)).join(' · ')}
+                    </Text>
+                  </View>
+                ) : null}
                 {trip.notes ? <Notes text={trip.notes} colorScheme={colorScheme} /> : null}
                 {rowNotice?.id === trip.id ? (
                   <InlineNotice text={rowNotice.text} colorScheme={colorScheme} />
@@ -205,6 +256,15 @@ export function CardTrips({
                     onPress={() => onEditTrip(trip)}
                     colorScheme={colorScheme}
                     testID="card-trip-edit"
+                  />
+                  <Button
+                    kind="text"
+                    label={t('card.trips.duplicate')}
+                    icon={(color) => <CopyIcon color={color} size={20} />}
+                    disabled={deleting !== null}
+                    onPress={() => onDuplicateTrip(trip)}
+                    colorScheme={colorScheme}
+                    testID="card-trip-duplicate"
                   />
                   <Button
                     kind="text"
@@ -312,16 +372,28 @@ export function CardTrips({
   );
 }
 
-export function ActiveBadge({ colorScheme }: { colorScheme: ColorScheme }) {
+/** Sprint 3 AC-6: the trip's status in words, not colour alone (design 3.3). */
+export function StatusTag({
+  status,
+  colorScheme,
+}: {
+  status: TripStatus;
+  colorScheme: ColorScheme;
+}) {
   const { t } = useTranslation();
   const palette = colors[colorScheme];
+  const [bg, fg] =
+    status === 'active'
+      ? [palette.successSubtleBg, palette.successSubtleFg]
+      : status === 'planned'
+        ? [palette.infoBg, palette.infoFg]
+        : [palette.tag, palette.textSecondary];
   return (
-    <View
-      style={[styles.badge, { backgroundColor: palette.successSubtleBg }]}
-      importantForAccessibility="no"
-    >
-      <View style={[styles.dot, { backgroundColor: palette.activeBar }]} />
-      <Text style={[styles.caption, { color: palette.successSubtleFg }]}>{t('trips.active')}</Text>
+    <View style={[styles.badge, { backgroundColor: bg }]} importantForAccessibility="no">
+      {status === 'active' ? (
+        <View style={[styles.dot, { backgroundColor: palette.activeBar }]} />
+      ) : null}
+      <Text style={[styles.caption, { color: fg }]}>{t(`trips.status.${status}`)}</Text>
     </View>
   );
 }
@@ -392,6 +464,15 @@ const styles = StyleSheet.create({
   flipped: { transform: [{ rotate: '180deg' }] },
   details: { paddingHorizontal: 10, paddingBottom: 12, gap: 10 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  meta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 10,
+    rowGap: 4,
+    marginTop: 4,
+  },
+  people: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
