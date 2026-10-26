@@ -32,6 +32,7 @@ import {
   TrashIcon,
 } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { TripTemperature } from '@/features/climate/TripTemperature';
 import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import type { CountryInfo } from '@/features/globe/countryData';
 import { colors, fonts, layout, radius, timing, type ColorScheme } from '@/theme/tokens';
@@ -252,6 +253,13 @@ export function CardTrips({
                     </Text>
                   </View>
                 ) : null}
+                <TripTemperature
+                  countryAdm0={trip.countryAdm0}
+                  startDate={trip.startDate}
+                  endDate={trip.endDate}
+                  cities={trip.cities}
+                  colorScheme={colorScheme}
+                />
                 {trip.notes ? <Notes text={trip.notes} colorScheme={colorScheme} /> : null}
                 {rowNotice?.id === trip.id ? (
                   <InlineNotice text={rowNotice.text} colorScheme={colorScheme} />

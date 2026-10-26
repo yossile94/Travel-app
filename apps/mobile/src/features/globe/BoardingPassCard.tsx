@@ -19,6 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Line, Path, Rect } from 'react-native-svg';
 
+import { CardTemperature } from '@/features/climate/CardTemperature';
 import { colors, fonts, highlightColor, layout, motion, type ColorScheme } from '@/theme/tokens';
 
 import { boardingPassPath } from './boardingPassPath';
@@ -259,6 +260,13 @@ export function BoardingPassCard({
                 </Text>
               </View>
             )}
+            {/* Sprint 3 AC-10: always last, the least urgent of the fields (design 1.1). */}
+            <CardTemperature
+              adm0={country.adm0}
+              colorScheme={colorScheme}
+              reduceMotion={reduceMotion}
+              insetsBottom={bottomInset}
+            />
           </View>
         </View>
 

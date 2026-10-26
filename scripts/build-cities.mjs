@@ -75,7 +75,7 @@ export function distanceKm(point, geometry) {
   return best;
 }
 
-function bboxOf(geometry) {
+export function bboxOf(geometry) {
   const box = [Infinity, Infinity, -Infinity, -Infinity];
   for (const polygon of ringsOf(geometry)) {
     for (const [x, y] of polygon[0]) {
