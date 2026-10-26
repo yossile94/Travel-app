@@ -1,0 +1,150 @@
+/**
+ * The flights of each opened trip (sprint 5, design 12): read through the
+ * owner RPC when a trip row opens, on refresh, and after a save or delete;
+ * kept for offline viewing in the encrypted copy of ADR-009 (AC-5), under the
+ * trips-cache prefix, so every sign-out and account deletion clears it too.
+ */
+import { useSyncExternalStore } from 'react';
+
+import { supabase } from '@/lib/supabase';
+import { secureSessionStorage } from '@/lib/secureSessionStorage';
+import { tripsCacheGeneration } from '@/features/trips/tripsCache';
+
+import type { Flight } from './flightModel';
+import { loadFlights } from './flightsApi';
+
+export interface TripFlights {
+  flights: Flight[];
+  status: 'loading' | 'ready' | 'error';
+  /** Shown from the device copy: offline, read-only. */
+  fromCache: boolean;
+  /** When the device copy was saved, for "מוצג מהשמירה האחרונה". */
+  savedAt: string | null;
+}
+
+const EMPTY: TripFlights = { flights: [], status: 'loading', fromCache: false, savedAt: null };
+/** Trips kept in the device copy; the oldest opened goes first. */
+const CACHE_TRIPS_MAX = 70;
+/** AeroDataBox's cache terms: provider data 7 days after landing (AC-7א, Raz). */
+const PROVIDER_DATA_DAYS = 7;
+
+const state = new Map<string, TripFlights>();
+const listeners = new Set<() => void>();
+const notify = () => listeners.forEach((l) => l());
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => listeners.delete(l);
+};
+
+const keyOf = (userId: string) => `trips-cache.flights.${userId}`;
+
+interface FlightsCache {
+  userId: string;
+  savedAt: string;
+  /** Most recently opened first. */
+  trips: { tripId: string; flights: Flight[] }[];
+}
+
+/** Drops provider data the terms don't let us keep, even offline. */
+export function withoutExpiredProviderData(flights: Flight[], now = new Date()): Flight[] {
+  const limit = now.getTime() - PROVIDER_DATA_DAYS * 24 * 60 * 60_000;
+  return flights.map((f) => {
+    const end = f.watch?.landedAt ?? f.arrSched ?? f.depSched;
+    return f.watch && end && Date.parse(end) < limit ? { ...f, watch: null } : f;
+  });
+}
+
+async function userId(): Promise<string | null> {
+  const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
+  return data.session?.user.id ?? null;
+}
+
+async function readCache(user: string): Promise<FlightsCache | null> {
+  try {
+    const text = await secureSessionStorage.getItem(keyOf(user));
+    const cache = text ? (JSON.parse(text) as FlightsCache) : null;
+    return cache?.userId === user ? cache : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCache(user: string, tripId: string, flights: Flight[], generation: number) {
+  const previous = await readCache(user);
+  const trips = [
+    { tripId, flights },
+    ...(previous?.trips ?? []).filter((t) => t.tripId !== tripId),
+  ].slice(0, CACHE_TRIPS_MAX);
+  // A sign-out since the read started: write nothing (as tripsCache, Dudi e2).
+  if (tripsCacheGeneration() !== generation) return;
+  try {
+    await secureSessionStorage.setItem(
+      keyOf(user),
+      JSON.stringify({ userId: user, savedAt: new Date().toISOString(), trips }),
+    );
+    if (tripsCacheGeneration() !== generation) await secureSessionStorage.removeItem(keyOf(user));
+  } catch (error) {
+    console.warn('[flights] cache write failed', (error as Error)?.name);
+  }
+}
+
+const inFlight = new Map<string, Promise<void>>();
+
+/** Reads a trip's flights; offline or failing, falls back to the device copy. */
+export function refreshTripFlights(tripId: string): Promise<void> {
+  const running = inFlight.get(tripId);
+  if (running) return running;
+  const generation = tripsCacheGeneration();
+  const current = state.get(tripId);
+  if (!current) {
+    state.set(tripId, EMPTY);
+    notify();
+  }
+  const run = (async () => {
+    const result = await loadFlights([tripId]);
+    const user = await userId();
+    if (result.ok) {
+      state.set(tripId, {
+        flights: result.value,
+        status: 'ready',
+        fromCache: false,
+        savedAt: null,
+      });
+      notify();
+      if (user) await writeCache(user, tripId, result.value, generation);
+      return;
+    }
+    const cache = user ? await readCache(user) : null;
+    const cached = cache?.trips.find((t) => t.tripId === tripId);
+    if (cached && result.reason === 'offline') {
+      state.set(tripId, {
+        flights: withoutExpiredProviderData(cached.flights),
+        status: 'ready',
+        fromCache: true,
+        savedAt: cache!.savedAt,
+      });
+    } else {
+      const prev = state.get(tripId);
+      state.set(tripId, {
+        flights: prev?.flights ?? [],
+        status: prev && prev.status === 'ready' ? 'ready' : 'error',
+        fromCache: result.reason === 'offline' && !!prev?.flights.length,
+        savedAt: prev?.savedAt ?? null,
+      });
+    }
+    notify();
+  })().finally(() => inFlight.delete(tripId));
+  inFlight.set(tripId, run);
+  return run;
+}
+
+/** The flights of one trip; null id: nothing. */
+export function useTripFlights(tripId: string | null): TripFlights {
+  return useSyncExternalStore(subscribe, () => (tripId ? (state.get(tripId) ?? EMPTY) : EMPTY));
+}
+
+/** Forgets everything in memory (sign-out; the device copy goes with clearTripsCaches). */
+export function resetFlightsStore(): void {
+  state.clear();
+  notify();
+}

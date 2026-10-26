@@ -105,3 +105,9 @@ export function tripStatus(startDate: string, endDate: string, today: string): T
 export function travelerCount(travelers: readonly unknown[]): number {
   return travelers.length + 1;
 }
+
+/** A Postgres date moved by whole days, through UTC parts (no daylight-saving shift). */
+export function addDays(value: string, days: number): string {
+  const [y, m, d] = value.split('-').map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
+}
