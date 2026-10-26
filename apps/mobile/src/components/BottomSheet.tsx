@@ -7,7 +7,7 @@
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Keyboard, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Keyboard, Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -54,6 +54,9 @@ export function BottomSheet({
   // QA (A73): in an edge-to-edge Modal the window doesn't resize for the
   // keyboard, so the sheet moves up by the keyboard's height itself.
   const [keyboard, setKeyboard] = useState(0);
+  const { height: windowHeight } = useWindowDimensions();
+  const sheetMax =
+    keyboard > 0 ? Math.min(maxHeight ?? Infinity, windowHeight - keyboard - 48) : maxHeight;
   useEffect(() => {
     if (!visible) return;
     const shown = Keyboard.addListener('keyboardDidShow', (e) =>
@@ -117,7 +120,7 @@ export function BottomSheet({
             backgroundColor: palette.surfaceRaised,
             paddingBottom: keyboard > 0 ? 16 : insetsBottom + 16,
             bottom: keyboard,
-            maxHeight,
+            maxHeight: sheetMax,
           },
           sheetStyle,
         ]}

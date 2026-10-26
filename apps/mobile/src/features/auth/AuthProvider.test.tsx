@@ -24,6 +24,8 @@ const mockSupabase = {
     }),
     signInWithIdToken: jest.fn(),
     refreshSession: jest.fn(async () => ({ error: null as unknown })),
+    startAutoRefresh: jest.fn(async () => {}),
+    stopAutoRefresh: jest.fn(async () => {}),
     signOut: jest.fn(async () => {
       mockState.listeners.forEach((listener: Listener) => listener('SIGNED_OUT'));
       return { error: null as unknown };
@@ -312,6 +314,9 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
     await act(async () => {
       await result.current.signOut();
     });
+    expect(mockSupabase.auth.stopAutoRefresh.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSupabase.auth.signOut.mock.invocationCallOrder.at(-1)!,
+    );
     expect(await AsyncStorage.getItem('sb-ref-auth-token')).toBeNull();
     expect(await AsyncStorage.getItem('sb-ref-auth-token-user')).toBeNull();
     expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
@@ -592,18 +597,6 @@ describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
     expect(outcome).toBe('deleted');
     expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
     expect(result.current.notice).toEqual({ kind: 'deleted' });
-  });
-
-  it('a cached Google token is refused on the device: nothing is sent (QA on the A73)', async () => {
-    const { result } = await signedInHook();
-    googleAuth.googleFreshIdToken!.mockImplementationOnce(async () => ({ kind: 'stale' }));
-    let outcome = '';
-    await act(async () => {
-      outcome = await result.current.deleteAccount(() => {});
-    });
-    expect(outcome).toBe('reauthFailed');
-    expect(deletion.requestDeletion).not.toHaveBeenCalled();
-    expect(result.current.state.status).toBe('signedIn');
   });
 
   it('a second tap while deleting starts nothing (review)', async () => {

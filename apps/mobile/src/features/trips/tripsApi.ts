@@ -160,7 +160,7 @@ export async function createTrip(trip: Trip): Promise<WriteResult> {
   // The form may have changed since, so its current values are written now.
   if ((error as { code?: string }).code === '23505') {
     const updated = await updateTrip(trip.id, trip);
-    return updated === 'gone' ? 'ok' : updated;
+    return updated;
   }
   return writeFailure('create', error);
 }

@@ -105,12 +105,13 @@ export function CardTrips({
             }
             setDeleting(trip.id);
             setRowNotice(null);
+            let timer: ReturnType<typeof setTimeout> | undefined;
             const result = await Promise.race([
               deleteTrip(trip.id),
-              new Promise<'error'>((resolve) =>
-                setTimeout(() => resolve('error'), timing.tripSaveTimeout),
-              ),
-            ]);
+              new Promise<'error'>((resolve) => {
+                timer = setTimeout(() => resolve('error'), timing.tripSaveTimeout);
+              }),
+            ]).finally(() => clearTimeout(timer));
             setDeleting(null);
             if (result === 'ok' || result === 'gone') {
               setOpen(null);

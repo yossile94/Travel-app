@@ -177,6 +177,9 @@ async function readLastUser(): Promise<AuthUser | null> {
  */
 async function localSignOut(): Promise<void> {
   try {
+    // Stop the refresh ticker first, so it can't write the session back after
+    // the clear (review: offline sign-out, then the network returns).
+    await supabase?.auth.stopAutoRefresh();
     await supabase?.auth.signOut({ scope: 'local' });
   } finally {
     await clearStoredSessions();
@@ -494,6 +497,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return 'abandoned';
         }
         const user = toAuthUser(data.user);
+        // The ticker stopped at the last sign-out; this session needs it.
+        void supabase.auth.startAutoRefresh();
         const settled = await settle(user);
         if (settled?.signedIn) setNotice({ kind: 'signedIn', name: user.name ?? user.email ?? '' });
         return 'done';
@@ -588,7 +593,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (google.kind === 'cancelled') return 'cancelled';
       if (google.kind === 'network') return 'offline';
       if (google.kind === 'playServicesUnavailable') return 'playServicesUnavailable';
-      if (google.kind === 'stale') return 'reauthFailed';
       if (google.kind === 'error') return 'error';
       // No signInWithIdToken: the app's session stays as it is (AC-18).
 

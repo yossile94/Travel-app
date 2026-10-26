@@ -8,6 +8,10 @@ jest.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => ({ deleteAccount: jest.fn(async () => 'cancelled') }),
 }));
 jest.mock('@/lib/supabase', () => ({ supabase: null }));
+jest.mock('@/features/auth/consentStore', () => ({
+  fetchCurrentDocuments: jest.fn(async () => null),
+  readLocalAgreement: jest.fn(async () => null),
+}));
 
 const props = {
   user: { id: 'user-1', name: 'דנה', email: 'dana@example.test' },

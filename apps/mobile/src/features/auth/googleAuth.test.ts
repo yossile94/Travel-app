@@ -77,6 +77,10 @@ describe('a fresh token for account deletion (sprint 2 AC-18, QA on the A73)', (
   it('reads the age of a token from its iat', () => {
     expect(idTokenAgeSeconds(tokenIssuedAt(now / 1000 - 90), now)).toBe(90);
     expect(idTokenAgeSeconds('not-a-jwt', now)).toBeNull();
+    // base64url without padding, as Google sends it (review 1).
+    const body = btoa(JSON.stringify({ iat: now / 1000 - 30, x: 'y' })).replace(/=+$/, '');
+    expect(body.length % 4).not.toBe(0);
+    expect(idTokenAgeSeconds(`h.${body}.s`, now)).toBe(30);
   });
 
   it('revokes first, so Google issues a new token', async () => {
@@ -91,12 +95,15 @@ describe('a fresh token for account deletion (sprint 2 AC-18, QA on the A73)', (
     );
   });
 
-  it('refuses a cached token older than 4 minutes, so nothing is sent', async () => {
+  it('a token that still looks old gets one more round, then goes to the server (review)', async () => {
     jest.spyOn(GoogleSignin, 'signIn').mockResolvedValue({
       type: 'success',
       data: { idToken: tokenIssuedAt(now / 1000 - 40 * 60) },
     } as never);
-    expect(await googleFreshIdToken()).toEqual({ kind: 'stale' });
+    const result = await googleFreshIdToken();
+    // Two rounds; the device clock may be wrong, so the token is sent anyway.
+    expect(GoogleSignin.revokeAccess).toHaveBeenCalledTimes(2);
+    expect(result.kind).toBe('token');
   });
 
   it('goes on when there is nothing to revoke', async () => {
