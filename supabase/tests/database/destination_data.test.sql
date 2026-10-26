@@ -118,8 +118,8 @@ select throws_ok(
   '42501', null, 'a client cannot change an advisory'
 );
 select is(
-  (select nsc_level from public.country_advisories where adm0 = 'THA'),
-  4::smallint,
+  (select nsc_text from public.country_advisories where adm0 = 'THA'),
+  'טקסט חדש',
   'a signed-out client reads the advisory'
 );
 select throws_ok(
