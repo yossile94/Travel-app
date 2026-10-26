@@ -48,6 +48,7 @@ import {
 } from '@/theme/tokens';
 
 import { countryName } from './countryName';
+import { CitiesSection } from './CitiesSection';
 import { TravelersSection } from './TravelersSection';
 import {
   codePointLength,
@@ -536,6 +537,17 @@ export function TripForm({
               testID="trip-form-name"
             />
           </View>
+
+          <CitiesSection
+            country={target.country}
+            cities={values.cities}
+            onChange={(cities) => setValues((v) => ({ ...v, cities }))}
+            disabled={locked}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsTop={insetsTop}
+            insetsBottom={insetsBottom}
+          />
 
           <TravelersSection
             travelers={values.travelers}
