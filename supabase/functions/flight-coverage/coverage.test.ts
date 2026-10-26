@@ -22,6 +22,7 @@ const flight = (
 ): FlightSnapshot => ({
   number,
   airlineIata: number.slice(0, 2),
+  airlineName: null,
   status: 'Expected',
   codeshareStatus: 'IsOperator',
   isCargo: false,

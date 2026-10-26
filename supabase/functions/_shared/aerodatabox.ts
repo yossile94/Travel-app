@@ -21,6 +21,7 @@ export type MovementTimes = {
 export type FlightSnapshot = {
   number: string;
   airlineIata: string | null;
+  airlineName: string | null;
   status: string;
   codeshareStatus: string | null;
   isCargo: boolean;
@@ -61,7 +62,7 @@ export type RawFlight = {
   status?: string | null;
   codeshareStatus?: string | null;
   isCargo?: boolean | null;
-  airline?: { iata?: string | null } | null;
+  airline?: { iata?: string | null; name?: string | null } | null;
   departure?: RawMovement;
   arrival?: RawMovement;
   /** FIDS rows carry the airport's own side here instead. */
@@ -103,6 +104,7 @@ export function toSnapshot(raw: RawFlight, fidsSide?: 'departure' | 'arrival'): 
   return {
     number: normalizeNumber(raw.number ?? ''),
     airlineIata: raw.airline?.iata ?? null,
+    airlineName: raw.airline?.name?.trim() || null,
     status: raw.status ?? 'Unknown',
     codeshareStatus: raw.codeshareStatus ?? null,
     isCargo: raw.isCargo === true,

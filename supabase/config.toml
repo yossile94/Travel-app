@@ -451,3 +451,11 @@ enabled = true
 [functions.flight-coverage]
 verify_jwt = false
 import_map = "./functions/deno.json"
+
+[functions.flight-watch]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.flight-lookup]
+verify_jwt = true
+import_map = "./functions/deno.json"
