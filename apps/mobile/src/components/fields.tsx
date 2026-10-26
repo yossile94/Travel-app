@@ -162,7 +162,7 @@ export function DateField({
   );
 }
 
-type ButtonKind = 'primary' | 'secondary' | 'cta' | 'text';
+type ButtonKind = 'primary' | 'secondary' | 'cta' | 'text' | 'link';
 
 export function Button({
   kind,
@@ -198,7 +198,9 @@ export function Button({
         ? palette.ctaFg
         : kind === 'secondary'
           ? palette.secondaryFg
-          : palette.textPrimary;
+          : kind === 'link'
+            ? palette.link
+            : palette.textPrimary;
   const bg = (pressed: boolean) =>
     kind === 'primary'
       ? palette.primary
@@ -220,13 +222,13 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        kind === 'text' && styles.textButton,
+        (kind === 'text' || kind === 'link') && styles.textButton,
         {
           backgroundColor: bg(pressed),
           opacity: disabled ? 0.6 : 1,
           borderWidth: outlined ? 1 : 0,
           borderColor: palette.borderControl,
-          transform: [{ scale: pressed && kind !== 'text' ? 0.98 : 1 }],
+          transform: [{ scale: pressed && kind !== 'text' && kind !== 'link' ? 0.98 : 1 }],
         },
       ]}
       testID={testID}

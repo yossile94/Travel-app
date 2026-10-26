@@ -46,7 +46,13 @@ import {
   removeLocalAgreement,
   writeLocalAgreement,
 } from './consentStore';
-import { googleIdToken, googleRevoke, googleSignOut, hasGoogleConfig } from './googleAuth';
+import {
+  googleFreshIdToken,
+  googleIdToken,
+  googleRevoke,
+  googleSignOut,
+  hasGoogleConfig,
+} from './googleAuth';
 
 export interface AuthUser {
   id: string;
@@ -577,12 +583,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!supabase) return 'error';
       const net = await NetInfo.fetch();
       if (net.isConnected === false) return 'offline';
-      // Design 11.2: always the account chooser and a fresh token (iat), never the last pick.
-      await googleSignOut();
-      const google = await googleIdToken();
+      // Design 11.2: always the account chooser and a token issued now (iat), never a cached one.
+      const google = await googleFreshIdToken();
       if (google.kind === 'cancelled') return 'cancelled';
       if (google.kind === 'network') return 'offline';
       if (google.kind === 'playServicesUnavailable') return 'playServicesUnavailable';
+      if (google.kind === 'stale') return 'reauthFailed';
       if (google.kind === 'error') return 'error';
       // No signInWithIdToken: the app's session stays as it is (AC-18).
 

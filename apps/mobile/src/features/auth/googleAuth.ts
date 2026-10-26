@@ -89,3 +89,40 @@ export async function googleRevoke(timeoutMs = 5000): Promise<void> {
   }
   await googleSignOut();
 }
+
+/** Seconds since a Google ID token was issued (its `iat`), or null if unreadable. */
+export function idTokenAgeSeconds(idToken: string, nowMs = Date.now()): number | null {
+  try {
+    const payload = idToken.split('.')[1];
+    if (!payload) return null;
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const iat = (JSON.parse(json) as { iat?: unknown }).iat;
+    return typeof iat === 'number' ? Math.round(nowMs / 1000 - iat) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The server accepts a re-authentication token up to 5 minutes old (ADR-006 6); keep a margin. */
+const FRESH_TOKEN_MAX_AGE_S = 4 * 60;
+
+/**
+ * A Google ID token issued just now, for account deletion (sprint 2 AC-18).
+ * Signing out of Google isn't enough: Play services hands back its cached
+ * token, up to an hour old, and the server refuses it (sprint 2 QA, device).
+ * Revoking the app's access first makes Google issue a new one; a token that
+ * is still old after that is refused here, before anything is sent.
+ */
+export async function googleFreshIdToken(): Promise<GoogleResult | { kind: 'stale' }> {
+  try {
+    configure();
+    await GoogleSignin.revokeAccess();
+  } catch {
+    // Nothing to revoke (never signed in with Google on this device): fine.
+  }
+  await googleSignOut();
+  const result = await googleIdToken();
+  if (result.kind !== 'token') return result;
+  const age = idTokenAgeSeconds(result.idToken);
+  return age !== null && age <= FRESH_TOKEN_MAX_AGE_S ? result : { kind: 'stale' };
+}

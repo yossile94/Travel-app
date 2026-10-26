@@ -41,6 +41,7 @@ const mockGoogle = { result: { kind: 'token', idToken: 'google-id-token' } as ob
 jest.mock('./googleAuth', () => ({
   hasGoogleConfig: true,
   googleIdToken: jest.fn(async () => mockGoogle.result),
+  googleFreshIdToken: jest.fn(async () => mockGoogle.result),
   googleSignOut: jest.fn(async () => {}),
   googleRevoke: jest.fn(async () => {}),
 }));
@@ -518,10 +519,9 @@ describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
       outcome = await result.current.deleteAccount(onDeleting);
     });
     expect(outcome).toBe('deleted');
-    // The chooser every time: sign out of Google before asking (design 11.2).
-    expect(googleAuth.googleSignOut!.mock.invocationCallOrder[0]).toBeLessThan(
-      googleAuth.googleIdToken!.mock.invocationCallOrder[0]!,
-    );
+    // A token issued now, never a cached one (design 11.2, QA on the device).
+    expect(googleAuth.googleFreshIdToken).toHaveBeenCalledTimes(1);
+    expect(googleAuth.googleIdToken).not.toHaveBeenCalled();
     expect(mockSupabase.auth.signInWithIdToken).not.toHaveBeenCalled();
     expect(onDeleting).toHaveBeenCalled();
     expect(deletion.requestDeletion).toHaveBeenCalledWith('google-id-token');
@@ -594,9 +594,21 @@ describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
     expect(result.current.notice).toEqual({ kind: 'deleted' });
   });
 
+  it('a cached Google token is refused on the device: nothing is sent (QA on the A73)', async () => {
+    const { result } = await signedInHook();
+    googleAuth.googleFreshIdToken!.mockImplementationOnce(async () => ({ kind: 'stale' }));
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.deleteAccount(() => {});
+    });
+    expect(outcome).toBe('reauthFailed');
+    expect(deletion.requestDeletion).not.toHaveBeenCalled();
+    expect(result.current.state.status).toBe('signedIn');
+  });
+
   it('a second tap while deleting starts nothing (review)', async () => {
     const { result } = await signedInHook();
-    googleAuth.googleIdToken!.mockClear();
+    googleAuth.googleFreshIdToken!.mockClear();
     let release: () => void = () => {};
     deletion.requestDeletion!.mockImplementationOnce(
       () => new Promise((resolve) => (release = () => resolve('deleted'))),
@@ -612,7 +624,7 @@ describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
       release();
       expect(await first).toBe('deleted');
     });
-    expect(googleAuth.googleIdToken).toHaveBeenCalledTimes(1);
+    expect(googleAuth.googleFreshIdToken).toHaveBeenCalledTimes(1);
   });
 
   it('the answer and a sign-out both finishing a deletion wipe once (review)', async () => {
@@ -641,7 +653,7 @@ describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
       outcome = await result.current.deleteAccount(() => {});
     });
     expect(outcome).toBe('offline');
-    expect(googleAuth.googleIdToken).not.toHaveBeenCalled();
+    expect(googleAuth.googleFreshIdToken).not.toHaveBeenCalled();
     expect(deletion.requestDeletion).not.toHaveBeenCalled();
   });
 

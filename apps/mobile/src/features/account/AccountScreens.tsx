@@ -517,7 +517,7 @@ export function DeleteAccountScreen({
                 {t('deleteAccount.kept')}
               </Text>
               <Button
-                kind="text"
+                kind="link"
                 label={t('consent.privacy')}
                 onPress={() => {
                   if (privacyUrl) Linking.openURL(privacyUrl).catch(() => setShowPrivacy(true));

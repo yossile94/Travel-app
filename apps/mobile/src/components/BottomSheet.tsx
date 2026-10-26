@@ -5,9 +5,9 @@
  * order for free (design 5.5). `dismissable={false}` holds it open while a
  * sign-in is being exchanged.
  */
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Keyboard, Modal, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -51,6 +51,21 @@ export function BottomSheet({
   const { t } = useTranslation();
   const palette = colors[colorScheme];
   const progress = useSharedValue(0);
+  // QA (A73): in an edge-to-edge Modal the window doesn't resize for the
+  // keyboard, so the sheet moves up by the keyboard's height itself.
+  const [keyboard, setKeyboard] = useState(0);
+  useEffect(() => {
+    if (!visible) return;
+    const shown = Keyboard.addListener('keyboardDidShow', (e) =>
+      setKeyboard(e.endCoordinates.height),
+    );
+    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboard(0));
+    return () => {
+      shown.remove();
+      hidden.remove();
+      setKeyboard(0);
+    };
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -98,7 +113,12 @@ export function BottomSheet({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: palette.surfaceRaised, paddingBottom: insetsBottom + 16, maxHeight },
+          {
+            backgroundColor: palette.surfaceRaised,
+            paddingBottom: keyboard > 0 ? 16 : insetsBottom + 16,
+            bottom: keyboard,
+            maxHeight,
+          },
           sheetStyle,
         ]}
         accessibilityViewIsModal

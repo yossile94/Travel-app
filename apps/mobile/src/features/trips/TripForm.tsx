@@ -183,7 +183,6 @@ export function TripForm({
       // The return can be the departure day itself (start of that day, local time).
       minimumDate: !isStart && values.startDate ? fromPgDate(values.startDate) : undefined,
       maximumDate: isStart ? maximum : undefined,
-      title: t(isStart ? 'datePicker.titleDeparture' : 'datePicker.titleReturn'),
       positiveButton: { label: t('datePicker.ok') },
       negativeButton: { label: t('datePicker.cancel') },
       onValueChange: (_event, date) => {
@@ -206,7 +205,6 @@ export function TripForm({
       mode: 'date',
       value: fromPgDate(after.startDate!),
       minimumDate: fromPgDate(after.startDate!),
-      title: t('datePicker.titleReturn'),
       positiveButton: { label: t('datePicker.ok') },
       negativeButton: { label: t('datePicker.cancel') },
       onValueChange: (_event, date) => {
@@ -469,7 +467,7 @@ export function TripForm({
                 placeholder={t('tripForm.pickDate')}
                 a11yLabel={dateA11y('endDate')}
                 a11yHint={t('tripForm.dateHint')}
-                error={errorText('endDate')}
+                error={returnCleared ? null : errorText('endDate')}
                 help={returnCleared ? t('tripForm.returnCleared') : null}
                 disabled={locked}
                 onPress={() => openPicker('endDate')}
