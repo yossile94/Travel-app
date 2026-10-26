@@ -1,18 +1,17 @@
 /**
- * The sign-in sheet (design 4) and the signed-in account sheet (design 3.2).
+ * The sign-in sheet (design 4). The signed-in account sheet is in
+ * features/account/AccountSheet.tsx (sprint 2 design 8).
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
 import { BottomSheet } from '@/components/BottomSheet';
 import { InlineNotice } from '@/components/formControls';
-import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
+import { colors, fonts, type ColorScheme } from '@/theme/tokens';
 
-import { isolateLtr } from '../globe/BoardingPassCard';
-import { initialOf } from './AccountButton';
-import { useAuth, type AuthUser, type SignInOutcome } from './AuthProvider';
+import { useAuth, type SignInOutcome } from './AuthProvider';
 import { GoogleButton } from './GoogleButton';
 
 interface SheetProps {
@@ -25,7 +24,16 @@ interface SheetProps {
 
 type SignInMessage = Exclude<SignInOutcome, 'done' | 'abandoned'> | 'expired' | null;
 
-export function SignInSheet({ visible, expired, ...sheet }: SheetProps & { expired: boolean }) {
+export function SignInSheet({
+  visible,
+  expired,
+  reason = null,
+  ...sheet
+}: SheetProps & {
+  expired: boolean;
+  /** Opened by a trips action: the body says why an account is needed (sprint 2 design 2.3, 5.2). */
+  reason?: 'newTrip' | 'myTrips' | null;
+}) {
   const { t } = useTranslation();
   const { signInWithGoogle, abandonSignIn } = useAuth();
   const palette = colors[sheet.colorScheme];
@@ -87,7 +95,15 @@ export function SignInSheet({ visible, expired, ...sheet }: SheetProps & { expir
       <Text style={[styles.title, { color: palette.textPrimary }]} accessibilityRole="header">
         {t('signIn.title')}
       </Text>
-      <Text style={[styles.body, { color: palette.textSecondary }]}>{t('signIn.body')}</Text>
+      <Text style={[styles.body, { color: palette.textSecondary }]}>
+        {t(
+          reason === 'newTrip'
+            ? 'signIn.bodyTrip'
+            : reason === 'myTrips'
+              ? 'signIn.bodyMyTrips'
+              : 'signIn.body',
+        )}
+      </Text>
       {notice ? (
         <View style={styles.block}>
           <InlineNotice text={notice} colorScheme={sheet.colorScheme} testID="sign-in-notice" />
@@ -115,48 +131,6 @@ export function SignInSheet({ visible, expired, ...sheet }: SheetProps & { expir
   );
 }
 
-export function AccountSheet({ user, ...sheet }: SheetProps & { user: AuthUser }) {
-  const { t } = useTranslation();
-  const { signOut } = useAuth();
-  const palette = colors[sheet.colorScheme];
-  const initial = initialOf(user);
-  return (
-    <BottomSheet {...sheet} testID="account-sheet">
-      <View style={styles.accountHead}>
-        {initial ? (
-          <View style={[styles.avatar, { backgroundColor: palette.primary }]}>
-            <Text style={[styles.avatarInitial, { color: palette.onPrimary }]}>{initial}</Text>
-          </View>
-        ) : null}
-        {user.name ? (
-          <Text style={[styles.name, { color: palette.textPrimary }]}>{user.name}</Text>
-        ) : null}
-        {user.email ? (
-          <Text style={[styles.email, { color: palette.textSecondary }]}>
-            {isolateLtr(user.email)}
-          </Text>
-        ) : null}
-        <Text style={[styles.footnote, { color: palette.textTertiary }]}>
-          {t('account.connectedWithGoogle')}
-        </Text>
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => {
-          sheet.onClose();
-          void signOut();
-        }}
-        style={[styles.secondary, { backgroundColor: palette.secondaryBg }]}
-        testID="sign-out"
-      >
-        <Text style={[styles.secondaryLabel, { color: palette.secondaryFg }]}>
-          {t('account.signOut')}
-        </Text>
-      </Pressable>
-    </BottomSheet>
-  );
-}
-
 const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.semibold,
@@ -180,29 +154,4 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'left',
   },
-  accountHead: { alignItems: 'flex-start', marginTop: 8, gap: 4 },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
-  name: {
-    fontFamily: fonts.semibold,
-    fontSize: 18,
-    lineHeight: 24,
-    marginTop: 8,
-    textAlign: 'left',
-  },
-  email: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20, textAlign: 'left' },
-  secondary: {
-    height: layout.touchTargetMin,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  secondaryLabel: { fontFamily: fonts.medium, fontSize: 16, lineHeight: 24 },
 });

@@ -26,6 +26,24 @@ export function logGlobeReady(reason: 'idle' | 'fallback' = 'idle') {
   );
 }
 
+let myTripsOpenedAt = 0;
+
+/** Sprint 2 AC-10: the tap on "My trips" (design 17.5). */
+export function markMyTripsOpened() {
+  myTripsOpenedAt = performance.now();
+}
+
+/**
+ * Sprint 2 AC-10: from the tap until the first page of both sections (or the
+ * empty or error state) is on screen. Logged once per opening.
+ */
+export function logMyTripsShown(state: 'rows' | 'empty' | 'error' | 'offline') {
+  if (!enabled || !myTripsOpenedAt) return;
+  const ms = Math.round(performance.now() - myTripsOpenedAt);
+  myTripsOpenedAt = 0;
+  console.log(`[perf] my-trips-shown ms=${ms} state=${state}`);
+}
+
 /** Sprint 1 AC-1: keystroke to the frame that shows that query's results. */
 export function logSearchResults(query: string, ms: number) {
   if (!enabled) return;

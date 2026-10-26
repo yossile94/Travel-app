@@ -23,9 +23,12 @@ const mockSupabase = {
       return { data: { subscription: { unsubscribe: jest.fn() } } };
     }),
     signInWithIdToken: jest.fn(),
+    refreshSession: jest.fn(async () => ({ error: null as unknown })),
+    startAutoRefresh: jest.fn(async () => {}),
+    stopAutoRefresh: jest.fn(async () => {}),
     signOut: jest.fn(async () => {
       mockState.listeners.forEach((listener: Listener) => listener('SIGNED_OUT'));
-      return { error: null };
+      return { error: null as unknown };
     }),
   },
 };
@@ -40,7 +43,21 @@ const mockGoogle = { result: { kind: 'token', idToken: 'google-id-token' } as ob
 jest.mock('./googleAuth', () => ({
   hasGoogleConfig: true,
   googleIdToken: jest.fn(async () => mockGoogle.result),
+  googleFreshIdToken: jest.fn(async () => mockGoogle.result),
   googleSignOut: jest.fn(async () => {}),
+  googleRevoke: jest.fn(async () => {}),
+}));
+
+const mockAccount = { name: 'דנה' as string | null };
+jest.mock('@/features/account/accountApi', () => ({
+  ensureProfile: jest.fn(async () => {}),
+  loadDisplayName: jest.fn(async () => mockAccount.name),
+  saveDisplayName: jest.fn(async () => 'ok'),
+  removeLocalChoices: jest.fn(async () => {}),
+}));
+const mockDeletion = { answers: ['deleted'] as string[] };
+jest.mock('@/features/account/deleteAccountApi', () => ({
+  requestDeletion: jest.fn(async () => mockDeletion.answers.shift() ?? 'error'),
 }));
 
 const docs: LegalDocument[] = [
@@ -61,6 +78,7 @@ jest.mock('./consentStore', () => ({
   fetchCurrentDocuments: jest.fn(async () => mockStore.current),
   fetchAgreementFromLog: jest.fn(async () => mockStore.log),
   recordConsent: jest.fn(async () => mockStore.record),
+  removeLocalAgreement: jest.fn(async () => {}),
 }));
 
 const googleUser = {
@@ -89,6 +107,8 @@ beforeEach(async () => {
   mockStore.log = null;
   mockStore.current = docs;
   mockStore.record = { ok: true };
+  mockAccount.name = 'דנה';
+  mockDeletion.answers = ['deleted'];
   jest.mocked(NetInfo.fetch).mockResolvedValue({ isConnected: true } as never);
   jest.mocked(NetInfo.addEventListener).mockImplementation(() => jest.fn());
 });
@@ -96,6 +116,17 @@ beforeEach(async () => {
 async function signedOutHook() {
   const hook = await renderHook(() => useAuth(), { wrapper });
   await waitFor(() => expect(hook.result.current.state.status).toBe('signedOut'));
+  return hook;
+}
+
+/** Signed in with consent on record. */
+async function signedInHook() {
+  mockStore.log = { terms: 0, privacy: 0 };
+  const hook = await signedOutHook();
+  await act(async () => {
+    await hook.result.current.signInWithGoogle(() => {});
+  });
+  await waitFor(() => expect(hook.result.current.state.status).toBe('signedIn'));
   return hook;
 }
 
@@ -269,6 +300,28 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
     expect(result.current.notice).toEqual({ kind: 'signedOut' });
   });
 
+  it('removes the stored session even when supabase-js returns early (QA D-1, AC-8)', async () => {
+    mockState.session = { user: googleUser };
+    mockStore.local = { terms: 0, privacy: 0 };
+    await AsyncStorage.setItem('sb-ref-auth-token', 'encrypted-session');
+    await AsyncStorage.setItem('sb-ref-auth-token-user', 'encrypted-user');
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
+    // Offline with an expired token: auth-js answers with an error and keeps the session.
+    mockSupabase.auth.signOut.mockImplementationOnce(async () => ({
+      error: new AuthRetryableFetchError('Network request failed', 0),
+    }));
+    await act(async () => {
+      await result.current.signOut();
+    });
+    expect(mockSupabase.auth.stopAutoRefresh.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSupabase.auth.signOut.mock.invocationCallOrder.at(-1)!,
+    );
+    expect(await AsyncStorage.getItem('sb-ref-auth-token')).toBeNull();
+    expect(await AsyncStorage.getItem('sb-ref-auth-token-user')).toBeNull();
+    expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
+  });
+
   describe('tech-lead review round 1', () => {
     const offline = () => new AuthRetryableFetchError('Network request failed', 0);
 
@@ -439,5 +492,169 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
         jest.useRealTimers();
       }
     });
+  });
+});
+
+describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
+  const googleAuth = jest.requireMock<Record<string, jest.Mock>>('./googleAuth');
+  const store = jest.requireMock<Record<string, jest.Mock>>('./consentStore');
+  const account = jest.requireMock<Record<string, jest.Mock>>('@/features/account/accountApi');
+  const deletion = jest.requireMock<Record<string, jest.Mock>>(
+    '@/features/account/deleteAccountApi',
+  );
+
+  it('creates a missing profile, then shows the display name, and renames (AC-12)', async () => {
+    const { result } = await signedInHook();
+    expect(account.ensureProfile).toHaveBeenCalledWith('user-1', 'דנה כהן', 'dana@example.test');
+    await waitFor(() => expect(result.current.displayName).toBe('דנה'));
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.renameProfile('  דנה ל  ');
+    });
+    expect(outcome).toBe('ok');
+    expect(result.current.displayName).toBe('דנה ל');
+  });
+
+  it('deletes with a fresh Google token, never touching the session, then wipes the device (AC-15, AC-16, AC-18)', async () => {
+    const { result } = await signedInHook();
+    jest.clearAllMocks();
+    const onDeleting = jest.fn();
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.deleteAccount(onDeleting);
+    });
+    expect(outcome).toBe('deleted');
+    // A token issued now, never a cached one (design 11.2, QA on the device).
+    expect(googleAuth.googleFreshIdToken).toHaveBeenCalledTimes(1);
+    expect(googleAuth.googleIdToken).not.toHaveBeenCalled();
+    expect(mockSupabase.auth.signInWithIdToken).not.toHaveBeenCalled();
+    expect(onDeleting).toHaveBeenCalled();
+    expect(deletion.requestDeletion).toHaveBeenCalledWith('google-id-token');
+    expect(store.removeLocalAgreement).toHaveBeenCalledWith('user-1');
+    expect(account.removeLocalChoices).toHaveBeenCalledWith('user-1');
+    expect(googleAuth.googleRevoke).toHaveBeenCalled();
+    expect(await AsyncStorage.getItem('auth.lastUser.v1')).toBeNull();
+    expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
+    expect(result.current.notice).toEqual({ kind: 'deleted' });
+    expect(result.current.displayName).toBeNull();
+  });
+
+  it('a defined refusal leaves the user signed in, and nothing is wiped', async () => {
+    const { result } = await signedInHook();
+    mockDeletion.answers = ['wrongAccount'];
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.deleteAccount(() => {});
+    });
+    expect(outcome).toBe('wrongAccount');
+    expect(result.current.state.status).toBe('signedIn');
+    expect(store.removeLocalAgreement).not.toHaveBeenCalled();
+    // The flag is off: a later sign-out the user didn't make is "expired", not "deleted".
+    await act(async () => mockState.listeners.forEach((listener) => listener('SIGNED_OUT')));
+    expect(result.current.state).toEqual({ status: 'signedOut', expired: true });
+    expect(result.current.notice).not.toEqual({ kind: 'deleted' });
+  });
+
+  it('no answer keeps the flag on: a sign-out that follows means it was deleted (design 11.3)', async () => {
+    const { result } = await signedInHook();
+    mockDeletion.answers = ['noAnswer'];
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.deleteAccount(() => {});
+    });
+    expect(outcome).toBe('noAnswer');
+    expect(result.current.state.status).toBe('signedIn');
+    await act(async () => mockState.listeners.forEach((listener) => listener('SIGNED_OUT')));
+    await waitFor(() => expect(result.current.notice).toEqual({ kind: 'deleted' }));
+    expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
+    expect(store.removeLocalAgreement).toHaveBeenCalledWith('user-1');
+  });
+
+  it('401 refreshes the session and retries once; 401 again is "expired", never "deleted"', async () => {
+    const { result } = await signedInHook();
+    mockDeletion.answers = ['unauthorized', 'unauthorized'];
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.deleteAccount(() => {});
+    });
+    expect(mockSupabase.auth.refreshSession).toHaveBeenCalledTimes(1);
+    expect(deletion.requestDeletion).toHaveBeenCalledTimes(2);
+    expect(outcome).toBe('expired');
+    expect(result.current.state.status).toBe('signedIn');
+  });
+
+  it('401, and the refresh signs out because the user is gone: "deleted" only, never "expired" too', async () => {
+    const { result } = await signedInHook();
+    mockDeletion.answers = ['unauthorized'];
+    mockSupabase.auth.refreshSession.mockImplementationOnce(async () => {
+      mockState.listeners.forEach((listener) => listener('SIGNED_OUT'));
+      return { error: { name: 'AuthApiError' } };
+    });
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.deleteAccount(() => {});
+    });
+    expect(outcome).toBe('deleted');
+    expect(result.current.state).toEqual({ status: 'signedOut', expired: false });
+    expect(result.current.notice).toEqual({ kind: 'deleted' });
+  });
+
+  it('a second tap while deleting starts nothing (review)', async () => {
+    const { result } = await signedInHook();
+    googleAuth.googleFreshIdToken!.mockClear();
+    let release: () => void = () => {};
+    deletion.requestDeletion!.mockImplementationOnce(
+      () => new Promise((resolve) => (release = () => resolve('deleted'))),
+    );
+    let first: Promise<string> = Promise.resolve('');
+    let second = '';
+    await act(async () => {
+      first = result.current.deleteAccount(() => {});
+      second = await result.current.deleteAccount(() => {});
+    });
+    expect(second).toBe('inProgress');
+    await act(async () => {
+      release();
+      expect(await first).toBe('deleted');
+    });
+    expect(googleAuth.googleFreshIdToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('the answer and a sign-out both finishing a deletion wipe once (review)', async () => {
+    const { result } = await signedInHook();
+    jest.clearAllMocks();
+    deletion.requestDeletion!.mockImplementationOnce(async () => {
+      // Auto-refresh found the user gone while the answer was on its way.
+      mockState.listeners.forEach((listener) => listener('SIGNED_OUT'));
+      return 'deleted';
+    });
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.deleteAccount(() => {});
+    });
+    expect(outcome).toBe('deleted');
+    expect(googleAuth.googleRevoke).toHaveBeenCalledTimes(1);
+    expect(result.current.notice).toEqual({ kind: 'deleted' });
+  });
+
+  it('offline: nothing is asked of Google or the server (AC-15)', async () => {
+    const { result } = await signedInHook();
+    jest.clearAllMocks();
+    jest.mocked(NetInfo.fetch).mockResolvedValue({ isConnected: false } as never);
+    let outcome = '';
+    await act(async () => {
+      outcome = await result.current.deleteAccount(() => {});
+    });
+    expect(outcome).toBe('offline');
+    expect(googleAuth.googleFreshIdToken).not.toHaveBeenCalled();
+    expect(deletion.requestDeletion).not.toHaveBeenCalled();
+  });
+
+  it("a sign-out the user didn't make wipes the consent copies too (AC-8, AC-16)", async () => {
+    const { result } = await signedInHook();
+    await act(async () => mockState.listeners.forEach((listener) => listener('SIGNED_OUT')));
+    expect(result.current.state).toEqual({ status: 'signedOut', expired: true });
+    expect(store.removeLocalAgreement).toHaveBeenCalledWith('user-1');
+    expect(account.removeLocalChoices).toHaveBeenCalledWith('user-1');
   });
 });

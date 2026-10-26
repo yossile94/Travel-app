@@ -1,0 +1,1467 @@
+<!doctype html>
+<html lang="he" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ספרינט 2 · חשבון ונסיעה ראשונה · הדמיה</title>
+<!-- Sprint 2 design prototype (not production code). Works offline; with a connection it also loads
+     pinned CDN assets without SRI: @fontsource-variable/rubik@5.1.0, d3@7.9.0, topojson-client@3.1.0, world-atlas@2.0.2.
+     Open locally only. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/rubik@5.1.0/index.css">
+<style>
+/* ---------- tokens (tokens.json 0.2.0 + tokens-0.3.0.proposed.json) ---------- */
+:root {
+  --font: 'Rubik Variable', 'Rubik', system-ui, 'Segoe UI', Arial, sans-serif;
+  --sysfont: Roboto, 'Noto Sans Hebrew', 'Segoe UI', Arial, sans-serif;
+  --fs: 1; --top: 28px; --bottom: 48px; --scale: 1;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --space: #03060F; --trip: #4FCFBE; --sel: #FF7A57;
+}
+:root[dir="rtl"] { --push-from: -100%; }
+:root[dir="ltr"] { --push-from: 100%; }
+:root[data-theme="light"] {
+  --canvas: #FFFBF5; --surface: #FFFFFF; --raised: #FFFFFF; --alt: #FBF4E8;
+  --t1: #121C36; --t2: #4A5573; --t3: #646E8A; --link: #1561BC; --alert: #C81E16;
+  --pri-bg: #1561BC; --pri-fg: #FFFFFF; --pri-pressed: #104C94;
+  --cta-bg: #C8441F; --cta-fg: #FFFFFF; --cta-pressed: #A8381A;
+  --sec-bg: #EEF6FF; --sec-fg: #104C94; --dis-bg: #E9EEFA; --dis-fg: #646E8A;
+  --ok-bg: #0B7F73; --ok-sbg: #E8FAF7; --ok-sfg: #0A665D;
+  --bsub: #F4E7D0; --bctl: #7D869E; --focus: #1F78DB;
+  --info-bg: #EEF6FF; --info-fg: #104C94; --pressed: #FBF4E8; --chip: #FBF4E8; --skel: #F4E7D0;
+  --scrim: rgba(6,11,24,0.48);
+  --chrome-bg: rgba(255,255,255,0.92); --chrome-fg: #121C36; --chrome-b: rgba(18,28,54,0.08);
+  --g-bg: #FFFFFF; --g-b: #747775; --g-fg: #1F1F1F;
+  --field-b: transparent; --perf: rgba(18,28,54,.22);
+  --sh2: 0 4px 12px rgba(18,28,54,0.10), 0 1px 3px rgba(18,28,54,0.06);
+  --sh3: 0 8px 24px rgba(18,28,54,0.14);
+  --page: #EDE6D9; --sys-bg: #FFFFFF; --sys-fg: #1F1F1F; --sys-2: #444746; --sys-acc: #0B57D0;
+}
+:root[data-theme="dark"] {
+  --canvas: #060B18; --surface: #0B1326; --raised: #121C36; --alt: #121C36;
+  --t1: #F3F6FC; --t2: #A3B3DB; --t3: #7487BD; --link: #6FB3FA; --alert: #FF5D52;
+  --pri-bg: #6FB3FA; --pri-fg: #060B18; --pri-pressed: #A9D2FF;
+  --cta-bg: #FF7A57; --cta-fg: #060B18; --cta-pressed: #FF9677;
+  --sec-bg: #1A2749; --sec-fg: #A9D2FF; --dis-bg: #1A2749; --dis-fg: #7487BD;
+  --ok-bg: #4FCFBE; --ok-sbg: #0D2B2E; --ok-sfg: #8FE3D6;
+  --bsub: #1A2749; --bctl: #7487BD; --focus: #6FB3FA;
+  --info-bg: #1A2749; --info-fg: #A9D2FF; --pressed: #1A2749; --chip: #1A2749; --skel: #1A2749;
+  --scrim: rgba(0,0,0,0.6);
+  --chrome-bg: rgba(18,28,54,0.88); --chrome-fg: #F3F6FC; --chrome-b: rgba(163,179,219,0.32);
+  --g-bg: #131314; --g-b: #8E918F; --g-fg: #E3E3E3;
+  --field-b: #1A2749; --perf: rgba(244,231,208,.22);
+  --sh2: none; --sh3: none;
+  --page: #03060E; --sys-bg: #2B2D31; --sys-fg: #E3E3E3; --sys-2: #C4C7C5; --sys-acc: #A8C7FA;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { font-family: var(--font); background: var(--page); color: var(--t1); -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.ltr { direction: ltr; unicode-bidi: isolate; }
+.num { font-variant-numeric: tabular-nums; }
+svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+svg.i.s20 { width: 20px; height: 20px; } svg.i.s16 { width: 16px; height: 16px; }
+:root[dir="rtl"] .dir { transform: scaleX(-1); }
+
+/* ---------- stage ---------- */
+.stage { display: flex; gap: 28px; padding: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+.phone-slot { position: relative; width: calc(431px * var(--scale)); height: calc(934px * var(--scale)); flex: none; }
+.bezel { position: absolute; top: 0; left: 0; width: 431px; height: 934px; padding: 10px; border-radius: 52px; background: #10131A; transform: scale(var(--scale)); transform-origin: 0 0; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.phone { position: relative; width: 411px; height: 914px; overflow: hidden; border-radius: 42px; background: var(--space); }
+canvas#globe { position: absolute; inset: 0; width: 411px; height: 914px; touch-action: none; cursor: grab; }
+.veil { position: absolute; inset: 0; background: var(--space); opacity: 0; pointer-events: none; z-index: 1; }
+.scrim-top { position: absolute; top: 0; left: 0; right: 0; height: calc(var(--top) + 16px); z-index: 2; pointer-events: none; background: linear-gradient(to bottom, rgba(3,6,15,.6) 0, rgba(3,6,15,.5) var(--top), rgba(3,6,15,0) 100%); }
+.scrim-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: calc(var(--bottom) + 24px); z-index: 2; pointer-events: none; background: linear-gradient(to top, rgba(3,6,15,.6) 0, rgba(3,6,15,.5) var(--bottom), rgba(3,6,15,0) 100%); }
+.statusbar { position: absolute; top: 0; left: 0; right: 0; height: var(--top); z-index: 60; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; color: #fff; font: 500 13px/1 var(--sysfont); pointer-events: none; direction: ltr; }
+.statusbar.dark { color: #1F1F1F; }
+.navbar { position: absolute; bottom: 0; left: 0; right: 0; height: var(--bottom); z-index: 60; display: flex; align-items: center; justify-content: space-around; color: #fff; direction: ltr; }
+.navbar.dark { color: #1F1F1F; }
+.navbar button { background: none; border: 0; width: 64px; height: 44px; display: grid; place-items: center; cursor: pointer; color: inherit; }
+.navbar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
+.mapbox { position: absolute; top: calc(var(--top) + 12px); left: 12px; z-index: 3; display: flex; align-items: center; gap: 6px; direction: ltr; color: #fff; font: 700 15px/1 Arial, sans-serif; opacity: .9; pointer-events: none; }
+.mapbox .attrib { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,.85); color: #121C36; font: 700 13px/24px Georgia, serif; text-align: center; }
+
+/* ---------- chrome ---------- */
+.chrome { position: absolute; top: calc(var(--top) + 52px); width: 48px; height: 48px; border-radius: 999px; border: 1px solid var(--chrome-b); background: var(--chrome-bg); color: var(--chrome-fg); box-shadow: var(--sh2); display: grid; place-items: center; cursor: pointer; z-index: 6; padding: 0; transition: opacity 150ms var(--ease-accel), transform 100ms var(--ease-standard); }
+.chrome:active { transform: scale(0.96); }
+.chrome.search { inset-inline-start: 12px; } .chrome.acct { inset-inline-end: 12px; }
+.chrome.gone { opacity: 0; pointer-events: none; visibility: hidden; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--pri-bg); color: var(--pri-fg); display: grid; place-items: center; font-weight: 600; font-size: 18px; line-height: 1; }
+.avatar.md { width: 48px; height: 48px; font-size: 22px; flex: none; }
+.trips-btn { position: absolute; bottom: calc(var(--bottom) + 16px); left: 50%; transform: translateX(-50%); z-index: 5; min-height: 48px; padding: 0 20px; display: flex; align-items: center; gap: 8px; border-radius: 999px; border: 1px solid var(--chrome-b); background: var(--chrome-bg); color: var(--chrome-fg); box-shadow: var(--sh2); cursor: pointer; font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); white-space: nowrap;
+  transition: transform 320ms var(--ease-decel), opacity 320ms var(--ease-decel); }
+.trips-btn:active { transform: translateX(-50%) scale(.96); }
+.trips-btn.gone { transform: translate(-50%, 80px); opacity: 0; pointer-events: none; transition: transform 200ms var(--ease-accel), opacity 200ms var(--ease-accel); }
+:root[data-reduce] .trips-btn, :root[data-reduce] .trips-btn.gone { transform: translateX(-50%); transition: opacity 200ms linear; }
+
+/* ---------- search (minimal, sprint 1) ---------- */
+.sb { position: absolute; top: calc(var(--top) + 52px); inset-inline: 12px; min-height: 48px; border-radius: 999px; z-index: 8; background: var(--raised); color: var(--t1); border: 2px solid var(--focus); display: flex; align-items: center; }
+.sb button { flex: none; width: 48px; height: 44px; border: 0; background: none; display: grid; place-items: center; cursor: pointer; }
+.sb input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: calc(16px * var(--fs)); padding: 10px 0; }
+.search-scrim { position: absolute; top: calc(var(--top) + 108px); left: 0; right: 0; bottom: 0; background: rgba(3,6,15,0.40); z-index: 7; }
+.results { position: absolute; top: calc(var(--top) + 108px); inset-inline: 12px; z-index: 8; background: var(--raised); border-radius: 16px; box-shadow: var(--sh3); border: 1px solid var(--field-b); max-height: 520px; overflow-y: auto; }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 16px; border: 0; background: none; text-align: start; cursor: pointer; position: relative; color: var(--t1); }
+.row + .row::before { content: ''; position: absolute; top: 0; inset-inline-start: 16px; inset-inline-end: 0; height: 1px; background: var(--bsub); }
+.row:active { background: var(--pressed); }
+.code { flex: none; font: 500 calc(12px * var(--fs)) / calc(16px * var(--fs)) var(--font); letter-spacing: 1.2px; font-variant-numeric: tabular-nums; color: var(--t2); background: var(--chip); border-radius: 4px; padding: 4px 6px; direction: ltr; }
+
+/* ---------- toast ---------- */
+.toast { position: absolute; top: calc(var(--top) + 112px); left: 50%; z-index: 70; transform: translate(-50%, -8px); opacity: 0; pointer-events: none; background: #121C36; color: #F3F6FC; border-radius: 999px; padding: 10px 18px; font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); width: max-content; max-width: calc(100% - 48px); text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: opacity 200ms var(--ease-accel), transform 200ms var(--ease-accel); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); transition: opacity 200ms var(--ease-decel), transform 200ms var(--ease-decel); }
+:root[data-reduce] .toast { transform: translate(-50%, 0); }
+.pill { position: absolute; top: calc(var(--top) + 112px); left: 50%; transform: translateX(-50%); z-index: 5; background: rgba(11,19,38,.78); color: #F3F6FC; padding: 8px 14px; border-radius: 999px; font-size: calc(13px * var(--fs)); white-space: nowrap; }
+.pill::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #F2BC62; margin-inline-end: 8px; }
+
+/* ---------- boarding-pass card + coupon ---------- */
+.card { position: absolute; inset-inline: 12px; bottom: calc(var(--bottom) + 16px); z-index: 4; filter: drop-shadow(0 12px 14px rgba(0,0,0,.45)); transform: translateY(calc(100% + 80px)); transition: transform 200ms var(--ease-accel); }
+.card.open { transform: none; transition: transform 320ms var(--ease-decel); }
+:root[data-reduce] .card { transform: none; opacity: 0; pointer-events: none; transition: opacity 200ms linear; }
+:root[data-reduce] .card.open { opacity: 1; pointer-events: auto; }
+.bp { --stubx: 108px; --cy: 160px; display: flex; flex-direction: column; background: var(--raised); border-radius: 18px; max-height: calc(914px - var(--top) - 160px - var(--bottom) - 16px); overflow: hidden;
+  -webkit-mask: radial-gradient(circle 11px at var(--stubx) 0, #0000 98%, #000), radial-gradient(circle 11px at 0 var(--cy), #0000 98%, #000), radial-gradient(circle 11px at 100% var(--cy), #0000 98%, #000);
+  -webkit-mask-composite: source-in; mask: radial-gradient(circle 11px at var(--stubx) 0, #0000 98%, #000), radial-gradient(circle 11px at 0 var(--cy), #0000 98%, #000), radial-gradient(circle 11px at 100% var(--cy), #0000 98%, #000); mask-composite: intersect; }
+:root[data-theme="dark"] .bp { box-shadow: inset 0 0 0 1px rgba(163,179,219,.16); }
+.bp-top { display: flex; position: relative; flex: none; }
+.c-main { flex: 1; min-width: 0; padding: 22px 20px 16px; position: relative; }
+.c-main .strip { position: absolute; top: 0; inset-inline: 0; height: 4px; background: var(--sel); border-start-start-radius: 18px; }
+.c-stub { width: 108px; flex: none; border-inline-start: 2px dashed var(--perf); margin-bottom: 4px; padding: 54px 10px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.lbl { font-weight: 600; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); }
+.c-name { margin: 4px 0 0; padding-inline-end: 48px; font-weight: 700; font-size: calc(28px * min(var(--fs), 1.6)); line-height: calc(34px * min(var(--fs), 1.6)); outline: none; }
+.c-en { padding-inline-end: 48px; font-weight: 500; font-size: calc(14px * var(--fs)); line-height: calc(20px * var(--fs)); letter-spacing: 2px; text-transform: uppercase; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: start; }
+.c-fields { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; }
+.clock { font-weight: 700; font-size: calc(22px * var(--fs)); line-height: calc(26px * var(--fs)); font-variant-numeric: tabular-nums; text-align: start; }
+.val { font-weight: 500; font-size: calc(15px * var(--fs)); line-height: calc(20px * var(--fs)); }
+.sub { font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); }
+.card .close { position: absolute; top: 4px; inset-inline-end: calc(108px + 4px); width: 48px; height: 48px; border-radius: 50%; border: 0; background: transparent; color: var(--t1); cursor: pointer; display: grid; place-items: center; }
+.flap { display: flex; gap: 3px; direction: ltr; }
+.flap span { width: 24px; height: 32px; border-radius: 4px; background: #121C36; color: #F3F6FC; display: grid; place-items: center; font: 600 18px/1 var(--font); }
+:root[data-theme="dark"] .flap span { background: #060B18; }
+.barcode { margin-top: auto; height: 30px; width: 80px; color: var(--t1); }
+.coupon { position: relative; display: flex; flex-direction: column; min-height: 0; padding: 12px 20px 16px; }
+.coupon::before { content: ''; position: absolute; top: 0; inset-inline: 14px; border-top: 2px dashed var(--perf); }
+.cp-list { overflow-y: auto; min-height: 0; flex: 1 1 auto; margin-inline: -8px; padding-inline: 8px; overscroll-behavior: contain; }
+.sec-lbl { font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t3); margin: 8px 0 2px; }
+.trow-wrap { border-radius: 12px; position: relative; }
+.trow-wrap.open { background: var(--alt); }
+/* README 2.1 (Raz): in dark, surfaceAlt equals the card surface, so the open row uses #1A2749 and Edit gets a border.control outline. */
+:root[data-theme="dark"] .trow-wrap.open { background: #1A2749; }
+:root[data-theme="dark"] .trow-wrap.open .btn.secondary { box-shadow: inset 0 0 0 1px var(--bctl); }
+.trow-wrap.flash { animation: flash 1200ms var(--ease-standard); }
+@keyframes flash { 0% { background: transparent; } 17% { background: var(--ok-sbg); } 50% { background: var(--ok-sbg); } 100% { background: transparent; } }
+:root[data-reduce] .trow-wrap.flash { animation: none; }
+.trow { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 8px 8px; border: 0; background: none; color: var(--t1); text-align: start; cursor: pointer; border-radius: 12px; }
+.trow:active { background: var(--pressed); }
+.active-bar { position: absolute; inset-inline-start: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--ok-bg); }
+.tr-text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.tr-name { font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tr-dates { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); font-variant-numeric: tabular-nums; }
+.chip-active { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); background: var(--ok-sbg); color: var(--ok-sfg); border-radius: 999px; padding: 2px 8px; }
+.chip-active::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ok-bg); }
+.chev { color: var(--t3); transition: transform 200ms var(--ease-standard); }
+.open > .trow .chev { transform: rotate(180deg); }
+:root[data-reduce] .chev { transition: none; }
+.tr-more { padding: 0 8px 12px; }
+.tr-notes { font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); white-space: pre-wrap; margin: 2px 0 8px; }
+.tr-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tr-actions .btn { width: auto; flex: 1 1 120px; }
+.cp-line { display: flex; align-items: center; gap: 8px; min-height: 48px; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); flex-wrap: wrap; }
+.skel { border-radius: 6px; background: var(--skel); height: 12px; animation: pulse 1000ms var(--ease-standard) infinite alternate; }
+@keyframes pulse { from { opacity: .55; } to { opacity: 1; } }
+:root[data-reduce] .skel { animation: none; opacity: .75; }
+
+/* ---------- buttons, notices, fields ---------- */
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); padding: 10px 20px; }
+.btn.primary { background: var(--pri-bg); color: var(--pri-fg); } .btn.primary:active { background: var(--pri-pressed); }
+.btn.cta { background: var(--cta-bg); color: var(--cta-fg); } .btn.cta:active { background: var(--cta-pressed); }
+.btn.secondary { background: var(--sec-bg); color: var(--sec-fg); }
+.btn.text { background: none; color: var(--link); }
+.btn.plain { background: none; color: var(--t1); }
+.btn[aria-busy="true"] { cursor: default; }
+.btn.inline { width: auto; display: inline-flex; padding: 10px 12px; }
+.spinner { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid currentColor; border-top-color: transparent; animation: spin 900ms linear infinite; flex: none; }
+.spinner.s16 { width: 16px; height: 16px; border-width: 2px; } .spinner.s32 { width: 32px; height: 32px; border-width: 3px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+:root[data-reduce] .spinner { animation-duration: 2400ms; }
+.notice { display: flex; gap: 10px; align-items: flex-start; background: var(--info-bg); color: var(--info-fg); border-radius: 12px; padding: 12px; margin: 0 0 16px; font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); }
+.fine { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); margin: 8px 0 0; }
+.field { margin-top: 20px; }
+.field > label, .field > .flabel { display: block; font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); margin-bottom: 6px; }
+.input { width: 100%; min-height: 56px; border-radius: 8px; border: 1px solid var(--bctl); background: var(--surface); color: var(--t1); padding: 14px 14px; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); outline: none; text-align: start; }
+.input:focus { border: 2px solid var(--focus); padding: 13px; }
+.input.err { border: 2px solid var(--alert); padding: 13px; }
+textarea.input { min-height: 96px; max-height: calc(24px * var(--fs) * 8 + 28px); resize: none; display: block; }
+.input::placeholder { color: var(--t3); }
+.dates { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.dates .field { margin-top: 0; flex: 1 1 160px; min-width: 160px; }
+.datebtn { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.datebtn .ph { color: var(--t3); }
+.meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); }
+.meta .cnt { flex: none; font-variant-numeric: tabular-nums; direction: ltr; }
+.ferr { display: flex; gap: 6px; align-items: flex-start; margin-top: 6px; color: var(--alert); font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); }
+
+/* ---------- sheets ---------- */
+.sheet-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 21; opacity: 0; pointer-events: none; transition: opacity 200ms linear; }
+.sheet-scrim.on { opacity: 1; pointer-events: auto; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 22; background: var(--raised); color: var(--t1); border-radius: 28px 28px 0 0; padding: 12px 16px calc(var(--bottom) + 20px); border-top: 1px solid var(--field-b); max-height: calc(100% - var(--top) - 12px); display: flex; flex-direction: column;
+  transform: translateY(105%); visibility: hidden; transition: transform 200ms var(--ease-accel), visibility 0s 200ms, height 320ms var(--ease-decel); }
+.sheet.open { transform: none; visibility: visible; transition: transform 320ms var(--ease-decel), visibility 0s, height 320ms var(--ease-decel); }
+:root[data-reduce] .sheet { transform: none; opacity: 0; transition: opacity 200ms linear, visibility 0s 200ms; }
+:root[data-reduce] .sheet.open { opacity: 1; transition: opacity 200ms linear, visibility 0s; }
+.sheet.trips { height: 60%; padding-bottom: 0; padding-inline: 0; }
+.sheet.trips.full { height: calc(100% - var(--top) - 12px); }
+.sheet-body { overflow-y: auto; min-height: 0; }
+.handle { width: 32px; height: 4px; border-radius: 2px; background: var(--bctl); margin: 0 auto 8px; opacity: .6; border: 0; padding: 0; display: block; }
+.handle-hit { display: block; margin: -12px auto 0; width: 96px; height: 28px; border: 0; background: none; cursor: grab; padding-top: 12px; }
+.x { position: absolute; top: 8px; inset-inline-end: 8px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: none; color: var(--t1); display: grid; place-items: center; cursor: pointer; z-index: 2; }
+.sheet h2 { margin: 12px 0 8px; font-weight: 600; font-size: calc(22px * var(--fs)); line-height: calc(28px * var(--fs)); padding-inline-end: 48px; outline: none; }
+.sheet p.body { margin: 0 0 16px; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); color: var(--t2); }
+.acct-head { display: flex; gap: 16px; align-items: center; margin: 8px 0 16px; padding-inline-end: 40px; }
+.acct-name-row { display: flex; align-items: center; gap: 4px; }
+.acct-name { font-weight: 600; font-size: calc(18px * var(--fs)); line-height: calc(24px * var(--fs)); background: none; border: 0; padding: 0; cursor: pointer; text-align: start; color: var(--t1); outline-offset: 2px; }
+.iconbtn { width: 48px; height: 48px; border-radius: 50%; border: 0; background: none; color: var(--t2); display: grid; place-items: center; cursor: pointer; flex: none; }
+.acct-mail { font-size: calc(15px * var(--fs)); line-height: calc(22px * var(--fs)); color: var(--t2); text-align: start; }
+.acct-via { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t3); }
+.lrow { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 56px; padding: 8px 4px; border: 0; background: none; color: var(--t1); text-align: start; cursor: pointer; border-top: 1px solid var(--bsub); }
+.lrow:active { background: var(--pressed); }
+.lrow .lt { flex: 1; min-width: 0; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.lrow .ls { display: block; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); }
+.lrow > svg:first-child { color: var(--t2); }
+.lrow .chev2 { color: var(--t3); }
+.group-end { border-bottom: 1px solid var(--bsub); margin-bottom: 20px; }
+/* my trips list */
+.mt-head { padding: 0 16px; position: relative; flex: none; }
+.mt-list { flex: 1; overflow-y: auto; min-height: 0; padding-bottom: calc(var(--bottom) + 16px); overscroll-behavior: contain; }
+.mt-sec { position: sticky; top: 0; z-index: 1; background: var(--raised); padding: 8px 16px; min-height: 40px; font-weight: 600; font-size: calc(18px * var(--fs)); line-height: calc(24px * var(--fs)); margin: 0; }
+.mrow { display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: 72px; padding: 12px 16px; border: 0; background: none; color: var(--t1); text-align: start; cursor: pointer; position: relative; }
+.mrow + .mrow::after { content: ''; position: absolute; top: 0; inset-inline-start: 16px; inset-inline-end: 0; height: 1px; background: var(--bsub); }
+.mrow:active { background: var(--pressed); }
+.mrow .active-bar { top: 14px; bottom: 14px; inset-inline-start: 4px; }
+.mrow .side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+.mrow .cn { font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); color: var(--t2); }
+.mt-state { padding: 32px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mt-state svg.big { width: 48px; height: 48px; color: var(--t3); stroke-width: 1.6; }
+.mt-state h3 { margin: 4px 0 0; font-weight: 600; font-size: calc(18px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.mt-state p { margin: 0 0 8px; color: var(--t2); font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.mt-foot { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; color: var(--t2); font-size: calc(13px * var(--fs)); flex-wrap: wrap; padding: 0 16px; }
+.mt-none { padding: 4px 16px 12px; font-size: calc(13px * var(--fs)); color: var(--t2); }
+.skel-row { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+
+/* ---------- full-screen: form (modal) and push screens ---------- */
+.full { position: absolute; inset: 0; background: var(--canvas); color: var(--t1); display: flex; flex-direction: column; padding-top: var(--top); visibility: hidden; }
+.modal { z-index: 24; transform: translateY(100%); transition: transform 200ms var(--ease-accel), visibility 0s 200ms; }
+.modal.open { transform: none; visibility: visible; transition: transform 300ms var(--ease-decel), visibility 0s; }
+.push { z-index: 23; transform: translateX(var(--push-from)); transition: transform 250ms var(--ease-accel), visibility 0s 250ms; }
+.push.open { transform: none; visibility: visible; transition: transform 300ms var(--ease-standard), visibility 0s; }
+.consent { z-index: 26; transform: translateY(100%); transition: transform 200ms var(--ease-accel), visibility 0s 200ms; }
+.consent.open { transform: none; visibility: visible; transition: transform 300ms var(--ease-decel), visibility 0s; }
+:root[data-reduce] .full { transform: none; opacity: 0; transition: opacity 200ms linear, visibility 0s 200ms; }
+:root[data-reduce] .full.open { opacity: 1; transition: opacity 200ms linear, visibility 0s; }
+.bar { display: flex; align-items: center; gap: 4px; min-height: 56px; padding: 0 4px; flex: none; }
+.bar h1 { flex: 1; margin: 0; font-weight: 600; font-size: calc(18px * var(--fs)); line-height: calc(24px * var(--fs)); padding-inline: 12px; outline: none; }
+.bar.with-back h1 { padding-inline-start: 4px; }
+.scroll { flex: 1; overflow-y: auto; padding: 8px 16px 24px; min-height: 0; }
+.foot { flex: none; padding: 12px 16px calc(var(--bottom) + 12px); border-top: 1px solid var(--bsub); background: var(--canvas); display: flex; flex-direction: column; gap: 4px; }
+.dest { background: var(--surface); border-radius: 16px; padding: 18px 16px 14px; position: relative; overflow: hidden; display: flex; align-items: flex-start; gap: 12px; border: 1px solid transparent; }
+:root[data-theme="dark"] .dest, :root[data-theme="dark"] .ccard { border-color: var(--bsub); }
+.dest::before { content: ''; position: absolute; top: 0; inset-inline: 0; height: 4px; background: var(--sel); }
+.dest .dn { font-weight: 600; font-size: calc(22px * var(--fs)); line-height: calc(28px * var(--fs)); }
+.dest .de { font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); text-align: start; }
+.ccard { background: var(--surface); border-radius: 16px; border: 1px solid transparent; }
+.h3 { margin: 24px 0 8px; font-weight: 600; font-size: calc(18px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.doc { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; width: 100%; border: 0; background: none; text-align: start; cursor: pointer; color: var(--t1); }
+.doc + .doc { border-top: 1px solid var(--bsub); }
+.doc .dt { flex: 1; } .doc .dl { display: block; color: var(--link); font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.doc .dm { display: block; color: var(--t2); font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); font-variant-numeric: tabular-nums; }
+.cb-row { display: flex; gap: 12px; align-items: flex-start; width: 100%; min-height: 56px; padding: 12px 16px; border: 0; background: none; text-align: start; cursor: pointer; color: var(--t1); }
+.cb-row + .cb-row { border-top: 1px solid var(--bsub); }
+.cb { flex: none; width: 24px; height: 24px; border-radius: 4px; border: 2px solid var(--bctl); display: grid; place-items: center; transition: background-color 100ms var(--ease-standard), border-color 100ms var(--ease-standard); }
+.cb svg { width: 18px; height: 18px; stroke: var(--pri-fg); fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transform: scale(.6); transition: transform 100ms var(--ease-standard), opacity 100ms; }
+.cb-row[aria-checked="true"] .cb { background: var(--pri-bg); border-color: var(--pri-bg); }
+.cb-row[aria-checked="true"] .cb svg { opacity: 1; transform: none; }
+:root[data-reduce] .cb, :root[data-reduce] .cb svg { transition: none; }
+.cb-row[aria-disabled="true"] { opacity: .6; cursor: default; }
+.cb-text { flex: 1; min-width: 0; }
+.cb-label { font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.cb-label.strong { font-weight: 500; }
+.cb-desc { display: flex; gap: 6px; align-items: center; font-size: calc(13px * var(--fs)); line-height: calc(18px * var(--fs)); color: var(--t2); margin-top: 2px; }
+.badge { display: inline-block; font-weight: 500; font-size: calc(12px * var(--fs)); line-height: calc(16px * var(--fs)); background: var(--info-bg); color: var(--info-fg); border-radius: 999px; padding: 4px 10px; }
+.lead { margin: 12px 0 0; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.bul { display: flex; gap: 12px; align-items: flex-start; padding: 10px 16px; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); }
+.bul svg { color: var(--t2); margin-top: 2px; }
+.ccard .h3 { margin: 0; padding: 14px 16px 2px; }
+.mailchip { display: inline-block; background: var(--alt); border-radius: 999px; padding: 6px 14px; font-size: calc(15px * var(--fs)); margin: 12px 0; }
+.warn { display: flex; gap: 10px; font-weight: 500; font-size: calc(16px * var(--fs)); line-height: calc(24px * var(--fs)); margin: 8px 0 20px; }
+.gbtn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 48px; border-radius: 999px; border: 1px solid var(--g-b); background: var(--g-bg); color: var(--g-fg); font: 500 calc(14px * var(--fs)) / calc(20px * var(--fs)) var(--sysfont); cursor: pointer; padding: 10px 20px; }
+.gbtn .g { width: 20px; height: 20px; flex: none; }
+.blocking { position: absolute; inset: 0; z-index: 45; background: var(--canvas); color: var(--t1); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; font-weight: 600; font-size: calc(18px * var(--fs)); transition: opacity 200ms var(--ease-accel); }
+
+/* ---------- system UI (simulated, not ours) ---------- */
+.dlg-scrim { position: absolute; inset: 0; z-index: 40; background: rgba(0,0,0,.4); }
+.alert { position: absolute; z-index: 41; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 312px; background: var(--sys-bg); color: var(--sys-fg); border-radius: 28px; padding: 24px 24px 16px; font-family: var(--sysfont); box-shadow: 0 10px 40px rgba(0,0,0,.4); }
+.alert h3 { margin: 0 0 12px; font-size: 22px; font-weight: 400; line-height: 28px; }
+.alert p { margin: 0 0 20px; font-size: 14px; line-height: 20px; color: var(--sys-2); }
+.alert .acts { display: flex; justify-content: flex-end; gap: 8px; }
+.alert .acts button { min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--sys-acc); font: 500 14px var(--sysfont); cursor: pointer; border-radius: 20px; }
+.picker { position: absolute; z-index: 41; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 344px; background: var(--sys-bg); color: var(--sys-fg); border-radius: 28px; font-family: var(--sysfont); box-shadow: 0 10px 40px rgba(0,0,0,.4); overflow: hidden; }
+.pk-head { padding: 16px 24px 12px; border-bottom: 1px solid rgba(127,127,127,.3); }
+.pk-head .sup { font-size: 14px; color: var(--sys-2); }
+.pk-head .hl { font-size: 28px; line-height: 36px; margin-top: 28px; font-variant-numeric: tabular-nums; }
+.pk-nav { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 0 16px; }
+:root[dir="rtl"] .pk-nav { padding: 8px 16px 0 12px; }
+.pk-nav .mon { font-size: 14px; font-weight: 500; color: var(--sys-2); }
+.pk-nav button { width: 48px; height: 48px; border: 0; background: none; color: var(--sys-2); border-radius: 50%; cursor: pointer; display: grid; place-items: center; }
+.pk-grid { display: grid; grid-template-columns: repeat(7, 44px); justify-content: center; padding: 4px 12px 8px; }
+.pk-grid .wd { height: 40px; display: grid; place-items: center; font-size: 13px; }
+.pk-grid button { width: 40px; height: 40px; margin: 2px; border-radius: 50%; border: 0; background: none; color: var(--sys-fg); font: 400 14px var(--sysfont); font-variant-numeric: tabular-nums; cursor: pointer; }
+.pk-grid button.today { box-shadow: inset 0 0 0 1px var(--sys-acc); color: var(--sys-acc); }
+.pk-grid button.sel { background: var(--sys-acc); color: var(--sys-bg); }
+.pk-grid button.inrange { background: rgba(11,87,208,.14); border-radius: 0; }
+.pk-grid button:disabled { opacity: .38; cursor: default; }
+.pk-acts { display: flex; justify-content: flex-end; gap: 8px; padding: 0 12px 12px; }
+.pk-acts button { min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--sys-acc); font: 500 14px var(--sysfont); cursor: pointer; border-radius: 20px; }
+.chooser, .share { position: absolute; left: 8px; right: 8px; bottom: calc(var(--bottom) + 8px); z-index: 46; background: var(--sys-bg); color: var(--sys-fg); border-radius: 28px; padding: 20px 16px 12px; font-family: var(--sysfont); box-shadow: 0 10px 40px rgba(0,0,0,.4); }
+.chooser .sys, .share .sys { font-size: 11px; color: var(--sys-2); text-align: center; margin-bottom: 8px; }
+.chooser h3, .share h3 { margin: 0 0 4px; font-size: 18px; font-weight: 400; text-align: center; }
+.chooser .acc { display: flex; gap: 12px; align-items: center; width: 100%; border: 0; background: none; color: inherit; padding: 12px 8px; border-radius: 12px; cursor: pointer; text-align: start; margin-top: 8px; }
+.chooser .acc:hover { background: rgba(127,127,127,.12); }
+.chooser .a { width: 36px; height: 36px; border-radius: 50%; background: #7B1FA2; color: #fff; display: grid; place-items: center; flex: none; }
+.chooser .cancel, .share .cancel { display: block; margin: 8px auto 0; border: 0; background: none; color: var(--sys-acc); font: 500 14px var(--sysfont); min-height: 44px; padding: 0 16px; cursor: pointer; }
+.share .file { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 16px; background: rgba(127,127,127,.12); margin: 8px 0 16px; direction: ltr; }
+.share .targets { display: flex; justify-content: space-around; }
+.share .targets button { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: none; color: inherit; font: 12px var(--sysfont); cursor: pointer; min-width: 64px; min-height: 64px; }
+.share .targets span.ic { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
+
+/* ---------- panel ---------- */
+.panel { width: 380px; max-width: 100%; background: #fff; color: #121C36; border-radius: 16px; padding: 16px; font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,.12); direction: rtl; text-align: right; }
+:root[data-theme="dark"] .panel { background: #121C36; color: #F3F6FC; }
+.panel h1 { font-size: 17px; margin: 0 0 4px; } .panel h2 { font-size: 13px; margin: 16px 0 6px; color: #646E8A; font-weight: 600; }
+:root[data-theme="dark"] .panel h2 { color: #A3B3DB; }
+.panel .grp { display: flex; flex-wrap: wrap; gap: 6px; }
+.panel button, .panel select { font: 500 12px var(--font); border: 1px solid #CED8F0; background: transparent; color: inherit; border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.panel button[aria-pressed="true"] { background: #1561BC; color: #fff; border-color: #1561BC; }
+.panel label.ck { display: flex; align-items: center; gap: 6px; padding: 3px 0; cursor: pointer; }
+.panel .log { background: rgba(127,127,127,.08); border-radius: 8px; padding: 8px; max-height: 180px; overflow-y: auto; font-size: 12px; line-height: 18px; }
+.panel .log div + div { border-top: 1px dashed rgba(127,127,127,.3); }
+.panel table { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+.panel td, .panel th { padding: 3px 4px; border-bottom: 1px solid rgba(127,127,127,.2); text-align: right; }
+.panel .ok { color: #0A665D; font-weight: 600; } .panel .bad { color: #C81E16; font-weight: 600; }
+:root[data-theme="dark"] .panel .ok { color: #4FCFBE; } :root[data-theme="dark"] .panel .bad { color: #FF8A80; }
+.panel canvas { width: 100%; border-radius: 8px; margin-top: 8px; display: block; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone-slot"><div class="bezel"><div class="phone" id="phone">
+    <canvas id="globe" width="822" height="1828" aria-label="globe"></canvas>
+    <div class="veil" id="veil"></div>
+    <div class="scrim-top"></div><div class="scrim-bottom"></div>
+    <div class="statusbar" id="statusbar"><span class="num">09:41</span><span>▮▮ 87%</span></div>
+    <div class="mapbox" aria-hidden="true"><span>mapbox</span><span class="attrib">i</span></div>
+    <button class="chrome search" id="searchBtn" data-act="openSearch"></button>
+    <button class="chrome acct" id="acctBtn" data-act="account"></button>
+    <div class="pill" id="offlinePill" hidden></div>
+    <div id="searchLayer" hidden></div>
+    <div class="card" id="card" aria-hidden="true"></div>
+    <button class="trips-btn" id="tripsBtn" data-act="myTrips"></button>
+    <div class="sheet-scrim" id="sheetScrim" data-act="scrim"></div>
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+    <div class="full push" id="push" role="dialog" aria-modal="true"></div>
+    <div class="full modal" id="modal" role="dialog" aria-modal="true"></div>
+    <div class="full consent" id="consent" role="dialog" aria-modal="true"></div>
+    <div id="sys"></div>
+    <div class="blocking" id="blocking" hidden role="alertdialog" aria-busy="true"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="navbar" id="navbar"><button data-act="back" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-8 7 8 7"/></svg></button><button><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button><button><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button></div>
+  </div></div></div>
+
+  <div class="panel" id="panel">
+    <h1>ספרינט 2 · חשבון ונסיעה ראשונה</h1>
+    <div style="color:#646E8A">הפאנל אינו חלק מהאפליקציה. "היום" קבוע: 25.10.2026. Esc = "חזור".</div>
+    <h2>תצוגה</h2>
+    <div class="grp">
+      <button data-p="theme" data-v="light" aria-pressed="true">בהיר</button><button data-p="theme" data-v="dark">כהה</button>
+      <button data-p="lang" data-v="he" aria-pressed="true">עברית</button><button data-p="lang" data-v="en">English</button>
+      <button data-p="fs" data-v="1" aria-pressed="true">גופן 100%</button><button data-p="fs" data-v="1.3">130%</button>
+      <button data-p="reduce" data-v="1">הפחתת תנועה</button>
+    </div>
+    <h2>מצב</h2>
+    <div class="grp">
+      <button data-p="signed" data-v="1" aria-pressed="true">מחובר</button><button data-p="signed" data-v="0">לא מחובר</button>
+      <button data-p="online" data-v="1" aria-pressed="true">יש רשת</button><button data-p="online" data-v="0">בלי רשת</button>
+    </div>
+    <label class="ck"><input type="checkbox" id="ckReturning"> בהתחברות: משתמש חוזר (ההסכמות עדכניות, בלי מסך הסכמות)</label>
+    <h2>נתונים בשרת</h2>
+    <div class="grp">
+      <select id="scenario"><option value="some">כמה נסיעות (7)</option><option value="none">אין נסיעות</option><option value="many">50 נסיעות (pagination)</option><option value="error">שגיאת טעינה (עד "נסו שוב")</option></select>
+    </div>
+    <label class="ck"><input type="checkbox" id="ckSaveFail"> השמירה הבאה נכשלת (נסיעה, שם, הסכמה)</label>
+    <label class="ck"><input type="checkbox" id="ckGone"> העריכה/המחיקה הבאה: הנסיעה כבר נמחקה במכשיר אחר</label>
+    <label class="ck"><input type="checkbox" id="ckExportFail"> הייצוא הבא נכשל</label>
+    <label class="ck">מחיקת חשבון: <select id="delMode"><option value="ok">מצליחה</option><option value="server">שגיאת שרת</option><option value="noAnswer">אין תשובה (ואז ניסיון חוזר מצליח)</option><option value="expired">האימות פג</option></select></label>
+    <h2>קפיצה למצב</h2>
+    <div class="grp">
+      <button data-j="cardTHA">כרטיס: תאילנד</button><button data-j="cardGRC">כרטיס: יוון (פעילה)</button><button data-j="cardMLT">מלטה (קטנה)</button>
+      <button data-j="form">טופס חדש</button><button data-j="formErr">טופס: שגיאות</button><button data-j="picker">בורר תאריכים</button><button data-j="edit">עריכה</button>
+      <button data-j="list">הנסיעות שלי</button><button data-j="account">חשבון</button><button data-j="name">שינוי שם</button>
+      <button data-j="consents">ההסכמות שלי</button><button data-j="del1">מחיקה: שלב 1</button><button data-j="del2">שלב 2</button><button data-j="deleting">מוחקים…</button>
+    </div>
+    <h2>מה קורא המסך אומר</h2>
+    <div class="log" id="srlog" aria-live="off"></div>
+    <h2>לוח הניגודיות של הדגשת הנסיעות (סעיף 7.4)</h2>
+    <div id="lab"></div>
+    <canvas id="labCanvas" width="700" height="250"></canvas>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =================== strings (README section 15) =================== */
+const S = {
+he: {
+  months: ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'],
+  wd: ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'],
+  'date.single': '{{d}} ב{{m}} {{y}}', 'date.to': 'עד',
+  'globe.selected': 'נבחרה: {{name}}', 'globe.closed': 'הכרטיס נסגר', 'globe.onlyDemo': 'בהדמיה אפשר לבחור את המדינות שמופיעות בחיפוש',
+  'offline.pill': 'אין חיבור. הגלובוס עובד כרגיל',
+  'card.destination': 'יעד', 'card.localTimeIn': 'שעה מקומית · {{city}}', 'card.currency': 'מטבע', 'card.close': 'סגירה',
+  'card.trips.title': 'הנסיעות שלך', 'card.trips.upcoming': 'קרובות', 'card.trips.past': 'שעברו', 'card.trips.new': 'נסיעה חדשה', 'card.trips.newA11y': 'נסיעה חדשה: {{country}}',
+  'card.trips.loading': 'טוענים את הנסיעות', 'card.trips.error': 'לא הצלחנו לטעון את הנסיעות.', 'card.trips.retry': 'נסו שוב', 'card.trips.offline': 'צריך חיבור כדי לראות את הנסיעות.',
+  'trips.active': 'בנסיעה עכשיו', 'card.trips.notes': 'הערות', 'card.trips.edit': 'עריכה', 'card.trips.delete': 'מחיקה', 'trips.activeA11y': ', בנסיעה עכשיו', 'trips.opened': 'נפתחה הנסיעה {{name}}',
+  'tripForm.titleNew': 'נסיעה חדשה', 'tripForm.titleEdit': 'עריכת נסיעה', 'tripForm.close': 'סגירה', 'tripForm.destination': 'יעד', 'tripForm.destinationA11y': 'יעד: {{country}}. היעד קבוע ולא ניתן לשינוי.',
+  'tripForm.departure': 'יציאה', 'tripForm.return': 'חזרה', 'tripForm.pickDate': 'בחירת תאריך', 'tripForm.departureA11y': 'תאריך יציאה, {{date}}', 'tripForm.returnA11y': 'תאריך חזרה, {{date}}', 'tripForm.notSet': 'לא נבחר',
+  'tripForm.name': 'שם הנסיעה', 'tripForm.namePending': 'השם ייקבע לפי תאריך היציאה', 'tripForm.nameAuto': 'נקבע לפי היעד ותאריך היציאה. אפשר לשנות.',
+  'tripForm.notes': 'הערות (לא חובה)', 'tripForm.notesPlaceholder': 'מה חשוב לזכור לנסיעה הזו?', 'tripForm.charsLeft': 'נשארו {{n}} תווים',
+  'err.departureRequired': 'צריך לבחור תאריך יציאה.', 'err.returnRequired': 'צריך לבחור תאריך חזרה.', 'err.returnBeforeDeparture': 'תאריך החזרה לא יכול להיות לפני היציאה.',
+  'err.nameRequired': 'צריך לתת לנסיעה שם.', 'err.nameTooLong': 'השם יכול להיות עד 80 תווים.', 'err.notesTooLong': 'ההערות יכולות להיות עד 2,000 תווים.',
+  'err.summaryOne': 'יש שדה אחד לתיקון', 'err.summaryMany': 'יש {{n}} שדות לתיקון', 'err.prefix': 'שגיאה: {{m}}',
+  'tripForm.returnCleared': 'תאריך החזרה נמחק כי הוא היה לפני היציאה החדשה. בחרו אותו שוב.',
+  'tripForm.save': 'שמירת הנסיעה', 'tripForm.saveEdit': 'שמירת השינויים', 'tripForm.saving': 'שומרים…', 'tripForm.closeBtn': 'סגירה',
+  'tripForm.offline': 'אין חיבור לאינטרנט. כדי לשמור נסיעה צריך חיבור. מה שמילאת נשאר כאן.', 'tripForm.saveError': 'לא הצלחנו לשמור את הנסיעה. נסו שוב.',
+  'tripForm.saved': 'הנסיעה נשמרה', 'tripForm.savedA11y': 'הנסיעה {{name}} נשמרה', 'tripForm.updated': 'השינויים נשמרו', 'tripForm.goneElsewhere': 'הנסיעה הזו נמחקה במכשיר אחר. הרשימה עודכנה.',
+  'tripForm.discardTitle': 'לצאת בלי לשמור?', 'tripForm.discardBody': 'מה שמילאת לא יישמר.', 'tripForm.discardConfirm': 'יציאה', 'tripForm.discardCancel': 'המשך עריכה', 'tripForm.delete': 'מחיקת הנסיעה',
+  'datePicker.ok': 'אישור', 'datePicker.cancel': 'ביטול', 'datePicker.titleDeparture': 'תאריך יציאה', 'datePicker.titleReturn': 'תאריך חזרה', 'datePicker.prev': 'החודש הקודם', 'datePicker.next': 'החודש הבא',
+  'myTrips.button': 'הנסיעות שלי', 'myTrips.title': 'הנסיעות שלי', 'myTrips.upcoming': 'קרובות', 'myTrips.past': 'שעברו', 'myTrips.upcomingNone': 'אין נסיעות קרובות.',
+  'myTrips.emptyTitle': 'אין עדיין נסיעות', 'myTrips.emptyBody': 'בוחרים מדינה על הגלובוס או בחיפוש, ובכרטיס שלה מקישים על „נסיעה חדשה”.', 'myTrips.emptyAction': 'חיפוש מדינה',
+  'myTrips.loading': 'טוענים את הנסיעות', 'myTrips.loaded': 'הרשימה נטענה', 'myTrips.error': 'לא הצלחנו לטעון את הנסיעות.', 'myTrips.retry': 'נסו שוב',
+  'myTrips.offline': 'צריך חיבור כדי לראות את הנסיעות', 'myTrips.offlineBody': 'הרשימה תיטען לבד כשהחיבור יחזור.', 'myTrips.offlineStale': 'אין חיבור. מוצגות הנסיעות שכבר נטענו.',
+  'myTrips.loadingMore': 'טוענים עוד נסיעות…', 'myTrips.loadedMore': 'נטענו עוד נסיעות', 'myTrips.moreError': 'לא הצלחנו לטעון עוד נסיעות.', 'myTrips.expand': 'הרחבה',
+  'tripDelete.title': 'למחוק את הנסיעה?', 'tripDelete.body': '„{{name}}” תימחק לצמיתות.', 'tripDelete.confirm': 'מחיקה', 'tripDelete.cancel': 'ביטול',
+  'tripDelete.done': 'הנסיעה נמחקה', 'tripDelete.alreadyGone': 'הנסיעה כבר נמחקה במכשיר אחר', 'tripDelete.offline': 'אין חיבור לאינטרנט. כדי למחוק נסיעה צריך חיבור.', 'tripDelete.error': 'לא הצלחנו למחוק את הנסיעה. נסו שוב.',
+  'sheet.close': 'סגירה', 'account.signIn': 'התחברות לחשבון', 'account.yours': 'החשבון של {{name}}', 'account.connectedWithGoogle': 'החשבון מחובר דרך Google',
+  'account.editName': 'עריכת השם', 'account.consents': 'ההסכמות שלי', 'account.export': 'הורדת הנתונים שלי', 'account.exportSub': 'קובץ JSON עם פרטי החשבון, הנסיעות ויומן ההסכמות.',
+  'account.delete': 'מחיקת חשבון', 'account.signOut': 'התנתקות', 'account.signedOut': 'התנתקת מהחשבון', 'account.signedInAs': 'התחברת בתור {{name}}',
+  'nameEdit.title': 'שינוי השם', 'nameEdit.label': 'שם תצוגה', 'nameEdit.hint': 'עד 60 תווים.', 'nameEdit.save': 'שמירה', 'nameEdit.saving': 'שומרים…', 'nameEdit.cancel': 'ביטול',
+  'nameEdit.required': 'צריך לכתוב שם.', 'nameEdit.tooLong': 'השם יכול להיות עד 60 תווים.', 'nameEdit.offline': 'אין חיבור לאינטרנט. כדי לשמור את השם צריך חיבור.', 'nameEdit.error': 'לא הצלחנו לשמור את השם. נסו שוב.', 'nameEdit.saved': 'השם עודכן',
+  'signIn.title': 'התחברות', 'signIn.body': 'התחברו עם חשבון Google. הגלובוס והחיפוש זמינים גם בלי חשבון.', 'signIn.bodyTrip': 'כדי לשמור נסיעה צריך להתחבר עם חשבון Google.',
+  'signIn.bodyMyTrips': 'כדי לראות ולשמור נסיעות צריך להתחבר עם חשבון Google.', 'signIn.google': 'המשך עם Google', 'signIn.connecting': 'מתחברים…',
+  'signIn.next': 'בשלב הבא נבקש לאשר את תנאי השימוש ומדיניות הפרטיות.', 'signIn.cancelled': 'ההתחברות בוטלה. אפשר לנסות שוב.', 'signIn.offline': 'אין חיבור לאינטרנט. כדי להתחבר צריך חיבור.',
+  'consent.title': 'לפני שממשיכים', 'consent.body': 'כדי להשתמש בחשבון צריך לאשר את תנאי השימוש ומדיניות הפרטיות.', 'consent.agree': 'אני מאשר/ת את תנאי השימוש ומדיניות הפרטיות',
+  'consent.terms': 'תנאי השימוש', 'consent.privacy': 'מדיניות הפרטיות', 'consent.optionalTitle': 'לבחירתך',
+  'consent.marketing': 'אני רוצה לקבל עדכונים והצעות במייל', 'consent.marketingNote': 'אפשר לבטל בכל עת.', 'consent.analytics': 'מותר להשתמש בנתוני שימוש כדי לשפר את האפליקציה',
+  'consent.analyticsNote': 'כרגע אנחנו לא אוספים נתוני שימוש. הבחירה שלך נשמרת.', 'consent.needsTick': 'כדי להמשיך צריך לסמן את האישור.', 'consent.continue': 'המשך', 'consent.leave': 'ביטול והתנתקות',
+  'consents.title': 'ההסכמות שלי', 'consents.back': 'חזרה', 'consents.docsTitle': 'מסמכים שאישרת', 'consents.docMeta': 'גרסה {{v}} · אישרת ב-{{date}}', 'consents.docHint': 'נפתח בדפדפן',
+  'consents.withdraw': 'אי אפשר לבטל את האישור לתנאי השימוש ולמדיניות הפרטיות ולהמשיך להשתמש בחשבון. כדי להפסיק, מוחקים את החשבון.', 'consents.toDelete': 'למחיקת החשבון',
+  'consents.optionalTitle': 'לבחירתך', 'consents.optionalBody': 'אפשר לשנות בכל עת. כל שינוי נרשם ביומן ההסכמות.', 'consents.saving': 'שומרים…', 'consents.saved': 'הבחירה נשמרה',
+  'consents.offline': 'אין חיבור לאינטרנט. כדי לשנות בחירה צריך חיבור.', 'consents.error': 'לא הצלחנו לשמור את השינוי. הבחירה חזרה למה שהייתה. נסו שוב.',
+  'export.preparing': 'מכינים את הקובץ…', 'export.dialogTitle': 'הנתונים שלי', 'export.offline': 'אין חיבור לאינטרנט. כדי להוריד את הנתונים צריך חיבור.', 'export.error': 'לא הצלחנו להכין את הקובץ. נסו שוב.',
+  'deleteAccount.title': 'מחיקת החשבון', 'deleteAccount.step': 'שלב {{n}} מתוך 2', 'deleteAccount.lead': 'המחיקה סופית ואי אפשר לבטל אותה.', 'deleteAccount.deletedTitle': 'מה נמחק מיד',
+  'deleteAccount.deletedAccount': 'החשבון והשם שלך', 'deleteAccount.deletedTrips': 'כל הנסיעות שלך', 'deleteAccount.deletedDevice': 'ההתחברות במכשיר הזה, והגישה של האפליקציה לחשבון Google',
+  'deleteAccount.keptTitle': 'מה נשמר', 'deleteAccount.kept': 'יומן ההסכמות שלך נשמר כראיה משפטית לתקופה מוגבלת, לפי מדיניות הפרטיות.',
+  'deleteAccount.copyHint': 'רוצים עותק של הנתונים? אפשר להוריד אותם לפני המחיקה.', 'deleteAccount.continue': 'המשך', 'deleteAccount.cancel': 'ביטול',
+  'deleteAccount.verifyTitle': 'אימות עם Google', 'deleteAccount.verifyBody': 'כדי לוודא שהבקשה ממך, בחרו שוב את חשבון Google שמחובר לאפליקציה:',
+  'deleteAccount.verifyWarning': 'מיד אחרי בחירת החשבון, החשבון והנתונים יימחקו.', 'deleteAccount.googleA11y': 'המשך עם Google. מיד אחרי בחירת החשבון, החשבון יימחק',
+  'deleteAccount.deleting': 'מוחקים את החשבון…', 'deleteAccount.done': 'החשבון והנתונים שלך נמחקו', 'deleteAccount.offline': 'אין חיבור לאינטרנט. כדי למחוק את החשבון צריך חיבור. שום דבר לא נמחק.',
+  'deleteAccount.cancelled': 'האימות בוטל. שום דבר לא נמחק.', 'deleteAccount.wrongAccount': 'זה לא החשבון שמחובר לאפליקציה. כדי למחוק, בחרו את {{email}}. שום דבר לא נמחק.',
+  'deleteAccount.expired': 'האימות פג תוקף. נסו שוב.', 'deleteAccount.error': 'לא הצלחנו למחוק את החשבון. שום דבר לא נמחק. נסו שוב בעוד רגע.', 'deleteAccount.noAnswer': 'לא קיבלנו תשובה מהשרת. נסו שוב.',
+  'search.open': 'חיפוש מדינה', 'search.close': 'סגירת החיפוש', 'search.placeholder': 'חיפוש מדינה',
+  'sys.chooseAccount': 'בחירת חשבון', 'sys.toContinue': 'כדי להמשיך אל האפליקציה', 'sys.cancel': 'ביטול', 'sys.share': 'שיתוף', 'sys.files': 'קבצים',
+  'diff.same': 'כמו בישראל', 'diff.ahead': '{{a}} יותר מבישראל', 'diff.behind': '{{a}} פחות מבישראל', 'h1': 'שעה', 'h2': 'שעתיים', 'hn': '{{n}} שעות', 'hh': 'חצי שעה', 'h1h': 'שעה וחצי', 'h2h': 'שעתיים וחצי', 'hnh': '{{n}} שעות וחצי',
+},
+en: {
+  months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  monthsShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  wd: ['S','M','T','W','T','F','S'],
+  'date.single': '{{d}} {{m}} {{y}}', 'date.to': 'to',
+  'globe.selected': 'Selected: {{name}}', 'globe.closed': 'Card closed', 'globe.onlyDemo': 'In the prototype you can pick the countries listed in search',
+  'offline.pill': 'Offline. The globe still works',
+  'card.destination': 'Destination', 'card.localTimeIn': 'Local time · {{city}}', 'card.currency': 'Currency', 'card.close': 'Close',
+  'card.trips.title': 'Your trips', 'card.trips.upcoming': 'Upcoming', 'card.trips.past': 'Past', 'card.trips.new': 'New trip', 'card.trips.newA11y': 'New trip: {{country}}',
+  'card.trips.loading': 'Loading trips', 'card.trips.error': "Couldn't load your trips.", 'card.trips.retry': 'Try again', 'card.trips.offline': 'You need a connection to see your trips.',
+  'trips.active': 'Happening now', 'card.trips.notes': 'Notes', 'card.trips.edit': 'Edit', 'card.trips.delete': 'Delete', 'trips.activeA11y': ', happening now', 'trips.opened': 'Opened {{name}}',
+  'tripForm.titleNew': 'New trip', 'tripForm.titleEdit': 'Edit trip', 'tripForm.close': 'Close', 'tripForm.destination': 'Destination', 'tripForm.destinationA11y': "Destination: {{country}}. The destination can't be changed.",
+  'tripForm.departure': 'Departure', 'tripForm.return': 'Return', 'tripForm.pickDate': 'Choose a date', 'tripForm.departureA11y': 'Departure date, {{date}}', 'tripForm.returnA11y': 'Return date, {{date}}', 'tripForm.notSet': 'not set',
+  'tripForm.name': 'Trip name', 'tripForm.namePending': 'Set from the departure date', 'tripForm.nameAuto': 'Based on the destination and departure date. You can change it.',
+  'tripForm.notes': 'Notes (optional)', 'tripForm.notesPlaceholder': 'Anything to remember for this trip?', 'tripForm.charsLeft': '{{n}} characters left',
+  'err.departureRequired': 'Choose a departure date.', 'err.returnRequired': 'Choose a return date.', 'err.returnBeforeDeparture': "The return date can't be before departure.",
+  'err.nameRequired': 'Give the trip a name.', 'err.nameTooLong': 'The name can be up to 80 characters.', 'err.notesTooLong': 'Notes can be up to 2,000 characters.',
+  'err.summaryOne': '1 field needs fixing', 'err.summaryMany': '{{n}} fields need fixing', 'err.prefix': 'Error: {{m}}',
+  'tripForm.returnCleared': 'The return date was cleared because it was before the new departure. Choose it again.',
+  'tripForm.save': 'Save trip', 'tripForm.saveEdit': 'Save changes', 'tripForm.saving': 'Saving…', 'tripForm.closeBtn': 'Close',
+  'tripForm.offline': "You're offline. Saving a trip needs a connection. What you've filled in stays here.", 'tripForm.saveError': "Couldn't save the trip. Try again.",
+  'tripForm.saved': 'Trip saved', 'tripForm.savedA11y': '{{name}} saved', 'tripForm.updated': 'Changes saved', 'tripForm.goneElsewhere': 'This trip was deleted on another device. The list has been updated.',
+  'tripForm.discardTitle': 'Leave without saving?', 'tripForm.discardBody': "What you've filled in won't be saved.", 'tripForm.discardConfirm': 'Leave', 'tripForm.discardCancel': 'Keep editing', 'tripForm.delete': 'Delete trip',
+  'datePicker.ok': 'OK', 'datePicker.cancel': 'Cancel', 'datePicker.titleDeparture': 'Departure date', 'datePicker.titleReturn': 'Return date', 'datePicker.prev': 'Previous month', 'datePicker.next': 'Next month',
+  'myTrips.button': 'My trips', 'myTrips.title': 'My trips', 'myTrips.upcoming': 'Upcoming', 'myTrips.past': 'Past', 'myTrips.upcomingNone': 'No upcoming trips.',
+  'myTrips.emptyTitle': 'No trips yet', 'myTrips.emptyBody': 'Pick a country on the globe or in search, then tap “New trip” on its card.', 'myTrips.emptyAction': 'Search for a country',
+  'myTrips.loading': 'Loading trips', 'myTrips.loaded': 'List loaded', 'myTrips.error': "Couldn't load your trips.", 'myTrips.retry': 'Try again',
+  'myTrips.offline': 'You need a connection to see your trips', 'myTrips.offlineBody': "The list will load by itself when you're back online.", 'myTrips.offlineStale': "You're offline. Showing the trips already loaded.",
+  'myTrips.loadingMore': 'Loading more trips…', 'myTrips.loadedMore': 'More trips loaded', 'myTrips.moreError': "Couldn't load more trips.", 'myTrips.expand': 'Expand',
+  'tripDelete.title': 'Delete this trip?', 'tripDelete.body': '“{{name}}” will be permanently deleted.', 'tripDelete.confirm': 'Delete', 'tripDelete.cancel': 'Cancel',
+  'tripDelete.done': 'Trip deleted', 'tripDelete.alreadyGone': 'This trip was already deleted on another device', 'tripDelete.offline': "You're offline. Deleting a trip needs a connection.", 'tripDelete.error': "Couldn't delete the trip. Try again.",
+  'sheet.close': 'Close', 'account.signIn': 'Sign in', 'account.yours': "{{name}}'s account", 'account.connectedWithGoogle': 'Signed in with Google',
+  'account.editName': 'Edit name', 'account.consents': 'My consents', 'account.export': 'Download my data', 'account.exportSub': 'A JSON file with your account details, trips and consent log.',
+  'account.delete': 'Delete account', 'account.signOut': 'Sign out', 'account.signedOut': 'You signed out', 'account.signedInAs': 'Signed in as {{name}}',
+  'nameEdit.title': 'Change name', 'nameEdit.label': 'Display name', 'nameEdit.hint': 'Up to 60 characters.', 'nameEdit.save': 'Save', 'nameEdit.saving': 'Saving…', 'nameEdit.cancel': 'Cancel',
+  'nameEdit.required': 'Enter a name.', 'nameEdit.tooLong': 'The name can be up to 60 characters.', 'nameEdit.offline': "You're offline. Saving your name needs a connection.", 'nameEdit.error': "Couldn't save your name. Try again.", 'nameEdit.saved': 'Name updated',
+  'signIn.title': 'Sign in', 'signIn.body': 'Sign in with your Google account. The globe and search work without an account too.', 'signIn.bodyTrip': 'Sign in with Google to save a trip.',
+  'signIn.bodyMyTrips': 'Sign in with Google to see and save your trips.', 'signIn.google': 'Continue with Google', 'signIn.connecting': 'Signing in…',
+  'signIn.next': "Next, we'll ask you to accept the Terms of Use and Privacy Policy.", 'signIn.cancelled': 'Sign-in was cancelled. You can try again.', 'signIn.offline': "You're offline. Signing in needs a connection.",
+  'consent.title': 'Before you continue', 'consent.body': 'To use your account, accept the Terms of Use and Privacy Policy.', 'consent.agree': 'I accept the Terms of Use and Privacy Policy',
+  'consent.terms': 'Terms of Use', 'consent.privacy': 'Privacy Policy', 'consent.optionalTitle': 'Your choice',
+  'consent.marketing': 'Send me updates and offers by email', 'consent.marketingNote': 'You can unsubscribe at any time.', 'consent.analytics': 'You may use usage data to improve the app',
+  'consent.analyticsNote': "We don't collect usage data yet. Your choice is saved.", 'consent.needsTick': 'Tick the box to continue.', 'consent.continue': 'Continue', 'consent.leave': 'Cancel and sign out',
+  'consents.title': 'My consents', 'consents.back': 'Back', 'consents.docsTitle': 'Documents you accepted', 'consents.docMeta': 'Version {{v}} · accepted {{date}}', 'consents.docHint': 'Opens in the browser',
+  'consents.withdraw': "You can't withdraw your acceptance of the Terms and Privacy Policy and keep using the account. To stop, delete your account.", 'consents.toDelete': 'Delete account',
+  'consents.optionalTitle': 'Your choice', 'consents.optionalBody': 'You can change these at any time. Every change is recorded in your consent log.', 'consents.saving': 'Saving…', 'consents.saved': 'Choice saved',
+  'consents.offline': "You're offline. Changing a choice needs a connection.", 'consents.error': "Couldn't save the change. Your choice is back to what it was. Try again.",
+  'export.preparing': 'Preparing the file…', 'export.dialogTitle': 'My data', 'export.offline': "You're offline. Downloading your data needs a connection.", 'export.error': "Couldn't prepare the file. Try again.",
+  'deleteAccount.title': 'Delete account', 'deleteAccount.step': 'Step {{n}} of 2', 'deleteAccount.lead': "Deleting is permanent and can't be undone.", 'deleteAccount.deletedTitle': 'Deleted right away',
+  'deleteAccount.deletedAccount': 'Your account and name', 'deleteAccount.deletedTrips': 'All your trips', 'deleteAccount.deletedDevice': "Your sign-in on this device, and the app's access to your Google account",
+  'deleteAccount.keptTitle': 'What we keep', 'deleteAccount.kept': 'Your consent log is kept as legal evidence for a limited period, as set out in the Privacy Policy.',
+  'deleteAccount.copyHint': 'Want a copy of your data? You can download it before deleting.', 'deleteAccount.continue': 'Continue', 'deleteAccount.cancel': 'Cancel',
+  'deleteAccount.verifyTitle': 'Confirm with Google', 'deleteAccount.verifyBody': "To confirm it's you, choose the Google account that's signed in to the app again:",
+  'deleteAccount.verifyWarning': 'As soon as you choose the account, your account and data will be deleted.', 'deleteAccount.googleA11y': 'Continue with Google. Your account will be deleted as soon as you choose it',
+  'deleteAccount.deleting': 'Deleting your account…', 'deleteAccount.done': 'Your account and data were deleted', 'deleteAccount.offline': "You're offline. Deleting your account needs a connection. Nothing was deleted.",
+  'deleteAccount.cancelled': 'Confirmation cancelled. Nothing was deleted.', 'deleteAccount.wrongAccount': "That's not the account signed in to the app. To delete, choose {{email}}. Nothing was deleted.",
+  'deleteAccount.expired': 'The confirmation expired. Try again.', 'deleteAccount.error': "Couldn't delete your account. Nothing was deleted. Try again in a moment.", 'deleteAccount.noAnswer': "We didn't get an answer from the server. Try again.",
+  'search.open': 'Search for a country', 'search.close': 'Close search', 'search.placeholder': 'Search for a country',
+  'sys.chooseAccount': 'Choose an account', 'sys.toContinue': 'to continue to the app', 'sys.cancel': 'Cancel', 'sys.share': 'Share', 'sys.files': 'Files',
+  'diff.same': 'Same as Israel', 'diff.ahead': '{{a}} ahead of Israel', 'diff.behind': '{{a}} behind Israel', 'h1': '1 hour', 'h2': '2 hours', 'hn': '{{n}} hours', 'hh': 'half an hour', 'h1h': '1.5 hours', 'h2h': '2.5 hours', 'hnh': '{{n}}.5 hours',
+}};
+let lang = 'he';
+const t = (k, p = {}) => String(S[lang][k] ?? S.he[k] ?? k).replace(/\{\{(\w+)\}\}/g, (_, n) => p[n] ?? '');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ltr = s => `<bdi class="ltr">${esc(s)}</bdi>`;
+const cps = s => [...s].length; // code points, like Postgres char_length
+
+/* =================== icons =================== */
+const I = {
+  x: '<svg class="i s20" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
+  person: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.8 4-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg>',
+  suitcase: '<svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V5.8c0-.9.7-1.6 1.6-1.6h2.8c.9 0 1.6.7 1.6 1.6v1.7M3.5 12.5h17"/></svg>',
+  plus: '<svg class="i s20" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  chevDown: '<svg class="i s20 chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>',
+  next: '<svg class="i s20 dir chev2" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  back: '<svg class="i dir" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
+  arrowBack: '<svg class="i dir" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
+  pencil: '<svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg>',
+  pencil20: '<svg class="i s20" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg>',
+  trash: '<svg class="i s20" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.8h5V7M6.5 7l1 12.5h9l1-12.5M10 11v5M14 11v5"/></svg>',
+  trash24: '<svg class="i" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.8h5V7M6.5 7l1 12.5h9l1-12.5M10 11v5M14 11v5"/></svg>',
+  shield: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3.5l7 2.8v5.2c0 4.4-3 7.8-7 9-4-1.2-7-4.6-7-9V6.3l7-2.8z"/><path d="M9 12l2 2 4-4"/></svg>',
+  download: '<svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg>',
+  signout: '<svg class="i s20 dir" viewBox="0 0 24 24"><path d="M14 4.5H6.5v15H14M10 12h10M16.5 8.5L20 12l-3.5 3.5"/></svg>',
+  cal: '<svg class="i s20" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>',
+  cloudOff: '<svg class="i s20" viewBox="0 0 24 24"><path d="M7.5 18.5h9.8a3.7 3.7 0 0 0 .8-7.3A5.6 5.6 0 0 0 8 9.3a4.6 4.6 0 0 0-.5 9.2zM4 4l16 16"/></svg>',
+  info: '<svg class="i s20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/></svg>',
+  warn: '<svg class="i s16" viewBox="0 0 24 24"><path d="M12 4l9 15.5H3L12 4z"/><path d="M12 10v4.5M12 17v.2"/></svg>',
+  ext: '<svg class="i s20" viewBox="0 0 24 24" style="color:var(--t2)"><path d="M14 4.5h5.5V10M19.5 4.5L11 13M17 14v5.5H4.5V7H10"/></svg>',
+  check: '<svg class="i s20" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  globePlus: '<svg class="i big" viewBox="0 0 48 48"><circle cx="22" cy="24" r="15"/><path d="M7 24h30M22 9c4.5 4.2 6.5 9.2 6.5 15S26.5 34.8 22 39c-4.5-4.2-6.5-9.2-6.5-15S17.5 13.2 22 9z"/><circle cx="37" cy="36" r="7" fill="var(--raised)"/><path d="M37 32.5v7M33.5 36h7"/></svg>',
+  cloudOffBig: '<svg class="i big" viewBox="0 0 48 48"><path d="M15 37h20a7.5 7.5 0 0 0 1.6-14.8A11.3 11.3 0 0 0 16 18.5 9.3 9.3 0 0 0 15 37zM8 8l32 32"/></svg>',
+  warnBig: '<svg class="i big" viewBox="0 0 48 48"><path d="M24 8l18 31H6L24 8z"/><path d="M24 20v9M24 34v.4"/></svg>',
+  g: '<svg class="g" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>',
+};
+
+/* =================== demo data =================== */
+const TODAY = '2026-10-25';
+const C = [
+  ['THA','764','תאילנד','Thailand',15.5,101,'בנגקוק','Bangkok','Asia/Bangkok','באט תאילנדי','Thai baht','฿','THB'],
+  ['GRC','300','יוון','Greece',39,22,'אתונה','Athens','Europe/Athens','אירו','Euro','€','EUR'],
+  ['JPN','392','יפן','Japan',36.5,138,'טוקיו','Tokyo','Asia/Tokyo','ין יפני','Japanese yen','¥','JPY'],
+  ['ITA','380','איטליה','Italy',42.8,12.5,'רומא','Rome','Europe/Rome','אירו','Euro','€','EUR'],
+  ['MLT','470','מלטה','Malta',35.9,14.4,'ולטה','Valletta','Europe/Malta','אירו','Euro','€','EUR',1],
+  ['SGP','702','סינגפור','Singapore',1.35,103.8,'סינגפור','Singapore','Asia/Singapore','דולר סינגפורי','Singapore dollar','S$','SGD',1],
+  ['USA','840','ארצות הברית','United States',39,-98,'ניו יורק','New York','America/New_York','דולר אמריקאי','US dollar','$','USD'],
+  ['FRA','250','צרפת','France',46.5,2.5,'פריז','Paris','Europe/Paris','אירו','Euro','€','EUR'],
+  ['ESP','724','ספרד','Spain',40,-3.7,'מדריד','Madrid','Europe/Madrid','אירו','Euro','€','EUR'],
+  ['PRT','620','פורטוגל','Portugal',39.6,-8,'ליסבון','Lisbon','Europe/Lisbon','אירו','Euro','€','EUR'],
+  ['GEO','268','גאורגיה','Georgia',42.2,43.5,'טביליסי','Tbilisi','Asia/Tbilisi','לארי גאורגי','Georgian lari','₾','GEL'],
+  ['CYP','196','קפריסין','Cyprus',35,33.2,'ניקוסיה','Nicosia','Asia/Nicosia','אירו','Euro','€','EUR'],
+  ['GBR','826','בריטניה','United Kingdom',54,-2.5,'לונדון','London','Europe/London','לירה שטרלינג','Pound sterling','£','GBP'],
+  ['VNM','704','וייטנאם','Vietnam',16,107,'האנוי','Hanoi','Asia/Ho_Chi_Minh','דונג וייטנאמי','Vietnamese dong','₫','VND'],
+  ['EGY','818','מצרים','Egypt',26.5,30,'קהיר','Cairo','Africa/Cairo','לירה מצרית','Egyptian pound','E£','EGP'],
+  ['ISL','352','איסלנד','Iceland',65,-18,'רייקיאוויק','Reykjavik','Atlantic/Reykjavik','כתר איסלנדי','Icelandic króna','kr','ISK'],
+  ['IND','356','הודו','India',22,79,'ניו דלהי','New Delhi','Asia/Kolkata','רופי הודי','Indian rupee','₹','INR'],
+].map(r => ({ adm0: r[0], id: r[1], he: r[2], en: r[3], lat: r[4], lon: r[5], cityHe: r[6], cityEn: r[7], tz: r[8], curHe: r[9], curEn: r[10], sym: r[11], code: r[12], small: !!r[13] }));
+const byAdm0 = Object.fromEntries(C.map(c => [c.adm0, c]));
+const byId = Object.fromEntries(C.map(c => [c.id, c]));
+const cname = c => lang === 'he' ? c.he : c.en;
+
+function uuid() { return (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Math.random().toString(36).slice(2)); }
+function addDays(s, n) { const d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + n); return ymd(d); }
+function ymd(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function parts(s) { const [y, m, d] = s.split('-').map(Number); return { y, m, d }; }
+function defaultName(adm0, start) { const p = parts(start); return `${cname(byAdm0[adm0])} ${S[lang].months[p.m - 1]} ${p.y}`; }
+function mon(m) { return lang === 'he' ? S.he.months[m - 1] : S.en.monthsShort[m - 1]; }
+function fmtDate(s) { const p = parts(s); return t('date.single', { d: p.d, m: mon(p.m), y: p.y }); }
+function fmtRange(a, b) {
+  if (a === b) return fmtDate(a);
+  const p = parts(a), q = parts(b), pre = lang === 'he' ? 'ב' : '';
+  if (p.y === q.y && p.m === q.m) return `${p.d}–${q.d} ${pre}${mon(p.m)} ${p.y}`;
+  if (p.y === q.y) return `${p.d} ${pre}${mon(p.m)} – ${q.d} ${pre}${mon(q.m)} ${p.y}`;
+  return `${fmtDate(a)} – ${fmtDate(b)}`;
+}
+const rangeA11y = (a, b) => a === b ? fmtDate(a) : `${fmtDate(a)} ${t('date.to')} ${fmtDate(b)}`;
+const numDate = s => { const p = parts(s); return lang === 'he' ? `${String(p.d).padStart(2, '0')}.${String(p.m).padStart(2, '0')}.${p.y}` : `${String(p.d).padStart(2, '0')}/${String(p.m).padStart(2, '0')}/${p.y}`; };
+const isActive = tr => tr.start <= TODAY && TODAY <= tr.end;
+const isUpcoming = tr => tr.end >= TODAY;
+const cmpUp = (a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : (a.id < b.id ? -1 : 1);
+const cmpPast = (a, b) => -cmpUp(a, b);
+
+function scenarioTrips(kind) {
+  if (kind === 'none') return [];
+  if (kind === 'many') {
+    const out = [], up = ['THA','JPN','ITA','GRC','USA','FRA','ESP','PRT','GEO','CYP','GBR','VNM','IND','SGP','MLT'];
+    out.push({ id: 'a-active', adm0: 'GRC', name: 'יוון אוקטובר 2026', start: '2026-10-20', end: '2026-10-30', notes: '' });
+    for (let i = 0; i < 25; i++) { const c = up[i % up.length], s = addDays('2026-11-05', i * 23); out.push({ id: 'u' + String(i).padStart(2, '0'), adm0: c, name: '', start: s, end: addDays(s, 5 + (i % 9)), notes: '' }); }
+    for (let i = 0; i < 24; i++) { const c = up[(i + 3) % up.length], s = addDays('2026-09-01', -i * 61); out.push({ id: 'p' + String(i).padStart(2, '0'), adm0: c, name: '', start: s, end: addDays(s, 4 + (i % 10)), notes: '' }); }
+    out.forEach(x => { if (!x.name) x.name = defaultNameHe(x.adm0, x.start); });
+    return out;
+  }
+  return [
+    { id: 't1', adm0: 'GRC', name: 'יוון אוקטובר 2026', start: '2026-10-20', end: '2026-10-30', notes: 'מעבורת לנקסוס ביום שלישי, 07:30 מפיראוס.' },
+    { id: 't2', adm0: 'THA', name: 'תאילנד דצמבר 2026', start: '2026-12-20', end: '2027-01-05', notes: 'לבדוק חיסונים. מלון בקוסמוי מ-24.12.' },
+    { id: 't3', adm0: 'JPN', name: 'יפן מרץ 2027', start: '2027-03-10', end: '2027-03-24', notes: '' },
+    { id: 't4', adm0: 'ITA', name: 'איטליה יוני 2026', start: '2026-06-02', end: '2026-06-09', notes: '' },
+    { id: 't5', adm0: 'THA', name: 'ירח דבש', start: '2025-02-10', end: '2025-02-24', notes: '' },
+    { id: 't6', adm0: 'MLT', name: 'מלטה אפריל 2025', start: '2025-04-14', end: '2025-04-18', notes: '' },
+    { id: 't7', adm0: 'EGY', name: 'סיני ופירמידות', start: '2024-11-01', end: '2024-11-08', notes: '' },
+  ];
+}
+function defaultNameHe(adm0, start) { const p = parts(start); return `${byAdm0[adm0].he} ${S.he.months[p.m - 1]} ${p.y}`; }
+
+/* =================== state =================== */
+const st = {
+  theme: 'light', fs: 1, reduce: false, online: true, signedIn: true, sessionKnown: true,
+  user: { name: 'יוסי לוי', email: 'yossi@gmail.com' },
+  consents: { terms: { v: 3, date: '2026-10-23' }, privacy: { v: 3, date: '2026-10-23' }, marketing: false, analytics: true },
+  scenario: 'some', trips: scenarioTrips('some'), loadFail: false,
+  hl: new Set(), hlLoaded: false,
+  selected: null, expanded: null, flashId: null, card: { status: 'idle', notice: null, busyId: null },
+  sheet: null, sheetCtx: null, signin: { busy: false, msg: null }, nameEdit: null, exp: { status: 'idle' },
+  list: null, tripsFull: false,
+  form: null, push: null, picker: null, dialog: null, chooser: null, share: null, consent: null,
+  pending: null, searchOpen: false, q: '',
+  fail: { save: false, gone: false, export: false, del: 'ok' }, deletedOnServer: false, cons: { saving: {}, notice: null },
+};
+const $ = s => document.querySelector(s);
+const phone = $('#phone');
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+/* =================== screen reader log + toast =================== */
+function say(text, assertive) { const d = document.createElement('div'); d.textContent = (assertive ? '[assertive] ' : '') + text; $('#srlog').prepend(d); }
+let toastTimer;
+function toast(text, ms = 3000) { const el = $('#toast'); el.textContent = text; el.classList.add('on'); say(text); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('on'), ms); }
+
+/* =================== globe =================== */
+const cv = $('#globe'), ctx = cv.getContext('2d');
+let geo = null, centroids = {};
+const cam = { lon: 35, lat: 18, s: 170, cy: 430 };
+let anim = null, lastT = performance.now(), dragging = null, lastInteract = 0;
+const alphaSel = {}; let tripLayer = 0;
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+(async () => {
+  try {
+    await loadScript('https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js');
+    const topo = await (await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')).json();
+    geo = topojson.feature(topo, topo.objects.countries).features;
+    geo.forEach(f => { centroids[f.id] = d3.geoCentroid(f); });
+  } catch (e) { geo = null; }
+})();
+const DESERT = new Set(['818','682','434','012','504','478','466','562','148','736','729','784','512','887','368','760','400','732']);
+function landColor(id) {
+  if (!st.online) return '#1F3A68';
+  if (DESERT.has(id)) return '#C29C69';
+  const c = centroids[id]; if (c && Math.abs(c[1]) > 62) return '#DEE5EB';
+  if (id === '352' || id === '304' || id === '010') return '#DEE5EB';
+  return '#2F4A28';
+}
+function project(lon, lat) {
+  const r = Math.PI / 180, l = (lon - cam.lon) * r, p = lat * r, p0 = cam.lat * r;
+  const cosc = Math.sin(p0) * Math.sin(p) + Math.cos(p0) * Math.cos(p) * Math.cos(l);
+  const x = cam.s * Math.cos(p) * Math.sin(l), y = cam.s * (Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(l));
+  return { x: 205.5 + x, y: cam.cy - y, vis: cosc > 0 };
+}
+const easeFly = bez(0.65, 0, 0.35, 1);
+function bez(x1, y1, x2, y2) { return x => { let lo = 0, hi = 1, tt = x; for (let i = 0; i < 24; i++) { tt = (lo + hi) / 2; const xx = 3 * (1 - tt) ** 2 * tt * x1 + 3 * (1 - tt) * tt ** 2 * x2 + tt ** 3; if (xx < x) lo = tt; else hi = tt; } return 3 * (1 - tt) ** 2 * tt * y1 + 3 * (1 - tt) * tt ** 2 * y2 + tt ** 3; }; }
+function cardTopCy() {
+  if (!st.selected) return 430;
+  const card = $('#card'); const h = card.offsetHeight || 260;
+  const top = 914 - 48 - 16 - h; return Math.max(200, (28 + 112 + top) / 2 + 10);
+}
+function flyTo(c) {
+  const target = c ? { lon: c.lon, lat: c.lat, s: c.small ? 1100 : c.adm0 === 'USA' ? 330 : 520 } : { lon: cam.lon, lat: 18, s: 170 };
+  if (st.reduce) {
+    const v = $('#veil'); v.style.transition = 'opacity 150ms linear'; v.style.opacity = 1;
+    setTimeout(() => { Object.assign(cam, target); v.style.transition = 'opacity 250ms linear'; v.style.opacity = 0; }, 150);
+    anim = null; return;
+  }
+  let dl = target.lon - cam.lon; dl = ((dl + 540) % 360) - 180;
+  anim = { from: { lon: cam.lon, lat: cam.lat, s: cam.s }, to: { lon: cam.lon + dl, lat: target.lat, s: target.s }, t0: performance.now(), dur: c ? 1500 : 900 };
+}
+function stepAlpha(map, adm0, target, dt) {
+  const cur = map[adm0] ?? 0;
+  map[adm0] = st.reduce ? target : cur < target ? Math.min(target, cur + dt / 600) : Math.max(target, cur - dt / 600);
+  return map[adm0];
+}
+function frame(now) {
+  const dt = now - lastT; lastT = now;
+  if (anim) { const k = Math.min(1, (now - anim.t0) / anim.dur), e = easeFly(k); cam.lon = anim.from.lon + (anim.to.lon - anim.from.lon) * e; cam.lat = anim.from.lat + (anim.to.lat - anim.from.lat) * e; cam.s = anim.from.s + (anim.to.s - anim.from.s) * e; if (k >= 1) anim = null; }
+  else if (!st.selected && !dragging && !st.reduce && !st.searchOpen && !st.sheet && now - lastInteract > 5000) cam.lon -= 3 * dt / 1000;
+  cam.cy += (cardTopCy() - cam.cy) * Math.min(1, dt / 200);
+  draw(dt); requestAnimationFrame(frame);
+}
+function draw(dt) {
+  ctx.setTransform(2, 0, 0, 2, 0, 0);
+  ctx.fillStyle = '#03060F'; ctx.fillRect(0, 0, 411, 914);
+  const cx = 205.5, cy = cam.cy, R = cam.s;
+  const g = ctx.createRadialGradient(cx, cy, R * 0.98, cx, cy, R * 1.12); g.addColorStop(0, 'rgba(159,208,255,.55)'); g.addColorStop(1, 'rgba(47,123,224,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.12, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = st.online ? '#0F366B' : '#0E366F'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  const trips = (st.signedIn && st.hlLoaded) ? st.hl : new Set();
+  const tA = {}, sA = {};
+  // README 7.6 (Raz): per-country trip changes are instant; only the whole trips layer fades in (600) on first load.
+  tripLayer = trips.size ? (st.reduce ? 1 : Math.min(1, tripLayer + dt / 600)) : tripLayer;
+  C.forEach(c => { tA[c.adm0] = (trips.has(c.adm0) && c.adm0 !== st.selected ? 1 : 0) * tripLayer; sA[c.adm0] = stepAlpha(alphaSel, c.adm0, c.adm0 === st.selected ? 1 : 0, dt); });
+  if (geo && window.d3) {
+    const proj = d3.geoOrthographic().scale(R).translate([cx, cy]).rotate([-cam.lon, -cam.lat]).clipAngle(90);
+    const path = d3.geoPath(proj, ctx);
+    for (const f of geo) { ctx.beginPath(); path(f); ctx.fillStyle = landColor(f.id); ctx.fill(); }
+    ctx.beginPath(); geo.forEach(f => path(f)); ctx.strokeStyle = 'rgba(243,246,252,0.42)'; ctx.lineWidth = 0.6; ctx.stroke();
+    for (const f of geo) { const c = byId[f.id]; if (!c) continue; drawHl(() => { ctx.beginPath(); path(f); }, tA[c.adm0], sA[c.adm0]); }
+  } else {
+    const blobs = C.filter(c => !c.small);
+    for (const c of blobs) { const p = project(c.lon, c.lat); if (!p.vis) continue; ctx.beginPath(); ctx.arc(p.x, p.y, R * Math.sin((c.adm0 === 'USA' ? 14 : 5) * Math.PI / 180), 0, Math.PI * 2); ctx.fillStyle = c.adm0 === 'EGY' ? '#C29C69' : c.adm0 === 'ISL' ? '#DEE5EB' : (st.online ? '#2F4A28' : '#1F3A68'); ctx.fill(); ctx.strokeStyle = 'rgba(243,246,252,0.42)'; ctx.lineWidth = .6; ctx.stroke(); }
+    for (const c of blobs) { const p = project(c.lon, c.lat); if (!p.vis) continue; const r = R * Math.sin((c.adm0 === 'USA' ? 14 : 5) * Math.PI / 180); drawHl(() => { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); }, tA[c.adm0], sA[c.adm0]); }
+  }
+  for (const c of C.filter(c => c.small)) {
+    const p = project(c.lon, c.lat); if (!p.vis) continue;
+    if (tA[c.adm0] > 0) ring(p, 7, '#4FCFBE', 2, tA[c.adm0]);
+    if (sA[c.adm0] > 0) ring(p, 10, '#F3F6FC', 2, sA[c.adm0]);
+  }
+}
+function drawHl(shape, ta, sa) {
+  if (ta > 0) {
+    ctx.globalAlpha = ta; shape(); ctx.fillStyle = 'rgba(79,207,190,0.22)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(3,6,15,0.7)'; ctx.lineWidth = 3.6; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.strokeStyle = '#4FCFBE'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  if (sa > 0) {
+    ctx.globalAlpha = sa; shape(); ctx.fillStyle = 'rgba(255,122,87,0.3)'; ctx.fill();
+    ctx.save(); ctx.shadowColor = '#FF7A57'; ctx.shadowBlur = 6; ctx.strokeStyle = 'rgba(255,122,87,.55)'; ctx.lineWidth = 8; ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = 'rgba(3,6,15,0.6)'; ctx.lineWidth = 3.2; ctx.stroke();
+    ctx.strokeStyle = '#F3F6FC'; ctx.lineWidth = 1.6; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+}
+function ring(p, r, color, w, a) {
+  ctx.globalAlpha = a * 0.7; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.strokeStyle = '#03060F'; ctx.lineWidth = 4; ctx.stroke();
+  ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke(); ctx.globalAlpha = 1;
+}
+function hitTest(x, y) {
+  for (const c of C.filter(c => c.small)) { const p = project(c.lon, c.lat); if (p.vis && Math.hypot(p.x - x, p.y - y) < 22) return c; }
+  if (geo && window.d3) {
+    const proj = d3.geoOrthographic().scale(cam.s).translate([205.5, cam.cy]).rotate([-cam.lon, -cam.lat]).clipAngle(90);
+    if (Math.hypot(x - 205.5, y - cam.cy) > cam.s) return null;
+    const ll = proj.invert([x, y]); const f = ll && geo.find(f => d3.geoContains(f, ll));
+    if (!f) return null; return byId[f.id] || 'other';
+  }
+  let best = null, bd = 1e9;
+  for (const c of C.filter(c => !c.small)) { const p = project(c.lon, c.lat); if (!p.vis) continue; const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = c; } }
+  return bd < 40 ? best : null;
+}
+cv.addEventListener('pointerdown', e => { dragging = { x: e.offsetX, y: e.offsetY, lon: cam.lon, lat: cam.lat, moved: 0 }; cv.setPointerCapture(e.pointerId); anim = null; });
+cv.addEventListener('pointermove', e => { if (!dragging) return; const dx = e.offsetX - dragging.x, dy = e.offsetY - dragging.y; dragging.moved = Math.max(dragging.moved, Math.hypot(dx, dy)); const k = 90 / cam.s; cam.lon = dragging.lon - dx * k; cam.lat = Math.max(-70, Math.min(70, dragging.lat + dy * k)); });
+cv.addEventListener('pointerup', e => {
+  const d = dragging; dragging = null; lastInteract = performance.now(); if (!d || d.moved > 6) return;
+  const c = hitTest(e.offsetX, e.offsetY);
+  if (c === 'other') toast(t('globe.onlyDemo')); else if (c) selectCountry(c.adm0);
+});
+requestAnimationFrame(frame);
+
+/* =================== highlights (AC-3, AC-7, AC-8, AC-10) =================== */
+async function loadHighlights() {
+  if (!st.signedIn || !st.online) return;
+  await delay(300); if (!st.signedIn || !st.online) return;
+  st.hl = new Set(st.trips.map(x => x.adm0)); st.hlLoaded = true;
+}
+function wipeLocal() { // AC-8: immediately, no fade
+  st.hl = new Set(); st.hlLoaded = false; tripLayer = 0;
+  st.list = null; st.card = { status: 'idle', notice: null, busyId: null }; st.expanded = null;
+}
+
+/* =================== country card =================== */
+function selectCountry(adm0, opts = {}) {
+  if (st.searchOpen) closeSearch(true);
+  st.selected = adm0; st.expanded = opts.expand || null;
+  renderCard(); $('#card').classList.add('open'); $('#card').setAttribute('aria-hidden', 'false');
+  renderChrome(); flyTo(byAdm0[adm0]); say(t('globe.selected', { name: cname(byAdm0[adm0]) }));
+  loadCardTrips(opts.expand);
+}
+function closeCard() {
+  st.selected = null; st.expanded = null; $('#card').classList.remove('open'); $('#card').setAttribute('aria-hidden', 'true');
+  renderChrome(); flyTo(null); say(t('globe.closed')); lastInteract = performance.now();
+}
+let skelTimer;
+async function loadCardTrips(expandId) {
+  if (!st.signedIn) { st.card.status = 'signedout'; renderCard(); return; }
+  if (!st.online) { st.card.status = 'offline'; renderCard(); say(t('card.trips.offline')); return; }
+  // README 2.2 (Raz): no query when the unique-countries list says there are no trips here.
+  if (st.hlLoaded && !st.hl.has(st.selected) && !st.loadFail) { st.card.status = 'ready'; renderCard(); return; }
+  st.card.status = 'pending'; renderCard();
+  clearTimeout(skelTimer); skelTimer = setTimeout(() => { if (st.card.status === 'pending') { st.card.status = 'loading'; renderCard(); say(t('card.trips.loading')); } }, 150);
+  await delay(450);
+  if (!st.online) { st.card.status = 'offline'; renderCard(); return; }
+  if (st.loadFail) { st.card.status = 'error'; renderCard(); say(t('card.trips.error')); return; }
+  st.card.status = 'ready'; renderCard();
+  if (expandId) { const tr = st.trips.find(x => x.id === expandId); if (tr) { say(t('trips.opened', { name: tr.name })); const el = document.querySelector(`[data-wrap="${expandId}"]`); el && el.scrollIntoView({ block: 'nearest' }); } }
+}
+function cardTrips() {
+  const mine = st.trips.filter(x => x.adm0 === st.selected);
+  return { up: mine.filter(isUpcoming).sort(cmpUp), past: mine.filter(x => !isUpcoming(x)).sort(cmpPast) };
+}
+function localTime(c) {
+  try {
+    const now = new Date();
+    const f = tz => { const p = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now); const o = Object.fromEntries(p.map(x => [x.type, x.value])); return { hm: `${o.hour}:${o.minute}`, mins: Date.UTC(+o.year, +o.month - 1, +o.day, +o.hour, +o.minute) / 60000 }; };
+    const a = f(c.tz), b = f('Asia/Jerusalem'); const diff = Math.round(a.mins - b.mins);
+    let txt; if (diff === 0) txt = t('diff.same'); else {
+      const h = Math.floor(Math.abs(diff) / 60), m = Math.abs(diff) % 60;
+      const amt = m === 0 ? (h === 1 ? t('h1') : h === 2 ? t('h2') : t('hn', { n: h })) : m === 30 ? (h === 0 ? t('hh') : h === 1 ? t('h1h') : h === 2 ? t('h2h') : t('hnh', { n: h })) : `${h}:${String(m).padStart(2, '0')}`;
+      txt = t(diff > 0 ? 'diff.ahead' : 'diff.behind', { a: amt });
+    }
+    return { hm: a.hm, txt };
+  } catch (e) { return null; }
+}
+function tripRow(tr, inCard) {
+  const open = st.expanded === tr.id, act = isActive(tr), busy = st.card.busyId === tr.id;
+  const label = esc(`${tr.name}, ${rangeA11y(tr.start, tr.end)}${act ? t('trips.activeA11y') : ''}`);
+  return `<div class="trow-wrap ${open ? 'open' : ''} ${st.flashId === tr.id ? 'flash' : ''}" data-wrap="${tr.id}">${act ? '<span class="active-bar"></span>' : ''}
+    <button class="trow" data-act="toggleTrip" data-id="${tr.id}" aria-expanded="${open}" aria-label="${label}" ${busy ? 'aria-busy="true"' : ''}>
+      <span class="tr-text"><span class="tr-name">${esc(tr.name)}</span><span class="tr-dates">${fmtRange(tr.start, tr.end)}</span>${act ? `<span class="chip-active">${t('trips.active')}</span>` : ''}</span>
+      ${busy ? '<span class="spinner"></span>' : I.chevDown}
+    </button>
+    ${open ? `<div class="tr-more">
+      ${tr.notes ? `<div class="lbl">${t('card.trips.notes')}</div><div class="tr-notes">${esc(tr.notes)}</div>` : ''}
+      ${st.card.notice && st.card.notice.id === tr.id ? `<div class="notice" role="status">${I.info}<span>${esc(st.card.notice.text)}</span></div>` : ''}
+      <div class="tr-actions"><button class="btn secondary" data-act="editTrip" data-id="${tr.id}">${I.pencil20}${t('card.trips.edit')}</button><button class="btn plain" data-act="askDelete" data-id="${tr.id}">${I.trash}${t('card.trips.delete')}</button></div>
+    </div>` : ''}
+  </div>`;
+}
+function renderCard() {
+  const c = byAdm0[st.selected]; if (!c) return;
+  const lt = localTime(c); const s = st.card.status;
+  let coupon = '';
+  if (s === 'loading') coupon = `<div class="skel-row" aria-hidden="true" style="padding-inline:8px"><div class="skel" style="width:60%"></div><div class="skel" style="width:40%"></div></div>`;
+  else if (s === 'offline') coupon = `<div class="cp-line" role="status">${I.cloudOff}<span>${t('card.trips.offline')}</span></div>`;
+  else if (s === 'error') coupon = `<div class="cp-line" role="status"><span>${t('card.trips.error')}</span><button class="btn text inline" data-act="retryCard">${t('card.trips.retry')}</button></div>`;
+  else if (s === 'ready') {
+    const { up, past } = cardTrips();
+    if (up.length || past.length) {
+      const both = up.length && past.length;
+      coupon = `<div class="lbl" role="heading" aria-level="3">${t('card.trips.title')}</div><div class="cp-list" id="cpList">
+        ${both ? `<div class="sec-lbl">${t('card.trips.upcoming')}</div>` : ''}${up.map(x => tripRow(x, true)).join('')}
+        ${both ? `<div class="sec-lbl">${t('card.trips.past')}</div>` : ''}${past.map(x => tripRow(x, true)).join('')}</div>`;
+    }
+  }
+  const flap = c.adm0.split('').map(ch => `<span>${ch}</span>`).join('');
+  $('#card').innerHTML = `<div class="bp" id="bp">
+    <div class="bp-top" id="bpTop">
+      <div class="c-main"><div class="strip"></div><div class="lbl">${t('card.destination')}</div>
+        <h2 class="c-name" tabindex="-1">${esc(cname(c))}</h2><div class="c-en">${ltr(c.en)}</div>
+        <div class="c-fields">${lt ? `<div><div class="lbl">${t('card.localTimeIn', { city: lang === 'he' ? c.cityHe : c.cityEn })}</div><div class="clock">${ltr(lt.hm)}</div><div class="sub">${lt.txt}</div></div>` : ''}
+          <div><div class="lbl">${t('card.currency')}</div><div class="val">${esc(lang === 'he' ? c.curHe : c.curEn)}</div><div class="sub">${ltr(c.sym + ' · ' + c.code)}</div></div></div>
+      </div>
+      <div class="c-stub"><div class="flap" aria-label="${c.adm0}">${flap}</div><svg class="barcode" viewBox="0 0 80 30">${[0,3,5,9,12,14,18,21,23,27,30,32,36,39,41,45,48,50,54].map((x, i) => `<rect x="${x * 1.4}" y="0" width="${i % 3 ? 1.5 : 3}" height="30" fill="currentColor" opacity=".85"/>`).join('')}</svg></div>
+      <button class="close" data-act="closeCard" aria-label="${t('card.close')}">${I.x}</button>
+    </div>
+    <div class="coupon">${coupon}
+      <button class="btn cta" style="margin-top:${coupon ? 12 : 0}px;flex:none" data-act="newTrip" aria-label="${esc(t('card.trips.newA11y', { country: cname(c) }))}">${I.plus}${t('card.trips.new')}</button>
+    </div></div>`;
+  const bp = $('#bp'); bp.style.setProperty('--cy', $('#bpTop').offsetHeight + 'px');
+  bp.style.setProperty('--stubx', document.documentElement.dir === 'rtl' ? '108px' : 'calc(100% - 108px)');
+}
+
+/* =================== chrome =================== */
+function renderChrome() {
+  $('#searchBtn').innerHTML = I.search; $('#searchBtn').setAttribute('aria-label', t('search.open'));
+  const a = $('#acctBtn');
+  if (st.signedIn) { a.innerHTML = `<span class="avatar">${esc([...st.user.name][0] || '?')}</span>`; a.setAttribute('aria-label', t('account.yours', { name: st.user.name })); }
+  else { a.innerHTML = I.person; a.setAttribute('aria-label', t('account.signIn')); }
+  a.classList.toggle('gone', st.searchOpen); $('#searchBtn').classList.toggle('gone', st.searchOpen);
+  const tb = $('#tripsBtn'); tb.innerHTML = `${I.suitcase}<span>${t('myTrips.button')}</span>`;
+  tb.classList.toggle('gone', !!(st.selected || st.searchOpen || st.sheet || st.form || st.push));
+  $('#offlinePill').hidden = st.online || st.searchOpen; $('#offlinePill').textContent = t('offline.pill');
+  // Sprint 1 6.4: system bar icons follow the surface under them.
+  const light = st.theme === 'light';
+  $('#statusbar').classList.toggle('dark', !!(light && (st.form || st.push || st.consent || (st.sheet === 'trips' && st.tripsFull))));
+  $('#navbar').classList.toggle('dark', !!(light && (st.form || st.push || st.consent || st.sheet)));
+}
+
+/* =================== search (minimal, as sprint 1) =================== */
+function openSearch() { st.searchOpen = true; st.q = ''; renderSearch(); renderChrome(); $('#card').classList.remove('open'); setTimeout(() => $('#sq') && $('#sq').focus(), 50); }
+function closeSearch(silent) { st.searchOpen = false; $('#searchLayer').hidden = true; renderChrome(); if (!silent && st.selected) $('#card').classList.add('open'); }
+function renderSearch() {
+  const L = $('#searchLayer'); L.hidden = false;
+  const q = st.q.trim().toLowerCase();
+  const res = q ? C.filter(c => c.he.includes(st.q.trim()) || c.en.toLowerCase().includes(q) || c.adm0.toLowerCase().includes(q)) : [];
+  L.innerHTML = `<div class="search-scrim" data-act="closeSearch"></div><div class="sb"><button data-act="closeSearch" aria-label="${t('search.close')}">${I.arrowBack}</button><input id="sq" type="search" placeholder="${t('search.placeholder')}" value="${esc(st.q)}" autocomplete="off"></div>
+    ${res.length ? `<div class="results">${res.map(c => `<button class="row" data-act="pick" data-adm0="${c.adm0}"><span style="flex:1;text-align:start"><b style="font-weight:500">${esc(c.he)}</b><br><span class="sub">${ltr(c.en)}</span></span><span class="code">${c.adm0}</span></button>`).join('')}</div>` : ''}`;
+  const inp = $('#sq'); inp.addEventListener('input', () => { st.q = inp.value; const pos = inp.selectionStart; renderSearch(); const n = $('#sq'); n.focus(); n.setSelectionRange(pos, pos); });
+}
+
+/* =================== sheets =================== */
+function openSheet(kind, ctxName) {
+  st.sheet = kind; st.sheetCtx = ctxName || null; if (kind === 'signin') st.signin = { busy: false, msg: st.online ? null : 'offline' };
+  renderSheet(); $('#sheetScrim').classList.add('on'); $('#sheet').classList.add('open'); renderChrome();
+  setTimeout(() => { const h = $('#sheet h2'); h && h.focus(); }, 60);
+}
+function closeSheet(keepPending) {
+  const was = st.sheet; st.sheet = null; st.nameEdit = null; st.tripsFull = false; st.exp = { status: 'idle' };
+  $('#sheetScrim').classList.remove('on'); $('#sheet').classList.remove('open', 'trips', 'full'); renderChrome();
+  if (!keepPending && was === 'signin' && !st.signedIn) st.pending = null; // cancel → back to the card (AC-1)
+  setTimeout(() => { if (!st.sheet) $('#sheet').innerHTML = ''; }, 220);
+}
+function renderSheet() {
+  const el = $('#sheet'); el.classList.toggle('trips', st.sheet === 'trips'); el.classList.toggle('full', st.sheet === 'trips' && st.tripsFull);
+  const close = `<button class="x" data-act="closeSheet" aria-label="${t('sheet.close')}">${I.x}</button>`;
+  if (st.sheet === 'signin') {
+    const s = st.signin, body = st.sheetCtx === 'trip' ? t('signIn.bodyTrip') : st.sheetCtx === 'myTrips' ? t('signIn.bodyMyTrips') : t('signIn.body');
+    el.innerHTML = `<div class="handle"></div>${close}<h2 tabindex="-1">${t('signIn.title')}</h2><p class="body">${body}</p>
+      ${s.msg === 'offline' ? `<div class="notice" role="status">${I.info}<span>${t('signIn.offline')}</span></div>` : ''}
+      <button class="gbtn" data-act="googleSignIn" ${s.busy ? 'aria-busy="true"' : ''}>${I.g}<span>${s.busy ? t('signIn.connecting') : t('signIn.google')}</span>${s.busy ? '<span class="spinner"></span>' : ''}</button>
+      ${s.msg === 'cancelled' ? `<p class="fine" role="status">${t('signIn.cancelled')}</p>` : ''}<p class="fine">${t('signIn.next')}</p>`;
+  } else if (st.sheet === 'account') {
+    const u = st.user, x = st.exp;
+    el.innerHTML = `<div class="handle"></div>${close}<div class="sheet-body">
+      <div class="acct-head"><span class="avatar md" aria-hidden="true">${esc([...u.name][0])}</span><div style="min-width:0">
+        <div class="acct-name-row"><h2 tabindex="-1" style="margin:0;padding:0;font-size:calc(18px * var(--fs));line-height:calc(24px * var(--fs))"><button class="acct-name" data-act="editName">${esc(u.name)}</button></h2>
+        <button class="iconbtn" data-act="editName" aria-label="${t('account.editName')}">${I.pencil}</button></div>
+        <div class="acct-mail">${ltr(u.email)}</div><div class="acct-via">${t('account.connectedWithGoogle')}</div></div></div>
+      <button class="lrow" data-act="openConsents">${I.shield}<span class="lt">${t('account.consents')}</span>${I.next}</button>
+      <button class="lrow" data-act="export" ${x.status === 'preparing' ? 'aria-busy="true"' : ''} aria-describedby="expSub">${x.status === 'preparing' ? '<span class="spinner" style="margin:2px"></span>' : I.download}<span class="lt">${x.status === 'preparing' ? t('export.preparing') : t('account.export')}<span class="ls" id="expSub">${t('account.exportSub')}</span></span></button>
+      ${x.status === 'offline' || x.status === 'error' ? `<div class="notice" role="status">${I.info}<span>${t(x.status === 'offline' ? 'export.offline' : 'export.error')}</span></div>` : ''}
+      <div class="group-end"><button class="lrow" data-act="openDelete">${I.trash24}<span class="lt">${t('account.delete')}</span>${I.next}</button></div>
+      <button class="btn secondary" data-act="signOut">${I.signout}${t('account.signOut')}</button></div>`;
+  } else if (st.sheet === 'name') {
+    const n = st.nameEdit, len = cps(n.value);
+    el.innerHTML = `<div class="handle"></div>${close}<h2 tabindex="-1">${t('nameEdit.title')}</h2>
+      ${n.notice ? `<div class="notice" role="status">${I.info}<span>${t(n.notice)}</span></div>` : ''}
+      <div class="field" style="margin-top:8px"><label for="nameIn">${t('nameEdit.label')}</label>
+        <input id="nameIn" class="input ${n.error ? 'err' : ''}" maxlength="120" value="${esc(n.value)}" ${n.saving ? 'disabled' : ''} aria-invalid="${!!n.error}">
+        ${n.error ? `<div class="ferr" role="alert">${I.warn}<span>${t(n.error)}</span></div>` : ''}
+        <div class="meta"><span>${t('nameEdit.hint')}</span><span class="cnt" id="nameCnt">${len >= 50 ? `${len}/60` : ''}</span></div></div>
+      <div style="margin-top:20px;display:flex;flex-direction:column;gap:4px"><button class="btn primary" data-act="saveName" ${n.saving ? 'aria-busy="true"' : ''}>${n.saving ? `<span class="spinner"></span>${t('nameEdit.saving')}` : t('nameEdit.save')}</button>
+      <button class="btn text" data-act="cancelName">${t('nameEdit.cancel')}</button></div>`;
+    const inp = $('#nameIn'); inp.addEventListener('input', () => { n.value = inp.value; n.error = null; const l = cps(inp.value); $('#nameCnt').textContent = l >= 50 ? `${l}/60` : ''; inp.classList.remove('err'); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') saveName(); });
+  } else if (st.sheet === 'trips') renderList();
+}
+
+/* =================== my trips list (AC-5, AC-7) =================== */
+function openMyTrips() {
+  if (!st.signedIn) { st.pending = { type: 'myTrips' }; openSheet('signin', 'myTrips'); return; }
+  st.tripsFull = false; openSheet('trips'); loadList();
+}
+let listSkel;
+async function loadList() {
+  if (!st.online) { st.list = { status: 'offline' }; renderList(); say(t('myTrips.offline')); return; }
+  st.list = { status: 'pending' }; renderList();
+  clearTimeout(listSkel); listSkel = setTimeout(() => { if (st.list && st.list.status === 'pending') { st.list.status = 'loading'; renderList(); say(t('myTrips.loading')); } }, 150);
+  await delay(420);
+  if (!st.sheet) return;
+  if (!st.online) { st.list = { status: 'offline' }; renderList(); return; }
+  if (st.loadFail) { st.list = { status: 'error' }; renderList(); say(t('myTrips.error')); return; }
+  const up = st.trips.filter(isUpcoming).sort(cmpUp), past = st.trips.filter(x => !isUpcoming(x)).sort(cmpPast);
+  st.list = { status: 'ready', up: up.slice(0, 20), past: past.slice(0, 20), upMore: up.length > 20, pastMore: past.length > 20, loadingMore: false, moreError: false, stale: false };
+  renderList(); say(t('myTrips.loaded'));
+}
+async function loadMore() {
+  const l = st.list; if (!l || l.status !== 'ready' || l.loadingMore || (!l.upMore && !l.pastMore)) return;
+  if (!st.online) { l.stale = true; renderList(); return; }
+  l.loadingMore = true; l.moreError = false; renderList(); await delay(700);
+  if (!st.online) { l.loadingMore = false; l.stale = true; renderList(); return; }
+  const up = st.trips.filter(isUpcoming).sort(cmpUp), past = st.trips.filter(x => !isUpcoming(x)).sort(cmpPast);
+  if (l.upMore) { l.up = up.slice(0, l.up.length + 20); l.upMore = up.length > l.up.length; }
+  else { l.past = past.slice(0, l.past.length + 20); l.pastMore = past.length > l.past.length; }
+  l.loadingMore = false; renderList(); say(t('myTrips.loadedMore'));
+}
+function mrow(tr) {
+  const c = byAdm0[tr.adm0], act = isActive(tr);
+  return `<button class="mrow" data-act="openTrip" data-id="${tr.id}" aria-label="${esc(`${tr.name}, ${cname(c)}, ${rangeA11y(tr.start, tr.end)}${act ? t('trips.activeA11y') : ''}`)}">${act ? '<span class="active-bar"></span>' : ''}
+    <span class="tr-text"><span class="cn">${esc(cname(c))}</span><span class="tr-name">${esc(tr.name)}</span><span class="tr-dates">${fmtRange(tr.start, tr.end)}</span></span>
+    <span class="side"><span class="code" aria-hidden="true">${c.adm0}</span>${act ? `<span class="chip-active" style="margin:0">${t('trips.active')}</span>` : ''}</span></button>`;
+}
+function renderList() {
+  if (st.sheet !== 'trips') return;
+  const el = $('#sheet'), l = st.list || { status: 'pending' };
+  let body = '';
+  if (l.status === 'loading') body = `<h3 class="mt-sec">${t('myTrips.upcoming')}</h3>` + [1, 2, 3].map(() => `<div class="skel-row" aria-hidden="true"><div class="skel" style="width:30%"></div><div class="skel" style="width:65%"></div><div class="skel" style="width:45%"></div></div>`).join('');
+  else if (l.status === 'offline') body = `<div class="mt-state" role="status">${I.cloudOffBig}<h3>${t('myTrips.offline')}</h3><p>${t('myTrips.offlineBody')}</p></div>`;
+  else if (l.status === 'error') body = `<div class="mt-state" role="status">${I.warnBig}<h3>${t('myTrips.error')}</h3><button class="btn secondary inline" data-act="retryList">${t('myTrips.retry')}</button></div>`;
+  else if (l.status === 'ready') {
+    if (!l.up.length && !l.past.length) body = `<div class="mt-state">${I.globePlus}<h3>${t('myTrips.emptyTitle')}</h3><p>${t('myTrips.emptyBody')}</p><button class="btn secondary inline" data-act="emptySearch">${t('myTrips.emptyAction')}</button></div>`;
+    else {
+      const foot = l.loadingMore ? `<div class="mt-foot" role="status"><span class="spinner"></span>${t('myTrips.loadingMore')}</div>` : l.moreError ? `<div class="mt-foot">${t('myTrips.moreError')}<button class="btn text inline" data-act="moreRetry">${t('myTrips.retry')}</button></div>` : '';
+      body = (l.stale ? `<div style="padding:0 16px"><div class="notice" role="status">${I.info}<span>${t('myTrips.offlineStale')}</span></div></div>` : '') +
+        `<h3 class="mt-sec">${t('myTrips.upcoming')}</h3>` + (l.up.length ? l.up.map(mrow).join('') : `<div class="mt-none">${t('myTrips.upcomingNone')}</div>`) +
+        (l.upMore ? (foot || `<div class="mt-foot" data-sentinel>…</div>`) : '') +
+        (!l.upMore && l.past.length ? `<h3 class="mt-sec">${t('myTrips.past')}</h3>` + l.past.map(mrow).join('') + (l.pastMore ? (foot || `<div class="mt-foot" data-sentinel>…</div>`) : '') : '');
+    }
+  }
+  const prevScroll = $('#mtList') ? $('#mtList').scrollTop : 0;
+  el.innerHTML = `<div class="mt-head"><button class="handle-hit" data-act="toggleFull" aria-label="${t('myTrips.expand')}"><span class="handle"></span></button>
+    <button class="x" data-act="closeSheet" aria-label="${t('sheet.close')}">${I.x}</button><h2 tabindex="-1" style="margin-top:4px">${t('myTrips.title')}</h2></div>
+    <div class="mt-list" id="mtList">${body}</div>`;
+  const ml = $('#mtList'); ml.scrollTop = prevScroll;
+  ml.addEventListener('scroll', () => { if (ml.scrollTop > 8 && !st.tripsFull) { st.tripsFull = true; el.classList.add('full'); } if (ml.scrollTop + ml.clientHeight > ml.scrollHeight - 120) loadMore(); });
+}
+function openTrip(id) {
+  const tr = st.trips.find(x => x.id === id); if (!tr) return;
+  closeSheet(); setTimeout(() => selectCountry(tr.adm0, { expand: id }), 0);
+}
+
+/* =================== trip form (AC-1, AC-2, AC-3, AC-6) =================== */
+function newTrip() {
+  if (!st.signedIn) { st.pending = { type: 'newTrip', adm0: st.selected }; openSheet('signin', 'trip'); return; }
+  openForm('new', st.selected);
+}
+function openForm(mode, adm0, tr) {
+  const f = { mode, adm0, id: tr ? tr.id : uuid(), start: tr ? tr.start : null, end: tr ? tr.end : null, name: tr ? tr.name : '', notes: tr ? tr.notes : '', errors: {}, attempted: false, saving: false, deleting: false, notice: null, gone: false, returnCleared: false };
+  f.nameAuto = mode === 'new' ? true : (tr.name === defaultName(adm0, tr.start));
+  f.orig = JSON.stringify([f.start, f.end, f.name, f.notes]);
+  st.form = f; renderForm(); $('#modal').classList.add('open'); renderChrome();
+  setTimeout(() => $('#modal h1').focus(), 60);
+}
+function formDirty() { const f = st.form; return JSON.stringify([f.start, f.end, f.name, f.notes]) !== f.orig; }
+function closeForm() { st.form = null; $('#modal').classList.remove('open'); renderChrome(); const b = document.querySelector('[data-act="newTrip"]'); b && setTimeout(() => b.focus(), 220); }
+function validate(f) {
+  const e = {}; if (!f.start) e.start = 'departureRequired';
+  if (!f.end) e.end = 'returnRequired'; else if (f.start && f.end < f.start) e.end = 'returnBeforeDeparture';
+  const n = cps(f.name.trim()); if (n === 0) e.name = 'nameRequired'; else if (n > 80) e.name = 'nameTooLong';
+  if (cps(f.notes.trim()) > 2000) e.notes = 'notesTooLong'; return e;
+}
+const ferr = (f, k) => f.errors[k] ? `<div class="ferr" id="err-${k}">${I.warn}<span>${t('err.' + f.errors[k])}</span></div>` : '';
+function renderForm() {
+  const f = st.form; if (!f) return; const c = byAdm0[f.adm0], edit = f.mode === 'edit', lock = f.saving || f.deleting ? 'disabled' : '';
+  const nl = cps(f.name), tl = cps(f.notes);
+  const noticeText = f.notice === 'offline' ? t('tripForm.offline') : f.notice === 'saveError' ? t('tripForm.saveError') : f.notice === 'gone' ? t('tripForm.goneElsewhere') : f.notice === 'delOffline' ? t('tripDelete.offline') : null;
+  const dateBtn = (k) => { const v = f[k], lab = k === 'start' ? 'departure' : 'return';
+    return `<div class="field"><span class="flabel" aria-hidden="true">${t('tripForm.' + lab)}</span>
+      <button class="input datebtn ${f.errors[k] ? 'err' : ''}" data-act="pickDate" data-k="${k}" ${lock || (f.gone ? 'disabled' : '')} aria-label="${esc(t(k === 'start' ? 'tripForm.departureA11y' : 'tripForm.returnA11y', { date: v ? fmtDate(v) : t('tripForm.notSet') }) + (f.errors[k] ? ', ' + t('err.prefix', { m: t('err.' + f.errors[k]) }) : ''))}">
+        <span class="${v ? '' : 'ph'}">${v ? fmtDate(v) : t('tripForm.pickDate')}</span>${I.cal}</button>${ferr(f, k)}
+      ${k === 'end' && f.returnCleared && !f.end ? `<div class="meta"><span>${t('tripForm.returnCleared')}</span></div>` : ''}</div>`; };
+  $('#modal').innerHTML = `<div class="bar"><h1 tabindex="-1">${t(edit ? 'tripForm.titleEdit' : 'tripForm.titleNew')}</h1><button class="x" style="position:static" data-act="formClose" aria-label="${t('tripForm.close')}" ${f.saving || f.deleting ? 'aria-disabled="true"' : ''}>${I.x}</button></div>
+    <div class="scroll" id="formScroll">
+      ${noticeText ? `<div class="notice" role="status" id="formNotice">${I.info}<span>${noticeText}</span></div>` : ''}
+      <div class="dest" role="group" aria-label="${esc(t('tripForm.destinationA11y', { country: cname(c) }))}"><div style="flex:1;min-width:0" aria-hidden="true"><div class="lbl">${t('tripForm.destination')}</div><div class="dn">${esc(cname(c))}</div><div class="de">${ltr(c.en)}</div></div><span class="code" aria-hidden="true">${c.adm0}</span></div>
+      <div class="dates">${dateBtn('start')}${dateBtn('end')}</div>
+      <div class="field"><label for="fName">${t('tripForm.name')}</label>
+        <input id="fName" class="input ${f.errors.name ? 'err' : ''}" maxlength="160" value="${esc(f.name)}" placeholder="${t('tripForm.namePending')}" ${lock} ${f.gone ? 'disabled' : ''} aria-invalid="${!!f.errors.name}">
+        ${ferr(f, 'name')}<div class="meta"><span id="nameHelp">${f.nameAuto && f.start ? t('tripForm.nameAuto') : ''}</span><span class="cnt" id="nameCount">${nl >= 60 ? `${nl}/80` : ''}</span></div></div>
+      <div class="field"><label for="fNotes">${t('tripForm.notes')}</label>
+        <textarea id="fNotes" class="input ${f.errors.notes ? 'err' : ''}" maxlength="4000" placeholder="${t('tripForm.notesPlaceholder')}" ${lock} ${f.gone ? 'disabled' : ''}>${esc(f.notes)}</textarea>
+        ${ferr(f, 'notes')}<div class="meta"><span></span><span class="cnt" id="notesCount">${tl >= 1800 ? `${tl.toLocaleString('en-US')}/2,000` : ''}</span></div></div>
+      ${edit && !f.gone ? `<button class="btn plain" style="margin-top:24px" data-act="askDeleteForm" ${lock} ${f.deleting ? 'aria-busy="true"' : ''}>${f.deleting ? '<span class="spinner"></span>' : I.trash}${t('tripForm.delete')}</button>` : ''}
+    </div>
+    <div class="foot">${f.gone ? `<button class="btn secondary" data-act="formCloseNow">${t('tripForm.closeBtn')}</button>` :
+      `<button class="btn primary" data-act="saveForm" ${f.saving ? 'aria-busy="true"' : ''}>${f.saving ? `<span class="spinner"></span>${t('tripForm.saving')}` : t(edit ? 'tripForm.saveEdit' : 'tripForm.save')}</button>`}</div>`;
+  const nm = $('#fName'), nt = $('#fNotes');
+  nm.addEventListener('input', () => { f.name = nm.value; f.nameAuto = false; liveCheck(); const l = cps(f.name); $('#nameCount').textContent = l >= 60 ? `${l}/80` : ''; $('#nameHelp').textContent = ''; if (l === 70) say(t('tripForm.charsLeft', { n: 10 })); });
+  nm.addEventListener('blur', () => { if (!f.name.trim() && f.start) { f.nameAuto = true; f.name = defaultName(f.adm0, f.start); nm.value = f.name; $('#nameHelp').textContent = t('tripForm.nameAuto'); liveCheck(); } });
+  nt.addEventListener('input', () => { f.notes = nt.value; liveCheck(); const l = cps(f.notes); $('#notesCount').textContent = l >= 1800 ? `${l.toLocaleString('en-US')}/2,000` : ''; });
+}
+function liveCheck() {
+  const f = st.form; if (!f.attempted) return; const before = JSON.stringify(f.errors); f.errors = validate(f);
+  if (JSON.stringify(f.errors) !== before) { const a = document.activeElement && document.activeElement.id; const pos = document.activeElement && document.activeElement.selectionStart; renderForm(); if (a) { const el = document.getElementById(a); el && (el.focus(), pos != null && el.setSelectionRange && el.setSelectionRange(pos, pos)); } }
+}
+async function saveForm() {
+  const f = st.form; if (!f || f.saving || f.gone) return;
+  f.attempted = true; f.errors = validate(f); f.notice = null;
+  const keys = ['start', 'end', 'name', 'notes'].filter(k => f.errors[k]);
+  if (keys.length) {
+    renderForm(); say(keys.length === 1 ? t('err.summaryOne') : t('err.summaryMany', { n: keys.length }), true);
+    const first = keys[0], el = first === 'name' ? $('#fName') : first === 'notes' ? $('#fNotes') : document.querySelector(`[data-k="${first}"]`);
+    el.scrollIntoView({ block: 'center', behavior: st.reduce ? 'auto' : 'smooth' }); el.focus({ preventScroll: true }); return;
+  }
+  if (!st.online) { f.notice = 'offline'; renderForm(); say(t('tripForm.offline')); $('#formScroll').scrollTo({ top: 0 }); return; }
+  f.saving = true; renderForm(); say(t('tripForm.saving'));
+  await delay(800);
+  if (st.form !== f) return;
+  if (!st.online) { f.saving = false; f.notice = 'offline'; renderForm(); say(t('tripForm.offline')); return; }
+  if (st.fail.save) { st.fail.save = false; $('#ckSaveFail').checked = false; f.saving = false; f.notice = 'saveError'; renderForm(); say(t('tripForm.saveError')); return; }
+  const rec = { id: f.id, adm0: f.adm0, name: f.name.trim(), start: f.start, end: f.end, notes: f.notes.trim() };
+  if (f.mode === 'edit') {
+    if (st.fail.gone) { st.fail.gone = false; $('#ckGone').checked = false; st.trips = st.trips.filter(x => x.id !== f.id); f.saving = false; f.gone = true; f.notice = 'gone'; renderForm(); say(t('tripForm.goneElsewhere')); afterChange(); return; }
+    const i = st.trips.findIndex(x => x.id === f.id); if (i >= 0) st.trips[i] = rec;
+  } else if (!st.trips.some(x => x.id === f.id)) st.trips.push(rec); // same UUID on retry: no duplicate (AC-3)
+  closeForm(); st.flashId = rec.id; st.expanded = null;
+  afterChange(); toast(t(f.mode === 'edit' ? 'tripForm.updated' : 'tripForm.saved')); say(t('tripForm.savedA11y', { name: rec.name }));
+  setTimeout(() => { const el = document.querySelector(`[data-wrap="${rec.id}"]`); el && el.scrollIntoView({ block: 'nearest', behavior: st.reduce ? 'auto' : 'smooth' }); }, 120);
+  setTimeout(() => { st.flashId = null; }, 1300);
+}
+function afterChange() {
+  st.hl = new Set(st.trips.map(x => x.adm0)); st.hlLoaded = st.signedIn && st.online; // optimistic + refetch (README 7.5)
+  if (st.selected) { st.card.status = st.signedIn ? (st.online ? 'ready' : 'offline') : 'signedout'; renderCard(); }
+  if (st.sheet === 'trips') loadList();
+}
+function formBack() {
+  const f = st.form; if (!f || f.saving || f.deleting) return;
+  if (f.gone || !formDirty()) { closeForm(); return; }
+  showDialog(t('tripForm.discardTitle'), t('tripForm.discardBody'), [[t('tripForm.discardCancel'), () => {}], [t('tripForm.discardConfirm'), () => closeForm()]]);
+}
+
+/* =================== date picker (Material 3 drawing; real one is the system picker, README 4) =================== */
+function openPicker(k) {
+  const f = st.form; const init = f[k] || (k === 'end' && f.start) || TODAY; const p = parts(init);
+  st.picker = { k, y: p.y, m: p.m, sel: f[k] || null, min: k === 'end' ? f.start : null };
+  renderPicker();
+}
+function renderPicker() {
+  const pk = st.picker; if (!pk) { $('#sys').innerHTML = ''; return; }
+  const first = new Date(pk.y, pk.m - 1, 1).getDay(), days = new Date(pk.y, pk.m, 0).getDate();
+  const cells = []; for (let i = 0; i < first; i++) cells.push('<span></span>');
+  const f = st.form;
+  for (let d = 1; d <= days; d++) {
+    const s = `${pk.y}-${String(pk.m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dis = pk.min && s < pk.min; const inr = pk.k === 'end' && f.start && pk.sel && s > f.start && s < pk.sel;
+    cells.push(`<button class="${s === TODAY ? 'today' : ''} ${s === pk.sel ? 'sel' : ''} ${inr ? 'inrange' : ''}" data-act="pkDay" data-d="${s}" ${dis ? 'disabled' : ''} aria-label="${fmtDate(s)}" aria-pressed="${s === pk.sel}">${d}</button>`);
+  }
+  $('#sys').innerHTML = `<div class="dlg-scrim" data-act="pkCancel"></div><div class="picker" role="dialog" aria-modal="true" aria-label="${t(pk.k === 'start' ? 'datePicker.titleDeparture' : 'datePicker.titleReturn')}">
+    <div class="pk-head"><div class="sup">${t(pk.k === 'start' ? 'datePicker.titleDeparture' : 'datePicker.titleReturn')}</div><div class="hl">${pk.sel ? fmtDate(pk.sel) : '—'}</div></div>
+    <div class="pk-nav"><span class="mon">${S[lang].months[pk.m - 1]} ${pk.y}</span><span style="display:flex"><button data-act="pkPrev" aria-label="${t('datePicker.prev')}">${I.back}</button><button data-act="pkNext" aria-label="${t('datePicker.next')}"><svg class="i dir" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></span></div>
+    <div class="pk-grid">${S[lang].wd.map(w => `<span class="wd" aria-hidden="true">${w}</span>`).join('')}${cells.join('')}</div>
+    <div class="pk-acts"><button data-act="pkCancel">${t('datePicker.cancel')}</button><button data-act="pkOk">${t('datePicker.ok')}</button></div></div>`;
+}
+function pickerOk() {
+  const pk = st.picker, f = st.form; st.picker = null; renderPicker(); if (!pk.sel) return;
+  if (pk.k === 'start') {
+    f.start = pk.sel; if (f.end && f.end < f.start) { f.end = null; f.returnCleared = true; say(t('tripForm.returnCleared')); }
+    if (f.nameAuto) f.name = defaultName(f.adm0, f.start);
+    if (f.attempted) f.errors = validate(f); renderForm();
+    if (!f.end) setTimeout(() => openPicker('end'), 200); // [proposal] README 4.1
+  } else { f.end = pk.sel; f.returnCleared = false; if (f.attempted) f.errors = validate(f); renderForm(); }
+  const b = document.querySelector(`[data-k="${pk.k}"]`); b && b.focus();
+}
+
+/* =================== delete trip =================== */
+function askDelete(id, fromForm) {
+  const tr = st.trips.find(x => x.id === id); if (!tr) return;
+  showDialog(t('tripDelete.title'), t('tripDelete.body', { name: tr.name }), [[t('tripDelete.cancel'), () => {}], [t('tripDelete.confirm'), () => doDelete(id, fromForm)]]);
+}
+async function doDelete(id, fromForm) {
+  if (!st.online) {
+    if (fromForm) { st.form.notice = 'delOffline'; renderForm(); } else { st.card.notice = { id, text: t('tripDelete.offline') }; renderCard(); }
+    say(t('tripDelete.offline')); return;
+  }
+  if (fromForm) { st.form.deleting = true; renderForm(); } else { st.card.busyId = id; st.card.notice = null; renderCard(); }
+  await delay(700);
+  const gone = st.fail.gone; if (gone) { st.fail.gone = false; $('#ckGone').checked = false; }
+  st.trips = st.trips.filter(x => x.id !== id); st.card.busyId = null; st.expanded = null;
+  if (fromForm) closeForm();
+  afterChange(); toast(gone ? t('tripDelete.alreadyGone') : t('tripDelete.done'));
+}
+
+/* =================== account, name, export =================== */
+function openAccount() { if (!st.signedIn) { st.pending = null; openSheet('signin', null); } else openSheet('account'); }
+function editName() { st.nameEdit = { value: st.user.name, error: null, notice: null, saving: false }; st.sheet = 'name'; renderSheet(); setTimeout(() => { const i = $('#nameIn'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 50); }
+async function saveName() {
+  const n = st.nameEdit; if (!n || n.saving) return; const v = n.value.trim();
+  if (!v) { n.error = 'nameEdit.required'; renderSheet(); say(t('nameEdit.required')); $('#nameIn').focus(); return; }
+  if (cps(v) > 60) { n.error = 'nameEdit.tooLong'; renderSheet(); say(t('nameEdit.tooLong')); $('#nameIn').focus(); return; }
+  if (v === st.user.name) { st.sheet = 'account'; st.nameEdit = null; renderSheet(); return; }
+  if (!st.online) { n.notice = 'nameEdit.offline'; renderSheet(); say(t('nameEdit.offline')); return; }
+  n.saving = true; n.notice = null; renderSheet(); await delay(600);
+  if (st.fail.save) { st.fail.save = false; $('#ckSaveFail').checked = false; n.saving = false; n.notice = 'nameEdit.error'; renderSheet(); say(t('nameEdit.error')); return; }
+  st.user.name = v; st.nameEdit = null; st.sheet = 'account'; renderSheet(); renderChrome(); toast(t('nameEdit.saved'));
+  setTimeout(() => { const b = document.querySelector('.iconbtn[data-act="editName"]'); b && b.focus(); }, 50);
+}
+function renderExp() { renderSheet(); if (st.push) renderPush(); }
+async function doExport() {
+  if (st.exp.status === 'preparing') return;
+  if (!st.online) { st.exp = { status: 'offline' }; renderExp(); say(t('export.offline')); return; }
+  st.exp = { status: 'preparing' }; renderExp(); say(t('export.preparing'), true);
+  await delay(1300); if (st.sheet !== 'account') return; // sheet closed: aborted, temp file removed
+  if (st.fail.export || !st.online) { st.fail.export = false; $('#ckExportFail').checked = false; st.exp = { status: 'error' }; renderExp(); say(t('export.error')); return; }
+  st.share = { file: `travel-data-${TODAY}.json`, size: `${(4 + st.trips.length * 0.4).toFixed(1)} KB` }; renderShare();
+}
+function renderShare() {
+  if (!st.share) { $('#sys').innerHTML = ''; return; }
+  $('#sys').innerHTML = `<div class="dlg-scrim" data-act="shareClose"></div><div class="share" role="dialog" aria-label="${t('sys.share')}"><div class="sys">Android · ${t('sys.share')}</div><h3>${t('export.dialogTitle')}</h3>
+    <div class="file"><span style="width:40px;height:40px;border-radius:8px;background:#5F6368;color:#fff;display:grid;place-items:center;font:700 11px var(--sysfont)">JSON</span><span><b style="font-weight:500">${st.share.file}</b><br><span style="font-size:12px;color:var(--sys-2)">${st.share.size}</span></span></div>
+    <div class="targets">${[['Drive', '#1E8E3E'], ['Gmail', '#C5221F'], ['WhatsApp', '#25D366'], [t('sys.files'), '#0B57D0']].map(([n, c]) => `<button data-act="shareClose"><span class="ic" style="background:${c}">${n[0]}</span>${n}</button>`).join('')}</div>
+    <button class="cancel" data-act="shareClose">${t('sys.cancel')}</button></div>`;
+}
+function shareClose() { st.share = null; renderShare(); st.exp = { status: 'idle' }; renderExp(); say('[מערכת] הקובץ הזמני נמחק מ-cacheDirectory'); const b = document.querySelector('[data-act="export"]'); b && b.focus(); }
+
+/* =================== push screens: consents + delete account =================== */
+function openPush(type) { st.push = { type, step: 1, notice: null, gmsg: null, busy: false }; st.cons = { saving: {}, notice: null }; renderPush(); $('#push').classList.add('open'); renderChrome(); setTimeout(() => $('#push h1').focus(), 60); }
+function closePush() { st.push = null; $('#push').classList.remove('open'); renderChrome(); }
+function renderPush() {
+  const p = st.push; if (!p) return; const el = $('#push');
+  const bar = title => `<div class="bar with-back"><button class="iconbtn" style="color:var(--t1)" data-act="pushBack" aria-label="${t('consents.back')}">${I.arrowBack}</button><h1 tabindex="-1">${title}</h1></div>`;
+  if (p.type === 'consents') {
+    const c = st.consents, off = !st.online;
+    const doc = (k, name) => `<button class="doc" data-act="openDoc" aria-label="${esc(`${name}, ${t('consents.docMeta', { v: c[k].v, date: fmtDate(c[k].date) })}`)}"><span class="dt"><span class="dl">${name}</span><span class="dm">${t('consents.docMeta', { v: c[k].v, date: numDate(c[k].date) })}</span></span>${I.ext}</button>`;
+    const cb = (k, label, note) => { const sv = st.cons.saving[k]; return `<button class="cb-row" role="checkbox" aria-checked="${c[k]}" data-act="toggleConsent" data-k="${k}" ${off ? 'aria-disabled="true"' : ''} ${sv ? 'aria-busy="true"' : ''}>
+      <span class="cb"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="cb-text"><span class="cb-label">${label}</span><span class="cb-desc">${sv ? `<span class="spinner s16"></span>${t('consents.saving')}` : note}</span></span></button>`; };
+    el.innerHTML = bar(t('consents.title')) + `<div class="scroll">
+      <h2 class="h3" style="margin-top:8px">${t('consents.docsTitle')}</h2><div class="ccard">${doc('terms', t('consent.terms'))}${doc('privacy', t('consent.privacy'))}</div>
+      <div class="notice" style="margin-top:16px;flex-direction:column;gap:4px"><span style="display:flex;gap:10px">${I.info}<span>${t('consents.withdraw')}</span></span><button class="btn text inline" style="color:inherit;text-decoration:underline;padding-inline:30px" data-act="toDelete">${t('consents.toDelete')}</button></div>
+      <h2 class="h3">${t('consents.optionalTitle')}</h2><p class="fine" style="margin:0 0 12px">${t('consents.optionalBody')}</p>
+      ${off ? `<div class="notice" role="status">${I.info}<span>${t('consents.offline')}</span></div>` : st.cons.notice ? `<div class="notice" role="status">${I.info}<span>${t(st.cons.notice)}</span></div>` : ''}
+      <div class="ccard">${cb('marketing', t('consent.marketing'), t('consent.marketingNote'))}${cb('analytics', t('consent.analytics'), t('consent.analyticsNote'))}</div></div>`;
+  } else {
+    const msg = p.notice ? `<div class="notice" role="status">${I.info}<span>${p.notice}</span></div>` : '';
+    if (p.step === 1) el.innerHTML = bar(t('deleteAccount.title')) + `<div class="scroll"><span class="badge">${t('deleteAccount.step', { n: 1 })}</span>
+      <p class="lead">${t('deleteAccount.lead')}</p>
+      <div class="ccard" style="margin-top:20px"><h3 class="h3">${t('deleteAccount.deletedTitle')}</h3>${['deletedAccount', 'deletedTrips', 'deletedDevice'].map(k => `<div class="bul">${I.check}<span>${t('deleteAccount.' + k)}</span></div>`).join('')}<div style="height:6px"></div></div>
+      <div class="ccard" style="margin-top:12px"><h3 class="h3">${t('deleteAccount.keptTitle')}</h3><div class="bul">${I.info}<span>${t('deleteAccount.kept')}</span></div>
+        <button class="doc" data-act="openDoc"><span class="dt"><span class="dl">${t('consent.privacy')}</span></span>${I.ext}</button></div>
+      <p class="fine" style="margin-top:20px">${t('deleteAccount.copyHint')}</p><button class="btn text inline" style="padding-inline:0" data-act="export">${t('account.export')}</button>
+      ${st.exp.status === 'preparing' ? `<p class="fine" role="status">${t('export.preparing')}</p>` : ''}</div>
+      <div class="foot"><button class="btn primary" data-act="delContinue">${t('deleteAccount.continue')}</button><button class="btn text" data-act="pushBack">${t('deleteAccount.cancel')}</button></div>`;
+    else el.innerHTML = bar(t('deleteAccount.title')) + `<div class="scroll"><span class="badge">${t('deleteAccount.step', { n: 2 })}</span>
+      <h2 class="h3" style="font-size:calc(22px * var(--fs));line-height:calc(28px * var(--fs));margin-top:12px" tabindex="-1" id="verifyTitle">${t('deleteAccount.verifyTitle')}</h2>
+      <p class="lead" style="margin-top:4px">${t('deleteAccount.verifyBody')}</p><span class="mailchip">${ltr(st.user.email)}</span>
+      <div class="warn">${I.info}<span>${t('deleteAccount.verifyWarning')}</span></div>${msg}
+      <button class="gbtn" data-act="delGoogle" aria-label="${t('deleteAccount.googleA11y')}" ${p.busy ? 'aria-busy="true"' : ''}>${I.g}<span>${p.busy ? t('signIn.connecting') : t('signIn.google')}</span>${p.busy ? '<span class="spinner"></span>' : ''}</button>
+      ${p.gmsg ? `<p class="fine" role="status">${p.gmsg}</p>` : ''}</div>
+      <div class="foot"><button class="btn text" data-act="pushBack">${t('deleteAccount.cancel')}</button></div>`;
+  }
+}
+async function toggleConsent(k) {
+  if (!st.online || st.cons.saving[k]) return;
+  const prev = st.consents[k]; st.consents[k] = !prev; st.cons.saving[k] = true; st.cons.notice = null; renderPush();
+  await delay(700);
+  if (!st.online || st.fail.save) { if (st.fail.save) { st.fail.save = false; $('#ckSaveFail').checked = false; } st.consents[k] = prev; st.cons.saving[k] = false; st.cons.notice = 'consents.error'; renderPush(); say(t('consents.error')); return; }
+  st.cons.saving[k] = false; renderPush(); say(t('consents.saved')); say(`[מערכת] נרשם ביומן: ${k} ${st.consents[k] ? 'grant' : 'withdraw'}`);
+  const b = document.querySelector(`[data-k="${k}"]`); b && b.focus();
+}
+function delGoogle() {
+  const p = st.push; if (p.busy) return; p.notice = null; p.gmsg = null;
+  if (!st.online) { p.notice = t('deleteAccount.offline'); renderPush(); say(p.notice); return; }
+  st.chooser = { ctx: 'reauth' }; renderChooser();
+}
+async function delAfterGoogle(choice) {
+  const p = st.push;
+  if (choice === 'cancel') { p.gmsg = t('deleteAccount.cancelled'); renderPush(); say(p.gmsg); return; }
+  if (choice === 'other') { p.notice = t('deleteAccount.wrongAccount', { email: st.user.email }); renderPush(); say(p.notice); say('[מערכת] GoogleSignin.signOut() מקומי, ה-session של האפליקציה לא השתנה'); return; }
+  const B = $('#blocking'); B.hidden = false; B.innerHTML = `<span class="spinner s32"></span><span>${t('deleteAccount.deleting')}</span>`; say(t('deleteAccount.deleting'), true);
+  await delay(1600);
+  const mode = st.deletedOnServer ? 'okRetry' : st.fail.del;
+  if (mode === 'server' || mode === 'expired' || mode === 'noAnswer') {
+    B.hidden = true; if (mode === 'noAnswer') st.deletedOnServer = true;
+    st.fail.del = 'ok'; $('#delMode').value = 'ok';
+    p.notice = t(mode === 'server' ? 'deleteAccount.error' : mode === 'expired' ? 'deleteAccount.expired' : 'deleteAccount.noAnswer'); renderPush(); say(p.notice); return;
+  }
+  // success (or retry that got "user not found"): wipe device first, then UI
+  st.deletedOnServer = false; st.signedIn = false; st.trips = []; wipeLocal(); st.pending = null;
+  closePush(); closeSheet(); syncPanel();
+  if (st.selected) { st.card.status = 'signedout'; renderCard(); }
+  B.style.opacity = 0; setTimeout(() => { B.hidden = true; B.style.opacity = ''; }, 200);
+  renderChrome(); toast(t('deleteAccount.done'), 5000);
+}
+
+/* =================== sign-in + consent (sprint 1, abridged) =================== */
+function googleSignIn() {
+  if (st.signin.busy) return;
+  if (!st.online) { st.signin.msg = 'offline'; renderSheet(); say(t('signIn.offline')); return; }
+  st.signin.msg = null; st.chooser = { ctx: 'signin' }; renderChooser();
+}
+function renderChooser() {
+  if (!st.chooser) { $('#sys').innerHTML = ''; return; }
+  $('#sys').innerHTML = `<div class="dlg-scrim" data-act="choose" data-c="cancel"></div><div class="chooser" role="dialog"><div class="sys">Google · ${t('sys.chooseAccount')}</div><h3>${t('sys.chooseAccount')}</h3><div class="sys">${t('sys.toContinue')}</div>
+    <button class="acc" data-act="choose" data-c="me"><span class="a">Y</span><span><b style="font-weight:500">Yossi Levi</b><br><span style="font-size:13px;color:var(--sys-2)">${ltr('yossi@gmail.com')}</span></span></button>
+    <button class="acc" data-act="choose" data-c="other"><span class="a" style="background:#00796B">W</span><span><b style="font-weight:500">Yossi (work)</b><br><span style="font-size:13px;color:var(--sys-2)">${ltr('yossi@work-example.com')}</span></span></button>
+    <button class="cancel" data-act="choose" data-c="cancel">${t('sys.cancel')}</button></div>`;
+}
+async function chosen(c) {
+  const ctxName = st.chooser.ctx; st.chooser = null; renderChooser();
+  if (ctxName === 'reauth') { delAfterGoogle(c); return; }
+  if (c === 'cancel') { st.signin.msg = 'cancelled'; renderSheet(); say(t('signIn.cancelled')); return; }
+  st.signin.busy = true; renderSheet(); await delay(700); st.signin.busy = false;
+  if ($('#ckReturning').checked) { finishSignIn(); return; }
+  closeSheet(true); st.consent = { agree: false, marketing: false, analytics: false }; renderConsent(); $('#consent').classList.add('open'); renderChrome();
+  setTimeout(() => $('#consent h1').focus(), 60);
+}
+function renderConsent() {
+  const c = st.consent; if (!c) return;
+  const row = (k, label, note, strong) => `<button class="cb-row" role="checkbox" aria-checked="${c[k]}" data-act="cToggle" data-k="${k}"><span class="cb"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="cb-text"><span class="cb-label ${strong ? 'strong' : ''}">${label}</span>${note ? `<span class="cb-desc">${note}</span>` : ''}</span></button>`;
+  $('#consent').innerHTML = `<div class="scroll" style="padding-top:24px"><h1 tabindex="-1" style="margin:0 0 8px;font-weight:700;font-size:calc(28px * min(var(--fs),1.6));line-height:calc(34px * min(var(--fs),1.6));outline:none">${t('consent.title')}</h1>
+    <p class="lead" style="color:var(--t2);margin:0 0 20px">${t('consent.body')}</p><div class="ccard">${row('agree', t('consent.agree'), '', true)}</div>
+    <h2 class="h3">${t('consent.optionalTitle')}</h2><div class="ccard">${row('marketing', t('consent.marketing'), t('consent.marketingNote'))}${row('analytics', t('consent.analytics'), t('consent.analyticsNote'))}</div></div>
+    <div class="foot">${c.agree ? '' : `<p class="fine" style="margin:0 0 4px">${t('consent.needsTick')}</p>`}<button class="btn primary" data-act="cContinue" ${c.agree ? '' : 'aria-disabled="true" style="background:var(--dis-bg);color:var(--dis-fg)"'}>${t('consent.continue')}</button><button class="btn text" data-act="cLeave">${t('consent.leave')}</button></div>`;
+}
+function closeConsent() { st.consent = null; $('#consent').classList.remove('open'); renderChrome(); }
+function finishSignIn() {
+  st.signedIn = true; syncPanel(); closeSheet(true); closeConsent(); renderChrome(); loadHighlights();
+  const p = st.pending; st.pending = null;
+  if (st.selected) loadCardTrips();
+  if (p && p.type === 'newTrip' && st.selected === p.adm0) { say(t('account.signedInAs', { name: st.user.name })); openForm('new', p.adm0); } // toast deferred until form closes (README 2.3)
+  else if (p && p.type === 'myTrips') { say(t('account.signedInAs', { name: st.user.name })); setTimeout(openMyTrips, 50); }
+  else toast(t('account.signedInAs', { name: st.user.name }));
+}
+function signOut() {
+  st.signedIn = false; wipeLocal(); st.pending = null; syncPanel();
+  closeSheet(); if (st.form) closeForm(); if (st.push) closePush();
+  if (st.selected) { st.card.status = 'signedout'; renderCard(); }
+  renderChrome(); toast(t('account.signedOut'));
+}
+
+/* =================== system alert dialog =================== */
+function showDialog(title, body, actions) {
+  st.dialog = { actions };
+  $('#sys').innerHTML = `<div class="dlg-scrim"></div><div class="alert" role="alertdialog" aria-modal="true" aria-labelledby="dlgT"><h3 id="dlgT">${esc(title)}</h3><p>${esc(body)}</p><div class="acts">${actions.map((a, i) => `<button data-act="dlg" data-i="${i}">${esc(a[0])}</button>`).join('')}</div></div>`;
+  setTimeout(() => document.querySelector('.alert button:last-child').focus(), 30);
+}
+function closeDialog(i) { const d = st.dialog; st.dialog = null; $('#sys').innerHTML = ''; if (d && i != null) d.actions[i][1](); }
+
+/* =================== back (README 12) =================== */
+function back() {
+  if (st.dialog) return closeDialog(0);
+  if (!$('#blocking').hidden) return;
+  if (st.consent) return cLeave();
+  if (st.chooser) return chosen('cancel');
+  if (st.share) return shareClose();
+  if (st.picker) { st.picker = null; return renderPicker(); }
+  if (st.form) return formBack();
+  if (st.push) return pushBack();
+  if (st.sheet === 'name') return (st.sheet = 'account', st.nameEdit = null, renderSheet());
+  if (st.sheet) return closeSheet();
+  if (st.searchOpen) return closeSearch();
+  if (st.selected) return closeCard();
+}
+function pushBack() { const p = st.push; if (p.type === 'delete' && p.step === 2) { p.step = 1; p.notice = null; p.gmsg = null; renderPush(); $('#push h1').focus(); } else closePush(); }
+function cLeave() { showDialog(lang === 'he' ? 'לצאת בלי לאשר?' : 'Leave without accepting?', lang === 'he' ? 'החשבון יתנתק. הגלובוס והחיפוש ימשיכו לעבוד גם בלי חשבון.' : "You'll be signed out. The globe and search keep working without an account.", [[lang === 'he' ? 'חזרה' : 'Back', () => {}], [lang === 'he' ? 'התנתקות' : 'Sign out', () => { closeConsent(); st.pending = null; st.signedIn = false; renderChrome(); }]]); }
+
+/* =================== actions =================== */
+const A = {
+  openSearch, closeSearch: () => closeSearch(), pick: el => selectCountry(el.dataset.adm0), account: openAccount, myTrips: openMyTrips,
+  closeCard, retryCard: () => { st.loadFail = false; loadCardTrips(); }, newTrip,
+  toggleTrip: el => { const id = el.dataset.id; st.expanded = st.expanded === id ? null : id; st.card.notice = null; renderCard(); const b = document.querySelector(`.trow[data-id="${id}"]`); b && b.focus(); },
+  editTrip: el => { const tr = st.trips.find(x => x.id === el.dataset.id); tr && openForm('edit', tr.adm0, tr); },
+  askDelete: el => askDelete(el.dataset.id, false), askDeleteForm: () => askDelete(st.form.id, true),
+  scrim: () => { if (st.sheet) closeSheet(); }, closeSheet, toggleFull: () => { st.tripsFull = !st.tripsFull; $('#sheet').classList.toggle('full', st.tripsFull); renderChrome(); },
+  openTrip: el => openTrip(el.dataset.id), retryList: () => { st.loadFail = false; loadList(); }, moreRetry: () => { st.list.moreError = false; loadMore(); },
+  emptySearch: () => { closeSheet(); setTimeout(openSearch, 220); },
+  formClose: () => formBack(), formCloseNow: () => closeForm(), saveForm,
+  pickDate: el => openPicker(el.dataset.k), pkPrev: () => { const p = st.picker; p.m--; if (p.m < 1) { p.m = 12; p.y--; } renderPicker(); }, pkNext: () => { const p = st.picker; p.m++; if (p.m > 12) { p.m = 1; p.y++; } renderPicker(); },
+  pkDay: el => { st.picker.sel = el.dataset.d; renderPicker(); const b = document.querySelector(`.pk-grid [data-d="${el.dataset.d}"]`); b && b.focus(); }, pkCancel: () => { const k = st.picker.k; st.picker = null; renderPicker(); const b = document.querySelector(`[data-k="${k}"]`); b && b.focus(); }, pkOk: pickerOk,
+  dlg: el => closeDialog(+el.dataset.i),
+  editName, saveName, cancelName: () => { st.sheet = 'account'; st.nameEdit = null; renderSheet(); },
+  export: doExport, shareClose, signOut,
+  openConsents: () => openPush('consents'), openDelete: () => openPush('delete'), toDelete: () => { st.push = null; openPush('delete'); },
+  pushBack, openDoc: () => say('[מערכת] נפתח Custom Tab עם הנוסח של הגרסה שאושרה'),
+  toggleConsent: el => toggleConsent(el.dataset.k),
+  delContinue: () => { st.push.step = 2; st.push.notice = null; renderPush(); setTimeout(() => $('#verifyTitle').focus(), 30); }, delGoogle,
+  googleSignIn, choose: el => chosen(el.dataset.c),
+  cToggle: el => { st.consent[el.dataset.k] = !st.consent[el.dataset.k]; renderConsent(); const b = document.querySelector(`#consent [data-k="${el.dataset.k}"]`); b && b.focus(); },
+  cContinue: () => { if (!st.consent.agree) return; if (!st.online) { say(lang === 'he' ? 'אין חיבור לאינטרנט. צריך חיבור כדי לשמור את האישור.' : "You're offline. Saving needs a connection."); return; } finishSignIn(); },
+  cLeave, back,
+};
+document.addEventListener('click', e => { const el = e.target.closest('[data-act]'); if (!el || !phone.contains(el)) return; if (el.getAttribute('aria-disabled') === 'true' && el.dataset.act !== 'cContinue') return; const f = A[el.dataset.act]; f && f(el, e); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); back(); } });
+
+/* =================== panel =================== */
+function syncPanel() {
+  document.querySelectorAll('.panel [data-p]').forEach(b => {
+    const p = b.dataset.p, v = b.dataset.v;
+    const cur = p === 'theme' ? st.theme : p === 'lang' ? lang : p === 'fs' ? String(st.fs) : p === 'reduce' ? (st.reduce ? '1' : '') : p === 'signed' ? (st.signedIn ? '1' : '0') : (st.online ? '1' : '0');
+    b.setAttribute('aria-pressed', String(cur === v));
+  });
+}
+function rerenderAll() {
+  renderChrome(); if (st.selected) renderCard(); if (st.sheet) renderSheet(); if (st.form) renderForm(); if (st.push) renderPush(); if (st.consent) renderConsent();
+  if (st.picker) renderPicker(); if (st.searchOpen) renderSearch(); if (st.share) renderShare(); if (st.chooser) renderChooser();
+}
+document.querySelectorAll('.panel [data-p]').forEach(b => b.addEventListener('click', () => {
+  const p = b.dataset.p, v = b.dataset.v, R = document.documentElement;
+  if (p === 'theme') { st.theme = v; R.dataset.theme = v; }
+  if (p === 'lang') { lang = v; R.lang = v; R.dir = v === 'he' ? 'rtl' : 'ltr'; }
+  if (p === 'fs') { st.fs = +v; R.style.setProperty('--fs', v); }
+  if (p === 'reduce') { st.reduce = !st.reduce; if (st.reduce) R.setAttribute('data-reduce', ''); else R.removeAttribute('data-reduce'); }
+  if (p === 'signed') { if (v === '1' && !st.signedIn) { st.signedIn = true; loadHighlights(); if (st.selected) loadCardTrips(); } else if (v === '0' && st.signedIn) signOut(); }
+  if (p === 'online') {
+    const was = st.online; st.online = v === '1';
+    if (!st.online) { if (st.list && st.list.status === 'ready') st.list.stale = true; }
+    else if (!was) {
+      if (!st.hlLoaded) loadHighlights();
+      if (st.list) { if (st.list.status === 'offline') loadList(); else { st.list.stale = false; } }
+      if (st.selected && st.card.status === 'offline') loadCardTrips();
+      if (st.form && st.form.notice === 'offline') st.form.notice = null;
+      if (st.sheet === 'signin' && st.signin.msg === 'offline') st.signin.msg = null;
+      if (st.exp.status === 'offline') st.exp = { status: 'idle' };
+    }
+    if (st.form && !st.online && !st.form.notice) st.form.notice = 'offline';
+  }
+  syncPanel(); rerenderAll();
+}));
+$('#scenario').addEventListener('change', e => { st.scenario = e.target.value; st.loadFail = st.scenario === 'error'; st.trips = scenarioTrips(st.scenario === 'error' ? 'some' : st.scenario); st.hlLoaded = false; loadHighlights(); if (st.selected) loadCardTrips(); if (st.sheet === 'trips') loadList(); });
+$('#ckSaveFail').addEventListener('change', e => st.fail.save = e.target.checked);
+$('#ckGone').addEventListener('change', e => st.fail.gone = e.target.checked);
+$('#ckExportFail').addEventListener('change', e => st.fail.export = e.target.checked);
+$('#delMode').addEventListener('change', e => { st.fail.del = e.target.value; st.deletedOnServer = false; });
+function resetLayers() { st.dialog = null; st.picker = null; st.chooser = null; st.share = null; $('#sys').innerHTML = ''; if (st.form) closeForm(); if (st.push) closePush(); if (st.sheet) closeSheet(); if (st.consent) closeConsent(); if (st.searchOpen) closeSearch(true); $('#blocking').hidden = true; }
+function ensureSignedIn() { if (!st.signedIn) { st.signedIn = true; syncPanel(); loadHighlights(); renderChrome(); } }
+const J = {
+  cardTHA: () => { resetLayers(); selectCountry('THA'); }, cardGRC: () => { resetLayers(); selectCountry('GRC', { expand: st.trips.find(x => x.adm0 === 'GRC') ?.id }); }, cardMLT: () => { resetLayers(); selectCountry('MLT'); },
+  form: () => { resetLayers(); ensureSignedIn(); if (!st.selected) selectCountry('THA'); setTimeout(() => openForm('new', st.selected), 350); },
+  formErr: () => { J.form(); setTimeout(saveForm, 750); },
+  picker: () => { J.form(); setTimeout(() => openPicker('start'), 750); },
+  edit: () => { resetLayers(); ensureSignedIn(); const tr = st.trips.find(x => x.adm0 === 'THA') || st.trips[0]; if (!tr) return say('אין נסיעות בתרחיש הזה'); selectCountry(tr.adm0); setTimeout(() => openForm('edit', tr.adm0, tr), 500); },
+  list: () => { resetLayers(); if (st.selected) closeCard(); openMyTrips(); },
+  account: () => { resetLayers(); ensureSignedIn(); openSheet('account'); },
+  name: () => { J.account(); setTimeout(editName, 350); },
+  consents: () => { J.account(); setTimeout(() => openPush('consents'), 350); },
+  del1: () => { J.account(); setTimeout(() => openPush('delete'), 350); },
+  del2: () => { J.del1(); setTimeout(() => { st.push.step = 2; renderPush(); }, 700); },
+  deleting: () => { J.del2(); setTimeout(() => { const B = $('#blocking'); B.hidden = false; B.innerHTML = `<span class="spinner s32"></span><span>${t('deleteAccount.deleting')}</span>`; setTimeout(() => B.hidden = true, 3000); }, 1100); },
+};
+document.querySelectorAll('.panel [data-j]').forEach(b => b.addEventListener('click', () => J[b.dataset.j]()));
+
+/* =================== contrast lab (README 7.4) =================== */
+function lum(hex) { const v = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; }
+function ratio(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function mix(top, a, bottom) { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const T = p(top), B = p(bottom); return '#' + T.map((v, i) => Math.round(v * a + B[i] * (1 - a)).toString(16).padStart(2, '0')).join(''); }
+(function lab() {
+  const line = '#4FCFBE', halo = '#03060F', ha = 0.7;
+  const samples = [['אוקיינוס כהה', '#0A2A52'], ['אוקיינוס בהיר', '#0D3A70'], ['יער', '#284220'], ['מדבר', '#C29C69'], ['קרח', '#DEE5EB'], ['אטמוספרה', '#9FD0FF']];
+  const f = r => `<span class="${r >= 3 ? 'ok' : 'bad'}">${r.toFixed(2)}</span>`;
+  $('#lab').innerHTML = `<table><tr><th>רקע</th><th>קו לבד</th><th>קו מול הילה</th><th>הילה מול רקע</th></tr>${samples.map(([n, c]) => { const m = mix(halo, ha, c); return `<tr><td><span style="display:inline-block;width:10px;height:10px;background:${c};border:1px solid #999;vertical-align:middle"></span> ${n}</td><td>${f(ratio(line, c))}</td><td>${f(ratio(line, m))}</td><td>${f(ratio(m, c))}</td></tr>`; }).join('')}
+    <tr><td>הבחירה #FF7A57</td><td colspan="3">${ratio(line, '#FF7A57').toFixed(2)} · הבדל בגוון, ההבחנה לפי עובי, זוהר וקו לבן (7.3)</td></tr></table>
+    <div style="color:#646E8A;margin-top:4px">הילה ${halo} בשקיפות ${ha}. ב-0.55 הקו מול ההילה על קרח: ${ratio(line, mix(halo, 0.55, '#DEE5EB')).toFixed(2)}</div>`;
+  const cv2 = $('#labCanvas'), g = cv2.getContext('2d'); const w = cv2.width / samples.length;
+  samples.forEach(([n, c], i) => {
+    const x0 = i * w; g.fillStyle = c; g.fillRect(x0, 0, w, 250);
+    const shape = (y) => { g.beginPath(); g.moveTo(x0 + 14, y + 40); g.bezierCurveTo(x0 + 30, y, x0 + w - 30, y + 10, x0 + w - 14, y + 34); g.bezierCurveTo(x0 + w - 30, y + 70, x0 + 30, y + 72, x0 + 14, y + 40); };
+    shape(10); g.strokeStyle = line; g.lineWidth = 2.4; g.stroke();
+    shape(90); g.fillStyle = 'rgba(79,207,190,.22)'; g.fill(); g.strokeStyle = 'rgba(3,6,15,.7)'; g.lineWidth = 7.2; g.stroke(); g.strokeStyle = line; g.lineWidth = 2.4; g.stroke();
+    shape(170); g.fillStyle = 'rgba(255,122,87,.3)'; g.fill(); g.save(); g.shadowColor = '#FF7A57'; g.shadowBlur = 12; g.strokeStyle = 'rgba(255,122,87,.55)'; g.lineWidth = 16; g.stroke(); g.restore(); g.strokeStyle = 'rgba(3,6,15,.6)'; g.lineWidth = 6.4; g.stroke(); g.strokeStyle = '#F3F6FC'; g.lineWidth = 3.2; g.stroke();
+  });
+  g.fillStyle = '#fff'; g.font = '600 18px sans-serif'; g.textAlign = 'right';
+  g.fillText('בלי הילה', 690, 26); g.fillText('נסיעה (עם הילה)', 690, 106); g.fillText('בחירה', 690, 186);
+})();
+
+/* =================== init =================== */
+syncPanel(); renderChrome(); loadHighlights();
+function fit() { const s = Math.min(1, (window.innerHeight - 32) / 934); document.documentElement.style.setProperty('--scale', s); }
+window.addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>

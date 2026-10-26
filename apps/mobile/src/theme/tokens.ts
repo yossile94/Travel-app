@@ -5,6 +5,9 @@
 
 export const colors = {
   light: {
+    /** bg.surfaceRaised: sheets, the card, search. */
+    surfaceRaised: '#FFFFFF',
+    /** bg.surface: cards and fields on the canvas (sprint 2). */
     surface: '#FFFFFF',
     textPrimary: '#121C36',
     textSecondary: '#4A5573',
@@ -28,9 +31,22 @@ export const colors = {
     infoFg: '#104C94',
     link: '#1561BC',
     borderControl: '#7D869E',
+    // Sprint 2 (tokens 0.3.0).
+    surfaceAlt: '#FBF4E8',
+    /** An expanded trip row in the card (design 2.1). */
+    openRow: '#FBF4E8',
+    ctaBg: '#C8441F',
+    ctaFg: '#FFFFFF',
+    ctaPressed: '#A8381A',
+    successSubtleBg: '#E8FAF7',
+    successSubtleFg: '#0A665D',
+    activeBar: '#0B7F73',
+    textAlert: '#C81E16',
+    skeleton: '#F4E7D0',
   },
   dark: {
-    surface: '#121C36',
+    surfaceRaised: '#121C36',
+    surface: '#0B1326',
     textPrimary: '#F3F6FC',
     textSecondary: '#A3B3DB',
     textTertiary: '#7487BD',
@@ -53,6 +69,17 @@ export const colors = {
     infoFg: '#A9D2FF',
     link: '#6FB3FA',
     borderControl: '#7487BD',
+    surfaceAlt: '#121C36',
+    // Not surfaceAlt: in dark it equals the card's own surface (design 2.1).
+    openRow: '#1A2749',
+    ctaBg: '#FF7A57',
+    ctaFg: '#060B18',
+    ctaPressed: '#FF9677',
+    successSubtleBg: '#0D2B2E',
+    successSubtleFg: '#8FE3D6',
+    activeBar: '#4FCFBE',
+    textAlert: '#FF5D52',
+    skeleton: '#1A2749',
   },
 } as const;
 
@@ -131,6 +158,18 @@ export const globe = {
     fadeLength: 16,
     bottomFadeLength: 24,
   },
+  /** Countries with trips (sprint 2 design 7): under the selection, never on the selected country. */
+  trips: {
+    color: '#4FCFBE',
+    fillOpacity: 0.22,
+    lineWidth: 1.2,
+    underlayColor: '#03060F',
+    underlayOpacity: 0.7,
+    underlayWidth: 3.6,
+    ringRadius: 7,
+    ringWidth: 2,
+    ringUnderlayWidth: 4,
+  },
   /** Dims the globe behind open search (sprint 1 design 2.1). */
   searchScrim: 'rgba(3,6,15,0.40)',
 } as const;
@@ -153,7 +192,24 @@ export const motion = {
   searchAnnounceDelay: 600,
   /** How long a toast stays (design 7.5). */
   toastVisible: 3000,
+  /** The account-deleted toast stays longer: it has no screen of its own (sprint 2 design 11.3). */
+  toastVisibleLong: 5000,
+  /** A loading skeleton shows only after this long, so a fast answer doesn't flash. */
+  skeletonDelay: 150,
+  skeletonPulse: 1000,
 } as const;
+
+/** Lengths in code points after trim, as Postgres char_length counts them (sprint 2 design 3.3). */
+export const limits = {
+  tripNameMax: 80,
+  tripNotesMax: 2000,
+  profileNameMax: 60,
+  tripNameCounterFrom: 60,
+  tripNotesCounterFrom: 1800,
+  profileNameCounterFrom: 50,
+} as const;
+
+export const timing = { tripSaveTimeout: 15000, accountDeleteTimeout: 20000 } as const;
 
 /** Sizes and positions of the controls over the globe (sprint 1 design 1). */
 export const layout = {
@@ -175,6 +231,12 @@ export const layout = {
    * this many times its length fits the row (sprint 1 QA, BoardingPassCard).
    */
   cardNameEnSpacedCharWidth: 13,
+  /** Above insets.bottom: the "My trips" button (sprint 2 design 1). */
+  tripsButtonBottom: 16,
+  tripRowMin: 72,
+  dateFieldMinWidth: 160,
+  formBarHeight: 56,
+  couponNotchRadius: 11,
 } as const;
 
 export const radius = { xs: 4, md: 12, lg: 16, sheet: 28, pill: 999, flap: 4 } as const;

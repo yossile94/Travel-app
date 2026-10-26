@@ -113,17 +113,27 @@ export function InlineNotice({
   );
 }
 
-/** A short confirmation over the globe, gone after 3 s (design 7.5). */
-export function Toast({ text, top, onDone }: { text: string; top: number; onDone: () => void }) {
+/** A short confirmation over the globe, gone after 3 s (design 7.5), or 5 s when `long`. */
+export function Toast({
+  text,
+  top,
+  onDone,
+  long = false,
+}: {
+  text: string;
+  top: number;
+  onDone: () => void;
+  long?: boolean;
+}) {
   useEffect(() => {
-    const timer = setTimeout(onDone, motion.toastVisible);
+    const timer = setTimeout(onDone, long ? motion.toastVisibleLong : motion.toastVisible);
     return () => clearTimeout(timer);
-  }, [text, onDone]);
+  }, [text, onDone, long]);
   return (
     <View
       pointerEvents="none"
       style={[styles.toastWrap, { top }]}
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={long ? 'assertive' : 'polite'}
       testID="toast"
     >
       <Text style={styles.toast}>{text}</Text>

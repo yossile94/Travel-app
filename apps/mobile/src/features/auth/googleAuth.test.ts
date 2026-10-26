@@ -4,7 +4,8 @@ process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = 'web-client.apps.googleuserconten
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { GoogleSignin, statusCodes } =
   require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
-const { googleIdToken } = require('./googleAuth') as typeof import('./googleAuth');
+const { googleFreshIdToken, googleIdToken } =
+  require('./googleAuth') as typeof import('./googleAuth');
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 const codeError = (code: string) => Object.assign(new Error(code), { code });
@@ -55,5 +56,53 @@ describe('googleIdToken (AC-15, AC-20)', () => {
       .spyOn(GoogleSignin, 'signIn')
       .mockResolvedValue({ type: 'success', data: { idToken: null } } as never);
     expect(await googleIdToken()).toMatchObject({ kind: 'error' });
+  });
+});
+
+/** A JWT-shaped token whose payload carries this iat (no signature needed here). */
+const tokenIssuedAt = (iat: number) =>
+  `h.${btoa(JSON.stringify({ iat })).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')}.s`;
+
+describe('a fresh token for account deletion (sprint 2 AC-18, QA on the A73)', () => {
+  const now = Date.UTC(2026, 9, 26, 7, 0, 0);
+  beforeEach(() => {
+    jest.spyOn(Date, 'now').mockReturnValue(now);
+    jest.spyOn(GoogleSignin, 'hasPlayServices').mockResolvedValue(true);
+    jest.spyOn(GoogleSignin, 'configure').mockImplementation(() => {});
+    jest.spyOn(GoogleSignin, 'signOut').mockResolvedValue(null);
+    jest.spyOn(GoogleSignin, 'revokeAccess').mockResolvedValue(null);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('revokes first, so the account picker always shows', async () => {
+    jest.spyOn(GoogleSignin, 'signIn').mockResolvedValue({
+      type: 'success',
+      data: { idToken: tokenIssuedAt(now / 1000 - 5) },
+    } as never);
+    const result = await googleFreshIdToken();
+    expect(result.kind).toBe('token');
+    expect(jest.mocked(GoogleSignin.revokeAccess).mock.invocationCallOrder[0]).toBeLessThan(
+      jest.mocked(GoogleSignin.signIn).mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('asks once, even when the token Google returns is not new (sprint 3 QA B-1)', async () => {
+    jest.spyOn(GoogleSignin, 'signIn').mockResolvedValue({
+      type: 'success',
+      data: { idToken: tokenIssuedAt(now / 1000 - 40 * 60) },
+    } as never);
+    const result = await googleFreshIdToken();
+    // One picker; the server judges the token (ADR-006 6).
+    expect(GoogleSignin.signIn).toHaveBeenCalledTimes(1);
+    expect(result.kind).toBe('token');
+  });
+
+  it('goes on when there is nothing to revoke', async () => {
+    jest.mocked(GoogleSignin.revokeAccess).mockRejectedValue(new Error('SIGN_IN_REQUIRED'));
+    jest.spyOn(GoogleSignin, 'signIn').mockResolvedValue({
+      type: 'success',
+      data: { idToken: tokenIssuedAt(now / 1000) },
+    } as never);
+    expect((await googleFreshIdToken()).kind).toBe('token');
   });
 });

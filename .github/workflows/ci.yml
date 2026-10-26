@@ -72,6 +72,28 @@ jobs:
       - name: Database lint
         run: npx supabase db lint --local --fail-on warning
 
+  functions:
+    name: Edge Functions (Deno)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+
+      # The lock file pins every npm: and jsr: import by hash (ADR-006).
+      - name: Lint
+        run: deno lint --config supabase/functions/deno.json supabase/functions
+
+      - name: Type check
+        run: deno check --frozen --config supabase/functions/deno.json supabase/functions/*/index.ts
+
+      # Sprint 2 AC-18: who is deleted, Google re-authentication, no personal data in logs.
+      - name: Tests
+        run: deno test --frozen --config supabase/functions/deno.json supabase/functions
+
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest

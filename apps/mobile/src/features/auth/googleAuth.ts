@@ -72,3 +72,46 @@ export async function googleSignOut(): Promise<void> {
     // Signing out of Supabase is what matters; Google's state is a convenience.
   }
 }
+
+/**
+ * Revokes the app's access to the Google account (sprint 2 AC-16). Best
+ * effort and bounded: a failure or a slow answer never holds up the wipe.
+ */
+export async function googleRevoke(timeoutMs = 5000): Promise<void> {
+  try {
+    configure();
+    await Promise.race([
+      GoogleSignin.revokeAccess(),
+      new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+    ]);
+  } catch {
+    // Signed out locally regardless; the access lapses with the deleted account.
+  }
+  await googleSignOut();
+}
+
+async function revokeThenChoose(): Promise<GoogleResult> {
+  try {
+    configure();
+    await Promise.race([
+      GoogleSignin.revokeAccess(),
+      new Promise((resolve) => setTimeout(resolve, 5000)),
+    ]);
+  } catch {
+    // Nothing to revoke (never signed in with Google on this device): fine.
+  }
+  await googleSignOut();
+  return googleIdToken();
+}
+
+/**
+ * A Google ID token for account deletion (sprint 2 AC-18), after an explicit
+ * choice of the account: access is revoked first, so the picker always shows.
+ * Play services may still hand back its cached token (up to an hour old; it
+ * can't be forced without a nonce, which this library doesn't offer), so the
+ * server accepts an unexpired token of the same Google identity, up to 60
+ * minutes old (ADR-006 6; Yossi, 2026-10-26, sprint 3 QA B-1). One picker.
+ */
+export async function googleFreshIdToken(): Promise<GoogleResult> {
+  return revokeThenChoose();
+}

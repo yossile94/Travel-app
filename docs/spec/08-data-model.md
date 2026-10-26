@@ -4,13 +4,14 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
 
 | טבלה | שדות עיקריים | RLS |
 |---|---|---|
-| profiles | id (= auth.users), first_name, last_name, locale, created_at | בעלים בלבד |
+| profiles | id (= auth.users, on delete cascade), display_name, created_at, updated_at | בעלים בלבד. בלי שם כמו בדרכון ובלי שפה (החלטת יוסי, 2026-10-25) |
 | consents | user_id, doc_type, doc_version, action, platform, app_version, created_at | Insert בלבד לבעלים; ללא Update/Delete. השרת קובע את user_id ואת created_at, ומאשר רק את הגרסה הנוכחית של התנאים והמדיניות. בלי מפתח זר ל-auth.users, כדי שהיומן יישאר אחרי מחיקת חשבון (ספרינט 1) |
 | legal_documents | doc_type (terms/privacy), version, url, published_at | קריאה לכולם, כתיבה לאדמין (service role) בלבד. הגרסה הנוכחית: המאוחרת שכבר פורסמה (התצוגה current_legal_documents). גרסה חדשה מחייבת הסכמה מחדש (ספרינט 1, AC-18) |
 | companions | user_id, display_name, birth_year | בעלים בלבד |
 | countries | iso2, name_he, name_en, name_local, aliases[], languages[], emergency_numbers | קריאה לכולם, כתיבה לאדמין |
 | missions | country_iso2, type, address, phones, hours, lat/lng, covers[], verified_at, source_url | קריאה לכולם, כתיבה לאדמין |
-| trips | user_id, country_iso2, title, start_date, end_date, status, notes | בעלים בלבד |
+| trips | id (UUID שנוצר במכשיר), user_id (on delete cascade), country_adm0 (קוד האזור בגלובוס, למשל THA; לא ISO, כי שטחים חולקים קוד ISO עם המדינה הריבונית), title, start_date, end_date, notes; status מספרינט 3 | בעלים בלבד. יצירה ועריכה רק עם הסכמה לגרסה הנוכחית; מחיקה תמיד (ספרינט 2) |
+| account_deletions | user_id, deleted_at, reason (user_request / no_consent_30d) | בלי גישה ללקוח. כתיבה רק בפונקציית המחיקה בשרת. ממנה נספרת תקופת השמירה של consents (ספרינט 2) |
 | trip_travelers | trip_id, companion_id | דרך הבעלות על trip |
 | flights | trip_id, flight_number, flight_date, pnr, seat, watch_key | דרך הבעלות על trip |
 | flight_watch | watch_key (מספר+תאריך), last_snapshot (jsonb), next_check_at | Service role בלבד |
@@ -37,3 +38,5 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
   - מחיקה מסומנת בשורה (`deleted_at`) ולא מוחקת אותה מיד, כדי שמכשירים אחרים יקבלו את המחיקה בסנכרון הבא.
   - המכשיר מוריד רק שורות שהשתנו מאז הסנכרון האחרון שלו.
   - הפרטים יתועדו בהחלטת ארכיטקטורה (ADR) בספרינט 0.
+
+**פער פתוח (2026-10-26):** הנסיעות מזוהות לפי קוד האזור בגלובוס (adm0), אבל countries, missions ו-curated_places עדיין לפי ISO. כשנסיעה תצטרך נציגויות או המלצות של היעד, צריך מיפוי adm0 ← ISO, ולשטחים שחולקים קוד ISO עם המדינה הריבונית צריך החלטה. נפתר בתכנון הספרינט שמחבר ביניהם.

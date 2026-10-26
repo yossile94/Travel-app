@@ -236,7 +236,7 @@ export function SearchBar({
   }
 
   const surface = {
-    backgroundColor: palette.surface,
+    backgroundColor: palette.surfaceRaised,
     borderColor: palette.borderSubtle,
     borderWidth: colorScheme === 'dark' ? 1 : 0,
     elevation: colorScheme === 'dark' ? 0 : 3,

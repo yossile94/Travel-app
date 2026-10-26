@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   I18nManager,
@@ -65,7 +65,17 @@ interface Props {
   onHeight?: (height: number) => void;
   /** Steps aside (slides down, or fades with reduced motion) while search is open (sprint 1 design 2.4). */
   hidden?: boolean;
+  /** Safe-area top inset: the card never grows over the controls row and the status pill. */
+  topInset?: number;
+  /**
+   * The coupon under the pass (sprint 2 design 2.1), given how tall its list
+   * may grow before it scrolls.
+   */
+  coupon?: (maxListHeight: number) => ReactNode;
 }
+
+/** The coupon's fixed parts around its list: padding, heading and "New trip" (design 2.1). */
+const COUPON_CHROME = 12 + 16 + 16 + 12 + 48 + 4;
 
 /** The country card from design direction C: a boarding pass (sprint 0 AC-4). */
 export function BoardingPassCard({
@@ -76,9 +86,19 @@ export function BoardingPassCard({
   onClose,
   onHeight,
   hidden = false,
+  topInset = 0,
+  coupon,
 }: Props) {
   const { t } = useTranslation();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, height: windowHeight } = useWindowDimensions();
+  const [passHeight, setPassHeight] = useState(0);
+  // Design 2.1: the whole card stays below insets.top + 112 + 48.
+  const maxListHeight =
+    windowHeight -
+    (topInset + layout.overlayTop + layout.touchTargetMin) -
+    (bottomInset + CARD_GAP) -
+    passHeight -
+    COUPON_CHROME;
   const [nameEnWidth, setNameEnWidth] = useState(0);
   const palette = colors[colorScheme];
   const dark = colorScheme === 'dark';
@@ -143,23 +163,35 @@ export function BoardingPassCard({
               cornerRadius: CORNER_RADIUS,
               notchX,
               notchRadius: NOTCH_RADIUS,
+              couponY: coupon && passHeight > 0 ? passHeight : undefined,
             })}
-            fill={palette.surface}
+            fill={palette.surfaceRaised}
             stroke={dark ? 'rgba(163,179,219,0.16)' : 'transparent'}
           />
           <Line
             x1={notchX}
             y1={NOTCH_RADIUS + 4}
             x2={notchX}
-            y2={size.height - NOTCH_RADIUS - 4}
+            y2={coupon && passHeight > 0 ? passHeight - 4 : size.height - NOTCH_RADIUS - 4}
             stroke={dark ? 'rgba(244,231,208,0.22)' : 'rgba(18,28,54,0.22)'}
             strokeWidth={2}
             strokeDasharray="6 5"
           />
+          {coupon && passHeight > 0 ? (
+            <Line
+              x1={NOTCH_RADIUS + 4}
+              y1={passHeight}
+              x2={size.width - NOTCH_RADIUS - 4}
+              y2={passHeight}
+              stroke={dark ? 'rgba(244,231,208,0.22)' : 'rgba(18,28,54,0.22)'}
+              strokeWidth={2}
+              strokeDasharray="6 5"
+            />
+          ) : null}
         </Svg>
       )}
 
-      <View style={styles.row}>
+      <View style={styles.row} onLayout={(event) => setPassHeight(event.nativeEvent.layout.height)}>
         <View style={styles.main}>
           <View style={[styles.strip, { backgroundColor: highlightColor }]} />
           <Text style={[styles.label, { color: palette.textSecondary }]}>
@@ -237,7 +269,7 @@ export function BoardingPassCard({
             dark={dark}
             accessibilityLabel={t('card.code', { code: country.adm0 })}
           />
-          <Svg width={80} height={30} style={styles.barcode}>
+          <Svg width={80} height={30} style={styles.barcode} importantForAccessibility="no">
             {[0, 3, 5, 9, 12, 14, 18, 21, 23, 27, 30, 32, 36, 39, 41, 45, 48, 50, 54, 57].map(
               (x, i) => (
                 <Rect
@@ -254,6 +286,8 @@ export function BoardingPassCard({
           </Svg>
         </View>
       </View>
+
+      {coupon ? coupon(maxListHeight) : null}
 
       <Pressable
         onPress={onClose}

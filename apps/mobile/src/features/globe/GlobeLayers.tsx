@@ -85,6 +85,8 @@ interface Props {
   oceanMaskUrl: string | null;
   highlightedAdm0: string | null;
   reduceMotion: boolean;
+  /** Countries with trips (sprint 2 design 7); null: none shown (signed out, not loaded). */
+  tripAdm0s: readonly string[] | null;
 }
 
 /**
@@ -100,8 +102,13 @@ export const GlobeLayers = memo(function GlobeLayers({
   oceanMaskUrl,
   highlightedAdm0,
   reduceMotion,
+  tripAdm0s,
 }: Props) {
   const highlight = useHighlight(highlightedAdm0, reduceMotion);
+  const trips = useMemo(
+    () => tripStyles(tripAdm0s, highlightedAdm0, reduceMotion),
+    [tripAdm0s, highlightedAdm0, reduceMotion],
+  );
 
   const highlightStyles = useMemo(() => {
     const fade = { duration: reduceMotion ? 0 : motion.highlight, delay: 0 };
@@ -176,6 +183,12 @@ export const GlobeLayers = memo(function GlobeLayers({
           }}
         />
         <CircleLayer
+          id="trips-small-ring-underlay"
+          filter={trips.filter as never}
+          style={trips.ringUnderlay}
+        />
+        <CircleLayer id="trips-small-ring" filter={trips.filter as never} style={trips.ring} />
+        <CircleLayer
           id="small-countries-ring-underlay"
           filter={highlightStyles.filter}
           style={highlightStyles.ringUnderlay}
@@ -207,6 +220,7 @@ export const GlobeLayers = memo(function GlobeLayers({
           sourceMaxZoom={3}
           maxZoom={detailedCountriesUrl && detailedDrawn ? globe.borderDetailMinZoom : undefined}
           highlight={highlightStyles}
+          trips={trips}
         />
       )}
       {detailedCountriesUrl && (
@@ -216,6 +230,7 @@ export const GlobeLayers = memo(function GlobeLayers({
           sourceMaxZoom={8}
           minZoom={globe.borderDetailMinZoom}
           highlight={highlightStyles}
+          trips={trips}
         />
       )}
     </>
@@ -235,6 +250,7 @@ interface BorderLevelProps {
     underlay: object;
     outline: object;
   };
+  trips: TripStyles;
 }
 
 /**
@@ -242,7 +258,15 @@ interface BorderLevelProps {
  * including the tap surface and the selection highlight, so what is drawn at
  * a zoom is exactly what a tap there hits.
  */
-function BorderLevel({ level, url, sourceMaxZoom, minZoom, maxZoom, highlight }: BorderLevelProps) {
+function BorderLevel({
+  level,
+  url,
+  sourceMaxZoom,
+  minZoom,
+  maxZoom,
+  highlight,
+  trips,
+}: BorderLevelProps) {
   const layerProps = {
     belowLayerID: LAYER.smallHitWide,
     minZoomLevel: minZoom,
@@ -263,6 +287,25 @@ function BorderLevel({ level, url, sourceMaxZoom, minZoom, maxZoom, highlight }:
         {...layerProps}
         filter={LINE_FILTER as never}
         style={BORDER_STYLE}
+      />
+      {/* Trips under the selection (design 7.2). */}
+      <FillLayer
+        id={`trips-${level}-fill`}
+        {...layerProps}
+        filter={trips.filter as never}
+        style={trips.fill}
+      />
+      <LineLayer
+        id={`trips-${level}-underlay`}
+        {...layerProps}
+        filter={['all', trips.filter, LINE_FILTER] as never}
+        style={trips.underlay}
+      />
+      <LineLayer
+        id={`trips-${level}-line`}
+        {...layerProps}
+        filter={['all', trips.filter, LINE_FILTER] as never}
+        style={trips.line}
       />
       <FillLayer
         id={`highlight-${level}-fill`}
@@ -290,6 +333,65 @@ function BorderLevel({ level, url, sourceMaxZoom, minZoom, maxZoom, highlight }:
       />
     </ShapeSource>
   );
+}
+
+type TripStyles = ReturnType<typeof tripStyles>;
+
+/**
+ * The trip highlight (sprint 2 design 7): countries with trips, except the
+ * selected one, whose own highlight wins (7.3). A country joining or leaving
+ * is instant (a filter change); the whole layer fades in only the first time
+ * the list arrives, and leaves at once on sign-out (7.5, 7.6).
+ */
+function tripStyles(
+  adm0s: readonly string[] | null,
+  selected: string | null,
+  reduceMotion: boolean,
+) {
+  const shown = adm0s !== null ? 1 : 0;
+  const fade = { duration: shown && !reduceMotion ? motion.highlight : 0, delay: 0 };
+  return {
+    filter: [
+      'all',
+      ['in', ['get', 'adm0'], ['literal', adm0s ?? []]],
+      ['!=', ['get', 'adm0'], selected ?? ''],
+    ] as const,
+    fill: {
+      fillColor: globe.trips.color,
+      fillOpacity: globe.trips.fillOpacity * shown,
+      fillOpacityTransition: fade,
+    },
+    underlay: {
+      lineColor: globe.trips.underlayColor,
+      lineWidth: globe.trips.underlayWidth,
+      lineOpacity: globe.trips.underlayOpacity * shown,
+      lineOpacityTransition: fade,
+      lineJoin: 'round' as const,
+    },
+    line: {
+      lineColor: globe.trips.color,
+      lineWidth: globe.trips.lineWidth,
+      lineOpacity: shown,
+      lineOpacityTransition: fade,
+      lineJoin: 'round' as const,
+    },
+    ringUnderlay: {
+      circleRadius: globe.trips.ringRadius,
+      circleOpacity: 0,
+      circleStrokeWidth: globe.trips.ringUnderlayWidth,
+      circleStrokeColor: globe.trips.underlayColor,
+      circleStrokeOpacity: globe.trips.underlayOpacity * shown,
+      circleStrokeOpacityTransition: fade,
+    },
+    ring: {
+      circleRadius: globe.trips.ringRadius,
+      circleOpacity: 0,
+      circleStrokeWidth: globe.trips.ringWidth,
+      circleStrokeColor: globe.trips.color,
+      circleStrokeOpacity: shown,
+      circleStrokeOpacityTransition: fade,
+    },
+  };
 }
 
 /**

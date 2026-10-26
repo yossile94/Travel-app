@@ -52,6 +52,17 @@ function keyFor(storageKey: string): Promise<Uint8Array> {
   return pending;
 }
 
+/**
+ * Removes every stored Supabase session entry (sb-*) and its key. Used after
+ * a local sign-out: supabase-js returns early without removing the session
+ * when it can't read it (offline with an expired token, sprint 2 QA D-1),
+ * and a session left behind would sign the user back in once online.
+ */
+export async function clearStoredSessions(): Promise<void> {
+  const keys = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith('sb-'));
+  await Promise.all(keys.map((key) => secureSessionStorage.removeItem(key).catch(() => {})));
+}
+
 export const secureSessionStorage = {
   async getItem(storageKey: string): Promise<string | null> {
     const stored = await AsyncStorage.getItem(storageKey);

@@ -39,11 +39,14 @@ export function GoogleButton({
   busy,
   disabled,
   onPress,
+  a11yLabel,
 }: {
   colorScheme: ColorScheme;
   busy: boolean;
   disabled: boolean;
   onPress: () => void;
+  /** What the screen reader hears instead of the visible label (sprint 2 design 11.4). */
+  a11yLabel?: string;
 }) {
   const { t } = useTranslation();
   const brand = googleBrand[colorScheme];
@@ -51,7 +54,7 @@ export function GoogleButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={!busy && a11yLabel ? a11yLabel : label}
       accessibilityState={{ disabled: disabled || busy, busy }}
       disabled={disabled || busy}
       onPress={onPress}

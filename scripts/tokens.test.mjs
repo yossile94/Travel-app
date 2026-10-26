@@ -150,6 +150,64 @@ describe('design tokens in the app', () => {
     assert.ok(light.includes(`textSecondary: '${design['color.light.text.secondary']}'`));
     assert.ok(dark.includes(`textPrimary: '${design['color.dark.text.primary']}'`));
     assert.ok(dark.includes(`textSecondary: '${design['color.dark.text.secondary']}'`));
-    assert.ok(dark.includes(`surface: '${design['color.dark.bg.surfaceRaised']}'`));
+    assert.ok(dark.includes(`surfaceRaised: '${design['color.dark.bg.surfaceRaised']}'`));
+    assert.ok(dark.includes(`surface: '${design['color.dark.bg.surface']}'`));
+    assert.ok(light.includes(`surface: '${design['color.light.bg.surface']}'`));
+  });
+
+  it('match the sprint 2 tokens (0.3.0)', () => {
+    const trips = app.slice(app.indexOf('trips: {'), app.indexOf('searchScrim'));
+    for (const [name, key] of [
+      ['color', 'color'],
+      ['fillOpacity', 'fillOpacity'],
+      ['lineWidth', 'lineWidth'],
+      ['underlayColor', 'underlayColor'],
+      ['underlayOpacity', 'underlayOpacity'],
+      ['underlayWidth', 'underlayWidth'],
+      ['ringRadius', 'ring.radius'],
+      ['ringWidth', 'ring.width'],
+      ['ringUnderlayWidth', 'ring.underlayWidth'],
+    ]) {
+      const value = design[`globe.final.trips.${key}`];
+      const literal = typeof value === 'string' ? `'${value}'` : String(value);
+      assert.ok(trips.includes(`${name}: ${literal}`), `trips.${name} should be ${literal}`);
+    }
+    const light = app.slice(app.indexOf('light: {'), app.indexOf('dark: {'));
+    const dark = app.slice(app.indexOf('dark: {'), app.indexOf('} as const;'));
+    for (const [scheme, block] of [
+      ['light', light],
+      ['dark', dark],
+    ]) {
+      for (const [name, key] of [
+        ['surfaceAlt', 'bg.surfaceAlt'],
+        ['ctaBg', 'action.cta.bg'],
+        ['ctaFg', 'action.cta.fg'],
+        ['ctaPressed', 'action.cta.pressed'],
+        ['successSubtleBg', 'status.success.subtleBg'],
+        ['successSubtleFg', 'status.success.subtleFg'],
+        ['activeBar', 'status.active.bar'],
+        ['textAlert', 'text.alert'],
+        ['skeleton', 'skeleton'],
+      ]) {
+        const value = design[`color.${scheme}.${key}`];
+        assert.ok(block.includes(`${name}: '${value}'`), `${scheme} ${name} should be ${value}`);
+      }
+    }
+    expectValue('toastVisibleLong', 'motion.toast.visibleLong');
+    expectValue('skeletonDelay', 'motion.skeleton.delay');
+    expectValue('skeletonPulse', 'motion.skeleton.pulse');
+    expectValue('tripNameMax', 'limits.trip.nameMax');
+    expectValue('tripNotesMax', 'limits.trip.notesMax');
+    expectValue('profileNameMax', 'limits.profile.nameMax');
+    expectValue('tripNameCounterFrom', 'limits.trip.nameCounterFrom');
+    expectValue('tripNotesCounterFrom', 'limits.trip.notesCounterFrom');
+    expectValue('profileNameCounterFrom', 'limits.profile.nameCounterFrom');
+    expectValue('tripSaveTimeout', 'timing.trip.saveTimeout');
+    expectValue('accountDeleteTimeout', 'timing.account.deleteTimeout');
+    expectValue('tripsButtonBottom', 'layout.tripsButton.bottom');
+    expectValue('tripRowMin', 'size.tripRow.min');
+    expectValue('dateFieldMinWidth', 'size.dateField.minWidth');
+    expectValue('formBarHeight', 'size.formBar.height');
+    expectValue('couponNotchRadius', 'layout.card.coupon.notchRadius');
   });
 });
