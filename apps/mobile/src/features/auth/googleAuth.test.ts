@@ -80,12 +80,10 @@ describe('a fresh token for account deletion (sprint 2 AC-18, QA on the A73)', (
   });
 
   it('revokes first, so Google issues a new token', async () => {
-    jest
-      .spyOn(GoogleSignin, 'signIn')
-      .mockResolvedValue({
-        type: 'success',
-        data: { idToken: tokenIssuedAt(now / 1000 - 5) },
-      } as never);
+    jest.spyOn(GoogleSignin, 'signIn').mockResolvedValue({
+      type: 'success',
+      data: { idToken: tokenIssuedAt(now / 1000 - 5) },
+    } as never);
     const result = await googleFreshIdToken();
     expect(result.kind).toBe('token');
     expect(jest.mocked(GoogleSignin.revokeAccess).mock.invocationCallOrder[0]).toBeLessThan(
@@ -94,23 +92,19 @@ describe('a fresh token for account deletion (sprint 2 AC-18, QA on the A73)', (
   });
 
   it('refuses a cached token older than 4 minutes, so nothing is sent', async () => {
-    jest
-      .spyOn(GoogleSignin, 'signIn')
-      .mockResolvedValue({
-        type: 'success',
-        data: { idToken: tokenIssuedAt(now / 1000 - 40 * 60) },
-      } as never);
+    jest.spyOn(GoogleSignin, 'signIn').mockResolvedValue({
+      type: 'success',
+      data: { idToken: tokenIssuedAt(now / 1000 - 40 * 60) },
+    } as never);
     expect(await googleFreshIdToken()).toEqual({ kind: 'stale' });
   });
 
   it('goes on when there is nothing to revoke', async () => {
     jest.mocked(GoogleSignin.revokeAccess).mockRejectedValue(new Error('SIGN_IN_REQUIRED'));
-    jest
-      .spyOn(GoogleSignin, 'signIn')
-      .mockResolvedValue({
-        type: 'success',
-        data: { idToken: tokenIssuedAt(now / 1000) },
-      } as never);
+    jest.spyOn(GoogleSignin, 'signIn').mockResolvedValue({
+      type: 'success',
+      data: { idToken: tokenIssuedAt(now / 1000) },
+    } as never);
     expect((await googleFreshIdToken()).kind).toBe('token');
   });
 });
