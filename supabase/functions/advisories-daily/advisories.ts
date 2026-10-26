@@ -100,13 +100,7 @@ export function advisoriesFrom(records: WarningRecord[]): {
       // Two spellings of one country map to the same area (Dudi, d5): the
       // texts are kept together and the highest level counts.
       if (text) {
-        advisory.nsc_text = clean(
-          advisory.nsc_text
-            ? `${advisory.nsc_text}
-
-${text}`
-            : text,
-        );
+        advisory.nsc_text = clean(advisory.nsc_text ? `${advisory.nsc_text}\n\n${text}` : text);
       }
       advisory.nsc_url ??= link;
       const level = nscLevel(text);

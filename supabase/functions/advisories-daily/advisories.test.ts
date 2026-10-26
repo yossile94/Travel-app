@@ -81,9 +81,7 @@ Deno.test('two spellings of one area: texts together, the highest level (Dudi, d
   ]);
   assertEquals(advisories.length, 1);
   assertEquals(advisories[0]!.nsc_level, 3);
-  assertEquals(advisories[0]!.nsc_text, 'רמה 3
-
-אין אזהרות');
+  assertEquals(advisories[0]!.nsc_text, 'רמה 3\n\nאין אזהרות');
 });
 
 Deno.test('the names map covers both spellings the dataset uses', () => {
