@@ -4,17 +4,52 @@
     {
       "name": "two legs through IST",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T06:00:00Z", "arrSched": "2026-12-01T08:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "out", "dep": "IST", "arr": "BKK", "depSched": "2026-12-01T10:10:00Z", "arrSched": "2026-12-01T20:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": "2026-12-01T08:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "out",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-01T10:10:00Z",
+          "arrSched": "2026-12-01T20:00:00Z"
+        }
       ],
       "expected": [["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"]]
     },
     {
       "name": "three legs make one route",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T06:00:00Z", "arrSched": "2026-12-01T08:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "out", "dep": "IST", "arr": "BKK", "depSched": "2026-12-01T10:00:00Z", "arrSched": "2026-12-01T20:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000003", "direction": "out", "dep": "BKK", "arr": "HKT", "depSched": "2026-12-01T23:00:00Z", "arrSched": "2026-12-02T00:30:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": "2026-12-01T08:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "out",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-01T10:00:00Z",
+          "arrSched": "2026-12-01T20:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "direction": "out",
+          "dep": "BKK",
+          "arr": "HKT",
+          "depSched": "2026-12-01T23:00:00Z",
+          "arrSched": "2026-12-02T00:30:00Z"
+        }
       ],
       "expected": [
         ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"],
@@ -24,83 +59,244 @@
     {
       "name": "more than 24 hours apart is a stay, not a connection",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T06:00:00Z", "arrSched": "2026-12-01T08:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "out", "dep": "IST", "arr": "BKK", "depSched": "2026-12-02T08:01:00Z", "arrSched": "2026-12-02T18:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": "2026-12-01T08:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "out",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-02T08:01:00Z",
+          "arrSched": "2026-12-02T18:00:00Z"
+        }
       ],
       "expected": []
     },
     {
       "name": "exactly 24 hours still connects",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T06:00:00Z", "arrSched": "2026-12-01T08:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "out", "dep": "IST", "arr": "BKK", "depSched": "2026-12-02T08:00:00Z", "arrSched": "2026-12-02T18:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": "2026-12-01T08:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "out",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-02T08:00:00Z",
+          "arrSched": "2026-12-02T18:00:00Z"
+        }
       ],
       "expected": [["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"]]
     },
     {
       "name": "another airport is not a connection",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T06:00:00Z", "arrSched": "2026-12-01T08:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "out", "dep": "SAW", "arr": "BKK", "depSched": "2026-12-01T12:00:00Z", "arrSched": "2026-12-01T22:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": "2026-12-01T08:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "out",
+          "dep": "SAW",
+          "arr": "BKK",
+          "depSched": "2026-12-01T12:00:00Z",
+          "arrSched": "2026-12-01T22:00:00Z"
+        }
       ],
       "expected": []
     },
     {
       "name": "another direction is not a connection",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T06:00:00Z", "arrSched": "2026-12-01T08:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "internal", "dep": "IST", "arr": "BKK", "depSched": "2026-12-01T12:00:00Z", "arrSched": "2026-12-01T22:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": "2026-12-01T08:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "internal",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-01T12:00:00Z",
+          "arrSched": "2026-12-01T22:00:00Z"
+        }
       ],
       "expected": []
     },
     {
       "name": "a departure before the landing is not a connection",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T06:00:00Z", "arrSched": "2026-12-01T08:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "out", "dep": "IST", "arr": "BKK", "depSched": "2026-12-01T08:00:00Z", "arrSched": "2026-12-01T18:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": "2026-12-01T08:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "out",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-01T08:00:00Z",
+          "arrSched": "2026-12-01T18:00:00Z"
+        }
       ],
       "expected": []
     },
     {
       "name": "no schedule, no connection",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T06:00:00Z", "arrSched": null },
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "out", "dep": "IST", "arr": "BKK", "depSched": "2026-12-01T10:00:00Z", "arrSched": "2026-12-01T20:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "out",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-01T10:00:00Z",
+          "arrSched": "2026-12-01T20:00:00Z"
+        }
       ],
       "expected": []
     },
     {
       "name": "no arrival airport, no connection",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": null, "depSched": "2026-12-01T06:00:00Z", "arrSched": "2026-12-01T08:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "out", "dep": "IST", "arr": "BKK", "depSched": "2026-12-01T10:00:00Z", "arrSched": "2026-12-01T20:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": null,
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": "2026-12-01T08:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "out",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-01T10:00:00Z",
+          "arrSched": "2026-12-01T20:00:00Z"
+        }
       ],
       "expected": []
     },
     {
       "name": "two candidates: the first departure after the landing; the other stays alone",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T06:00:00Z", "arrSched": "2026-12-01T08:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000003", "direction": "out", "dep": "IST", "arr": "BKK", "depSched": "2026-12-01T14:00:00Z", "arrSched": "2026-12-02T00:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "out", "dep": "IST", "arr": "BKK", "depSched": "2026-12-01T10:00:00Z", "arrSched": "2026-12-01T20:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": "2026-12-01T08:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "direction": "out",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-01T14:00:00Z",
+          "arrSched": "2026-12-02T00:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "out",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-01T10:00:00Z",
+          "arrSched": "2026-12-01T20:00:00Z"
+        }
       ],
       "expected": [["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"]]
     },
     {
       "name": "two landings, one departure: the earlier landing takes it",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000002", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T07:00:00Z", "arrSched": "2026-12-01T09:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "out", "dep": "TLV", "arr": "IST", "depSched": "2026-12-01T06:00:00Z", "arrSched": "2026-12-01T08:00:00Z" },
-        { "id": "00000000-0000-4000-8000-000000000003", "direction": "out", "dep": "IST", "arr": "BKK", "depSched": "2026-12-01T12:00:00Z", "arrSched": "2026-12-01T22:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T07:00:00Z",
+          "arrSched": "2026-12-01T09:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "out",
+          "dep": "TLV",
+          "arr": "IST",
+          "depSched": "2026-12-01T06:00:00Z",
+          "arrSched": "2026-12-01T08:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "direction": "out",
+          "dep": "IST",
+          "arr": "BKK",
+          "depSched": "2026-12-01T12:00:00Z",
+          "arrSched": "2026-12-01T22:00:00Z"
+        }
       ],
       "expected": [["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000003"]]
     },
     {
       "name": "same departure time: the lower id wins",
       "flights": [
-        { "id": "00000000-0000-4000-8000-000000000001", "direction": "return", "dep": "BKK", "arr": "IST", "depSched": "2026-12-10T06:00:00Z", "arrSched": "2026-12-10T12:00:00Z" },
-        { "id": "00000000-0000-4000-8000-00000000000b", "direction": "return", "dep": "IST", "arr": "TLV", "depSched": "2026-12-10T15:00:00Z", "arrSched": "2026-12-10T17:00:00Z" },
-        { "id": "00000000-0000-4000-8000-00000000000a", "direction": "return", "dep": "IST", "arr": "TLV", "depSched": "2026-12-10T15:00:00Z", "arrSched": "2026-12-10T17:00:00Z" }
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "direction": "return",
+          "dep": "BKK",
+          "arr": "IST",
+          "depSched": "2026-12-10T06:00:00Z",
+          "arrSched": "2026-12-10T12:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-00000000000b",
+          "direction": "return",
+          "dep": "IST",
+          "arr": "TLV",
+          "depSched": "2026-12-10T15:00:00Z",
+          "arrSched": "2026-12-10T17:00:00Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-00000000000a",
+          "direction": "return",
+          "dep": "IST",
+          "arr": "TLV",
+          "depSched": "2026-12-10T15:00:00Z",
+          "arrSched": "2026-12-10T17:00:00Z"
+        }
       ],
       "expected": [["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-00000000000a"]]
     }
