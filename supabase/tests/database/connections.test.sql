@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(18);
 
 insert into auth.users (id, email)
 values
@@ -93,11 +93,25 @@ select is(
    from public.flight_notification_targets(-71, 0, 10)),
   row('20000000-0000-4000-8000-000000000072'::uuid, 'TK2', 75)::text,
   'an alert''s recipient gets the next leg, as typed, with the minimum where they meet');
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000007a');
+select public.register_push_token('ExponentPushToken[conn7bbbbbbbb]', 'android', 'he') is null;
+reset role;
+select is(
+  (select count(distinct token_id)::integer from public.flight_notification_targets(-71, 0, 10)
+   where next_flight_id = '20000000-0000-4000-8000-000000000072'),
+  2, 'each device of the user gets the next leg');
 delete from public.flights where id = '20000000-0000-4000-8000-000000000071';
 select is(
-  (select same_booking_prev from public.flights where id = '20000000-0000-4000-8000-000000000072'),
-  null::uuid,
-  'deleting the leg before unties the answer from it');
+  (select row(same_booking, same_booking_prev)::text from public.flights
+   where id = '20000000-0000-4000-8000-000000000072'),
+  row(null::boolean, null::uuid)::text,
+  'deleting the leg before forgets the answer about it (Dudi 3)');
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000007a');
+select is(public.set_same_booking('20000000-0000-4000-8000-000000000072', '20000000-0000-4000-8000-000000000071', null),
+  'ok', '"not sure" clears even when the leg before is gone');
+reset role;
+select ok(not has_function_privilege('anon', 'public.set_same_booking(uuid,uuid,boolean)', 'EXECUTE'),
+  'signed out, nobody answers');
 
 select * from finish();
 rollback;
