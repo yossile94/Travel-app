@@ -112,7 +112,7 @@ create function public.apply_flight_check(
   set search_path = ''
 as $$
 declare
-  ids bigint[] := '{}';
+  ids bigint[] := array[]::bigint[];
 begin
   update public.flight_watch
   set state = p_state,
