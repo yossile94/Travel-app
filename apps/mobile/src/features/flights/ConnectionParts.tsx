@@ -27,7 +27,7 @@ import { countryName } from '@/features/trips/countryName';
 import { colors, fonts, radius, type ColorScheme } from '@/theme/tokens';
 
 import type { Airport } from './airportsData';
-import { layover, sameBooking, type LayoverStatus } from './connections';
+import { layover, sameBooking, type Layover, type LayoverStatus } from './connections';
 import type { Direction, Flight } from './flightModel';
 import { setSameBooking } from './flightsApi';
 import { spellCode } from './flightTime';
@@ -54,6 +54,25 @@ export function waitA11y(minutes: number, t: T): string {
         ? t('layover.a11y.hourTwo')
         : t('layover.a11y.hours', { n: h });
   return m === 0 ? hours : t('layover.a11y.join', { h: hours, m: mins });
+}
+
+/** Design 11.1: what TalkBack says for a layover, in the card, the sheet and the form. */
+export function layoverLabel(l: Layover, where: string, nextNo: string, t: T): string {
+  const chip = l.status === 'ok' || l.status === 'short' || l.status === 'risky' ? l.status : null;
+  if (l.status === 'invalid') {
+    return `${t('layover.a11y.connectionAt', { where })}. ${t('layover.invalid')}`;
+  }
+  if (l.status === 'missed') {
+    return `${t('layover.a11y.connectionAt', { where })}. ${t('layover.missed')}, ${spellCode(nextNo)}. ${t('layover.status.risky')}.`;
+  }
+  if (l.minutes === null) return t('layover.a11y.connectionAt', { where });
+  const status =
+    l.status === 'risky' && l.mct
+      ? ` ${t('layover.a11y.risky', { time: waitA11y(l.mct, t) })}.`
+      : chip
+        ? ` ${t(`layover.status.${chip}`)}.`
+        : '';
+  return `${t('layover.wait', { time: waitA11y(l.minutes, t), apt: where })}.${status}`;
 }
 
 export interface TransitWarning {
@@ -278,20 +297,7 @@ export function LayoverRow({
       : l.status === 'missed'
         ? 'risky'
         : null;
-  const a11y =
-    l.status === 'invalid'
-      ? `${t('layover.a11y.connectionAt', { where })}. ${t('layover.invalid')}`
-      : l.status === 'missed'
-        ? `${t('layover.a11y.connectionAt', { where })}. ${t('layover.missed')}, ${spellCode(nextNo)}. ${t('layover.status.risky')}.`
-        : l.minutes === null
-          ? t('layover.a11y.connectionAt', { where })
-          : `${t('layover.wait', { time: waitA11y(l.minutes, t), apt: where })}.${
-              l.status === 'risky' && l.mct
-                ? ` ${t('layover.a11y.risky', { time: waitA11y(l.mct, t) })}.`
-                : chip
-                  ? ` ${t(`layover.status.${chip}`)}.`
-                  : ''
-            }`;
+  const a11y = layoverLabel(l, where, nextNo, t);
 
   return (
     <View style={[styles.layover, { borderStartColor: p.borderControl }]}>

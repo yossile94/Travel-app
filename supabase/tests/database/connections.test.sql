@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(20);
 
 insert into auth.users (id, email)
 values
@@ -100,6 +100,21 @@ select is(
   (select count(distinct token_id)::integer from public.flight_notification_targets(-71, 0, 10)
    where next_flight_id = '20000000-0000-4000-8000-000000000072'),
   2, 'each device of the user gets the next leg');
+-- The next leg's watch, and its latest time from last_notified (Dudi re-review 3).
+insert into public.flight_watch (id, flight_number, dep_date_local, sched_dep_utc, next_check_at, last_notified)
+overriding system value
+values (-72, 'TK2', '2026-12-01', '2026-12-01T10:00:00Z', null, '{"depTime": "2026-12-01T09:30:00.000Z"}');
+update public.flights set watch_id = -72 where id = '20000000-0000-4000-8000-000000000072';
+select is(
+  (select distinct row(next_watch_id, next_dep)::text
+   from public.flight_notification_targets(-71, 0, 10)),
+  row(-72::bigint, '2026-12-01T09:30:00Z'::timestamptz)::text,
+  'the next leg comes with its watch and its latest time');
+update public.flight_watch set last_notified = '{"depTime": "not a time"}' where id = -72;
+select is(
+  (select distinct next_dep from public.flight_notification_targets(-71, 0, 10)),
+  '2026-12-01T10:00:00Z'::timestamptz,
+  'a malformed time falls back to the schedule, never fails the page');
 delete from public.flights where id = '20000000-0000-4000-8000-000000000071';
 select is(
   (select row(same_booking, same_booking_prev)::text from public.flights

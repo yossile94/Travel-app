@@ -63,7 +63,13 @@ import {
 } from './flightModel';
 import { deleteFlight, lookupFlight, saveFlight, setSameBooking } from './flightsApi';
 import { useDestination } from '@/features/destination/destinationData';
-import { StatusChip, TransitNotice, transitWarning, waitText } from './ConnectionParts';
+import {
+  layoverLabel,
+  StatusChip,
+  TransitNotice,
+  transitWarning,
+  waitText,
+} from './ConnectionParts';
 import { connections, layover, sameBooking as answerOf } from './connections';
 import { useTripFlights } from './flightsStore';
 import { dayMonth, spellCode, zonedWall } from './flightTime';
@@ -568,6 +574,13 @@ export function FlightScreen({
         <View
           style={styles.waitRow}
           accessible
+          // The same words as the card's layover row (design 11.1, Raz re-review 1).
+          accessibilityLabel={layoverLabel(
+            l,
+            spellCode(c.airport),
+            next.numberInput || next.number,
+            t,
+          )}
           accessibilityValue={{ text: l.status }}
           testID={`flight-connection-${other.id}-wait`}
         >
