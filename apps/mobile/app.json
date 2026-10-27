@@ -34,6 +34,15 @@
       ],
       "@rnmapbox/maps",
       "./plugins/withTurboModuleInterop",
+      "./plugins/withShortNativeBuildDir",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#1561BC",
+          "defaultChannel": "flight-changes"
+        }
+      ],
       [
         "expo-font",
         {
