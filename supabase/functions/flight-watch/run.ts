@@ -192,7 +192,7 @@ export async function sendAlerts(
     while (left.length > 0) {
       if (deps.now().getTime() - started > RUN_BUDGET_MS || messages >= MAX_MESSAGES) break;
       const [watchId, list] = left.shift()!;
-      sent += await sendWatch(deps, list, watchId, dead, (n) => (messages += n), seen);
+      sent += await sendWatch(deps, list, watchId, dead, (n) => (messages += n), seen, byWatch);
     }
   } finally {
     // Whatever stopped the run, the rest goes back and dead devices go (Dudi re-review 1).
@@ -210,6 +210,7 @@ async function sendWatch(
   dead: number[],
   count: (n: number) => void,
   seen: Set<string>,
+  claim: Map<number, ChangeEvent[]>,
 ): Promise<number> {
   const { db } = deps;
   const receipts: { ticket: string; tokenId: number }[] = [];
@@ -219,7 +220,7 @@ async function sendWatch(
   try {
     for (;;) {
       const page = await db.targets(watchId, after, TARGETS_PAGE);
-      const out = buildMessages(list, page, seen);
+      const out = buildMessages(list, page, seen, claim);
       count(out.length);
       for (let i = 0; i < out.length && !failed; i += PUSH_BATCH * PARALLEL) {
         const batches: (typeof out)[] = [];

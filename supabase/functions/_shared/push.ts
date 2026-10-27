@@ -227,9 +227,14 @@ export function buildMessages(
   events: ChangeEvent[],
   targets: Target[],
   seen: Set<string> = new Set(),
+  /** The whole claim by watch, for the legs around each flight (Raz review 1). */
+  claim?: Map<number, ChangeEvent[]>,
 ): { message: PushMessage; tokenId: number }[] {
   const byWatch = new Map<number, ChangeEvent[]>();
   for (const e of events) byWatch.set(e.watch_id, [...(byWatch.get(e.watch_id) ?? []), e]);
+  const all = claim ?? byWatch;
+  const around = (watchId: number | null | undefined, field: 'dep_time' | 'arr_time') =>
+    watchId == null ? null : changeOf(all.get(watchId) ?? [], field);
   const out: { message: PushMessage; tokenId: number }[] = [];
   for (const t of targets) {
     const list = byWatch.get(t.watch_id);
@@ -239,12 +244,26 @@ export function buildMessages(
     const risks =
       lead.field === 'status'
         ? []
-        : connectionRisks(changeOf(list, 'dep_time'), changeOf(list, 'arr_time'), t as Around);
-    const risk = risks[0];
+        : connectionRisks(
+            changeOf(list, 'dep_time'),
+            changeOf(list, 'arr_time'),
+            t as Around,
+            around(t.prev_watch_id, 'arr_time'),
+            around(t.next_watch_id, 'dep_time'),
+          );
+    let risk: (typeof risks)[number] | undefined = risks[0];
+    let speaks = lead;
     if (risk) {
       const key = `${t.token_id}:${risk.nextFlightId}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seen.has(key)) {
+        // That connection's alert went this run: the flight's other changes still go (Raz review 6).
+        risk = undefined;
+        const rest = list.filter((e) => e.field !== 'dep_time' && e.field !== 'arr_time');
+        if (rest.length === 0) continue;
+        speaks = leadEvent(rest);
+      } else {
+        seen.add(key);
+      }
     }
     const { title, body } = risk
       ? buildConnectionContent(
@@ -252,7 +271,7 @@ export function buildMessages(
           t.locale,
           risks.length > 1 || list.some((e) => e.field !== 'dep_time' && e.field !== 'arr_time'),
         )
-      : buildContent(lead, t, hasMoreChanges(list, lead));
+      : buildContent(speaks, t, hasMoreChanges(list, speaks));
     out.push({
       tokenId: t.token_id,
       message: {

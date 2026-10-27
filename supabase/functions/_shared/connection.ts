@@ -19,11 +19,14 @@ export type Around = {
   arr_iata: string | null;
   arr_tz: string | null;
   prev_flight_id?: string | null;
+  /** The leg before's watch: its own changes in the same claim (Raz review 1). */
+  prev_watch_id?: number | null;
   prev_number?: string | null;
   prev_arr?: string | null;
   prev_arr_tz?: string | null;
   prev_mct?: number | null;
   next_flight_id?: string | null;
+  next_watch_id?: number | null;
   next_number?: string | null;
   next_dep?: string | null;
   next_mct?: number | null;
@@ -54,12 +57,21 @@ const minutes = (from: string, to: string) =>
  * AC-4: the flight's departure moved and the wait before it crossed the
  * minimum downward, or its arrival moved and the wait after it did. Both:
  * the earlier connection speaks (Raz design q7), with "more changes".
+ * `prevArr` / `nextDep`: the other leg's own change in the same claim, so
+ * "before" is the wait before the whole claim, both legs as they were
+ * (Raz review 1): both moving together never reads as a crossing.
  */
-export function connectionRisks(dep: TimeChange | null, arr: TimeChange | null, t: Around): Risk[] {
+export function connectionRisks(
+  dep: TimeChange | null,
+  arr: TimeChange | null,
+  t: Around,
+  prevArr: TimeChange | null = null,
+  nextDep: TimeChange | null = null,
+): Risk[] {
   const out: Risk[] = [];
   const own = t.flight_number_input || t.flight_number;
   if (dep?.old && dep.new && t.prev_flight_id && t.prev_arr && t.prev_mct) {
-    const before = minutes(t.prev_arr, dep.old);
+    const before = minutes(prevArr?.old ?? t.prev_arr, dep.old);
     const after = minutes(t.prev_arr, dep.new);
     if (before >= t.prev_mct && after < t.prev_mct) {
       out.push({
@@ -76,7 +88,7 @@ export function connectionRisks(dep: TimeChange | null, arr: TimeChange | null, 
     }
   }
   if (arr?.old && arr.new && t.arr_iata && t.next_flight_id && t.next_dep && t.next_mct) {
-    const before = minutes(arr.old, t.next_dep);
+    const before = minutes(arr.old, nextDep?.old ?? t.next_dep);
     const after = minutes(arr.new, t.next_dep);
     if (before >= t.next_mct && after < t.next_mct) {
       out.push({

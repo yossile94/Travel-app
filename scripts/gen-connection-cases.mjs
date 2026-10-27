@@ -1,6 +1,6 @@
 // Sprint 7 AC-1 (Raz 2): the connection rule runs in the app and in the
 // database, so both are tested against one table. This writes the pgTAP part
-// of supabase/tests/database/connections.test.sql from
+// of supabase/tests/database/connection_cases.test.sql from
 // supabase/tests/fixtures/connection_cases.json.
 //   node scripts/gen-connection-cases.mjs          writes the file
 //   node scripts/gen-connection-cases.mjs --check  fails when it is stale (CI)

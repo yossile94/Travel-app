@@ -167,3 +167,58 @@ describe('the form and connections (sprint 7 design 6)', () => {
     expect(screen.getByTestId('flight-dir-internal').props.accessibilityState.checked).toBe(true);
   });
 });
+
+describe('editing a leg of a connection (Raz review 2, 9)', () => {
+  const second = {
+    ...mockFirst,
+    id: '20000000-0000-4000-8000-000000000003',
+    direction: 'return',
+    numberInput: 'TG945',
+    number: 'TG945',
+    depIata: 'ATH',
+    depTz: 'Europe/Athens',
+    depCountry: 'GR',
+    arrIata: 'BKK',
+    arrTz: 'Asia/Bangkok',
+    arrCountry: 'TH',
+    depSched: '2026-12-20T21:40:00.000Z',
+    arrSched: '2026-12-21T10:15:00.000Z',
+  } as Flight;
+  const edit = (flight = second) =>
+    render(
+      <FlightScreen
+        trip={trip}
+        flight={flight}
+        direction="return"
+        colorScheme="light"
+        reduceMotion
+        insetsTop={0}
+        insetsBottom={0}
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+        onDeleted={jest.fn()}
+      />,
+    );
+
+  it('editing never changes the saved direction by itself', async () => {
+    await edit();
+    expect(screen.queryByTestId('flight-direction-auto')).toBeNull();
+    expect(screen.getByTestId('flight-dir-return').props.accessibilityState.checked).toBe(true);
+  });
+
+  it('an answer is a change: leaving asks first', async () => {
+    const { Alert } = jest.requireActual('react-native');
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    // Nothing else changed: closing goes straight away...
+    await edit({ ...second, direction: 'out' });
+    await fireEvent.press(screen.getByTestId('flight-screen-back'));
+    expect(alert).not.toHaveBeenCalled();
+    await screen.unmount();
+    // ...an answer alone makes it ask.
+    await edit({ ...second, direction: 'out' });
+    await fireEvent.press(screen.getByTestId(`flight-same-booking-${mockFirst.id}-yes`));
+    await fireEvent.press(screen.getByTestId('flight-screen-back'));
+    expect(alert).toHaveBeenCalled();
+    alert.mockRestore();
+  });
+});

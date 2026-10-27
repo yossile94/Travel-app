@@ -63,7 +63,7 @@ import {
 } from './flightModel';
 import { deleteFlight, lookupFlight, saveFlight, setSameBooking } from './flightsApi';
 import { useDestination } from '@/features/destination/destinationData';
-import { TransitNotice, transitWarning, waitText } from './ConnectionParts';
+import { StatusChip, TransitNotice, transitWarning, waitText } from './ConnectionParts';
 import { connections, layover, sameBooking as answerOf } from './connections';
 import { useTripFlights } from './flightsStore';
 import { dayMonth, spellCode, zonedWall } from './flightTime';
@@ -305,6 +305,9 @@ export function FlightScreen({
   const asFlight = draft
     ? ({
         ...(flight ?? {}),
+        ...(flight && flight.arrIata !== draft.arrIata
+          ? { arrMct: null, arrMctDefault: false }
+          : {}),
         ...draft,
         numberInput: values.numberInput,
         number: values.numberInput,
@@ -318,14 +321,12 @@ export function FlightScreen({
 
   /** After the flight saved: the answers the user gave, on each later leg (design 6.3). */
   const saveBooking = async () => {
-    let failed = false;
-    for (const c of formLinks) {
-      const other = c.prevId === id ? c.nextId : c.prevId;
-      if (!(other in answers)) continue;
-      const result = await setSameBooking(c.nextId, c.prevId, answers[other]!);
-      if (result !== 'ok') failed = true;
-    }
-    return failed;
+    const calls = formLinks
+      .filter((c) => (c.prevId === id ? c.nextId : c.prevId) in answers)
+      .map((c) =>
+        setSameBooking(c.nextId, c.prevId, answers[c.prevId === id ? c.nextId : c.prevId]!),
+      );
+    return (await Promise.all(calls)).some((r) => r !== 'ok');
   };
 
   const save = async () => {
@@ -339,12 +340,15 @@ export function FlightScreen({
     setSaveNotice(null);
     const saved = toSaved(values);
     const result = await saveFlight(id, trip.id, saved);
+    // Busy until the answers are saved too (Raz review 3).
+    const bookingFailed = result === 'ok' ? await saveBooking() : false;
     setBusy(null);
     if (result === 'ok') {
-      AccessibilityInfo.announceForAccessibility(
-        t('flight.saved', { number: spellCode(saved.number) }),
-      );
-      const bookingFailed = await saveBooking();
+      if (!bookingFailed) {
+        AccessibilityInfo.announceForAccessibility(
+          t('flight.saved', { number: spellCode(saved.number) }),
+        );
+      }
       onSaved(id, saved.number, saved.direction, !editing, bookingFailed);
     } else if (result === 'consent') {
       // The consent screen opens over this one, which keeps everything (as trips).
@@ -388,7 +392,9 @@ export function FlightScreen({
     if (picking) return setPicking(null);
     if (step === 'legs') return setStep('search');
     // A search costs a unit: leaving after one asks too (design 8.2).
-    if (!changed(values, initial) && !searched) return onClose();
+    if (!changed(values, initial) && !searched && Object.keys(answers).length === 0) {
+      return onClose();
+    }
     Alert.alert(t('flight.discardTitle'), t('flight.discardBody'), [
       { text: t('flight.keep'), style: 'cancel' },
       { text: t('flight.discard'), style: 'destructive', onPress: onClose },
@@ -538,10 +544,13 @@ export function FlightScreen({
         }
         return { ...a, [other.id]: v };
       });
-    const statusText =
+    // The same chip as the card's layover row; "missed" reads as at risk (design 6.2, Raz review 7).
+    const chipKind =
       l.status === 'ok' || l.status === 'short' || l.status === 'risky'
-        ? ` · ${t(`layover.status.${l.status}`)}`
-        : '';
+        ? l.status
+        : l.status === 'missed'
+          ? 'risky'
+          : null;
     return (
       <View
         key={other.id}
@@ -556,27 +565,39 @@ export function FlightScreen({
             ? t('flight.connectionContinues', { prev: isolateLtr(otherNo), route })
             : t('flight.connectionContinuedBy', { next: isolateLtr(otherNo), route })}
         </Text>
-        <Text
-          style={[
-            styles.callout,
-            {
-              color:
-                l.status === 'missed' || l.status === 'invalid'
-                  ? palette.textAlert
-                  : palette.textPrimary,
-            },
-          ]}
+        <View
+          style={styles.waitRow}
+          accessible
           accessibilityValue={{ text: l.status }}
           testID={`flight-connection-${other.id}-wait`}
         >
-          {l.status === 'missed'
-            ? t('layover.missed')
-            : l.status === 'invalid'
-              ? t('layover.invalid')
-              : l.minutes !== null
-                ? `${t('layover.wait', { time: waitText(l.minutes, t), apt: isolateLtr(c.airport) })}${statusText}`
-                : null}
-        </Text>
+          <Text
+            style={[
+              styles.callout,
+              {
+                color:
+                  l.status === 'missed' || l.status === 'invalid'
+                    ? palette.textAlert
+                    : palette.textPrimary,
+              },
+            ]}
+          >
+            {l.status === 'missed'
+              ? t('layover.missed')
+              : l.status === 'invalid'
+                ? t('layover.invalid')
+                : l.minutes !== null
+                  ? t('layover.wait', { time: waitText(l.minutes, t), apt: isolateLtr(c.airport) })
+                  : null}
+          </Text>
+          {chipKind ? (
+            <StatusChip
+              status={chipKind}
+              colorScheme={colorScheme}
+              testID={`flight-connection-${other.id}-chip-${chipKind}`}
+            />
+          ) : null}
+        </View>
         <Text
           style={[styles.caption, { color: palette.textSecondary }]}
           importantForAccessibility="no"
@@ -1244,6 +1265,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
   callout: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20, textAlign: 'left' },
+  waitRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
   body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 24, textAlign: 'left' },
   footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, textAlign: 'left' },
   numeric: {

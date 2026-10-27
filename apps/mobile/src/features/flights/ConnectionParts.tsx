@@ -88,7 +88,7 @@ const CHIP: Record<'ok' | 'short' | 'risky', 'success' | 'info' | 'alert'> = {
   risky: 'alert',
 };
 
-function StatusChip({
+export function StatusChip({
   status,
   colorScheme,
   testID,

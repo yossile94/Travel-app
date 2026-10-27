@@ -180,3 +180,104 @@ Deno.test('no booking code, trip name or seat in a connection alert', () => {
   const text = JSON.stringify(out);
   for (const secret of ['ABC123', '34A', 'תאילנד']) assert(!text.includes(secret), secret);
 });
+
+// Raz review 1: both legs in one claim. MCT 60; A lands 10:00, B leaves 10:50 (already 50).
+const claimTarget = (over: Partial<Target> = {}): Target =>
+  target({
+    flight_id: 'a',
+    next_flight_id: 'b',
+    next_watch_id: 2,
+    next_number: 'TK68',
+    next_dep: '2026-12-20T11:40:00.000Z',
+    next_mct: 60,
+    ...over,
+  });
+const aLater: ChangeEvent = {
+  id: 1,
+  watch_id: 1,
+  field: 'arr_time',
+  old_value: '2026-12-20T10:00:00.000Z',
+  new_value: '2026-12-20T10:50:00.000Z',
+};
+const bLater = (oldValue: string): ChangeEvent => ({
+  id: 2,
+  watch_id: 2,
+  field: 'dep_time',
+  old_value: oldValue,
+  new_value: '2026-12-20T11:40:00.000Z',
+});
+const claimOf = (events: ChangeEvent[]) => {
+  const m = new Map<number, ChangeEvent[]>();
+  for (const e of events) m.set(e.watch_id, [...(m.get(e.watch_id) ?? []), e]);
+  return m;
+};
+
+Deno.test('both legs move together, already under the minimum: no alert (Raz review 1)', () => {
+  const events = [aLater, bLater('2026-12-20T10:50:00.000Z')];
+  const [m] = buildMessages([aLater], [claimTarget()], new Set(), claimOf(events));
+  assertEquals(m!.message.data.type, 'flight_change');
+});
+
+Deno.test('both legs move and the wait crosses the minimum: the alert', () => {
+  // Before: 10:00 → 11:30 is 90 min; after: 10:50 → 11:40 is 50 min.
+  const events = [aLater, bLater('2026-12-20T11:30:00.000Z')];
+  const [m] = buildMessages([aLater], [claimTarget()], new Set(), claimOf(events));
+  assertEquals(m!.message.data, { v: 1, type: 'connection_risk', flightId: 'b' });
+  assert(m!.message.body.includes('50 min'));
+});
+
+Deno.test('a middle leg: the earlier connection speaks, with more changes', () => {
+  // B (IST→BKK) leaves earlier (90 → 40 min after A) and lands later (120 → 30 min before C).
+  const t = claimTarget({
+    flight_id: 'b',
+    dep_iata: 'IST',
+    dep_tz: 'Europe/Istanbul',
+    arr_iata: 'BKK',
+    arr_tz: 'Asia/Bangkok',
+    prev_flight_id: 'a',
+    prev_watch_id: 7,
+    prev_number: 'LY81',
+    prev_arr: '2026-12-20T10:00:00.000Z',
+    prev_arr_tz: 'Europe/Istanbul',
+    prev_mct: 60,
+    next_flight_id: 'c',
+    next_watch_id: 8,
+    next_number: 'PG271',
+    next_dep: '2026-12-20T22:00:00.000Z',
+    next_mct: 60,
+  });
+  const earlier: ChangeEvent = {
+    id: 5,
+    watch_id: 1,
+    field: 'dep_time',
+    old_value: '2026-12-20T11:30:00.000Z',
+    new_value: '2026-12-20T10:40:00.000Z',
+  };
+  const later: ChangeEvent = {
+    id: 6,
+    watch_id: 1,
+    field: 'arr_time',
+    old_value: '2026-12-20T20:00:00.000Z',
+    new_value: '2026-12-20T21:30:00.000Z',
+  };
+  const [m] = buildMessages([earlier, later], [t]);
+  assertEquals(m!.message.data, { v: 1, type: 'connection_risk', flightId: 'b' });
+  assert(m!.message.body.endsWith('There are more changes.'));
+});
+
+Deno.test(
+  "a connection alert already sent this run: the flight's gate change still goes (Raz review 6)",
+  () => {
+    const seen = new Set(['10:b']);
+    const gate: ChangeEvent = {
+      id: 3,
+      watch_id: 1,
+      field: 'dep_gate',
+      old_value: 'B1',
+      new_value: 'B2',
+    };
+    const [m] = buildMessages([aLater, gate], [claimTarget()], seen, claimOf([aLater]));
+    assertEquals(m!.message.data.type, 'flight_change');
+    assertEquals(m!.message.title, 'LY81 gate change');
+  },
+);
