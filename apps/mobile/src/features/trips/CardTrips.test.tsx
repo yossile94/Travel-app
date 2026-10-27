@@ -20,6 +20,8 @@ const mockTrips = {
 };
 const onEditTrip = jest.fn();
 jest.mock('./TripsProvider', () => ({ useTrips: () => mockTrips }));
+// Flights have their own tests (src/features/flights); here the row only hosts them.
+jest.mock('@/features/flights/FlightsSection', () => ({ FlightsSection: () => null }));
 const mockList = {
   status: 'ready',
   upcoming: [] as Trip[],

@@ -1,0 +1,52 @@
+{
+  "$meta.name": "Travel app design tokens - sprint 5 additions",
+  "$meta.version": "0.6.0 (proposed)",
+  "$meta.status": "Draft for Raz. DELTA ONLY on top of 0.5.0: every key below is new; no existing value changes; no new colours. Merge into docs/design/tokens.json and apps/mobile/src/theme/tokens.ts in the same PR that first uses them (docs/design/sprint-05/README.md section 19). Keys starting with '$check.' are contrast documentation only and are not merged into tokens.ts.",
+  "$meta.source": "docs/design/sprint-05/README.md",
+
+  "limits.flight.perTrip": 20,
+  "limits.flight.daysAhead": 355,
+  "limits.flight.tripToleranceDays": 1,
+  "limits.flight.pnrMin": 5,
+  "limits.flight.pnrMax": 8,
+  "limits.flight.seatMax": 4,
+  "limits.flight.terminalMax": 8,
+  "limits.flight.gateMax": 8,
+  "limits.flight.airlineMax": 60,
+  "limits.flight.historyShown": 50,
+  "limits.flight.note": "daysAhead is a hard reject (client by device-local date, server re-checks). tripToleranceDays is a non-blocking warning (InlineNotice, never text.alert). A past flight is saved untracked with a warning. PNR: A-Z0-9 only, upper-cased and filtered while typing, length checked on save; never sent to the provider, never in flight_events, logs, toasts or a11y labels while hidden. Seat: A-Z0-9, 1-4 (open question 4). Airline: 1-60 code points after trim (README 2, 4, 6, 7).",
+
+  "limits.airport.resultLimit": 30,
+  "limits.airport.countryTop": 10,
+  "limits.airport.note": "Empty query: 'Airports in {country}' (large_airport before medium_airport, up to countryTop) and 'Israel' (TLV, ETM, HFA); Israel first only for the origin of an outbound flight. Exact 3-letter IATA match ranks first, then the sprint 3 city ranking. No free-text airport (README 5).",
+
+  "format.flight.numberPattern": "^[A-Z0-9]{2}[0-9]{1,4}$",
+  "format.flight.numberNote": "After normalisation: upper-case, spaces and hyphens removed while typing, leading zeros of the numeric part removed on blur. At least one of the first two characters must be a letter. Examples: 'ly 081' -> LY81, '6H 012' -> 6H12; 'LY81A', 'L81', 'LY12345' are invalid (README 2.1).",
+  "format.flight.changeThresholdMin": 15,
+  "format.flight.changeThresholdNote": "Display mirror of the server rule (AC-7): an estimate 15+ min from schedule is shown in text.alert with the scheduled time struck through and a 'Delayed'/'Earlier' tag; under 15 min the estimate is shown in text.primary with no tag (README 9.3).",
+  "format.flight.pnrMask": "••••••",
+  "format.flight.pnrMaskNote": "Always six U+2022, regardless of the code length (README 7.2).",
+  "format.flight.dayOffsetMinus": "U+2212",
+  "format.flight.timeNote": "HH:mm 24h in one LTR isolate with the day offset. Big time = airport local. Israel time in parentheses below it, omitted when the airport's country is IL (not by time zone); with the Israel date appended when it differs from the airport's local date (README 9.3).",
+
+  "timing.flight.searchTimeout": 15000,
+  "timing.flight.pnrAutoHide": 30000,
+  "timing.flight.staleAfterMin": 45,
+  "timing.flight.note": "staleAfterMin is a proposal (README 9.5): while tracking is active, show common.maybeStale when last_checked_at is older. 'Updated X ago' ticks once a minute on the minute while an open trip row with flights is visible and the app is in the foreground. Pull-to-refresh calls the owner RPCs only, never the provider.",
+
+  "layout.flightRow.stackFontScale": 1.6,
+  "layout.flightRow.note": "Flight row = bg.surface, radius.md, padding 12, dark adds a 1pt border.subtle. Whole row is one Pressable that opens FlightSheet. At fontScale >= stackFontScale the departure and arrival columns stack and the route line hides (README 9).",
+  "size.flightRow.planeIcon": 16,
+  "size.flightRow.routeLineWidth": 1,
+
+  "color.flightStatus.map": "No new colours. onTime = status.success.subtle*; delayed / earlier / gateChanged = status.alert.subtle*; cancelled / diverted = status.alert.bg/fg (solid); departed = status.planned.*; landed / paused / untracked = status.ended.*. Every tag has a word and a 12pt icon. Max two tags: cancelled/diverted alone, then delayed/earlier, then gateChanged, else departed/landed/onTime. Changed time and changed gate text use text.alert, weight 500 (README 9.4).",
+
+  "$check.contrast.method": "WCAG 2.x relative luminance, (L1+0.05)/(L2+0.05), on the hex values in tokens.json. Text 4.5:1, graphics 3:1 (1.4.11).",
+  "$check.contrast.light.text.alert-on-surface (changed time/gate)": "5.75",
+  "$check.contrast.dark.text.alert-on-surface (changed time/gate)": "6.11",
+  "$check.contrast.light.text.link-on-openRow #FBF4E8 (credit, add flight)": "5.49",
+  "$check.contrast.dark.text.link-on-openRow #1A2749 (credit, add flight)": "6.64",
+  "$check.contrast.light.text.tertiary-on-surface (no data, plane icon)": "5.07",
+  "$check.contrast.dark.text.tertiary-on-surface (no data, plane icon)": "5.23",
+  "$check.contrast.tags": "All tag pairs are existing ones: success subtle 6.33/10.08, alert subtle 7.23/7.13, alert solid 5.75/6.49, planned 7.76/9.33, ended 6.77/7.01 (light/dark)."
+}

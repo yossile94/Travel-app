@@ -18,6 +18,7 @@ import {
 } from 'react';
 
 import { useAuth } from '@/features/auth/AuthProvider';
+import { prefetchFlights } from '@/features/flights/flightsStore';
 
 import { loadTripCountries, loadTripPage, type Trip } from './tripsApi';
 import {
@@ -159,7 +160,11 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       setCache(saved);
       // Still the same user, and no clear since the queries began: a sign-out in
       // between must not leave a copy (Dudi e2, Raz S4-M1).
-      if (currentUser.current === forUser) void saveTripsCache(saved, generation);
+      if (currentUser.current === forUser) {
+        void saveTripsCache(saved, generation);
+        // Sprint 5 (Raz 6): the upcoming trips' flights join the offline copy.
+        void prefetchFlights(saved.upcoming.map((trip) => trip.id));
+      }
     }
   }, []);
   // A new day changes which trip is next (design 3.4).

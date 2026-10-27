@@ -17,9 +17,10 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
 | account_deletions | user_id, deleted_at, reason (user_request / no_consent_30d) | בלי גישה ללקוח. כתיבה רק בפונקציית המחיקה בשרת. ממנה נספרת תקופת השמירה של consents (ספרינט 2) |
 | trip_travelers | trip_id, user_id, position (0–8), name (1–40), relation (partner/child/parent/friend/other או ריק) | בעלים בלבד, דרך מפתח זר מורכב (trip_id, user_id) ל-trips. Insert ו-Delete עם הסכמה, בלי Update. "אני" לא נשמר (ספרינט 3, ADR-007) |
 | trip_cities | trip_id, user_id, position (0–9), geoname_id (או ריק לעיר שנכתבה ידנית), name (1–60, תמונת מצב של השם) | כמו trip_travelers. הנסיעה נשמרת כולה בקריאה אחת, `save_trip` (ספרינט 3, ADR-007) |
-| flights | trip_id, flight_number, flight_date, pnr, seat, watch_key | דרך הבעלות על trip |
-| flight_watch | watch_key (מספר+תאריך), last_snapshot (jsonb), next_check_at | Service role בלבד |
-| flight_events | watch_key, field, old_value, new_value, detected_at | קריאה למשתמשים עם טיסה תואמת |
+| flights | id (UUID שנוצר במכשיר), trip_id, user_id (מפתח זר מורכב ל-trips), direction (out/return/internal), flight_number_input (מה שהמשתמש הקליד), flight_number (מנורמל), dep_date_local, שדות מוצא ויעד (IATA) ואזור הזמן של כל אחד, שעות מתוכננות (timestamptz), terminal, gate, pnr, seat, cabin, watch_id. עד 20 לנסיעה | בעלים בלבד, דרך `save_flight` / `delete_flight` עם שער הסכמה. ה-PNR נקרא רק על ידי הבעלים, ולא נשלח לספק או ליומן (ספרינט 5) |
+| flight_watch | id, flight_number, dep_date_local (ייחודיים יחד), last_snapshot (jsonb), last_notified (jsonb), next_check_at, attempts, locked_until, state (active/paused/stopped/failed) | Service role בלבד. משמש גם כתור, עם `for update skip locked` (ADR-010, ספרינט 5) |
+| flight_events | watch_id, field, old_value, new_value, detected_at | קריאה רק דרך RPC של בעלי טיסה תואמת. נמחק 7 ימים אחרי הנחיתה, יחד עם תמונת המצב (רישיון AeroDataBox, ספרינט 5) |
+| provider_usage | month, provider, units | Service role בלבד. תקרה קשיחה של 360 יחידות בחודש ב-POC (ספרינט 5) |
 | hotels | trip_id, place_id, name_en, name_local, address_en, address_local, lang, phone, lat/lng, check_in, check_out, booking_ref | דרך הבעלות על trip |
 | insurance | trip_id, provider, policy_number, valid_until, emergency_phone | דרך הבעלות על trip |
 | curated_places | country_iso2, city, category, title, body, lat/lng, status | קריאה לכולם (published), כתיבה לאדמין |

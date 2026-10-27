@@ -19,6 +19,10 @@ export const LICENCES: [string, string][] = [
   // Sprint 4 (design 11): the rate attribution ER-API asks for, and the warnings dataset.
   ['Rates By Exchange Rate API', 'https://www.exchangerate-api.com'],
   ['data.gov.il', 'https://data.gov.il/dataset/travelwarnings'],
+  // Sprint 5 (AC-4, AC-7א).
+  ['AeroDataBox', 'https://aerodatabox.com'],
+  ['OurAirports', 'https://ourairports.com/data/'],
+  ['mwgg/Airports', 'https://github.com/mwgg/Airports'],
 ];
 
 interface Props {
@@ -70,6 +74,8 @@ export function SourcesSheet({ visible, onClose, ...sheet }: Props) {
       {credit(t('sources.advisories'), 'sources-advisories')}
       {credit(t('sources.entry'), 'sources-entry')}
       {credit(t('sources.rates'), 'sources-rates')}
+      {credit(t('sources.flights'), 'sources-flights')}
+      {credit(t('sources.airports'), 'sources-airports')}
       {credit(t('sources.cities'), 'sources-cities')}
       {credit(t('sources.climate'), 'sources-climate')}
     </BottomSheet>

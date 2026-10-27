@@ -102,6 +102,15 @@ export function TrashIcon({ color, size = 24 }: IconProps) {
   );
 }
 
+/** A clock, for time fields (sprint 5 design 4.1). */
+export function ClockIcon({ color, size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 4v5l3 2" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
 export function CalendarIcon({ color, size = 20 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

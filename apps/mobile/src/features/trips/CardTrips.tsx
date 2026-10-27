@@ -35,6 +35,8 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { TripTemperature } from '@/features/climate/TripTemperature';
 import { useDestination } from '@/features/destination/destinationData';
 import { TripStatusLine } from '@/features/destination/DestinationFields';
+import { FlightsSection } from '@/features/flights/FlightsSection';
+import { tripHasFlights } from '@/features/flights/flightsStore';
 import { isolateOwn, OuterScrollContext } from '@/features/globe/BoardingPassCard';
 import type { CountryInfo } from '@/features/globe/countryData';
 import { colors, fonts, layout, radius, timing, type ColorScheme } from '@/theme/tokens';
@@ -157,47 +159,53 @@ export function CardTrips({
   };
 
   const remove = (trip: Trip) => {
-    Alert.alert(t('tripDelete.title'), t('tripDelete.body', { name: trip.title }), [
-      { text: t('tripDelete.cancel'), style: 'cancel' },
-      {
-        text: t('tripDelete.confirm'),
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            const net = await NetInfo.fetch();
-            if (net.isConnected === false) {
-              setRowNotice({ id: trip.id, text: t('tripDelete.offline') });
-              return;
-            }
-            setDeleting(trip.id);
-            setRowNotice(null);
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            const result = await Promise.race([
-              deleteTrip(trip.id),
-              new Promise<'error'>((resolve) => {
-                timer = setTimeout(() => resolve('error'), timing.tripSaveTimeout);
-              }),
-            ]).finally(() => clearTimeout(timer));
-            setDeleting(null);
-            if (result === 'ok' || result === 'gone') {
-              setOpen(null);
-              const left = state.upcoming.length + state.past.length - 1;
-              trips.changed({
-                adm0: country.adm0,
-                // Unknown while more pages exist; the server answers right after.
-                has: left > 0 ? true : state.hasMore ? null : false,
-              });
-              onToast(t(result === 'gone' ? 'tripDelete.alreadyGone' : 'tripDelete.done'));
-            } else {
-              setRowNotice({
-                id: trip.id,
-                text: t(result === 'offline' ? 'tripDelete.offline' : 'tripDelete.error'),
-              });
-            }
-          })();
+    // Design 8.3: the flights go with the trip, and the dialog says so.
+    const body = t('tripDelete.body', { name: trip.title });
+    Alert.alert(
+      t('tripDelete.title'),
+      tripHasFlights(trip.id) ? `${body} ${t('tripDelete.bodyFlights')}` : body,
+      [
+        { text: t('tripDelete.cancel'), style: 'cancel' },
+        {
+          text: t('tripDelete.confirm'),
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              const net = await NetInfo.fetch();
+              if (net.isConnected === false) {
+                setRowNotice({ id: trip.id, text: t('tripDelete.offline') });
+                return;
+              }
+              setDeleting(trip.id);
+              setRowNotice(null);
+              let timer: ReturnType<typeof setTimeout> | undefined;
+              const result = await Promise.race([
+                deleteTrip(trip.id),
+                new Promise<'error'>((resolve) => {
+                  timer = setTimeout(() => resolve('error'), timing.tripSaveTimeout);
+                }),
+              ]).finally(() => clearTimeout(timer));
+              setDeleting(null);
+              if (result === 'ok' || result === 'gone') {
+                setOpen(null);
+                const left = state.upcoming.length + state.past.length - 1;
+                trips.changed({
+                  adm0: country.adm0,
+                  // Unknown while more pages exist; the server answers right after.
+                  has: left > 0 ? true : state.hasMore ? null : false,
+                });
+                onToast(t(result === 'gone' ? 'tripDelete.alreadyGone' : 'tripDelete.done'));
+              } else {
+                setRowNotice({
+                  id: trip.id,
+                  text: t(result === 'offline' ? 'tripDelete.offline' : 'tripDelete.error'),
+                });
+              }
+            })();
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const rows = (list: Trip[]) =>
@@ -278,6 +286,13 @@ export function CardTrips({
                 <TripStatusLine
                   advisory={destination.data?.advisories.get(trip.countryAdm0)}
                   colorScheme={colorScheme}
+                />
+                {/* Sprint 5 design 9.1: flights after the status line, before the cities. */}
+                <FlightsSection
+                  trip={trip}
+                  colorScheme={colorScheme}
+                  readOnly={readOnly}
+                  onToast={onToast}
                 />
                 {trip.cities.length > 0 ? (
                   <View
