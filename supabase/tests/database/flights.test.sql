@@ -34,12 +34,12 @@ $$;
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000005a');
 select pg_temp.consent();
 select public.save_trip('create', '10000000-0000-4000-8000-00000000005a', 'GRC', 'יוון',
-  current_date, current_date + 10, null, '[]', '[]');
+  current_date, current_date + 10, null, '[]', '[]') is not null;
 reset role;
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000005b');
 select pg_temp.consent();
 select public.save_trip('create', '10000000-0000-4000-8000-00000000005b', 'GRC', 'B',
-  current_date, current_date + 10, null, '[]', '[]');
+  current_date, current_date + 10, null, '[]', '[]') is not null;
 reset role;
 
 -- ---------------------------------------------------------------- structure
@@ -120,7 +120,7 @@ select is(
 -- Another user on the same flight shares the tracking row (AC-6).
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000005b');
 select public.save_flight('20000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-00000000005b',
-  pg_temp.flight('LY541', current_date + 3));
+  pg_temp.flight('LY541', current_date + 3)) is not null;
 select is((select count(*)::integer from public.flights), 1, 'B sees only B''s flight');
 select is(
   jsonb_array_length(public.flights_for_trips(array['10000000-0000-4000-8000-00000000005a']::uuid[])), 0,
@@ -199,9 +199,9 @@ select is((select stop_reason from public.flight_watch where flight_number = 'LY
   'a watch with no flights left says why it stopped');
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000005b');
 select public.save_trip('create', '10000000-0000-4000-8000-00000000005d', 'GRC', 'B2',
-  current_date, current_date + 10, null, '[]', '[]');
+  current_date, current_date + 10, null, '[]', '[]') is not null;
 select public.save_flight('20000000-0000-4000-8000-000000000006', '10000000-0000-4000-8000-00000000005d',
-  pg_temp.flight('LY541', current_date + 3));
+  pg_temp.flight('LY541', current_date + 3)) is not null;
 reset role;
 select is((select state from public.flight_watch where flight_number = 'LY541'), 'active',
   'it is tracked again when someone adds the flight');
@@ -272,7 +272,7 @@ values ('LY999', current_date + 2, 'failed', now() - interval '1 hour', 3),
        ('LY998', current_date + 2, 'failed', now() - interval '7 hours', 3);
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000005b');
 select public.save_flight('60000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-00000000005b',
-  pg_temp.flight('LY999', current_date + 2));
+  pg_temp.flight('LY999', current_date + 2)) is not null;
 reset role;
 select is((select state from public.flight_watch where flight_number = 'LY999'), 'failed',
   'a recent failure is not retried');
@@ -281,9 +281,9 @@ select is((select state from public.flight_watch where flight_number = 'LY999'),
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000005c');
 select pg_temp.consent();
 select public.save_trip('create', '10000000-0000-4000-8000-00000000005e', 'GRC', 'C',
-  current_date, current_date + 10, null, '[]', '[]');
+  current_date, current_date + 10, null, '[]', '[]') is not null;
 select public.save_flight('50000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-00000000005e',
-  pg_temp.flight('LY700', current_date - 2, '{"pnr": "XYZ987", "seat": "12C"}'));
+  pg_temp.flight('LY700', current_date - 2, '{"pnr": "XYZ987", "seat": "12C"}')) is not null;
 reset role;
 select is((select count(*)::integer from public.flights where user_id = '00000000-0000-4000-8000-00000000005c'), 1,
   'C has a flight with a booking code');
