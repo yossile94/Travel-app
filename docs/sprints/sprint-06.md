@@ -106,3 +106,11 @@
 2. **ההתראות כבויות** עד שהמשתמש מאשר. בחשבון יש מתג שנבדק בשרת.
 3. **בהתראה רק מספר הטיסה והשינוי.** הערוץ פרטי במסך הנעילה.
 4. **שפה לפי הטוקן**: עברית או אנגלית.
+
+## ממצאי ניסיון ה-build המקומי (27.10, לפני הספרינט)
+- **התוצאה:** `prebuild` ו-Gradle מקומי (dev client, arm64) עובדים. APK של 124MB נבנה תוך 17 דקות, בלי EAS.
+- **מגבלת 260 התווים של Windows (רז 17):** נכשלה גם מנתיב קצר (`C:\tb`), בגלל קבצי ה-codegen של Mapbox. **מה פותר:** `externalNativeBuild.cmake.buildStagingDirectory` לנתיב קצר.
+  - **ביום 1** מוסיפים plugin בשם `withShortNativeBuildDir` (ב-`apps/mobile/plugins`) שקובע את הנתיב הזה רק ב-Windows. ה-build ב-EAS (Linux) לא משתנה.
+  - **אפשרות אחרת היא הגדרת מערכת של יוסי:** `LongPathsEnabled` ב-Windows. אני לא משנה הגדרות מערכת.
+- **SHA-1 של מפתח ה-debug המקומי** (לרישום ב-Google Cloud ו-Firebase, לפי סעיף 4 בתלויות): `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`. זה המפתח הסטנדרטי של React Native ל-debug, והוא לא סוד.
+- **Mapbox:** לא נדרש download token.
