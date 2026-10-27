@@ -83,26 +83,31 @@ export function FlightAlertsRow({
     return { next, permission, channel };
   }, [userId]);
 
-  const refresh = useCallback(async () => {
+  /** 'failed': back from the settings allowed, but the switch didn't save. */
+  const refresh = useCallback(async (): Promise<'ok' | 'failed'> => {
     const { next, permission, channel } = await read();
     if (toSettings.current && permission === 'granted' && channel) {
       toSettings.current = false;
-      await setFlightAlerts(userId, true);
-      await registerDevice(userId, i18n.language);
+      const saved = await setFlightAlerts(userId, true);
+      if (saved) await registerDevice(userId, i18n.language);
       setRow((await read()).next);
+      if (!saved) return 'failed';
       AccessibilityInfo.announceForAccessibility(t('account.flightAlerts.turnedOn'));
-      return;
+      return 'ok';
     }
     toSettings.current = false;
     setRow(next);
+    return 'ok';
   }, [read, userId, i18n.language, t]);
 
   useEffect(() => {
     if (!visible) return;
-    void refresh();
-    const sub = AppState.addEventListener('change', (s) => s === 'active' && void refresh());
+    const run = () =>
+      void refresh().then((r) => r === 'failed' && setNotice(t('account.flightAlerts.saveError')));
+    run();
+    const sub = AppState.addEventListener('change', (s) => s === 'active' && run());
     return () => sub.remove();
-  }, [visible, refresh]);
+  }, [visible, refresh, t]);
 
   const press = async () => {
     setNotice(null);

@@ -20,7 +20,6 @@ import {
   flightAlertsOn,
   permissionState,
   recordShown,
-  registerDevice,
   shouldOfferPush,
   signedInAgain,
   syncConsent,
@@ -74,9 +73,8 @@ export function usePushSetup({
   useEffect(() => {
     if (!userId) return;
     signedInAgain();
-    const sub = Notifications.addPushTokenListener(
-      () => void registerDevice(userId, i18n.language, true),
-    );
+    // A new token registers only where the user allowed alerts (AC-1, QA S6 #3).
+    const sub = Notifications.addPushTokenListener(() => void syncConsent(userId, i18n.language));
     return () => sub.remove();
   }, [userId, i18n.language]);
 
@@ -97,34 +95,39 @@ export function usePushSetup({
     return () => sub.remove();
   }, [userId, online, i18n.language]);
 
-  const offer = useCallback(async () => {
-    if (!userId) return;
-    const [asked, permission, flightAlerts] = await Promise.all([
-      explainerState(userId),
-      permissionState(),
-      flightAlertsOn(userId),
-    ]);
-    const show = shouldOfferPush({
-      trigger: true,
-      flightAlerts,
-      allowedHere: asked.allowed,
-      shown: asked.shown,
-      permission,
-      shownThisSession: shownThisSession.current,
-      quiet: true,
-    });
-    if (!show) return;
-    if (!quietRef.current) {
-      setWaiting(true);
-      return;
-    }
-    setWaiting(false);
-    shownThisSession.current = true;
-    await recordShown(userId);
-    setNumber(sampleNumber(hasFlightNumber));
-    setAndroidNote(systemPrompts() && permission !== 'granted');
-    setVisible(true);
-  }, [userId]);
+  /** `atLaunch`: the first-launch trigger, only for a user never shown it (design 2.2, QA S6 #2). */
+  const offer = useCallback(
+    async (atLaunch = false) => {
+      if (!userId) return;
+      const [asked, permission, flightAlerts] = await Promise.all([
+        explainerState(userId),
+        permissionState(),
+        flightAlertsOn(userId),
+      ]);
+      if (atLaunch && asked.shown > 0) return;
+      const show = shouldOfferPush({
+        trigger: true,
+        flightAlerts,
+        allowedHere: asked.allowed,
+        shown: asked.shown,
+        permission,
+        shownThisSession: shownThisSession.current,
+        quiet: true,
+      });
+      if (!show) return;
+      if (!quietRef.current) {
+        setWaiting(true);
+        return;
+      }
+      setWaiting(false);
+      shownThisSession.current = true;
+      await recordShown(userId);
+      setNumber(sampleNumber(hasFlightNumber));
+      setAndroidNote(systemPrompts() && permission !== 'granted');
+      setVisible(true);
+    },
+    [userId],
+  );
 
   useEffect(() => {
     if (!waiting || !quiet || !userId) return;
@@ -138,7 +141,7 @@ export function usePushSetup({
     if (!ready || !userId || launchDecided.current) return;
     launchDecided.current = true;
     const timer = setTimeout(() => {
-      void hasTrackedFlight().then((tracked) => tracked && void offer());
+      void hasTrackedFlight().then((tracked) => tracked && void offer(true));
     }, LAUNCH_DELAY_MS);
     return () => clearTimeout(timer);
   }, [ready, userId, offer]);
