@@ -281,3 +281,47 @@ Deno.test(
     assertEquals(m!.message.title, 'LY81 gate change');
   },
 );
+
+Deno.test(
+  'a middle leg after its first connection already went: the second one still speaks (QA S7 #1)',
+  () => {
+    const t = claimTarget({
+      flight_id: 'b',
+      watch_id: 9,
+      dep_iata: 'IST',
+      dep_tz: 'Europe/Istanbul',
+      arr_iata: 'BKK',
+      arr_tz: 'Asia/Bangkok',
+      prev_flight_id: 'a',
+      prev_watch_id: 7,
+      prev_number: 'LY81',
+      prev_arr: '2026-12-20T10:00:00.000Z',
+      prev_arr_tz: 'Europe/Istanbul',
+      prev_mct: 60,
+      next_flight_id: 'c',
+      next_watch_id: 8,
+      next_number: 'PG271',
+      next_dep: '2026-12-20T22:00:00.000Z',
+      next_mct: 60,
+    });
+    const events: ChangeEvent[] = [
+      {
+        id: 5,
+        watch_id: 9,
+        field: 'dep_time',
+        old_value: '2026-12-20T11:30:00.000Z',
+        new_value: '2026-12-20T10:40:00.000Z',
+      },
+      {
+        id: 6,
+        watch_id: 9,
+        field: 'arr_time',
+        old_value: '2026-12-20T20:00:00.000Z',
+        new_value: '2026-12-20T21:30:00.000Z',
+      },
+    ];
+    const [m] = buildMessages(events, [t], new Set(['10:b']));
+    assertEquals(m!.message.data, { v: 1, type: 'connection_risk', flightId: 'c' });
+    assert(m!.message.title.includes('BKK'));
+  },
+);

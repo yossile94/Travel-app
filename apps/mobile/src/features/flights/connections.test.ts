@@ -1,4 +1,5 @@
 import { connections, layover, routes, sameBooking, type Leg } from './connections';
+import { transitWarning } from './ConnectionParts';
 import type { Flight } from './flightModel';
 import table from '../../../../../supabase/tests/fixtures/connection_cases.json';
 
@@ -154,5 +155,36 @@ describe('routes and the booking answer (design 2.1, 3.6)', () => {
     const next = flight({ id: 'b', sameBooking: false, sameBookingPrev: 'a' });
     expect(sameBooking(next, 'a')).toBe(false);
     expect(sameBooking(next, 'x')).toBeNull();
+  });
+});
+
+describe('transitWarning (sprint 7 design 5.1, QA S7 #5)', () => {
+  const airports = [
+    { iata: 'IST', adm0: 'TUR' },
+    { iata: 'TLV', adm0: 'ISR' },
+    { iata: 'BKK', adm0: 'THA' },
+  ] as never;
+  const advisories = (status: string | null) =>
+    new Map([
+      ['TUR', { adm0: 'TUR', entryStatus: status, entrySourceUrl: 'https://example.test' }],
+      ['ISR', { adm0: 'ISR', entryStatus: 'banned', entrySourceUrl: null }],
+      ['THA', { adm0: 'THA', entryStatus: 'banned', entrySourceUrl: null }],
+    ]) as never;
+
+  it('warns only when restricted or banned', () => {
+    expect(transitWarning('IST', airports, advisories('restricted'), 'THA')?.status).toBe(
+      'restricted',
+    );
+    expect(transitWarning('IST', airports, advisories('banned'), 'THA')?.status).toBe('banned');
+    expect(transitWarning('IST', airports, advisories('allowed'), 'THA')).toBeNull();
+    expect(transitWarning('IST', airports, advisories(null), 'THA')).toBeNull();
+  });
+
+  it('nothing when not loaded, unknown, in Israel or in the trip country', () => {
+    expect(transitWarning('IST', null, advisories('banned'), 'THA')).toBeNull();
+    expect(transitWarning('IST', airports, null, 'THA')).toBeNull();
+    expect(transitWarning('XXX', airports, advisories('banned'), 'THA')).toBeNull();
+    expect(transitWarning('TLV', airports, advisories('banned'), 'THA')).toBeNull();
+    expect(transitWarning('BKK', airports, advisories('banned'), 'THA')).toBeNull();
   });
 });

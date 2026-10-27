@@ -373,6 +373,7 @@ export function LayoverRow({
               prev: spellCode(prevNo),
               next: spellCode(nextNo),
             })}
+            a11yHint={offline ? t('offline.readOnlyHint') : t('layover.booking.changeHint')}
             blocked={offline}
             onPress={offline ? onBlocked : onChange}
             colorScheme={colorScheme}

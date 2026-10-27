@@ -177,6 +177,7 @@ export function Button({
   disabled = false,
   icon,
   a11yLabel,
+  a11yHint,
   outlined = false,
   blocked = false,
   testID,
@@ -190,6 +191,8 @@ export function Button({
   disabled?: boolean;
   icon?: (color: string) => ReactNode;
   a11yLabel?: string;
+  /** What the tap does, for TalkBack. */
+  a11yHint?: string;
   /** A 1dp outline, for a secondary button on a surface of the same colour (design 2.1). */
   outlined?: boolean;
   /**
@@ -231,6 +234,7 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={busy && busyLabel ? busyLabel : (a11yLabel ?? label)}
+      accessibilityHint={a11yHint}
       accessibilityState={{ disabled: disabled || busy || blocked, busy }}
       // Pressable's own `disabled` overrides accessibilityState.disabled, so it's
       // left unset unless the button really can't be pressed (a blocked one can).

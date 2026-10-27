@@ -251,19 +251,18 @@ export function buildMessages(
             around(t.prev_watch_id, 'arr_time'),
             around(t.next_watch_id, 'dep_time'),
           );
-    let risk: (typeof risks)[number] | undefined = risks[0];
+    // A connection whose alert went this run is skipped; a middle leg's other one
+    // still speaks (QA S7 #1).
+    const keyOf = (r: (typeof risks)[number]) => `${t.token_id}:${r.nextFlightId}`;
+    const risk = risks.find((r) => !seen.has(keyOf(r)));
     let speaks = lead;
     if (risk) {
-      const key = `${t.token_id}:${risk.nextFlightId}`;
-      if (seen.has(key)) {
-        // That connection's alert went this run: the flight's other changes still go (Raz review 6).
-        risk = undefined;
-        const rest = list.filter((e) => e.field !== 'dep_time' && e.field !== 'arr_time');
-        if (rest.length === 0) continue;
-        speaks = leadEvent(rest);
-      } else {
-        seen.add(key);
-      }
+      seen.add(keyOf(risk));
+    } else if (risks.length > 0) {
+      // Every connection's alert went this run: the flight's other changes still go (Raz review 6).
+      const rest = list.filter((e) => e.field !== 'dep_time' && e.field !== 'arr_time');
+      if (rest.length === 0) continue;
+      speaks = leadEvent(rest);
     }
     const { title, body } = risk
       ? buildConnectionContent(
