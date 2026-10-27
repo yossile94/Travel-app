@@ -128,7 +128,8 @@ export function ownWatch(flight: Flight): FlightWatch | null {
   const w = flight.watch;
   const iata = w?.snapshot?.departure.iata;
   if (!w || !iata || iata === flight.depIata) return w;
-  return { ...w, snapshot: null, checkedAt: null, events: [] };
+  // Nothing of the other leg: not its landing, not its stop (Raz r2 #1).
+  return { ...w, state: 'active', snapshot: null, checkedAt: null, events: [], landedAt: null };
 }
 
 /** One state for the card and the sheet (design 11). */

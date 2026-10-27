@@ -5,7 +5,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(49);
+select plan(50);
 
 insert into auth.users (id, email)
 values
@@ -258,14 +258,24 @@ reset role;
 
 -- Retention: provider data 7 days after landing goes; the flight stays (AC-7א).
 update public.flight_watch set landed_at = now() - interval '8 days' where flight_number = 'LY541';
-delete from public.flight_watch
-  where coalesce(landed_at, sched_arr_utc, sched_dep_utc + interval '24 hours', (dep_date_local + 2)::timestamptz) < now() - interval '7 days';
+select public.flight_data_retention();
 select is((select count(*)::integer from public.flight_watch where flight_number = 'LY541'), 0,
   'the tracking row is deleted 7 days after landing');
 select ok(
   (select bool_and(watch_id is null) from public.flights where flight_number = 'LY541'),
   'the flight stays, without tracking'
 );
+
+-- A watch that failed an hour ago stays failed when added again; 7 hours ago, it tries again (Dudi r2 #1).
+insert into public.flight_watch (flight_number, dep_date_local, state, next_check_at, attempts)
+values ('LY999', current_date + 2, 'failed', now() - interval '1 hour', 3),
+       ('LY998', current_date + 2, 'failed', now() - interval '7 hours', 3);
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000005b');
+select public.save_flight('60000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-00000000005b',
+  pg_temp.flight('LY999', current_date + 2));
+reset role;
+select is((select state from public.flight_watch where flight_number = 'LY999'), 'failed',
+  'a recent failure is not retried');
 
 -- AC-3 (Raz B2): the account goes, and its flights with the booking code and seat.
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000005c');
