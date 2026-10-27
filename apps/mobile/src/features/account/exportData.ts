@@ -35,7 +35,7 @@ class Aborted extends Error {}
 
 /** Reads a whole table page by page, keyset on id (AC-14: all pages). */
 async function readAll<T extends { id: string | number }>(
-  table: 'trips' | 'consents',
+  table: 'trips' | 'consents' | 'push_tokens',
   columns: string,
   userId: string,
   signal: AbortSignal,
@@ -74,7 +74,8 @@ export async function buildExport(
   if (authError || !auth.user) throw authError ?? new Error('no user');
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('display_name, created_at, updated_at')
+    // Sprint 6: the flight alerts switch (Dudi 4).
+    .select('display_name, flight_alerts, created_at, updated_at')
     .eq('id', user.id)
     .maybeSingle();
   if (profileError) throw profileError;
@@ -96,6 +97,13 @@ export async function buildExport(
     user.id,
     signal,
   );
+  // Sprint 6 (Dudi 4): the devices that get alerts; the token itself is a device secret, left out.
+  const devices = await readAll<{ id: number }>(
+    'push_tokens',
+    'id, platform, locale, created_at, last_seen_at',
+    user.id,
+    signal,
+  );
   return {
     format: 'travel-app-export',
     version: 1,
@@ -110,6 +118,7 @@ export async function buildExport(
     trips,
     // The log row ids are internal; the rows themselves are the record.
     consents: consents.map(({ id: _id, ...row }) => row),
+    alert_devices: devices.map(({ id: _id, ...row }) => row),
   };
 }
 

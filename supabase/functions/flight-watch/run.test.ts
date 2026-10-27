@@ -1,4 +1,4 @@
-import { assert, assertEquals } from '@std/assert';
+import { assert, assertEquals, assertRejects } from '@std/assert';
 
 import type { FlightProvider, FlightSnapshot, MovementTimes } from '../_shared/aerodatabox.ts';
 import {
@@ -142,7 +142,7 @@ function fakeWorld(start: Date) {
       },
       claimNotifications: () => {
         const due = events.filter(
-          (e) => !e.sent && (e.claimedAt === null || clock - e.claimedAt > 300_000),
+          (e) => !e.sent && (e.claimedAt === null || clock - e.claimedAt > 600_000),
         );
         due.forEach((e) => (e.claimedAt = clock));
         return Promise.resolve(
@@ -155,9 +155,13 @@ function fakeWorld(start: Date) {
           })),
         );
       },
-      targets: () => Promise.resolve([target()]),
+      targets: (_watchId, after) => Promise.resolve(after === 0 ? [target()] : []),
       markSent: (ids) => {
         events.filter((e) => ids.includes(e.id)).forEach((e) => (e.sent = true));
+        return Promise.resolve();
+      },
+      release: (ids) => {
+        events.filter((e) => ids.includes(e.id)).forEach((e) => (e.claimedAt = null));
         return Promise.resolve();
       },
       deleteTokens: () => Promise.resolve(),
@@ -361,6 +365,95 @@ Deno.test('no booking code, trip name or seat ever reaches an alert', () => {
   );
   const text = JSON.stringify(out);
   for (const secret of ['ABC123', '34A', 'תאילנד']) assert(!text.includes(secret), secret);
+});
+
+Deno.test(
+  'a failed send is released and goes on the next run, a minute later (Dudi 2)',
+  async () => {
+    const w = fakeWorld(new Date('2026-11-01T15:00:00Z'));
+    await runMinutes(w, 1);
+    w.setProvider(snap({ revisedUtc: '2026-11-01T21:30:00.000Z' }));
+    const real = w.deps.push.send;
+    let fail = true;
+    w.deps.push.send = (m) =>
+      fail ? ((fail = false), Promise.resolve({ ok: false as const, status: 400 })) : real(m);
+    w.advance(15 * 60_000);
+    await checkFlights(w.deps);
+    assertEquals(w.events.length, 1);
+    const changed = w.clock();
+    await sendAlerts(w.deps);
+    w.advance(60_000);
+    await sendAlerts(w.deps);
+    assertEquals(w.sent.length, 1);
+    assert(w.sent[0]!.at - changed <= 60_000);
+  },
+);
+
+Deno.test(
+  'more than one page of recipients: every device gets it, in batches of 100 (Dudi 1)',
+  async () => {
+    const w = fakeWorld(new Date('2026-11-01T15:00:00Z'));
+    const all = Array.from({ length: 1234 }, (_, i) =>
+      target({ token_id: i + 1, token: `ExponentPushToken[${i}]` }),
+    );
+    w.deps.db.targets = (_id, after, limit) =>
+      Promise.resolve(all.filter((t) => t.token_id > after).slice(0, limit));
+    let marked = 0;
+    w.deps.db.markSent = (ids) => ((marked += ids.length), Promise.resolve());
+    w.deps.db.claimNotifications = () =>
+      Promise.resolve([
+        { id: 1, watch_id: 1, field: 'dep_gate', old_value: 'B1', new_value: 'B2' },
+      ]);
+    assertEquals(await sendAlerts(w.deps), { sent: 1234 });
+    assertEquals(w.sent.length, 13);
+    assert(w.sent.every((b) => b.messages.length <= 100));
+    assertEquals(marked, 1);
+  },
+);
+
+Deno.test('a failed mark stops the run: nothing goes on unmarked (Dudi 2)', async () => {
+  const w = fakeWorld(new Date('2026-11-01T15:00:00Z'));
+  w.deps.db.claimNotifications = () =>
+    Promise.resolve([
+      { id: 1, watch_id: 1, field: 'dep_gate', old_value: 'B1', new_value: 'B2' },
+      { id: 2, watch_id: 2, field: 'dep_gate', old_value: 'C1', new_value: 'C2' },
+    ]);
+  w.deps.db.targets = (watchId, after) =>
+    Promise.resolve(after === 0 ? [target({ watch_id: watchId })] : []);
+  w.deps.db.markSent = () => Promise.reject(new Error('mark failed'));
+  await assertRejects(() => sendAlerts(w.deps));
+  assertEquals(w.sent.length, 1);
+});
+
+Deno.test('two checks unsent: the alert says the latest time, instead of the first old one', () => {
+  const lead = leadEvent([
+    {
+      id: 1,
+      watch_id: 1,
+      field: 'dep_time',
+      old_value: DEP,
+      new_value: '2026-11-01T21:30:00.000Z',
+    },
+    {
+      id: 2,
+      watch_id: 1,
+      field: 'dep_time',
+      old_value: '2026-11-01T21:30:00.000Z',
+      new_value: '2026-11-01T22:00:00.000Z',
+    },
+  ]);
+  assertEquals(lead.new_value, '2026-11-01T22:00:00.000Z');
+  assertEquals(lead.old_value, DEP);
+});
+
+Deno.test('a timeout is not retried: Expo may already have it', async () => {
+  const w = fakeWorld(new Date('2026-11-01T15:00:00Z'));
+  let calls = 0;
+  w.deps.push.send = () => (calls++, Promise.resolve({ ok: false as const, status: 0 }));
+  w.deps.db.claimNotifications = () =>
+    Promise.resolve([{ id: 1, watch_id: 1, field: 'dep_gate', old_value: 'B1', new_value: 'B2' }]);
+  await sendAlerts(w.deps);
+  assertEquals(calls, 1);
 });
 
 Deno.test('receipts: a dead device is dropped', async () => {

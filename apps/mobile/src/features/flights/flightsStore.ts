@@ -227,13 +227,24 @@ export async function tripOfFlight(flightId: string): Promise<string | 'gone' | 
   return (answer.data as { trip_id: string } | null)?.trip_id ?? 'gone';
 }
 
+/** Whether a loaded flight is tracked (has a watch); null when not loaded. */
+export function flightTracked(flightId: string): boolean | null {
+  for (const t of state.values()) {
+    const f = t.flights.find((x) => x.id === flightId);
+    if (f) return f.watch !== null;
+  }
+  return null;
+}
+
 /** Whether a loaded flight has this number (the explainer's sample avoids it, design 2.5). */
 export function hasFlightNumber(number: string): boolean {
   for (const t of state.values()) if (t.flights.some((f) => f.number === number)) return true;
   return false;
 }
 
-/** Every trip read so far, read again (an alert arrived while the app was open, AC-5א). */
-export function refreshOpenTrips(): void {
-  for (const tripId of state.keys()) void refreshTripFlights(tripId);
+/** An alert arrived while the app was open (AC-5א): its trip only, if it is in memory (Raz review 13). */
+export function refreshTripOf(flightId: string): void {
+  for (const [tripId, t] of state) {
+    if (t.flights.some((f) => f.id === flightId)) void refreshTripFlights(tripId);
+  }
 }

@@ -17,6 +17,22 @@ const TOKEN_KEY = 'push-token';
 const REFUSED_KEY = 'push-refused';
 const explainerKey = (userId: string) => `push.explainer.${userId}`;
 const pendingKey = (userId: string) => `push.consentPending.${userId}`;
+const lastKnownKey = (userId: string) => `push.flightAlerts.${userId}`;
+/** Re-register at most daily when nothing changed (Dudi 9): last_seen_at stays fresh for the 90 days. */
+const REGISTER_EVERY_MS = 24 * 60 * 60_000;
+
+/** This user's device keys, for an account deletion (Raz review 15). */
+export const pushKeysOf = (userId: string) => [
+  explainerKey(userId),
+  pendingKey(userId),
+  lastKnownKey(userId),
+];
+
+/** Between unregister and sign-out nothing registers this device again (Raz review 12). */
+let leaving = false;
+export function signedInAgain(): void {
+  leaving = false;
+}
 /** The explainer shows at most twice per user on a device (design 2.2). */
 export const ASK_MAX = 2;
 /** Sign-out waits this long for the server (design 6.4). */
@@ -156,10 +172,17 @@ function projectId(): string | undefined {
   return extra?.eas?.projectId;
 }
 
-async function storedToken(): Promise<{ userId: string; token: string } | null> {
+interface StoredToken {
+  userId: string;
+  token: string;
+  locale?: string;
+  at?: number;
+}
+
+async function storedToken(): Promise<StoredToken | null> {
   try {
     const raw = await AsyncStorage.getItem(TOKEN_KEY);
-    return raw ? (JSON.parse(raw) as { userId: string; token: string }) : null;
+    return raw ? (JSON.parse(raw) as StoredToken) : null;
   } catch {
     return null;
   }
@@ -170,22 +193,39 @@ export async function tokenRegistered(userId: string): Promise<boolean> {
   return (await storedToken())?.userId === userId;
 }
 
-/** This device's token on the server (AC-2), on every launch while allowed. */
-export async function registerDevice(userId: string, locale: string): Promise<boolean> {
-  if (!supabase) return false;
+/**
+ * This device's token on the server (AC-2): on launch while allowed, when
+ * the token or the language changes, and otherwise at most once a day.
+ */
+export async function registerDevice(
+  userId: string,
+  locale: string,
+  force = false,
+): Promise<boolean> {
+  if (!supabase || leaving) return false;
   if ((await permissionState()) !== 'granted') return false;
   try {
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId: projectId() });
+    const lang = locale === 'en' ? 'en' : 'he';
+    const prev = await storedToken();
+    const fresh =
+      prev?.userId === userId &&
+      prev.token === token &&
+      prev.locale === lang &&
+      Date.now() - (prev.at ?? 0) < REGISTER_EVERY_MS;
+    if (fresh && !force) return true;
     const { error } = await supabase.rpc('register_push_token', {
       p_token: token,
       p_platform: Platform.OS === 'ios' ? 'ios' : 'android',
-      p_locale: locale === 'en' ? 'en' : 'he',
+      p_locale: lang,
     });
     if (error) {
       console.error('[push] register failed', error.code ?? 'no code');
       return false;
     }
-    await AsyncStorage.setItem(TOKEN_KEY, JSON.stringify({ userId, token })).catch(() => {});
+    if (leaving) return false;
+    const stored: StoredToken = { userId, token, locale: lang, at: Date.now() };
+    await AsyncStorage.setItem(TOKEN_KEY, JSON.stringify(stored)).catch(() => {});
     return true;
   } catch (error) {
     // Offline, or Expo's servers: the next launch tries again.
@@ -198,8 +238,14 @@ export async function registerDevice(userId: string, locale: string): Promise<bo
 export async function setFlightAlerts(userId: string, on: boolean): Promise<boolean> {
   if (!supabase) return false;
   const { error } = await supabase.from('profiles').update({ flight_alerts: on }).eq('id', userId);
-  if (error) console.error('[push] switch failed', error.code ?? 'no code');
-  return !error;
+  if (error) {
+    console.error('[push] switch failed', error.code ?? 'no code');
+    return false;
+  }
+  // The server has the user's latest word: a consent still waiting must not undo it (Raz review 3).
+  await AsyncStorage.multiRemove([pendingKey(userId)]).catch(() => {});
+  await AsyncStorage.setItem(lastKnownKey(userId), on ? '1' : '0').catch(() => {});
+  return true;
 }
 
 export async function flightAlertsOn(userId: string): Promise<boolean | null> {
@@ -209,8 +255,14 @@ export async function flightAlertsOn(userId: string): Promise<boolean | null> {
     .select('flight_alerts')
     .eq('id', userId)
     .maybeSingle();
-  if (error || !data) return null;
-  return (data as { flight_alerts: boolean }).flight_alerts;
+  if (error || !data) {
+    // Offline: the last value this device saw (Raz review 10).
+    const last = await AsyncStorage.getItem(lastKnownKey(userId)).catch(() => null);
+    return last === null ? null : last === '1';
+  }
+  const on = (data as { flight_alerts: boolean }).flight_alerts;
+  await AsyncStorage.setItem(lastKnownKey(userId), on ? '1' : '0').catch(() => {});
+  return on;
 }
 
 /**
@@ -220,7 +272,6 @@ export async function flightAlertsOn(userId: string): Promise<boolean | null> {
 export async function syncConsent(userId: string, locale: string): Promise<void> {
   if (await consentPending(userId)) {
     if (!(await setFlightAlerts(userId, true))) return;
-    await AsyncStorage.removeItem(pendingKey(userId)).catch(() => {});
   }
   const [allowed, on] = await Promise.all([explainerState(userId), flightAlertsOn(userId)]);
   if (on === true || (on === null && allowed.allowed)) await registerDevice(userId, locale);
@@ -263,6 +314,7 @@ async function withTimeout<T>(work: PromiseLike<T>, ms: number): Promise<T | 'ti
  * token's next receipt says DeviceNotRegistered and the server drops it.
  */
 export async function unregisterDevice(): Promise<void> {
+  leaving = true;
   const stored = await storedToken();
   if (!stored) return;
   let done = false;

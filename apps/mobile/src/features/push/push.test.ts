@@ -3,6 +3,11 @@ import * as Notifications from 'expo-notifications';
 
 import {
   allowPush,
+  consentPending,
+  flightAlertsOn,
+  registerDevice,
+  setFlightAlerts,
+  signedInAgain,
   explainerState,
   permissionState,
   pushRowState,
@@ -31,6 +36,7 @@ const os = (granted: boolean, canAskAgain = true) =>
   n.getPermissionsAsync.mockResolvedValue({ granted, canAskAgain } as never);
 
 beforeEach(async () => {
+  signedInAgain();
   await AsyncStorage.clear();
   jest.clearAllMocks();
   mockRpc.mockResolvedValue({ error: null });
@@ -191,5 +197,36 @@ describe('flightIdOf (design 4.3)', () => {
     expect(flightIdOf(response({ v: 2, type: 'flight_change', flightId: 'f' }))).toBeNull();
     expect(flightIdOf(response({ v: 1, type: 'other', flightId: 'f' }))).toBeNull();
     expect(flightIdOf(response({ v: 1, type: 'flight_change' }))).toBeNull();
+  });
+});
+
+describe('review fixes (Raz 3, 10, 12; Dudi 9)', () => {
+  it('a switch change clears a consent still waiting, so it never comes back on', async () => {
+    await AsyncStorage.setItem('push.consentPending.u', '1');
+    expect(await setFlightAlerts('u', false)).toBe(true);
+    expect(await consentPending('u')).toBe(false);
+  });
+
+  it('offline, the switch reads as last seen', async () => {
+    await setFlightAlerts('u', true);
+    mockSelect.mockResolvedValue({ data: null, error: { code: 'offline' } });
+    expect(await flightAlertsOn('u')).toBe(true);
+  });
+
+  it('registers once a day unless the token or the language changes', async () => {
+    os(true);
+    expect(await registerDevice('u', 'he')).toBe(true);
+    expect(await registerDevice('u', 'he')).toBe(true);
+    expect(mockRpc).toHaveBeenCalledTimes(1);
+    await registerDevice('u', 'en');
+    expect(mockRpc).toHaveBeenCalledTimes(2);
+  });
+
+  it('nothing registers between unregister and sign-out', async () => {
+    os(true);
+    await unregisterDevice();
+    expect(await registerDevice('u', 'he')).toBe(false);
+    signedInAgain();
+    expect(await registerDevice('u', 'he')).toBe(true);
   });
 });

@@ -4,7 +4,9 @@
  * provider, database, sender and clock:
  *   1. check the flights that are due, within the unit cap and a time budget;
  *   2. send what changed: claimed from the outbox, one alert per flight and
- *      user, marked sent only after Expo answers.
+ *      device, a watch at a time: its recipients read in pages, its changes
+ *      marked sent right after Expo answers; what the run can't reach is
+ *      released for the next one (Dudi 1-3).
  * The "receipts" task reads Expo's receipts and drops dead tokens.
  */
 import { UNITS, type FlightProvider } from '../_shared/aerodatabox.ts';
@@ -47,8 +49,11 @@ export type WatchDb = {
   /** The ids of the changes written. */
   apply(w: Watch, c: Check): Promise<number[]>;
   claimNotifications(limit: number): Promise<ChangeEvent[]>;
-  targets(watchIds: number[]): Promise<Target[]>;
+  /** One watch's recipients after a token id, at most `limit`. */
+  targets(watchId: number, afterTokenId: number, limit: number): Promise<Target[]>;
+  /** Throws when the server can't take it: a run never goes on unmarked. */
   markSent(eventIds: number[], receipts: { ticket: string; tokenId: number }[]): Promise<void>;
+  release(eventIds: number[]): Promise<void>;
   deleteTokens(tokenIds: number[]): Promise<void>;
   oldReceipts(limit: number): Promise<{ ticket_id: string; token_id: number }[]>;
   dropReceipts(ticketIds: string[]): Promise<void>;
@@ -70,6 +75,13 @@ const PAUSED_RETRY_MS = 60 * 60_000;
 const RUN_BUDGET_MS = 45_000;
 const DAY_MS = 24 * 60 * 60_000;
 const PUSH_BATCH = 100;
+/** Recipients read per page: under PostgREST's max_rows (1000). */
+export const TARGETS_PAGE = 500;
+/** Messages a run sends at most; the rest wait for the next run (Dudi 3). */
+const MAX_MESSAGES = 5000;
+/** Expo batches in flight at once. */
+const PARALLEL = 4;
+const RECEIPTS_PAGE = 1000;
 
 export async function checkFlights(deps: Deps): Promise<{ checked: number; changes: number }> {
   const { db, provider } = deps;
@@ -149,68 +161,112 @@ export async function checkFlights(deps: Deps): Promise<{ checked: number; chang
   return { checked, changes };
 }
 
-/** Sends with one retry, only on a rate limit or a server error (Raz 12). */
+/**
+ * Sends with one retry, only on a rate limit or a server error (Raz 12). Not
+ * after a timeout: Expo may have taken the batch, and a retry sends it twice.
+ */
 async function sendOnce(deps: Deps, batch: Parameters<PushSender['send']>[0]) {
   const first = await deps.push.send(batch);
-  if (first.ok || !(first.status === 429 || first.status >= 500 || first.status === 0))
-    return first;
+  if (first.ok || !(first.status === 429 || first.status >= 500)) return first;
   await deps.sleep(2000);
   return deps.push.send(batch);
 }
 
 export async function sendAlerts(deps: Deps): Promise<{ sent: number }> {
   const { db } = deps;
+  const started = deps.now().getTime();
   const events = await db.claimNotifications(500);
   if (events.length === 0) return { sent: 0 };
-  const targets = await db.targets([...new Set(events.map((e) => e.watch_id))]);
-  const messages = buildMessages(events, targets);
-  const receipts: { ticket: string; tokenId: number }[] = [];
+  const byWatch = new Map<number, ChangeEvent[]>();
+  for (const e of events) byWatch.set(e.watch_id, [...(byWatch.get(e.watch_id) ?? []), e]);
+  let sent = 0;
+  let messages = 0;
   const dead: number[] = [];
-  for (let i = 0; i < messages.length; i += PUSH_BATCH) {
-    const batch = messages.slice(i, i + PUSH_BATCH);
-    const result = await sendOnce(
-      deps,
-      batch.map((m) => m.message),
-    );
-    if (!result.ok) {
-      // Not marked: the claim lapses in 5 minutes and the next run sends them.
-      deps.log('[flight-watch] push failed', String(result.status));
-      return { sent: receipts.length };
+  const left = [...byWatch];
+  while (left.length > 0) {
+    if (deps.now().getTime() - started > RUN_BUDGET_MS || messages >= MAX_MESSAGES) break;
+    const [watchId, list] = left.shift()!;
+    const receipts: { ticket: string; tokenId: number }[] = [];
+    let failed = false;
+    let after = 0;
+    for (;;) {
+      const page = await db.targets(watchId, after, TARGETS_PAGE);
+      const out = buildMessages(list, page);
+      messages += out.length;
+      for (let i = 0; i < out.length && !failed; i += PUSH_BATCH * PARALLEL) {
+        const batches: (typeof out)[] = [];
+        for (let j = i; j < Math.min(out.length, i + PUSH_BATCH * PARALLEL); j += PUSH_BATCH) {
+          batches.push(out.slice(j, j + PUSH_BATCH));
+        }
+        const results = await Promise.all(
+          batches.map((batch) =>
+            sendOnce(
+              deps,
+              batch.map((m) => m.message),
+            ),
+          ),
+        );
+        results.forEach((result, k) => {
+          if (!result.ok) {
+            failed = true;
+            deps.log('[flight-watch] push failed', String(result.status));
+            return;
+          }
+          result.tickets.forEach((ticket, j) => {
+            const tokenId = batches[k]![j]!.tokenId;
+            if (ticket.status === 'ok') receipts.push({ ticket: ticket.id, tokenId });
+            else if (ticket.details?.error === 'DeviceNotRegistered') dead.push(tokenId);
+            else deps.log('[flight-watch] push ticket error', ticket.details?.error ?? 'unknown');
+          });
+        });
+      }
+      if (failed || page.length < TARGETS_PAGE) break;
+      after = page[page.length - 1]!.token_id;
     }
-    result.tickets.forEach((ticket, j) => {
-      const tokenId = batch[j]!.tokenId;
-      if (ticket.status === 'ok') receipts.push({ ticket: ticket.id, tokenId });
-      else if (ticket.details?.error === 'DeviceNotRegistered') dead.push(tokenId);
-      else deps.log('[flight-watch] push ticket error', ticket.details?.error ?? 'unknown');
-    });
+    const ids = list.map((e) => e.id);
+    if (failed && receipts.length === 0) {
+      // Nothing went: the next run sends it, a minute from now, not ten.
+      await db.release(ids);
+      continue;
+    }
+    // Sent (to some devices at least): marked now, so a later failure never sends it twice.
+    await db.markSent(ids, receipts);
+    sent += receipts.length;
   }
+  if (left.length > 0) await db.release(left.flatMap(([, list]) => list.map((e) => e.id)));
   if (dead.length) await db.deleteTokens(dead);
-  // Every claimed change is done, those nobody receives (alerts off, no device) included.
-  await db.markSent(
-    events.map((e) => e.id),
-    receipts,
-  );
-  return { sent: receipts.length };
+  return { sent };
 }
 
 /** Expo's receipts, 15 minutes or more after sending (AC-2): dead devices go. */
 export async function readReceipts(deps: Deps): Promise<{ read: number; dropped: number }> {
   const { db } = deps;
-  const pending = await db.oldReceipts(1000);
-  if (pending.length === 0) return { read: 0, dropped: 0 };
-  const answers = await deps.push.receipts(pending.map((r) => r.ticket_id));
-  const dead: number[] = [];
-  const done: string[] = [];
-  for (const r of pending) {
-    const a = answers[r.ticket_id];
-    if (!a) continue;
-    done.push(r.ticket_id);
-    if (a.status === 'error') {
-      if (a.details?.error === 'DeviceNotRegistered') dead.push(r.token_id);
-      else deps.log('[flight-watch] push receipt error', a.details?.error ?? 'unknown');
+  const started = deps.now().getTime();
+  let read = 0;
+  let dropped = 0;
+  // Page after page, oldest first, until the queue is empty or the time is up (Dudi 5).
+  for (;;) {
+    const pending = await db.oldReceipts(RECEIPTS_PAGE);
+    if (pending.length === 0) break;
+    const answers = await deps.push.receipts(pending.map((r) => r.ticket_id));
+    const dead: number[] = [];
+    const done: string[] = [];
+    for (const r of pending) {
+      const a = answers[r.ticket_id];
+      if (!a) continue;
+      done.push(r.ticket_id);
+      if (a.status === 'error') {
+        if (a.details?.error === 'DeviceNotRegistered') dead.push(r.token_id);
+        else deps.log('[flight-watch] push receipt error', a.details?.error ?? 'unknown');
+      }
     }
+    if (dead.length) await db.deleteTokens([...new Set(dead)]);
+    await db.dropReceipts(done);
+    read += done.length;
+    dropped += dead.length;
+    // A short page, or Expo not ready with this page: the next run reads on.
+    if (pending.length < RECEIPTS_PAGE || done.length === 0) break;
+    if (deps.now().getTime() - started > RUN_BUDGET_MS) break;
   }
-  if (dead.length) await db.deleteTokens([...new Set(dead)]);
-  await db.dropReceipts(done);
-  return { read: done.length, dropped: dead.length };
+  return { read, dropped };
 }

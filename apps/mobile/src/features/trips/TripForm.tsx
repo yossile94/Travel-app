@@ -112,6 +112,8 @@ interface Props {
   onDone: (result: TripFormResult) => void;
   /** The trip was deleted on another device; the form stays open (design 6.1). */
   onGone: () => void;
+  /** A flight saved from the form (sprint 6 design 2.3). */
+  onFlightSaved?: (flightId: string) => void;
 }
 
 export function TripForm({
@@ -123,6 +125,7 @@ export function TripForm({
   onClose,
   onDone,
   onGone,
+  onFlightSaved,
 }: Props) {
   const { t, i18n } = useTranslation();
   const { recheckConsent, state: auth } = useAuth();
@@ -557,6 +560,7 @@ export function TripForm({
               endDate: values.endDate ?? (target.kind === 'edit' ? target.trip.endDate : todayPg()),
             }}
             saved={editing}
+            onFlightSaved={onFlightSaved}
             disabled={locked}
             colorScheme={colorScheme}
             reduceMotion={reduceMotion}

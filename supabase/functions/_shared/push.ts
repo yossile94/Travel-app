@@ -64,8 +64,17 @@ export function hasMoreChanges(events: ChangeEvent[], lead: ChangeEvent): boolea
   return events.some((e) => KIND[e.field] !== KIND[lead.field]);
 }
 
+/**
+ * The change the alert speaks of. Two checks' changes of one field (a send
+ * that waited): the latest value, "instead of" the value users last had
+ * (Raz review 2).
+ */
 export function leadEvent(events: ChangeEvent[]): ChangeEvent {
-  return [...events].sort((a, b) => ORDER[a.field]! - ORDER[b.field]! || a.id - b.id)[0]!;
+  const sorted = [...events].sort((a, b) => ORDER[a.field]! - ORDER[b.field]! || b.id - a.id);
+  const lead = sorted[0]!;
+  const same = events.filter((e) => e.field === lead.field);
+  const first = same.reduce((a, b) => (b.id < a.id ? b : a));
+  return { ...lead, old_value: first.old_value };
 }
 
 /** "01:10" at a time zone, 24-hour. */

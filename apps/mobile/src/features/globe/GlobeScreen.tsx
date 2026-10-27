@@ -42,7 +42,7 @@ import { MyTripsSheet } from '@/features/trips/MyTripsSheet';
 import { TripForm, type TripFormResult, type TripFormTarget } from '@/features/trips/TripForm';
 import { TripsButton } from '@/features/trips/TripsButton';
 import { useTrips } from '@/features/trips/TripsProvider';
-import { tripOfFlight } from '@/features/flights/flightsStore';
+import { flightTracked, OPEN_TIMEOUT_MS, tripOfFlight } from '@/features/flights/flightsStore';
 import { PushExplainer } from '@/features/push/PushExplainer';
 import { launchedFromAlert, usePushOpen, type AlertText } from '@/features/push/usePushOpen';
 import { usePushSetup } from '@/features/push/usePushSetup';
@@ -107,6 +107,15 @@ const E2E = process.env.EXPO_PUBLIC_E2E === '1';
 
 // The fade is what replaces the flight under reduced motion (AC-6), so it must
 // run even then: Reanimated's default (ReduceMotion.System) would snap it to black.
+/** The whole lookup of a tapped alert, then "no connection" (sprint 6 design 4.5). */
+function withinOpenTimeout<T>(work: Promise<T>): Promise<T | 'offline'> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    work.catch(() => 'offline' as const),
+    new Promise<'offline'>((r) => (timer = setTimeout(() => r('offline'), OPEN_TIMEOUT_MS))),
+  ]).finally(() => clearTimeout(timer));
+}
+
 const VEIL_FADE_OUT = { duration: motion.reduceFadeOut, reduceMotion: ReduceMotion.Never };
 const VEIL_FADE_IN = { duration: motion.reduceFadeIn, reduceMotion: ReduceMotion.Never };
 
@@ -563,9 +572,9 @@ export function GlobeScreen() {
     async (flightId: string, text: AlertText) => {
       // Slow to find: say the tap was taken (design 4.1).
       const slow = setTimeout(() => showTripToast(t('push.opening')), 3000);
-      const found = await tripOfFlight(flightId);
-      clearTimeout(slow);
+      const found = await withinOpenTimeout(tripOfFlight(flightId));
       if (found === 'offline') {
+        clearTimeout(slow);
         showTripToast(t('push.openOffline'), true);
         return;
       }
@@ -573,14 +582,21 @@ export function GlobeScreen() {
       const known = [...(trips.cache?.upcoming ?? []), ...(trips.cache?.past ?? [])].find(
         (trip) => trip.id === tripId,
       );
-      let adm0 = known?.countryAdm0 ?? null;
+      let adm0: string | null | 'offline' = known?.countryAdm0 ?? null;
       if (tripId && !adm0 && supabase) {
-        const { data } = await supabase
-          .from('trips')
-          .select('country_adm0')
-          .eq('id', tripId)
-          .maybeSingle();
-        adm0 = (data as { country_adm0: string } | null)?.country_adm0 ?? null;
+        const read = supabase.from('trips').select('country_adm0').eq('id', tripId).maybeSingle();
+        const answer = await withinOpenTimeout(
+          Promise.resolve(read).then((r) =>
+            r.error ? ('offline' as const) : (r.data as { country_adm0: string } | null),
+          ),
+        );
+        // A failed read is "no connection", never "gone" (Raz review 7).
+        adm0 = answer === 'offline' ? 'offline' : (answer?.country_adm0 ?? null);
+      }
+      clearTimeout(slow);
+      if (adm0 === 'offline') {
+        showTripToast(t('push.openOffline'), true);
+        return;
       }
       if (!tripId || !adm0 || !countryByAdm0(adm0)) {
         showTripToast(t('flight.gone'), true);
@@ -588,30 +604,52 @@ export function GlobeScreen() {
       }
       setAlertText(text);
       setMyTripsOpen(false);
+      setAccountSheetOpen(false);
+      setSearchOpen(false);
       setOpenTrip({ id: tripId, adm0, seq: ++openSeq.current });
       setOpenFlight(`${flightId}:${openSeq.current}`);
       dispatch({ type: 'countryTapped', country: { adm0 } });
     },
     [trips.cache, showTripToast, t],
   );
-  usePushOpen(
-    auth.state.status === 'signedIn' && trips.firstLoad,
-    (id, text) => void openFromAlert(id, text),
-  );
+  // A trip form open: the alert waits for it to close, its work is never thrown away (design 4.2).
+  const [heldAlert, setHeldAlert] = useState<{ id: string; text: AlertText } | null>(null);
+  useEffect(() => {
+    if (!heldAlert || tripForm) return;
+    // The form just closed: open the alert's flight now (an outside event, not render).
+    const held = heldAlert;
+    const timer = setTimeout(() => {
+      setHeldAlert(null);
+      void openFromAlert(held.id, held.text);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [heldAlert, tripForm, openFromAlert]);
+  usePushOpen({
+    ready:
+      auth.state.status === 'signedOut' || (auth.state.status === 'signedIn' && trips.firstLoad),
+    signedIn: auth.state.status === 'signedIn',
+    onOpen: (id, text) => (tripForm ? setHeldAlert({ id, text }) : void openFromAlert(id, text)),
+    onSignedOut: () => showTripToast(t('flight.gone'), true),
+  });
 
   // Sprint 6 F-018: the channel, the consent on the server, and the alerts explainer.
-  const quietRef = useRef<() => boolean>(() => true);
   const push = usePushSetup({
     userId: auth.state.status === 'signedIn' ? auth.state.user.id : null,
     ready: globeReady && trips.firstLoad && auth.state.status === 'signedIn',
-    isQuiet: useCallback(() => quietRef.current(), []),
+    // Nothing else on screen: no form, list, sheet, search or consent (design 2.2).
+    quiet: !tripForm && !myTripsOpen && !sheetOpen && !searchOpen && !consentShown,
     onToast: showTripToast,
   });
-  // Nothing else on screen: no form, list, sheet, search or consent (design 2.2).
+  // A flight saved from the trip form: offered once the form is closed (design 2.3, Raz review 4).
+  const [formFlight, setFormFlight] = useState<string | null>(null);
   useEffect(() => {
-    quietRef.current = () =>
-      !tripForm && !myTripsOpen && !sheetOpen && !searchOpen && !consentShown;
-  });
+    if (!formFlight || tripForm) return;
+    const timer = setTimeout(() => {
+      setFormFlight(null);
+      if (flightTracked(formFlight) !== false) void push.offer();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [formFlight, tripForm, push]);
 
   const newTrip = useCallback(() => {
     if (!selectedCountry) return;
@@ -689,7 +727,9 @@ export function GlobeScreen() {
   }, [auth.state.status]);
   // Opened from an alert: the alert wins (sprint 6 design 4.1 step 4).
   useEffect(() => {
-    if (launchedFromAlert()) autoDecided.current = true;
+    void launchedFromAlert().then((fromAlert) => {
+      if (fromAlert) autoDecided.current = true;
+    });
   }, []);
   useEffect(() => {
     if (autoDecided.current || !globeReady || !trips.firstLoad || auth.state.status !== 'signedIn')
@@ -969,6 +1009,7 @@ export function GlobeScreen() {
           insetsBottom={insets.bottom}
           onClose={() => setTripForm(null)}
           onGone={() => trips.changed({ adm0: tripForm.country.adm0, has: null })}
+          onFlightSaved={setFormFlight}
           onDone={tripFormDone}
         />
       )}

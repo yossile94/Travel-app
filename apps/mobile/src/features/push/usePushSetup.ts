@@ -4,6 +4,7 @@
  * server can take them, and when to offer the explainer.
  */
 import { useNetInfo } from '@react-native-community/netinfo';
+import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState } from 'react-native';
@@ -19,7 +20,9 @@ import {
   flightAlertsOn,
   permissionState,
   recordShown,
+  registerDevice,
   shouldOfferPush,
+  signedInAgain,
   syncConsent,
   systemPrompts,
 } from './push';
@@ -43,15 +46,15 @@ async function hasTrackedFlight(): Promise<boolean> {
 export function usePushSetup({
   userId,
   ready,
-  isQuiet,
+  quiet,
   onToast,
 }: {
   /** Signed in: the user; else null. */
   userId: string | null;
   /** The globe and the trips are up, and no consent screen (design 2.3). */
   ready: boolean;
-  /** No other sheet, form or keyboard on screen. */
-  isQuiet: () => boolean;
+  /** No other sheet, form or search on screen. */
+  quiet: boolean;
   onToast: (text: string, long?: boolean) => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -60,10 +63,22 @@ export function usePushSetup({
   const [number, setNumber] = useState('LY81');
   const [androidNote, setAndroidNote] = useState(false);
   const shownThisSession = useRef(false);
-  const quiet = useRef(isQuiet);
+  /** A trigger came while something else was open: it waits for the next quiet moment (Raz review 5). */
+  const [waiting, setWaiting] = useState(false);
+  const quietRef = useRef(quiet);
   useEffect(() => {
-    quiet.current = isQuiet;
-  }, [isQuiet]);
+    quietRef.current = quiet;
+  }, [quiet]);
+
+  // Signed in (again): this device may register; a new token registers at once (AC-2).
+  useEffect(() => {
+    if (!userId) return;
+    signedInAgain();
+    const sub = Notifications.addPushTokenListener(
+      () => void registerDevice(userId, i18n.language, true),
+    );
+    return () => sub.remove();
+  }, [userId, i18n.language]);
 
   // The channel first, in the app's language; a language change renames it (design 3.4).
   useEffect(() => {
@@ -96,15 +111,26 @@ export function usePushSetup({
       shown: asked.shown,
       permission,
       shownThisSession: shownThisSession.current,
-      quiet: quiet.current(),
+      quiet: true,
     });
     if (!show) return;
+    if (!quietRef.current) {
+      setWaiting(true);
+      return;
+    }
+    setWaiting(false);
     shownThisSession.current = true;
     await recordShown(userId);
     setNumber(sampleNumber(hasFlightNumber));
     setAndroidNote(systemPrompts() && permission !== 'granted');
     setVisible(true);
   }, [userId]);
+
+  useEffect(() => {
+    if (!waiting || !quiet || !userId) return;
+    const timer = setTimeout(() => void offer(), 400);
+    return () => clearTimeout(timer);
+  }, [waiting, quiet, userId, offer]);
 
   // The launch trigger: once, when everything is up and the user has a tracked flight.
   const launchDecided = useRef(false);

@@ -487,7 +487,7 @@ export function FlightsSection({
   // return flight's screen, then comes 400 ms after the last one closes.
   const [savedFlight, setSavedFlight] = useState<string | null>(null);
   const saved = flights.find((f) => f.id === savedFlight);
-  const offerNow = saved !== undefined && !screen && !returnPrompt;
+  const offerNow = saved !== undefined && !screen && !returnPrompt && !sheet;
   const offer = useRef(onTrackedFlightSaved);
   useEffect(() => {
     offer.current = onTrackedFlightSaved;

@@ -1,15 +1,15 @@
 /**
  * Sprint 6 AC-5, AC-5א: a tapped flight alert opens that flight; an alert
- * that arrives while the app is open shows as a banner and refreshes the
- * open trips. The alert that cold-started the app is read once, only after
- * the session and the trips are ready (Raz 8), and never again: its id is
- * kept on the device (design 4.1).
+ * that arrives while the app is open shows as a banner and refreshes its
+ * trip. The alert that cold-started the app is read once, only after the
+ * session and the trips are ready (Raz 8), and never again: its id is kept
+ * on the device (design 4.1).
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
 
-import { refreshOpenTrips } from '@/features/flights/flightsStore';
+import { refreshTripOf } from '@/features/flights/flightsStore';
 
 import { flightIdOf } from './push';
 
@@ -30,43 +30,75 @@ export interface AlertText {
   body: string;
 }
 
-/** A launch from an alert: the active trip doesn't open by itself (design 4.1 step 4). */
-export function launchedFromAlert(): boolean {
-  return flightIdOf(Notifications.getLastNotificationResponse()) !== null;
+/** Ids taken in this run, marked before any await: the getter and the listener never both open it. */
+const taken = new Set<string>();
+
+async function alreadyHandled(id: string): Promise<boolean> {
+  if (taken.has(id)) return true;
+  return (await AsyncStorage.getItem(HANDLED_KEY).catch(() => null)) === id;
 }
 
-export function usePushOpen(
-  ready: boolean,
-  onOpen: (flightId: string, text: AlertText) => void,
-): void {
-  const open = useRef(onOpen);
+/**
+ * A launch from an alert not yet handled: the active trip doesn't open by
+ * itself (design 4.1 step 4). An alert handled before doesn't count (Raz review 8).
+ */
+export async function launchedFromAlert(): Promise<boolean> {
+  const response = Notifications.getLastNotificationResponse();
+  const id = response?.notification.request.identifier;
+  return !!id && flightIdOf(response) !== null && !(await alreadyHandled(id));
+}
+
+export function usePushOpen({
+  ready,
+  signedIn,
+  onOpen,
+  onSignedOut,
+}: {
+  /** The session is settled: signed in with the trips loaded, or signed out. */
+  ready: boolean;
+  signedIn: boolean;
+  onOpen: (flightId: string, text: AlertText) => void;
+  /** A tap while signed out: the flight can't be shown (design 4.3). */
+  onSignedOut: () => void;
+}): void {
+  const handlers = useRef({ onOpen, onSignedOut, signedIn });
   useEffect(() => {
-    open.current = onOpen;
-  }, [onOpen]);
+    handlers.current = { onOpen, onSignedOut, signedIn };
+  }, [onOpen, onSignedOut, signedIn]);
 
   useEffect(() => {
     if (!ready) return;
     let current = true;
     const handle = async (response: Notifications.NotificationResponse | null | undefined) => {
-      const flightId = flightIdOf(response);
       const id = response?.notification.request.identifier;
-      if (!response || !id) return;
-      // Once: a later launch or a return to the foreground never replays it.
-      const handled = await AsyncStorage.getItem(HANDLED_KEY).catch(() => null);
-      if (!current || handled === id) return;
+      if (!response || !id || taken.has(id)) return;
+      taken.add(id);
+      const handled = (await AsyncStorage.getItem(HANDLED_KEY).catch(() => null)) === id;
+      if (handled) return;
+      if (!current) {
+        // Unmounted before it was handled: the next mount takes it.
+        taken.delete(id);
+        return;
+      }
       await AsyncStorage.setItem(HANDLED_KEY, id).catch(() => {});
+      const flightId = flightIdOf(response);
       if (!flightId) {
         console.warn('[push] push_open_bad_payload');
         return;
       }
+      if (!handlers.current.signedIn) {
+        handlers.current.onSignedOut();
+        return;
+      }
       const content = response.notification.request.content;
-      open.current(flightId, { title: content.title ?? '', body: content.body ?? '' });
+      handlers.current.onOpen(flightId, { title: content.title ?? '', body: content.body ?? '' });
     };
     void handle(Notifications.getLastNotificationResponse());
     const tapped = Notifications.addNotificationResponseReceivedListener((r) => void handle(r));
     const received = Notifications.addNotificationReceivedListener((n) => {
-      if ((n.request.content.data as { type?: string } | undefined)?.type === 'flight_change') {
-        refreshOpenTrips();
+      const data = n.request.content.data as { type?: string; flightId?: unknown } | undefined;
+      if (data?.type === 'flight_change' && typeof data.flightId === 'string') {
+        refreshTripOf(data.flightId);
       }
     });
     return () => {

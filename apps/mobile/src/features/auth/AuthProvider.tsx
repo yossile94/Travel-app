@@ -35,7 +35,7 @@ import {
 } from '@/features/account/accountApi';
 import { requestDeletion } from '@/features/account/deleteAccountApi';
 import { resetFlightsStore } from '@/features/flights/flightsStore';
-import { unregisterDevice } from '@/features/push/push';
+import { pushKeysOf, unregisterDevice } from '@/features/push/push';
 import { clearTripsCaches } from '@/features/trips/tripsCache';
 import { clearStoredSessions } from '@/lib/secureSessionStorage';
 import { supabase } from '@/lib/supabase';
@@ -273,6 +273,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!userId) return;
     await removeLocalAgreement(userId);
     await removeLocalChoices(userId);
+    // Sprint 6: the alerts explainer count and the consent waiting for the server (Raz review 15).
+    await AsyncStorage.multiRemove(pushKeysOf(userId)).catch(() => {});
   }, []);
 
   /** Read through a function, so TypeScript doesn't narrow it across awaits. */

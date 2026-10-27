@@ -74,9 +74,26 @@ function deps(): Deps {
         ),
       claimNotifications: (limit) =>
         rpc<ChangeEvent[]>('claim_flight_notifications', { p_limit: limit }, []),
-      targets: (ids) => rpc<Target[]>('flight_notification_targets', { p_watch_ids: ids }, []),
+      targets: async (watchId, after, limit) => {
+        const { data, error } = await admin.rpc('flight_notification_targets', {
+          p_watch_id: watchId,
+          p_after: after,
+          p_limit: limit,
+        });
+        // A failed read must not look like "nobody to tell" (Dudi 1).
+        if (error) throw new Error(`flight_notification_targets: ${error.code}`);
+        return (data ?? []) as Target[];
+      },
       markSent: async (ids, receipts) => {
-        await rpc('mark_flight_notifications', { p_ids: ids, p_receipts: receipts }, null);
+        const { error } = await admin.rpc('mark_flight_notifications', {
+          p_ids: ids,
+          p_receipts: receipts,
+        });
+        // Unmarked means sent again: stop the run here (Dudi 2).
+        if (error) throw new Error(`mark_flight_notifications: ${error.code}`);
+      },
+      release: async (ids) => {
+        await rpc('release_flight_notifications', { p_ids: ids }, null);
       },
       deleteTokens: async (ids) => {
         const { error } = await admin.from('push_tokens').delete().in('id', ids);
@@ -87,6 +104,7 @@ function deps(): Deps {
           .from('push_receipts')
           .select('ticket_id, token_id')
           .lt('created_at', new Date(Date.now() - 15 * 60_000).toISOString())
+          .order('created_at')
           .limit(limit);
         return (data ?? []) as { ticket_id: string; token_id: number }[];
       },
