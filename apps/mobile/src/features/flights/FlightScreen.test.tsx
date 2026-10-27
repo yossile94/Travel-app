@@ -7,6 +7,9 @@ import { FlightScreen } from './FlightScreen';
 import { lookupFlight, saveFlight } from './flightsApi';
 import type { FlightSnapshot } from './flightModel';
 
+// The first test also loads the screen's modules: room for a busy CI (Raz 14).
+jest.setTimeout(15_000);
+
 jest.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => ({ recheckConsent: jest.fn(async () => true) }),
 }));

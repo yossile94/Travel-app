@@ -30,8 +30,10 @@ export const bestTime = (m: MovementTimes) => m.revisedUtc ?? m.predictedUtc ?? 
 
 /**
  * Compares a provider answer with what users last saw. The first known time
- * is the schedule, so a first estimate is a change only 15 minutes or more
- * away from it; a first gate is an update, a gate-to-gate move is a change.
+ * is the provider's own schedule (a user's typed time only when the provider
+ * has none: one user's input never makes a change for others, Raz B1), so a
+ * first estimate is a change only 15 minutes or more away from it; a first
+ * gate is an update, a gate-to-gate move is a change.
  */
 export function detectChanges(
   last: Notified | null,
@@ -39,8 +41,8 @@ export function detectChanges(
   sched: { dep: string | null; arr: string | null },
 ): { events: FlightEvent[]; notified: Notified } {
   const prev: Notified = last ?? {
-    depTime: sched.dep ?? snap.departure.scheduledUtc,
-    arrTime: sched.arr ?? snap.arrival.scheduledUtc,
+    depTime: snap.departure.scheduledUtc ?? sched.dep,
+    arrTime: snap.arrival.scheduledUtc ?? sched.arr,
     depGate: null,
     arrGate: null,
     status: null,

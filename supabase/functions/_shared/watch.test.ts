@@ -122,3 +122,8 @@ Deno.test('the tracked leg is the one nearest the scheduled departure', () => {
   assertEquals(pickLeg([a], null), a);
   assertEquals(pickLeg([], sched.dep), null);
 });
+
+Deno.test('a typed schedule that differs from the provider never makes a change (Raz B1)', () => {
+  const typed = { dep: '2026-11-01T10:40:00.000Z', arr: sched.arr };
+  assertEquals(detectChanges(null, snap(), typed).events, []);
+});

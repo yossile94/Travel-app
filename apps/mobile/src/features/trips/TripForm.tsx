@@ -49,7 +49,7 @@ import {
 
 import { countryName } from './countryName';
 import { TripFormFlights } from '@/features/flights/TripFormFlights';
-import { tripHasFlights } from '@/features/flights/flightsStore';
+import { useTripFlights } from '@/features/flights/flightsStore';
 
 import { CitiesSection } from './CitiesSection';
 import { TravelersSection } from './TravelersSection';
@@ -129,6 +129,9 @@ export function TripForm({
   const palette = colors[colorScheme];
   const country = countryName(target.country, i18n.language);
   const editing = target.kind === 'edit';
+  // Design 8.3: a copy says flights weren't copied, when the source had some.
+  const sourceHasFlights =
+    useTripFlights(target.kind === 'duplicate' ? target.source.id : null).flights.length > 0;
 
   // Made once, when the form opens (AC-3).
   const [tripId] = useState(() => (target.kind === 'edit' ? target.trip.id : Crypto.randomUUID()));
@@ -432,12 +435,9 @@ export function TripForm({
         >
           {target.kind === 'duplicate' ? (
             <InlineNotice
-              text={t(
-                tripHasFlights(target.source.id)
-                  ? 'tripForm.duplicatedNoFlights'
-                  : 'tripForm.duplicated',
-                { name: target.source.title },
-              )}
+              text={t(sourceHasFlights ? 'tripForm.duplicatedNoFlights' : 'tripForm.duplicated', {
+                name: target.source.title,
+              })}
               colorScheme={colorScheme}
               testID="trip-form-duplicated"
             />

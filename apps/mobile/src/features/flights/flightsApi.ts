@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 
 import type { Flight, FlightSnapshot } from './flightModel';
 
-export type FlightWrite = 'ok' | 'offline' | 'consent' | 'gone' | 'limit' | 'error';
+export type FlightWrite = 'ok' | 'offline' | 'consent' | 'gone' | 'limit' | 'trackLimit' | 'error';
 
 export type LookupResult =
   | { kind: 'found'; legs: FlightSnapshot[] }
@@ -111,6 +111,7 @@ export async function saveFlight(
     log('save', error);
     return 'error';
   }
+  if (data === 'track_limit') return 'trackLimit';
   return data === 'ok' || data === 'gone' || data === 'limit' ? data : 'error';
 }
 

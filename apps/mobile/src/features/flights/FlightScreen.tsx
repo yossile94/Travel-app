@@ -72,7 +72,7 @@ export interface FlightScreenTrip {
 
 type Step = 'search' | 'legs' | 'details';
 type SearchNotice = 'found' | 'notFound' | 'unavailable' | 'rateLimited' | null;
-type SaveNotice = 'offline' | 'error' | 'gone' | 'limit' | 'consent' | null;
+type SaveNotice = 'offline' | 'error' | 'gone' | 'limit' | 'trackLimit' | 'consent' | null;
 
 const DIRECTIONS: Direction[] = ['out', 'return', 'internal'];
 const CABINS: Cabin[] = ['economy', 'premium_economy', 'business', 'first'];
@@ -284,7 +284,9 @@ export function FlightScreen({
             ? 'gone'
             : result === 'limit'
               ? 'limit'
-              : 'error',
+              : result === 'trackLimit'
+                ? 'trackLimit'
+                : 'error',
       );
   };
 
@@ -354,11 +356,13 @@ export function FlightScreen({
         ? t('flight.tripGone')
         : saveNotice === 'limit'
           ? t('flight.limit')
-          : saveNotice === 'consent'
-            ? t('tripForm.consentNeeded')
-            : saveNotice === 'error'
-              ? t('flight.saveError')
-              : null;
+          : saveNotice === 'trackLimit'
+            ? t('flight.trackLimit')
+            : saveNotice === 'consent'
+              ? t('tripForm.consentNeeded')
+              : saveNotice === 'error'
+                ? t('flight.saveError')
+                : null;
 
   const timeHelp = (p: PickedAirport | null) =>
     p

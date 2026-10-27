@@ -23,6 +23,7 @@ jest.mock('./tripsCache', () => ({
   saveTripsCache: jest.fn(async () => {}),
   tripsCacheGeneration: () => 0,
 }));
+jest.mock('@/features/flights/flightsStore', () => ({ prefetchFlights: jest.fn(async () => {}) }));
 const tripsCache = jest.requireMock<Record<string, jest.Mock>>('./tripsCache');
 /** The pin's query (sprint 3 AC-7). */
 let mockNext: unknown = { ok: true, value: { trips: [] } };

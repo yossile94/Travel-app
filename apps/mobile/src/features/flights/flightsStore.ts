@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { secureSessionStorage } from '@/lib/secureSessionStorage';
 import { tripsCacheGeneration } from '@/features/trips/tripsCache';
 
-import type { Flight } from './flightModel';
+import { ownWatch, type Flight } from './flightModel';
 import { loadFlights } from './flightsApi';
 
 export interface TripFlights {
@@ -23,8 +23,10 @@ export interface TripFlights {
 }
 
 const EMPTY: TripFlights = { flights: [], status: 'loading', fromCache: false, savedAt: null };
-/** Trips kept in the device copy; the oldest opened goes first. */
-const CACHE_TRIPS_MAX = 70;
+/** Trips kept in the device copy; the oldest read goes first. */
+const CACHE_TRIPS_MAX = 30;
+/** Changes kept per flight in the device copy (the sheet online shows up to 50, Raz 5). */
+const CACHE_EVENTS_MAX = 10;
 /** AeroDataBox's cache terms: provider data 7 days after landing (AC-7א, Raz). */
 const PROVIDER_DATA_DAYS = 7;
 
@@ -41,7 +43,7 @@ const keyOf = (userId: string) => `trips-cache.flights.${userId}`;
 interface FlightsCache {
   userId: string;
   savedAt: string;
-  /** Most recently opened first. */
+  /** Most recently read first. */
   trips: { tripId: string; flights: Flight[] }[];
 }
 
@@ -49,10 +51,13 @@ interface FlightsCache {
 export function withoutExpiredProviderData(flights: Flight[], now = new Date()): Flight[] {
   const limit = now.getTime() - PROVIDER_DATA_DAYS * 24 * 60 * 60_000;
   return flights.map((f) => {
-    const end = f.watch?.landedAt ?? f.arrSched ?? f.depSched;
-    return f.watch && end && Date.parse(end) < limit ? { ...f, watch: null } : f;
+    const end = f.watch?.landedAt ?? f.arrSched ?? f.depSched ?? `${f.depDateLocal}T23:59:59Z`;
+    return f.watch && Date.parse(end) < limit ? { ...f, watch: null } : f;
   });
 }
+
+/** Only this flight's own leg counts (Raz 3). */
+const own = (flights: Flight[]) => flights.map((f) => ({ ...f, watch: ownWatch(f) }));
 
 async function userId(): Promise<string | null> {
   const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
@@ -69,11 +74,29 @@ async function readCache(user: string): Promise<FlightsCache | null> {
   }
 }
 
-async function writeCache(user: string, tripId: string, flights: Flight[], generation: number) {
+const slim = (flights: Flight[]) =>
+  flights.map((f) =>
+    f.watch
+      ? { ...f, watch: { ...f.watch, events: f.watch.events.slice(0, CACHE_EVENTS_MAX) } }
+      : f,
+  );
+
+type Entry = { tripId: string; flights: Flight[] };
+
+/** Writes go one at a time: two refreshes never overwrite each other's trip (Raz 5). */
+let writes: Promise<void> = Promise.resolve();
+
+function writeCache(user: string, entries: Entry[], generation: number): Promise<void> {
+  writes = writes.then(() => writeCacheNow(user, entries, generation)).catch(() => {});
+  return writes;
+}
+
+async function writeCacheNow(user: string, entries: Entry[], generation: number) {
   const previous = await readCache(user);
+  const ids = new Set(entries.map((e) => e.tripId));
   const trips = [
-    { tripId, flights },
-    ...(previous?.trips ?? []).filter((t) => t.tripId !== tripId),
+    ...entries.map((e) => ({ tripId: e.tripId, flights: slim(e.flights) })),
+    ...(previous?.trips ?? []).filter((t) => !ids.has(t.tripId)),
   ].slice(0, CACHE_TRIPS_MAX);
   // A sign-out since the read started: write nothing (as tripsCache, Dudi e2).
   if (tripsCacheGeneration() !== generation) return;
@@ -89,14 +112,18 @@ async function writeCache(user: string, tripId: string, flights: Flight[], gener
 }
 
 const inFlight = new Map<string, Promise<void>>();
+const again = new Set<string>();
 
 /** Reads a trip's flights; offline or failing, falls back to the device copy. */
 export function refreshTripFlights(tripId: string): Promise<void> {
   const running = inFlight.get(tripId);
-  if (running) return running;
+  if (running) {
+    // Asked after the read began (a save, a delete): read once more when it ends (Raz 4).
+    again.add(tripId);
+    return running;
+  }
   const generation = tripsCacheGeneration();
-  const current = state.get(tripId);
-  if (!current) {
+  if (!state.get(tripId)) {
     state.set(tripId, EMPTY);
     notify();
   }
@@ -104,14 +131,10 @@ export function refreshTripFlights(tripId: string): Promise<void> {
     const result = await loadFlights([tripId]);
     const user = await userId();
     if (result.ok) {
-      state.set(tripId, {
-        flights: result.value,
-        status: 'ready',
-        fromCache: false,
-        savedAt: null,
-      });
+      const flights = own(result.value);
+      state.set(tripId, { flights, status: 'ready', fromCache: false, savedAt: null });
       notify();
-      if (user) await writeCache(user, tripId, result.value, generation);
+      if (user) await writeCache(user, [{ tripId, flights }], generation);
       return;
     }
     const cache = user ? await readCache(user) : null;
@@ -133,7 +156,10 @@ export function refreshTripFlights(tripId: string): Promise<void> {
       });
     }
     notify();
-  })().finally(() => inFlight.delete(tripId));
+  })().finally(() => {
+    inFlight.delete(tripId);
+    if (again.delete(tripId)) void refreshTripFlights(tripId);
+  });
   inFlight.set(tripId, run);
   return run;
 }
@@ -143,13 +169,34 @@ export function useTripFlights(tripId: string | null): TripFlights {
   return useSyncExternalStore(subscribe, () => (tripId ? (state.get(tripId) ?? EMPTY) : EMPTY));
 }
 
-/** Forgets everything in memory (sign-out; the device copy goes with clearTripsCaches). */
-export function resetFlightsStore(): void {
-  state.clear();
-  notify();
-}
-
 /** Whether a trip's flights, as last read, are any (the trip delete dialog, design 8.3). */
 export function tripHasFlights(tripId: string): boolean {
   return (state.get(tripId)?.flights.length ?? 0) > 0;
+}
+
+/**
+ * The flights of the trips just saved to the device copy, in one read (Raz 6):
+ * a trip never opened online still shows its flights offline (AC-5).
+ */
+export async function prefetchFlights(tripIds: string[]): Promise<void> {
+  const ids = tripIds.slice(0, 50);
+  if (ids.length === 0) return;
+  const generation = tripsCacheGeneration();
+  const result = await loadFlights(ids);
+  const user = await userId();
+  if (!result.ok || !user) return;
+  const byTrip = new Map<string, Flight[]>(ids.map((id) => [id, []]));
+  for (const f of own(result.value)) byTrip.get(f.tripId)?.push(f);
+  await writeCache(
+    user,
+    [...byTrip].map(([tripId, flights]) => ({ tripId, flights })),
+    generation,
+  );
+}
+
+/** Forgets everything in memory (sign-out; the device copy goes with clearTripsCaches). */
+export function resetFlightsStore(): void {
+  state.clear();
+  again.clear();
+  notify();
 }

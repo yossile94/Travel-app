@@ -41,6 +41,9 @@ const json = (status: number, body: Record<string, unknown>) =>
 /** 20 a run fits the 60-second call with one request a second. */
 const PER_RUN = 20;
 const PAUSED_RETRY_MS = 60 * 60_000;
+/** Under the function's limit and the 5-minute claim: what's left waits for its lock to lapse (Raz 8). */
+const RUN_BUDGET_MS = 45_000;
+const DAY_MS = 24 * 60 * 60_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Watch = {
@@ -51,6 +54,8 @@ type Watch = {
   sched_arr_utc: string | null;
   attempts: number;
   last_notified: Notified | null;
+  /** The claim's lock: only this run may apply its check (Dudi #11). */
+  locked_until: string;
 };
 
 type Check = {
@@ -63,9 +68,10 @@ type Check = {
   events?: unknown[];
 };
 
-async function apply(id: number, c: Check) {
+async function apply(w: Watch, c: Check) {
   const { error } = await admin.rpc('apply_flight_check', {
-    p_id: id,
+    p_id: w.id,
+    p_lock: w.locked_until,
     p_state: c.state,
     p_next: c.next,
     p_attempts: c.attempts,
@@ -90,15 +96,27 @@ Deno.serve(async (req) => {
   const watches = (data ?? []) as Watch[];
   let checked = 0;
   let changes = 0;
+  const started = Date.now();
   for (const w of watches) {
+    if (Date.now() - started > RUN_BUDGET_MS) break;
     const now = new Date();
+    // Over by its own schedule: stop before spending anything (Raz 9).
+    const end = w.sched_arr_utc
+      ? Date.parse(w.sched_arr_utc) + DAY_MS
+      : w.sched_dep_utc
+        ? Date.parse(w.sched_dep_utc) + 2 * DAY_MS
+        : null;
+    if (end !== null && now.getTime() > end) {
+      await apply(w, { state: 'stopped', next: null, attempts: w.attempts });
+      continue;
+    }
     const { data: allowed } = await admin.rpc('spend_provider_units', {
       p_provider: 'aerodatabox',
       p_units: UNITS.flight,
     });
     if (allowed !== true) {
       // The cap: paused, shown on the card, tried again in an hour (AC-6א).
-      await apply(w.id, {
+      await apply(w, {
         state: 'paused',
         next: new Date(now.getTime() + PAUSED_RETRY_MS).toISOString(),
         attempts: w.attempts,
@@ -108,9 +126,18 @@ Deno.serve(async (req) => {
     if (checked > 0) await sleep(1100);
     checked += 1;
     const answer = await provider.flightsByNumber(w.flight_number, w.dep_date_local);
+    if (!answer.ok && answer.status === 429) {
+      // The provider's rate limit is ours, not the flight's: try again soon, uncounted.
+      await apply(w, {
+        state: 'active',
+        next: new Date(now.getTime() + 5 * 60_000).toISOString(),
+        attempts: w.attempts,
+      });
+      continue;
+    }
     if (!answer.ok) {
       const attempts = w.attempts + 1;
-      await apply(w.id, {
+      await apply(w, {
         state: attempts >= ERROR_TRIES ? 'failed' : 'active',
         next: backoff(w.attempts, now),
         attempts,
@@ -120,7 +147,7 @@ Deno.serve(async (req) => {
     const leg = pickLeg(answer.value, w.sched_dep_utc);
     if (!leg) {
       const attempts = w.attempts + 1;
-      await apply(w.id, {
+      await apply(w, {
         state: attempts >= NOT_FOUND_TRIES ? 'failed' : 'active',
         next: new Date(now.getTime() + 60 * 60_000).toISOString(),
         attempts,
@@ -133,7 +160,7 @@ Deno.serve(async (req) => {
     });
     const plan = planAfter(leg, now);
     changes += events.length;
-    await apply(w.id, {
+    await apply(w, {
       state: plan.state,
       next: plan.state === 'active' ? plan.next : null,
       attempts: 0,

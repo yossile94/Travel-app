@@ -681,7 +681,8 @@
     "discardTitle": "Leave without saving?",
     "discardBody": "Your changes won't be saved.",
     "discard": "Leave",
-    "keep": "Keep editing"
+    "keep": "Keep editing",
+    "trackLimit": "You can track up to 10 flights at a time. Once one of them lands, you can add more."
   },
   "airport": {
     "search": "Search airports",

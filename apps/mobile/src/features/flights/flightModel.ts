@@ -120,6 +120,17 @@ export type TrackState =
 
 const DAY = 24 * 60 * 60_000;
 
+/**
+ * The tracking as this flight may use it: a snapshot of another leg of the same
+ * number (a multi-leg flight, Raz 3) is not this flight's, so it is dropped.
+ */
+export function ownWatch(flight: Flight): FlightWatch | null {
+  const w = flight.watch;
+  const iata = w?.snapshot?.departure.iata;
+  if (!w || !iata || iata === flight.depIata) return w;
+  return { ...w, snapshot: null, checkedAt: null, events: [] };
+}
+
 /** One state for the card and the sheet (design 11). */
 export function flightTrackState(flight: Flight, now: Date): TrackState {
   const w = flight.watch;
