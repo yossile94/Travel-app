@@ -88,7 +88,7 @@ as $$
 declare
   a record;
   b record;
-  taken uuid[] := '{}';
+  taken uuid[] := array[]::uuid[];
 begin
   for a in
     select id, direction, arr_iata, arr_sched from public.flights
