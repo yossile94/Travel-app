@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(15);
 
 insert into auth.users (id, email)
 values
@@ -69,6 +69,30 @@ select is(
    where id = '20000000-0000-4000-8000-000000000072'),
   row(false, '20000000-0000-4000-8000-000000000071'::uuid)::text,
   'the answer and the leg it is about are kept together');
+-- ---------------------------------------------------------------- alert recipients (AC-4)
+insert into public.flight_watch (id, flight_number, dep_date_local, sched_dep_utc, next_check_at)
+overriding system value
+values (-71, 'TK1', '2026-12-01', '2026-12-01T06:00:00Z', null);
+update public.flights set watch_id = -71 where id = '20000000-0000-4000-8000-000000000071';
+update public.profiles set flight_alerts = true where id = '00000000-0000-4000-8000-00000000007a';
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000007a');
+select public.register_push_token('ExponentPushToken[conn7aaaaaaaa]', 'android', 'en') is null;
+select ok(
+  (select bool_and(arrmct is not null) from (
+     select (f ->> 'arrMct')::int as arrmct
+     from jsonb_array_elements(public.flights_for_trips(array['10000000-0000-4000-8000-00000000007a']::uuid[])) f) x),
+  'every flight reaches the device with its arrival minimum');
+select is(
+  (select f ->> 'arrMctDefault' from jsonb_array_elements(
+     public.flights_for_trips(array['10000000-0000-4000-8000-00000000007a']::uuid[])) f
+   where f ->> 'arrIata' = 'BKK'),
+  'true', 'a minimum that is the general one says so');
+reset role;
+select is(
+  (select row(next_flight_id, next_number, next_mct)::text
+   from public.flight_notification_targets(-71, 0, 10)),
+  row('20000000-0000-4000-8000-000000000072'::uuid, 'TK2', 75)::text,
+  'an alert''s recipient gets the next leg, as typed, with the minimum where they meet');
 delete from public.flights where id = '20000000-0000-4000-8000-000000000071';
 select is(
   (select same_booking_prev from public.flights where id = '20000000-0000-4000-8000-000000000072'),

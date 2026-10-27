@@ -185,12 +185,14 @@ export async function sendAlerts(
   let sent = 0;
   let messages = 0;
   const dead: number[] = [];
+  /** Connection alerts sent this run, by device and next leg (Raz sprint 7 design 6). */
+  const seen = new Set<string>();
   const left = [...byWatch];
   try {
     while (left.length > 0) {
       if (deps.now().getTime() - started > RUN_BUDGET_MS || messages >= MAX_MESSAGES) break;
       const [watchId, list] = left.shift()!;
-      sent += await sendWatch(deps, list, watchId, dead, (n) => (messages += n));
+      sent += await sendWatch(deps, list, watchId, dead, (n) => (messages += n), seen);
     }
   } finally {
     // Whatever stopped the run, the rest goes back and dead devices go (Dudi re-review 1).
@@ -207,6 +209,7 @@ async function sendWatch(
   watchId: number,
   dead: number[],
   count: (n: number) => void,
+  seen: Set<string>,
 ): Promise<number> {
   const { db } = deps;
   const receipts: { ticket: string; tokenId: number }[] = [];
@@ -216,7 +219,7 @@ async function sendWatch(
   try {
     for (;;) {
       const page = await db.targets(watchId, after, TARGETS_PAGE);
-      const out = buildMessages(list, page);
+      const out = buildMessages(list, page, seen);
       count(out.length);
       for (let i = 0; i < out.length && !failed; i += PUSH_BATCH * PARALLEL) {
         const batches: (typeof out)[] = [];

@@ -3,7 +3,7 @@
  * never stored. The same rule runs in the database for the at-risk alert;
  * both are tested against supabase/tests/fixtures/connection_cases.json.
  */
-import { liveTime, type Flight } from './flightModel';
+import { flightTrackState, liveTime, ownWatch, type Flight } from './flightModel';
 
 /** What the rule reads of a flight. */
 export type Leg = Pick<
@@ -19,10 +19,8 @@ export interface Connection {
 }
 
 const DAY_MS = 24 * 60 * 60_000;
-/** The minimum connection time where the airport has none (sprint 7 AC-2; the server's default). */
-export const DEFAULT_MCT_MINUTES = 60;
-/** "Short" up to the minimum and 30 minutes more (AC-2). */
-const SHORT_MARGIN_MINUTES = 30;
+/** "Short" up to the minimum and 30 minutes more (AC-2). The minimum itself comes from the server. */
+export const SHORT_MARGIN_MINUTES = 30;
 
 const byTimeThenId = (ta: number, tb: number, a: string, b: string) =>
   ta - tb || (a < b ? -1 : a > b ? 1 : 0);
@@ -58,33 +56,72 @@ export function connections(flights: Leg[]): Connection[] {
   return out;
 }
 
-export type LayoverStatus = 'enough' | 'short' | 'risky' | 'missed' | 'void';
+/**
+ * Design 2.1: the card's items in departure order; a route (two legs or more)
+ * takes the place of its first leg, its legs in a row.
+ */
+export type CardItem =
+  { kind: 'flight'; flight: Flight } | { kind: 'route'; legs: Flight[]; links: Connection[] };
 
-/** The time on the ground, live where tracked, else as scheduled (AC-2). */
-export function layoverMinutes(prev: Flight, next: Flight): number | null {
-  const landed = liveTime(prev.watch?.snapshot?.arrival) ?? prev.arrSched;
-  const leaves = liveTime(next.watch?.snapshot?.departure) ?? next.depSched;
-  if (!landed || !leaves) return null;
-  return Math.round((Date.parse(leaves) - Date.parse(landed)) / 60_000);
+export function routes(sorted: Flight[]): CardItem[] {
+  const links = connections(sorted);
+  const nextOf = new Map(links.map((c) => [c.prevId, c]));
+  const hasPrev = new Set(links.map((c) => c.nextId));
+  const byId = new Map(sorted.map((f) => [f.id, f]));
+  const out: CardItem[] = [];
+  for (const f of sorted) {
+    if (hasPrev.has(f.id)) continue;
+    if (!nextOf.has(f.id)) {
+      out.push({ kind: 'flight', flight: f });
+      continue;
+    }
+    const legs = [f];
+    const chain: Connection[] = [];
+    for (let c = nextOf.get(f.id); c; c = nextOf.get(c.nextId)) {
+      chain.push(c);
+      legs.push(byId.get(c.nextId)!);
+    }
+    out.push({ kind: 'route', legs, links: chain });
+  }
+  return out;
 }
 
-const dead = (f: Flight) => ['Canceled', 'Diverted'].includes(f.watch?.snapshot?.status ?? '');
+export type LayoverStatus = 'ok' | 'short' | 'risky' | 'missed' | 'invalid' | 'no_mct';
+
+export interface Layover {
+  /** Whole minutes on the ground, live where tracked, else as scheduled; null: no times. */
+  minutes: number | null;
+  /** The arrival airport's minimum, from the server; null in a copy from before sprint 7. */
+  mct: number | null;
+  status: LayoverStatus;
+}
+
+const gone = (f: Flight, now: Date) => {
+  const s = flightTrackState(f, now);
+  return s === 'cancelled' || s === 'diverted';
+};
 
 /**
- * AC-2: risky under the minimum, short up to 30 minutes over it, else enough;
- * 0 or less: the next flight may be missed; a cancelled or diverted leg: the
- * connection no longer holds.
+ * Design 3.2: invalid when a leg is cancelled or diverted; missed at 0 or
+ * less; risky under the minimum; short up to 30 minutes over it; else ok.
+ * No minimum from the server: no status (the client sets no default).
  */
-export function layoverStatus(
-  prev: Flight,
-  next: Flight,
-  mctMinutes: number = DEFAULT_MCT_MINUTES,
-): { status: LayoverStatus; minutes: number | null } {
-  if (dead(prev) || dead(next)) return { status: 'void', minutes: null };
-  const minutes = layoverMinutes(prev, next);
-  if (minutes === null) return { status: 'enough', minutes };
-  if (minutes <= 0) return { status: 'missed', minutes };
-  if (minutes < mctMinutes) return { status: 'risky', minutes };
-  if (minutes < mctMinutes + SHORT_MARGIN_MINUTES) return { status: 'short', minutes };
-  return { status: 'enough', minutes };
+export function layover(prev: Flight, next: Flight, now: Date): Layover {
+  const mct = prev.arrMct ?? null;
+  const landed = liveTime(ownWatch(prev)?.snapshot?.arrival) ?? prev.arrSched;
+  const leaves = liveTime(ownWatch(next)?.snapshot?.departure) ?? next.depSched;
+  // floor, as the server's alert does: the two never disagree at a threshold (Raz design 4).
+  const minutes =
+    landed && leaves ? Math.floor((Date.parse(leaves) - Date.parse(landed)) / 60_000) : null;
+  if (gone(prev, now) || gone(next, now)) return { minutes, mct, status: 'invalid' };
+  if (minutes !== null && minutes <= 0) return { minutes, mct, status: 'missed' };
+  if (minutes === null || mct === null) return { minutes, mct, status: 'no_mct' };
+  if (minutes < mct) return { minutes, mct, status: 'risky' };
+  if (minutes < mct + SHORT_MARGIN_MINUTES) return { minutes, mct, status: 'short' };
+  return { minutes, mct, status: 'ok' };
+}
+
+/** AC-3: the answer holds only while it is about the leg now before (design 3.6). */
+export function sameBooking(next: Flight, prevId: string): boolean | null {
+  return next.sameBookingPrev === prevId ? (next.sameBooking ?? null) : null;
 }
