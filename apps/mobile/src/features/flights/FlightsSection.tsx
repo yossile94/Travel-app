@@ -6,9 +6,10 @@
  * added, the return-flight prompt. Offline it reads from the device copy and
  * every write is blocked (sprint 4 pattern).
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  AccessibilityInfo,
   Alert,
   AppState,
   I18nManager,
@@ -26,6 +27,7 @@ import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
 import { NextIcon, NoEntryIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import { useDestination } from '@/features/destination/destinationData';
 import { isolateLtr, isolateOwn } from '@/features/globe/BoardingPassCard';
 import { millisecondsToNextMinute } from '@/features/globe/localTime';
 import { useReduceMotion } from '@/features/globe/useReduceMotion';
@@ -48,6 +50,8 @@ import {
   type TrackState,
 } from './flightModel';
 import { airportTitle, loadAirports, type Airport } from './airportsData';
+import { LayoverRow, RouteHeader, SameBookingSheet, waitA11y } from './ConnectionParts';
+import { layover, routes } from './connections';
 import { deleteFlight } from './flightsApi';
 import { FlightScreen, type FlightScreenTrip } from './FlightScreen';
 import { refreshTripFlights, useTripFlights } from './flightsStore';
@@ -213,11 +217,14 @@ function FlightRow({
   now,
   colorScheme,
   onOpen,
+  leg = null,
 }: {
   flight: Flight;
   now: Date;
   colorScheme: ColorScheme;
   onOpen: () => void;
+  /** A leg of a route (sprint 7 design 2.3). */
+  leg?: { i: number; n: number } | null;
 }) {
   const { t } = useTranslation();
   const p = colors[colorScheme];
@@ -252,17 +259,19 @@ function FlightRow({
         ? `${t('flight.estimatedA11y', { time: s.local })}, ${t('flight.scheduledA11y', { time: s.scheduled })}`
         : s.local
       : t('flight.noDataA11y');
-  const label = t('flight.rowA11y', {
-    number: spellCode(flight.number),
-    direction: t(`flight.dir.${flight.direction}`),
-    status: chips.length ? `, ${chips.map((c) => t(`flight.status.${c}`)).join(', ')}` : '',
-    origin: spellCode(flight.depIata),
-    dep: `${formatDate(flight.depDateLocal, t)} ${timeA11y(dep)}${dep.israel ? `, ${t('flight.israelA11y', { time: dep.israel })}` : ''}`,
-    destination: flight.arrIata ? spellCode(flight.arrIata) : t('flight.noDataA11y'),
-    arr: `${timeA11y(arr)}${offset === 1 ? `, ${t('flight.dayAfter')}` : offset === 2 ? `, ${t('flight.twoDaysAfter')}` : offset === -1 ? `, ${t('flight.dayBefore')}` : ''}${arr.israel ? `, ${t('flight.israelA11y', { time: arr.israel })}` : ''}`,
-    gateLine: gateLine.length ? `${gateLine.join(', ')}. ` : '',
-    tracking: trackLine(flight, state, now, t, true),
-  });
+  const label =
+    (leg ? `${t('route.legA11y', leg)}, ` : '') +
+    t('flight.rowA11y', {
+      number: spellCode(flight.number),
+      direction: t(`flight.dir.${flight.direction}`),
+      status: chips.length ? `, ${chips.map((c) => t(`flight.status.${c}`)).join(', ')}` : '',
+      origin: spellCode(flight.depIata),
+      dep: `${formatDate(flight.depDateLocal, t)} ${timeA11y(dep)}${dep.israel ? `, ${t('flight.israelA11y', { time: dep.israel })}` : ''}`,
+      destination: flight.arrIata ? spellCode(flight.arrIata) : t('flight.noDataA11y'),
+      arr: `${timeA11y(arr)}${offset === 1 ? `, ${t('flight.dayAfter')}` : offset === 2 ? `, ${t('flight.twoDaysAfter')}` : offset === -1 ? `, ${t('flight.dayBefore')}` : ''}${arr.israel ? `, ${t('flight.israelA11y', { time: arr.israel })}` : ''}`,
+      gateLine: gateLine.length ? `${gateLine.join(', ')}. ` : '',
+      tracking: trackLine(flight, state, now, t, true),
+    });
 
   return (
     <Pressable
@@ -281,10 +290,12 @@ function FlightRow({
     >
       <View style={styles.rowTop} importantForAccessibility="no-hide-descendants">
         <Text style={[styles.caption, { color: p.textSecondary }]}>
-          {t('flight.rowDate', {
-            direction: t(`flight.dir.${flight.direction}`),
-            date: isolateLtr(dayMonth(flight.depDateLocal)),
-          })}
+          {leg
+            ? t('route.leg', { i: leg.i, date: isolateLtr(dayMonth(flight.depDateLocal)) })
+            : t('flight.rowDate', {
+                direction: t(`flight.dir.${flight.direction}`),
+                date: isolateLtr(dayMonth(flight.depDateLocal)),
+              })}
         </Text>
         <View style={styles.chips}>
           {chips.map((c) => (
@@ -484,6 +495,60 @@ export function FlightsSection({
   }
   const open = flights.find((f) => f.id === sheet) ?? null;
 
+  // Sprint 7: routes and their layovers, worked out each render (design 2.1).
+  const items = routes(flights);
+  const links = items.flatMap((i) => (i.kind === 'route' ? i.links : []));
+  const byId = new Map(flights.map((f) => [f.id, f]));
+  const destination = useDestination();
+  const [airports, setAirports] = useState<Airport[] | null>(null);
+  useEffect(() => {
+    // The transit warning needs each airport's country (design 5.1).
+    if (links.length === 0 || airports) return;
+    loadAirports()
+      .then(setAirports)
+      .catch(() => {});
+  }, [links.length, airports]);
+  const [booking, setBooking] = useState<{ prevId: string; nextId: string } | null>(null);
+  const layoverRow = (prev: Flight, next: Flight, testID: string, context = false) => (
+    <LayoverRow
+      key={`${prev.id}>${next.id}`}
+      prev={prev}
+      next={next}
+      now={now}
+      tripAdm0={trip.countryAdm0}
+      airports={airports}
+      advisories={destination.data?.advisories ?? null}
+      offline={offline}
+      context={context}
+      colorScheme={colorScheme}
+      onChange={() => setBooking({ prevId: prev.id, nextId: next.id })}
+      onBlocked={() => setBlocked(true)}
+      testID={testID}
+    />
+  );
+  // Design 11.2: a layover that got worse while shown is announced once.
+  const shownStatus = useRef(new Map<string, string>());
+  useEffect(() => {
+    for (const c of links) {
+      const prev = byId.get(c.prevId);
+      const next = byId.get(c.nextId);
+      if (!prev || !next) continue;
+      const l = layover(prev, next, now);
+      const before = shownStatus.current.get(c.nextId);
+      shownStatus.current.set(c.nextId, l.status);
+      if (!before || !['ok', 'short'].includes(before)) continue;
+      const apt = spellCode(c.airport);
+      if (l.status === 'risky' && l.minutes !== null) {
+        AccessibilityInfo.announceForAccessibility(
+          t('layover.announce.risky', { apt, time: waitA11y(l.minutes, t) }),
+        );
+      } else if (l.status === 'missed' || l.status === 'invalid') {
+        AccessibilityInfo.announceForAccessibility(t(`layover.announce.${l.status}`, { apt }));
+      }
+    }
+  });
+  const openLinks = open ? links.filter((c) => c.prevId === open.id || c.nextId === open.id) : [];
+
   // Sprint 6 design 2.3: the explainer waits for the return prompt and the
   // return flight's screen, then comes 400 ms after the last one closes.
   const [savedFlight, setSavedFlight] = useState<string | null>(null);
@@ -522,15 +587,38 @@ export function FlightsSection({
           testID="card-flights-skeleton"
         />
       ) : null}
-      {flights.map((f) => (
-        <FlightRow
-          key={f.id}
-          flight={f}
-          now={now}
-          colorScheme={colorScheme}
-          onOpen={() => setSheet(f.id)}
-        />
-      ))}
+      {items.map((item) =>
+        item.kind === 'flight' ? (
+          <FlightRow
+            key={item.flight.id}
+            flight={item.flight}
+            now={now}
+            colorScheme={colorScheme}
+            onOpen={() => setSheet(item.flight.id)}
+          />
+        ) : (
+          <View key={item.legs[0]!.id} testID={`card-route-${item.legs[0]!.id}`}>
+            <RouteHeader
+              legs={item.legs}
+              direction={item.legs[0]!.direction}
+              colorScheme={colorScheme}
+              testID={`card-route-${item.legs[0]!.id}-header`}
+            />
+            {item.legs.map((f, i) => (
+              <View key={f.id}>
+                {i > 0 ? layoverRow(item.legs[i - 1]!, f, `card-layover-${f.id}`) : null}
+                <FlightRow
+                  flight={f}
+                  now={now}
+                  colorScheme={colorScheme}
+                  onOpen={() => setSheet(f.id)}
+                  leg={{ i: i + 1, n: item.legs.length }}
+                />
+              </View>
+            ))}
+          </View>
+        ),
+      )}
       {data.status === 'error' ? (
         <View style={styles.errorRow}>
           <Text
@@ -629,6 +717,41 @@ export function FlightsSection({
           onToast(t('flight.deleted'));
         }}
         onRefresh={() => void refreshTripFlights(trip.id)}
+        connection={
+          openLinks.length > 0 ? (
+            <View style={styles.gap8}>
+              <Text style={[styles.caption, { color: p.textSecondary }]} accessibilityRole="header">
+                {t('layover.sheetTitle')}
+              </Text>
+              {openLinks.map((c) =>
+                layoverRow(
+                  byId.get(c.prevId)!,
+                  byId.get(c.nextId)!,
+                  `flight-sheet-layover-${c.nextId}`,
+                  true,
+                ),
+              )}
+            </View>
+          ) : null
+        }
+      />
+      <SameBookingSheet
+        prev={booking ? (byId.get(booking.prevId) ?? null) : null}
+        next={booking ? (byId.get(booking.nextId) ?? null) : null}
+        visible={booking !== null && byId.has(booking.prevId) && byId.has(booking.nextId)}
+        colorScheme={colorScheme}
+        reduceMotion={reduceMotion}
+        insetsBottom={insets.bottom}
+        onClose={() => setBooking(null)}
+        onSaved={() => {
+          setBooking(null);
+          void refreshTripFlights(trip.id);
+        }}
+        onGone={() => {
+          setBooking(null);
+          onToast(t('flight.gone'));
+          void refreshTripFlights(trip.id);
+        }}
       />
       <BottomSheet
         visible={returnPrompt}
@@ -709,6 +832,7 @@ function FlightSheet({
   onEdit,
   onDeleted,
   onRefresh,
+  connection = null,
 }: {
   flight: Flight | null;
   trip: FlightScreenTrip;
@@ -723,6 +847,8 @@ function FlightSheet({
   onEdit: (f: Flight) => void;
   onDeleted: () => void;
   onRefresh: () => void;
+  /** Sprint 7 design 7: the layovers of this leg, under the tracking line. */
+  connection?: ReactNode;
 }) {
   const { t } = useTranslation();
   const p = colors[colorScheme];
@@ -869,6 +995,7 @@ function FlightSheet({
           >
             {trackLine(f, state, now, t)}
           </Text>
+          {connection}
           {sideBlock('dep')}
           {sideBlock('arr')}
           {events.length > 0 ? (

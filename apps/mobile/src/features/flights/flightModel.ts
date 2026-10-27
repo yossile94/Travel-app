@@ -78,6 +78,8 @@ export interface Flight {
   sameBookingPrev?: string | null;
   /** The arrival airport's minimum connection time, in minutes (AC-2). */
   arrMct?: number | null;
+  /** That minimum is the general one, not the airport's own (design 3.5). */
+  arrMctDefault?: boolean;
   /** Null: never tracked (a past flight), or tracking over and its data deleted. */
   watch: FlightWatch | null;
 }

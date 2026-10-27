@@ -1,8 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
 import { connections, layover, routes, sameBooking, type Leg } from './connections';
 import type { Flight } from './flightModel';
+import table from '../../../../../supabase/tests/fixtures/connection_cases.json';
 
 interface Case {
   name: string;
@@ -18,12 +16,7 @@ interface Case {
 }
 
 // The one table the database's rule is tested against too (Raz, sprint 7 check 2).
-const { cases } = JSON.parse(
-  fs.readFileSync(
-    path.join(__dirname, '../../../../../supabase/tests/fixtures/connection_cases.json'),
-    'utf8',
-  ),
-) as { cases: Case[] };
+const { cases } = table as unknown as { cases: Case[] };
 
 describe('connections (sprint 7 AC-1)', () => {
   it.each(cases.map((c) => [c.name, c] as const))('%s', (_, c) => {
@@ -83,7 +76,7 @@ const watched = (status: string, departure = {}, arrival = {}, iata = 'IST') =>
       departure: { iata, ...departure },
       arrival,
     },
-  }) as Flight['watch'];
+  }) as unknown as Flight['watch'];
 
 const pair = (landed: string, leaves: string, status = 'Expected', mct: number | null = 60) => [
   flight({ id: 'a', arrSched: landed, arrMct: mct }),

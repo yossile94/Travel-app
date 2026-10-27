@@ -697,7 +697,13 @@
     "discardBody": "Your changes won't be saved.",
     "discard": "Leave",
     "keep": "Keep editing",
-    "trackLimit": "You can track up to 10 flights at a time. Once one of them lands, you can add more."
+    "trackLimit": "You can track up to 10 flights at a time. Once one of them lands, you can add more.",
+    "connectionTitle": "Connection",
+    "connectionContinues": "Continues {{prev}} ({{route}})",
+    "connectionContinuedBy": "{{next}} continues it ({{route}})",
+    "directionAuto": "Direction set from {{prev}}, which this flight continues.",
+    "directionAutoA11y": "Direction set to {{direction}}, from {{prev}}.",
+    "sameBookingFailed": "Flight saved. You can set the booking answer again from the layover line."
   },
   "airport": {
     "search": "Search airports",
@@ -755,7 +761,74 @@
     "fromNotification": "From the alert: {{title}}. {{body}}",
     "channel": {
       "name": "Flight changes",
-      "description": "When a flight you're tracking is delayed, moved earlier, changes gate, is cancelled or diverted."
+      "description": "When a flight you're tracking is delayed, moved earlier, changes gate, is cancelled or diverted, or a connection is at risk."
     }
+  },
+  "route": {
+    "header": "{{direction}} · ",
+    "a11y": "{{direction}} route: {{codes}}. {{n}} flights.",
+    "leg": "Flight {{i}} · {{date}}",
+    "legA11y": "Flight {{i}} of {{n}}"
+  },
+  "layover": {
+    "wait": "{{time}} layover at {{apt}}",
+    "minutes": "{{n}} min",
+    "missed": "You may miss your next flight",
+    "invalid": "This connection no longer works. Contact your airline.",
+    "status": {
+      "ok": "Enough time",
+      "short": "Tight",
+      "risky": "At risk"
+    },
+    "mct": "Based on a {{min}}-minute minimum connection time at {{apt}}",
+    "mctDefault": "Based on a general {{min}}-minute minimum connection time",
+    "context": "From {{prev}} to {{next}}",
+    "booking": {
+      "yes": "Same booking",
+      "no": "Separate tickets",
+      "unknown": "Not sure if both flights are on one booking.",
+      "change": "Change",
+      "changeA11y": "Change: are {{prev}} and {{next}} on one booking",
+      "changeHint": "Opens a question"
+    },
+    "separate": "If {{prev}} is late, no one has to rebook you if you miss {{next}}. You may need to collect your bags and check them in again.",
+    "a11y": {
+      "minutes": "{{n}} minutes",
+      "minuteOne": "1 minute",
+      "hourOne": "1 hour",
+      "hourTwo": "2 hours",
+      "hours": "{{n}} hours",
+      "join": "{{h}} {{m}}",
+      "where": "at {{apt}}, {{city}}",
+      "risky": "At risk, less than the {{time}} minimum connection time",
+      "connectionAt": "Connection {{where}}"
+    },
+    "announce": {
+      "risky": "Connection at {{apt}} at risk: {{time}} layover.",
+      "missed": "Connection at {{apt}} at risk: you may miss your next flight.",
+      "invalid": "The connection at {{apt}} no longer works."
+    },
+    "sheetTitle": "Connection"
+  },
+  "sameBooking": {
+    "question": "Same booking as {{other}}?",
+    "body": "When both flights are on one booking, the airline is usually responsible for getting you onward if the first one is late.",
+    "yes": "Yes, one booking",
+    "no": "No, separate tickets",
+    "unknown": "Not sure",
+    "chipYes": "Yes",
+    "chipNo": "No",
+    "chipUnknown": "Not sure",
+    "savedYes": "Saved: same booking.",
+    "savedNo": "Saved: separate tickets.",
+    "savedUnknown": "Saved: not sure.",
+    "offline": "You need a connection to save this. Try again when you're online.",
+    "error": "We couldn't save your answer. Try again."
+  },
+  "transit": {
+    "place": "{{country}} · {{apt}}",
+    "restricted": "Entry for Israelis is restricted. Transit rules may apply even if you don't leave the airport. Check the source.",
+    "banned": "Entry for Israelis is banned. Transit rules may apply even if you don't leave the airport, and you may not be allowed to transit there at all. Check the source and your airline before you fly.",
+    "sourceHint": "Opens in your browser"
   }
 }

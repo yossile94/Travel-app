@@ -126,3 +126,28 @@ export async function deleteFlight(id: string): Promise<FlightWrite> {
   }
   return data === 'gone' ? 'gone' : 'ok';
 }
+
+/**
+ * Sprint 7 AC-3: "booked with the leg before?", on the later leg; null forgets
+ * it. 15 s at most (design 4.1), then as offline.
+ */
+export async function setSameBooking(
+  flightId: string,
+  prevId: string,
+  value: boolean | null,
+): Promise<FlightWrite> {
+  if (!supabase) return 'error';
+  if (!(await online())) return 'offline';
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<'timeout'>((r) => (timer = setTimeout(() => r('timeout'), 15_000)));
+  const answer = await Promise.race([
+    supabase.rpc('set_same_booking', { p_flight_id: flightId, p_prev_id: prevId, p_value: value }),
+    late,
+  ]).finally(() => clearTimeout(timer));
+  if (answer === 'timeout') return 'offline';
+  if (answer.error) {
+    log('same booking', answer.error);
+    return 'error';
+  }
+  return answer.data === 'gone' ? 'gone' : 'ok';
+}
