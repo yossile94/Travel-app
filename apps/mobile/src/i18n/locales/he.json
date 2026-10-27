@@ -677,9 +677,9 @@
     "estimatedA11y": "משוערת {{time}}",
     "israelA11y": "{{time}} בישראל",
     "noDataA11y": "אין נתון",
-    "rowA11y": "{{number}}, {{direction}}{{status}}. מ{{origin}} {{dep}}, ל{{destination}} {{arr}}. {{gateLine}}{{tracking}}",
+    "rowA11y": "{{number}}, {{direction}}{{status}}. מ-{{origin}} {{dep}}, ל-{{destination}} {{arr}}. {{gateLine}}{{tracking}}",
     "discardTitle": "לצאת בלי לשמור?",
-    "discardBody": "השינויים לא יישמרו.",
+    "discardBody": "מה שמילאת לא יישמר.",
     "discard": "יציאה",
     "keep": "המשך עריכה",
     "trackLimit": "אפשר לעקוב אחרי עד 10 טיסות בו זמנית. אחרי שאחת מהן תנחת, אפשר יהיה להוסיף עוד."

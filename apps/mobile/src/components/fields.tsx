@@ -114,6 +114,7 @@ export function DateField({
   onPress,
   testID,
   ref,
+  icon,
 }: FieldFrame & {
   value: string | null;
   placeholder: string;
@@ -123,6 +124,8 @@ export function DateField({
   onPress: () => void;
   testID?: string;
   ref?: Ref<ViewHandle>;
+  /** In place of the calendar (a time field's clock). */
+  icon?: (color: string) => ReactNode;
 }) {
   const palette = colors[colorScheme];
   return (
@@ -155,7 +158,7 @@ export function DateField({
         >
           {value ?? placeholder}
         </Text>
-        <CalendarIcon color={palette.textSecondary} />
+        {icon ? icon(palette.textSecondary) : <CalendarIcon color={palette.textSecondary} />}
       </Pressable>
       <Below help={help} error={error} colorScheme={colorScheme} />
     </View>

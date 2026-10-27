@@ -4,7 +4,7 @@
  * before typing, a 3-letter code first. Works offline (the list ships in the
  * app); never "add as written": an airport without a time zone can't be saved.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
@@ -80,6 +80,15 @@ export function AirportPicker({
   const [airports, setAirports] = useState<Airport[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [slow, setSlow] = useState(false);
+  // autoFocus in a sliding Modal doesn't raise the Android keyboard: focus after it slid in (QA S5 #7).
+  const field = useRef<ComponentRef<typeof TextInput>>(null);
+  useEffect(() => {
+    const timer = setTimeout(
+      () => field.current?.focus(),
+      (reduceMotion ? motion.short : motion.medium) + 50,
+    );
+    return () => clearTimeout(timer);
+  }, [reduceMotion]);
 
   useEffect(() => {
     let current = true;
@@ -192,6 +201,7 @@ export function AirportPicker({
               placeholder={t('airport.placeholder')}
               placeholderTextColor={palette.textTertiary}
               accessibilityLabel={t('airport.search')}
+              ref={field}
               autoFocus
               autoCorrect={false}
               autoCapitalize="none"
@@ -305,7 +315,6 @@ const styles = StyleSheet.create({
     height: layout.touchTargetMin,
     alignItems: 'center',
     justifyContent: 'center',
-    transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }],
   },
   field: {
     flex: 1,

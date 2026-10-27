@@ -196,5 +196,8 @@ describe('FlightScreen (sprint 5 F-016, design 2–8)', () => {
     expect(screen.getByTestId('flight-pnr').props.secureTextEntry).toBe(true);
     await fireEvent.press(screen.getByTestId('flight-pnr-toggle'));
     expect(screen.getByTestId('flight-pnr').props.secureTextEntry).toBe(false);
+    // And hidden again (QA S5 #1).
+    await fireEvent.press(screen.getByTestId('flight-pnr-toggle'));
+    expect(screen.getByTestId('flight-pnr').props.secureTextEntry).toBe(true);
   });
 });

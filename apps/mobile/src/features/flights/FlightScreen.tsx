@@ -26,7 +26,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Button, DateField, TextField } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
-import { NextIcon, TrashIcon } from '@/components/icons';
+import { BackIcon, ClockIcon, NextIcon, TrashIcon } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { isolateLtr, isolateOwn } from '@/features/globe/BoardingPassCard';
 import { formatDate, fromPgDate, toPgDate, todayPg, addDays } from '@/features/trips/tripDates';
@@ -518,6 +518,7 @@ export function FlightScreen({
               help={timeHelp(airport)}
               disabled={locked || !airport}
               onPress={() => pickTime(timeKey)}
+              icon={(color) => <ClockIcon color={color} />}
               colorScheme={colorScheme}
               testID={`flight-${side}-time`}
             />
@@ -543,15 +544,7 @@ export function FlightScreen({
         style={styles.close}
         testID="flight-screen-back"
       >
-        <Svg width={24} height={24} viewBox="0 0 24 24" style={styles.flip}>
-          <Path
-            d="M15 5l-7 7 7 7"
-            stroke={palette.textPrimary}
-            strokeWidth={2.2}
-            fill="none"
-            strokeLinecap="round"
-          />
-        </Svg>
+        <BackIcon color={palette.textPrimary} />
       </Pressable>
       <View style={styles.grow}>
         <Text
@@ -826,6 +819,9 @@ export function FlightScreen({
             label={t('flight.pnr')}
             value={values.pnr}
             onChangeText={(text) => update({ pnr: typingCode(text, 8) })}
+            // Android doesn't restore the password type when it flips on a live
+            // field with autoCapitalize: a new field each way (QA S5 #1).
+            key={pnrShown ? 'pnr-shown' : 'pnr-hidden'}
             secureTextEntry={!pnrShown}
             autoCapitalize="characters"
             autoCorrect={false}
@@ -1014,7 +1010,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  flip: { transform: [{ scaleX: 1 }] },
   grow: { flex: 1 },
   content: { padding: 16, gap: 20 },
   gap8: { gap: 8 },

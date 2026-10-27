@@ -26,7 +26,7 @@ import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
 import { NextIcon, NoEntryIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/icons';
-import { isolateLtr } from '@/features/globe/BoardingPassCard';
+import { isolateLtr, isolateOwn } from '@/features/globe/BoardingPassCard';
 import { millisecondsToNextMinute } from '@/features/globe/localTime';
 import { useReduceMotion } from '@/features/globe/useReduceMotion';
 import { cachedWhen } from '@/features/trips/tripsCache';
@@ -47,6 +47,7 @@ import {
   type FlightEvent,
   type TrackState,
 } from './flightModel';
+import { airportTitle, loadAirports, type Airport } from './airportsData';
 import { deleteFlight } from './flightsApi';
 import { FlightScreen, type FlightScreenTrip } from './FlightScreen';
 import { refreshTripFlights, useTripFlights } from './flightsStore';
@@ -55,6 +56,9 @@ import { defaultDirection } from './flightFormRules';
 
 const CREDIT_URL = 'https://aerodatabox.com';
 const PNR_MASK = '••••••';
+/** Left-to-right isolate marks, written as escapes (no invisible characters in source). */
+const LRI = '⁦';
+const PDI = '⁩';
 const PNR_AUTO_HIDE_MS = 30_000;
 
 /** "עודכן לפני 4 דק'" (design 9.5), from the provider's last check. */
@@ -184,7 +188,8 @@ function Plane({ color }: { color: string }) {
       width={16}
       height={16}
       viewBox="0 0 24 24"
-      style={{ transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }] }}
+      // The path points to the start side: it flies start → end, origin → destination (QA S5 #3).
+      style={{ transform: [{ scaleX: I18nManager.isRTL ? 1 : -1 }] }}
     >
       <Path d="M2 13l8-1 4-8h2l-2 8 6 1 2-3h2l-1 4 1 4h-2l-2-3-6 1 2 8h-2l-4-8-8-1z" fill={color} />
     </Svg>
@@ -341,13 +346,15 @@ function FlightRow({
             ) : null}
           </View>
           <View style={[styles.timeCol, styles.end]}>
+            {/* One left-to-right run: the schedule, the time, then "+1" after it (QA S5 #4). */}
             <Text>
+              {LRI}
               {arr.scheduled ? (
                 <Text
                   style={[styles.footnote, styles.struck, { color: p.textSecondary }]}
                   testID={`card-flight-${id}-arr-scheduled`}
                 >
-                  {`${isolateLtr(arr.scheduled)}  `}
+                  {`${arr.scheduled}  `}
                 </Text>
               ) : null}
               <Text
@@ -357,16 +364,17 @@ function FlightRow({
                 ]}
                 testID={`card-flight-${id}-arr-time`}
               >
-                {isolateLtr(arr.local ?? '—')}
+                {arr.local ?? '—'}
               </Text>
               {offsetText ? (
                 <Text
                   style={[styles.caption, { color: p.textSecondary }]}
                   testID={`card-flight-${id}-day-offset`}
                 >
-                  {isolateLtr(` ${offsetText}`)}
+                  {` ${offsetText}`}
                 </Text>
               ) : null}
+              {PDI}
             </Text>
             {israel(arr) ? (
               <Text
@@ -393,9 +401,7 @@ function FlightRow({
           >
             {tracking}
           </Text>
-          <View style={I18nManager.isRTL ? styles.flip : undefined}>
-            <NextIcon color={p.textTertiary} size={16} />
-          </View>
+          <NextIcon color={p.textTertiary} size={16} />
         </View>
       </View>
     </Pressable>
@@ -416,7 +422,11 @@ function Credit({ colorScheme, testID }: { colorScheme: ColorScheme; testID: str
   );
 }
 
-const hasProviderData = (flights: Flight[]) => flights.some((f) => f.watch?.snapshot);
+/**
+ * A tracked flight's data comes from AeroDataBox (filled by search, or checked
+ * since): the credit shows (AC-7א, QA S5 #2).
+ */
+const hasProviderData = (flights: Flight[]) => flights.some((f) => f.watch !== null);
 
 export function FlightsSection({
   trip,
@@ -677,6 +687,19 @@ function FlightSheet({
   const [shown, setShown] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { i18n } = useTranslation();
+  // Airport names for the sheet's sides (design 10.1, QA S5 #5): the bundled list, loaded on open.
+  const [airports, setAirports] = useState<Airport[] | null>(null);
+  useEffect(() => {
+    if (!flight || airports) return;
+    loadAirports()
+      .then(setAirports)
+      .catch(() => {});
+  }, [flight, airports]);
+  const airportName = (iata: string | null) => {
+    const a = iata ? airports?.find((x) => x.iata === iata) : undefined;
+    return a ? `${airportTitle(a, i18n.language)} · ${iata}` : (iata ?? '—');
+  };
 
   // The booking code hides again after 30 s, on close and in the background (design 7.2).
   useEffect(() => {
@@ -740,7 +763,7 @@ function FlightSheet({
         <Text style={[styles.caption, { color: p.textSecondary }]} accessibilityRole="header">
           {t(side === 'dep' ? 'flight.departure' : 'flight.arrival')}
         </Text>
-        <Text style={[styles.body, { color: p.textPrimary }]}>{isolateLtr(iata ?? '—')}</Text>
+        <Text style={[styles.body, { color: p.textPrimary }]}>{isolateOwn(airportName(iata))}</Text>
         <Text style={[styles.numeric, { color: s.changed ? p.textAlert : p.textPrimary }]}>
           {isolateLtr(`${date ? `${dayMonth(date)}.${date.slice(0, 4)} · ` : ''}${s.local ?? '—'}`)}
           {s.scheduled ? (
@@ -870,9 +893,7 @@ function FlightSheet({
               ) : null}
             </View>
           ) : null}
-          {f.watch?.snapshot ? (
-            <Credit colorScheme={colorScheme} testID="flight-sheet-credit" />
-          ) : null}
+          {f.watch ? <Credit colorScheme={colorScheme} testID="flight-sheet-credit" /> : null}
           {blocked ? (
             <InlineNotice
               text={t('flights.readOnly')}
@@ -943,7 +964,6 @@ const styles = StyleSheet.create({
   timeCol: { flexShrink: 1 },
   end: { alignItems: 'flex-end' },
   trackRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  flip: { transform: [{ scaleX: -1 }] },
   grow: { flex: 1 },
   errorRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   skeleton: { height: 120, borderRadius: radius.md },

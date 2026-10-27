@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { NextIcon, PlusIcon } from '@/components/icons';
 import { isolateLtr } from '@/features/globe/BoardingPassCard';
@@ -103,9 +103,7 @@ export function TripFormFlights({
                   )}
                 </Text>
               </View>
-              <View style={I18nManager.isRTL ? styles.flip : undefined}>
-                <NextIcon color={p.textTertiary} size={16} />
-              </View>
+              <NextIcon color={p.textTertiary} size={16} />
             </Pressable>
           );
         })}
@@ -180,7 +178,6 @@ const styles = StyleSheet.create({
   },
   limit: { padding: 14 },
   grow: { flex: 1 },
-  flip: { transform: [{ scaleX: -1 }] },
   caption: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, textAlign: 'left' },
   body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 24, textAlign: 'left' },
   bodyStrong: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 22 },
