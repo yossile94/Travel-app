@@ -28,7 +28,7 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
 | push_tokens | user_id, token, platform | בעלים בלבד |
 | admin_audit_log | actor_id, action, entity, entity_id, diff, created_at | Insert בלבד; קריאה לאדמין |
 
-**תוספות לטבלאות (פיצ'רים 5.8, 5.9 ופרק 12):** טבלה חדשה exchange_rates (currency, rate_to_ils, rate_to_usd, source, fetched_at) – קריאה לכולם, כתיבה ל-Service role בלבד. בטבלת countries נוספים השדות timezones[], default_timezone, currency_code ו-region_color (גוון היעד בעיצוב), וכן entry_status ושדות nsc_level, nsc_updated_at ו-nsc_source_url לאזהרות מסע (5.10). בטבלת flights נוספים direction (out/return/internal), route_id, leg_order ו-same_booking (לקונקשנים, 5.3). טבלאות חדשות: itinerary_items (trip_id, day_date, time, title, place_ref, source manual/auto, sort_order) – RLS דרך הבעלות על trip; ו-min_connection_times לשדות תעופה – קריאה לכולם, כתיבה לאדמין. תאריך תפוגת הדרכון לא נשמר בשרת (6.4).
+**תוספות לטבלאות (פיצ'רים 5.8, 5.9 ופרק 12):** טבלה חדשה exchange_rates (currency, rate_to_ils, rate_to_usd, source, fetched_at) – קריאה לכולם, כתיבה ל-Service role בלבד. בטבלת countries נוספים השדות timezones[], default_timezone, currency_code ו-region_color (גוון היעד בעיצוב), וכן entry_status ושדות nsc_level, nsc_updated_at ו-nsc_source_url לאזהרות מסע (5.10). בטבלת flights נוספים direction (out/return/internal), same_booking ו-same_booking_prev (לקונקשנים, 5.3; המסלול מוסק, בלי route_id ו-leg_order, ADR-012). טבלאות חדשות: itinerary_items (trip_id, day_date, time, title, place_ref, source manual/auto, sort_order) – RLS דרך הבעלות על trip; ו-min_connection_times לשדות תעופה (iata, minutes, source_url, verified_at) – קריאה לכולם, כתיבה ל-service role עד האדמין (ספרינט 8). תאריך תפוגת הדרכון לא נשמר בשרת (6.4).
 
 **דגשים:**
 
