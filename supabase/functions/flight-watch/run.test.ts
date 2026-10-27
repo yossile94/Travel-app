@@ -4,7 +4,7 @@ import type { FlightProvider, FlightSnapshot, MovementTimes } from '../_shared/a
 import {
   buildMessages,
   leadEvent,
-  messageBody,
+  buildContent,
   type ChangeEvent,
   type PushMessage,
   type Target,
@@ -54,6 +54,10 @@ const target = (over: Partial<Target> = {}): Target => ({
   flight_number: 'LY81',
   dep_tz: 'Asia/Jerusalem',
   arr_tz: 'Asia/Bangkok',
+  flight_number_input: 'LY81',
+  dep_iata: 'TLV',
+  arr_iata: 'BKK',
+  dep_date_local: '2026-11-01',
   token_id: 10,
   token: 'ExponentPushToken[abcdefghijkl]',
   locale: 'he',
@@ -222,58 +226,141 @@ Deno.test('a failed send is retried by the next run after the claim lapses', asy
   assertEquals(w.sent.length, 1);
 });
 
-Deno.test('one alert per flight per check: the lead change speaks (Raz 2)', () => {
-  const events: ChangeEvent[] = [
+Deno.test(
+  'one alert per flight per check: the lead change speaks, with "more changes" (Raz 2)',
+  () => {
+    const events: ChangeEvent[] = [
+      { id: 1, watch_id: 1, field: 'dep_gate', old_value: 'B4', new_value: 'C2' },
+      {
+        id: 2,
+        watch_id: 1,
+        field: 'dep_time',
+        old_value: DEP,
+        new_value: '2026-11-01T21:30:00.000Z',
+      },
+    ];
+    assertEquals(leadEvent(events).field, 'dep_time');
+    const out = buildMessages(events, [
+      target(),
+      target({ token_id: 11, token: 'ExponentPushToken[mnopqrstuvwx]', locale: 'en' }),
+    ]);
+    assertEquals(out.length, 2);
+    assertEquals(out[0]!.message.title, '\u200FLY81 נדחתה');
+    assertEquals(
+      out[0]!.message.body,
+      '\u200Fהמראה חדשה: 23:30, שעון TLV. במקום 22:00. יש עוד שינויים בטיסה.',
+    );
+    assertEquals(out[1]!.message.title, 'LY81 delayed');
+    assertEquals(
+      out[1]!.message.body,
+      'New departure: 23:30, TLV time. Was 22:00. There are more changes.',
+    );
+    assertEquals(out[0]!.message.data, { v: 1, type: 'flight_change', flightId: 'f1' });
+    assertEquals(out[0]!.message.channelId, 'flight-changes');
+  },
+);
+
+Deno.test('alert texts (design 3.2): another day, cancelled, a first gate, arrival earlier', () => {
+  const t = target();
+  const late = buildContent(
+    {
+      id: 1,
+      watch_id: 1,
+      field: 'dep_time',
+      old_value: DEP,
+      new_value: '2026-11-01T23:10:00.000Z',
+    },
+    t,
+    false,
+  );
+  assertEquals(late.body, '\u200Fהמראה חדשה: 01:10 ב-2.11, שעון TLV. במקום 22:00.');
+  const cancelled = buildContent(
+    { id: 1, watch_id: 1, field: 'status', old_value: null, new_value: 'Canceled' },
+    t,
+    true,
+  );
+  assertEquals(cancelled.title, '\u200FLY81 בוטלה');
+  assertEquals(cancelled.body, '\u200Fהטיסה מ-TLV ל-BKK ב-1.11 בוטלה. כדאי לבדוק מול חברת התעופה.');
+  const gate = buildContent(
+    { id: 1, watch_id: 1, field: 'dep_gate', old_value: null, new_value: 'C2' },
+    target({ locale: 'en' }),
+    false,
+  );
+  assertEquals(gate, { title: 'LY81 gate change', body: 'Departure gate: C2.' });
+  const arr = buildContent(
     {
       id: 1,
       watch_id: 1,
       field: 'arr_time',
       old_value: ARR,
-      new_value: '2026-11-02T07:30:00.000Z',
+      new_value: '2026-11-02T05:30:00.000Z',
     },
-    {
-      id: 2,
-      watch_id: 1,
-      field: 'dep_time',
-      old_value: DEP,
-      new_value: '2026-11-01T21:30:00.000Z',
-    },
-  ];
-  assertEquals(leadEvent(events).field, 'dep_time');
-  const out = buildMessages(events, [
-    target(),
-    target({ token_id: 11, token: 'ExponentPushToken[mnopqrstuvwx]', locale: 'en' }),
-  ]);
-  assertEquals(out.length, 2);
-  assertEquals(out[0]!.message.body, 'LY81 נדחתה. המראה חדשה 23:30 (שעון מקומי)');
-  assertEquals(out[1]!.message.body, 'LY81 is delayed. New departure 23:30 local time');
-  assertEquals(out[0]!.message.data, { v: 1, type: 'flight_change', flightId: 'f1' });
-  assertEquals(out[0]!.message.channelId, 'flight-changes');
+    target({ locale: 'en' }),
+    false,
+  );
+  assertEquals(arr, {
+    title: 'LY81 arrives earlier',
+    body: 'New arrival: 12:30, BKK time. Was 13:00.',
+  });
 });
 
-Deno.test('alert texts: cancelled, gate, earlier arrival at the arrival clock', () => {
-  const t = target();
-  assertEquals(
-    messageBody({ id: 1, watch_id: 1, field: 'status', old_value: null, new_value: 'Canceled' }, t),
-    'LY81 בוטלה',
-  );
-  assertEquals(
-    messageBody({ id: 1, watch_id: 1, field: 'dep_gate', old_value: 'B4', new_value: 'C2' }, t),
-    'LY81: שער ההמראה הוחלף ל-C2',
-  );
-  assertEquals(
-    messageBody(
+Deno.test('a delay that also moves the arrival is one change, not "more changes" (Raz 3)', () => {
+  const out = buildMessages(
+    [
       {
         id: 1,
         watch_id: 1,
         field: 'arr_time',
         old_value: ARR,
-        new_value: '2026-11-02T05:30:00.000Z',
+        new_value: '2026-11-02T07:30:00.000Z',
       },
-      t,
-    ),
-    'LY81: הנחיתה הוקדמה ל-12:30 (שעון מקומי)',
+      {
+        id: 2,
+        watch_id: 1,
+        field: 'dep_time',
+        old_value: DEP,
+        new_value: '2026-11-01T21:30:00.000Z',
+      },
+    ],
+    [target({ locale: 'en', flight_number_input: 'ly 81' })],
   );
+  assertEquals(out[0]!.message.title, 'ly 81 delayed');
+  assertEquals(out[0]!.message.body, 'New departure: 23:30, TLV time. Was 22:00.');
+});
+
+Deno.test('diverted with no known destination still reads whole (Raz 2)', () => {
+  const e: ChangeEvent = {
+    id: 1,
+    watch_id: 1,
+    field: 'status',
+    old_value: null,
+    new_value: 'Diverted',
+  };
+  assertEquals(
+    buildContent(e, target({ locale: 'en' }), false).body,
+    "It won't land at BKK as planned.",
+  );
+  assertEquals(
+    buildContent(e, target({ locale: 'en', arr_iata: null }), false).body,
+    "It won't land at its destination as planned.",
+  );
+});
+
+Deno.test('no booking code, trip name or seat ever reaches an alert', () => {
+  const out = buildMessages(
+    [
+      {
+        id: 1,
+        watch_id: 1,
+        field: 'dep_time',
+        old_value: DEP,
+        new_value: '2026-11-01T21:30:00.000Z',
+      },
+    ],
+    [{ ...target(), pnr: 'ABC123', seat: '34A', trip: 'תאילנד' } as unknown as Target],
+  );
+  const text = JSON.stringify(out);
+  for (const secret of ['ABC123', '34A', 'תאילנד']) assert(!text.includes(secret), secret);
 });
 
 Deno.test('receipts: a dead device is dropped', async () => {

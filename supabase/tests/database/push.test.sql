@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(20);
 
 insert into auth.users (id, email)
 values
@@ -57,11 +57,11 @@ reset role;
 
 -- ---------------------------------------------------------------- outbox
 insert into public.flight_watch (flight_number, dep_date_local, sched_dep_utc, next_check_at)
-values ('LY81', current_date + 1, now() + interval '5 hours', now());
+values ('XQ981', current_date + 1, now() + interval '5 hours', now());
 insert into public.flight_events (watch_id, field, old_value, new_value, detected_at)
-select id, 'dep_time', 'a', 'b', now() from public.flight_watch where flight_number = 'LY81';
+select id, 'dep_time', 'a', 'b', now() from public.flight_watch where flight_number = 'XQ981';
 insert into public.flight_events (watch_id, field, old_value, new_value, detected_at)
-select id, 'dep_gate', 'B1', 'B2', now() - interval '45 minutes' from public.flight_watch where flight_number = 'LY81';
+select id, 'dep_gate', 'B1', 'B2', now() - interval '45 minutes' from public.flight_watch where flight_number = 'XQ981';
 select is((select count(*)::integer from public.claim_flight_notifications(10)), 1,
   'a fresh change is claimed; one older than 30 minutes is not');
 select is((select count(*)::integer from public.flight_events where notify_skipped), 1,
@@ -72,11 +72,36 @@ select public.mark_flight_notifications(array(select id from public.flight_event
 select is((select count(*)::integer from public.flight_events where notified_at is not null), 1,
   'sent changes are marked');
 
--- Targets: alerts off means none.
+-- Targets: off until the user turns alerts on (design 2); then one per device,
+-- with what the alert text needs (design 3.2).
+insert into public.trips (id, user_id, country_adm0, title, start_date, end_date)
+values ('10000000-0000-4000-8000-00000000006b', '00000000-0000-4000-8000-00000000006b', 'THA', 'T',
+  current_date, current_date + 7);
+insert into public.flights (id, trip_id, user_id, direction, flight_number_input, flight_number,
+  dep_date_local, dep_iata, dep_tz, arr_iata, arr_tz, watch_id)
+select '20000000-0000-4000-8000-00000000006b', '10000000-0000-4000-8000-00000000006b',
+  '00000000-0000-4000-8000-00000000006b', 'out', 'xq 981', 'XQ981', current_date + 1,
+  'TLV', 'Asia/Jerusalem', 'BKK', 'Asia/Bangkok', id
+from public.flight_watch where flight_number = 'XQ981';
+select is((select flight_alerts from public.profiles where id = '00000000-0000-4000-8000-00000000006b'),
+  false, 'alerts are off for a new profile');
+update public.profiles set flight_alerts = true where id = '00000000-0000-4000-8000-00000000006b';
+select is(
+  (select count(*)::integer from public.flight_notification_targets(array(select id from public.flight_watch where flight_number = 'XQ981'))),
+  4, 'alerts on: one target per device'
+);
+select is(
+  (select row(flight_number_input, dep_iata, arr_iata, dep_date_local)::text
+   from public.flight_notification_targets(array(select id from public.flight_watch where flight_number = 'XQ981')) limit 1),
+  row('xq 981', 'TLV', 'BKK', current_date + 1)::text,
+  'with the typed number, the airports and the date'
+);
+
+-- Alerts off means none.
 update public.profiles set flight_alerts = false where id = '00000000-0000-4000-8000-00000000006b';
 select is(
-  (select count(*)::integer from public.flight_notification_targets(array(select id from public.flight_watch))),
-  0, 'no targets without a flight, or with alerts off'
+  (select count(*)::integer from public.flight_notification_targets(array(select id from public.flight_watch where flight_number = 'XQ981'))),
+  0, 'no targets with alerts off'
 );
 
 -- Account deletion takes the devices.

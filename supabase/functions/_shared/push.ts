@@ -18,8 +18,13 @@ export type Target = {
   user_id: string;
   flight_id: string;
   flight_number: string;
+  /** The number as the user typed it (design 3.2). */
+  flight_number_input: string;
   dep_tz: string;
   arr_tz: string | null;
+  dep_iata: string;
+  arr_iata: string | null;
+  dep_date_local: string;
   token_id: number;
   token: string;
   locale: 'he' | 'en';
@@ -45,56 +50,159 @@ const ORDER: Record<string, number> = {
   arr_gate: 4,
 };
 
+/** A later arrival comes with almost every delay: it is the same change (Raz, design 3.1). */
+const KIND: Record<string, string> = {
+  status: 'status',
+  dep_time: 'time',
+  arr_time: 'time',
+  dep_gate: 'dep_gate',
+  arr_gate: 'arr_gate',
+};
+
+/** Whether the alert says "more changes": another kind of change than the lead's. */
+export function hasMoreChanges(events: ChangeEvent[], lead: ChangeEvent): boolean {
+  return events.some((e) => KIND[e.field] !== KIND[lead.field]);
+}
+
 export function leadEvent(events: ChangeEvent[]): ChangeEvent {
   return [...events].sort((a, b) => ORDER[a.field]! - ORDER[b.field]! || a.id - b.id)[0]!;
 }
 
-/** "01:10" at a time zone; "+1" when the date moved from the old time's. */
+/** "01:10" at a time zone, 24-hour. */
 export function clockAt(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat('en-GB', {
     timeZone,
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hourCycle: 'h23',
   }).format(new Date(iso));
 }
 
-const TEXT = {
+/** The local date "YYYY-MM-DD" at a time zone. */
+function dateAt(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone }).format(new Date(iso));
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "21.12" in Hebrew, "21 Dec" in English (design 3.2). */
+function shortDate(date: string, locale: 'he' | 'en'): string {
+  const [, m, d] = date.split('-').map(Number) as [number, number, number];
+  return locale === 'he' ? `${d}.${m}` : `${d} ${MONTHS[m - 1]}`;
+}
+
+/** Right-to-left mark: a Hebrew line that starts with "LY81" still reads right to left (design 3.1). */
+const RLM = String.fromCharCode(0x200f);
+
+type Text = {
+  delayed: string;
+  earlier: string;
+  gateTitle: string;
+  cancelledTitle: string;
+  divertedTitle: string;
+  arrLaterTitle: string;
+  arrEarlierTitle: string;
+  arrGateTitle: string;
+  newDep: (time: string, apt: string) => string;
+  newArr: (time: string, apt: string) => string;
+  was: (old: string) => string;
+  depGate: (gate: string, old: string | null) => string;
+  arrGate: (gate: string, old: string | null) => string;
+  cancelled: (from: string, to: string, date: string) => string;
+  diverted: (to: string | null) => string;
+  onDate: (time: string, date: string) => string;
+  more: string;
+};
+
+/** The wording of design 3.2, Hebrew and English. */
+const TEXT: Record<'he' | 'en', Text> = {
   he: {
-    title: (n: string) => `שינוי בטיסה ${n}`,
-    depLater: (n: string, t: string) => `${n} נדחתה. המראה חדשה ${t} (שעון מקומי)`,
-    depEarlier: (n: string, t: string) => `${n} הוקדמה. המראה חדשה ${t} (שעון מקומי)`,
-    arrLater: (n: string, t: string) => `${n}: הנחיתה נדחתה ל-${t} (שעון מקומי)`,
-    arrEarlier: (n: string, t: string) => `${n}: הנחיתה הוקדמה ל-${t} (שעון מקומי)`,
-    depGate: (n: string, g: string) => `${n}: שער ההמראה הוחלף ל-${g}`,
-    arrGate: (n: string, g: string) => `${n}: שער הנחיתה הוחלף ל-${g}`,
-    cancelled: (n: string) => `${n} בוטלה`,
-    diverted: (n: string) => `${n} הוסטה`,
+    delayed: 'נדחתה',
+    earlier: 'הוקדמה',
+    gateTitle: ': השער הוחלף',
+    cancelledTitle: 'בוטלה',
+    divertedTitle: 'הוסטה',
+    arrLaterTitle: ': הנחיתה נדחתה',
+    arrEarlierTitle: ': הנחיתה הוקדמה',
+    arrGateTitle: ': שער הנחיתה הוחלף',
+    newDep: (time, apt) => `המראה חדשה: ${time}, שעון ${apt}.`,
+    newArr: (time, apt) => `נחיתה צפויה: ${time}, שעון ${apt}.`,
+    was: (old) => ` במקום ${old}.`,
+    depGate: (gate, old) =>
+      old ? `שער ההמראה החדש: ${gate}. במקום ${old}.` : `שער ההמראה: ${gate}.`,
+    arrGate: (gate, old) =>
+      old ? `שער הנחיתה החדש: ${gate}. במקום ${old}.` : `שער הנחיתה: ${gate}.`,
+    cancelled: (from, to, date) =>
+      `הטיסה מ-${from} ל-${to} ב-${date} בוטלה. כדאי לבדוק מול חברת התעופה.`,
+    diverted: (to) => (to ? `הטיסה לא תנחת ב-${to} כמתוכנן.` : 'הטיסה לא תנחת ביעד כמתוכנן.'),
+    onDate: (time, date) => `${time} ב-${date}`,
+    more: ' יש עוד שינויים בטיסה.',
   },
   en: {
-    title: (n: string) => `Flight ${n} changed`,
-    depLater: (n: string, t: string) => `${n} is delayed. New departure ${t} local time`,
-    depEarlier: (n: string, t: string) => `${n} leaves earlier. New departure ${t} local time`,
-    arrLater: (n: string, t: string) => `${n} now lands at ${t} local time`,
-    arrEarlier: (n: string, t: string) => `${n} now lands earlier, at ${t} local time`,
-    depGate: (n: string, g: string) => `${n}: departure gate changed to ${g}`,
-    arrGate: (n: string, g: string) => `${n}: arrival gate changed to ${g}`,
-    cancelled: (n: string) => `${n} is cancelled`,
-    diverted: (n: string) => `${n} is diverted`,
+    delayed: 'delayed',
+    earlier: 'moved earlier',
+    gateTitle: ' gate change',
+    cancelledTitle: 'cancelled',
+    divertedTitle: 'diverted',
+    arrLaterTitle: ' arrives later',
+    arrEarlierTitle: ' arrives earlier',
+    arrGateTitle: ' arrival gate change',
+    newDep: (time, apt) => `New departure: ${time}, ${apt} time.`,
+    newArr: (time, apt) => `New arrival: ${time}, ${apt} time.`,
+    was: (old) => ` Was ${old}.`,
+    depGate: (gate, old) =>
+      old ? `New departure gate: ${gate}. Was ${old}.` : `Departure gate: ${gate}.`,
+    arrGate: (gate, old) =>
+      old ? `New arrival gate: ${gate}. Was ${old}.` : `Arrival gate: ${gate}.`,
+    cancelled: (from, to, date) =>
+      `Your flight from ${from} to ${to} on ${date} is cancelled. Check with the airline.`,
+    diverted: (to) =>
+      to ? `It won't land at ${to} as planned.` : "It won't land at its destination as planned.",
+    onDate: (time, date) => `${time} on ${date}`,
+    more: ' There are more changes.',
   },
 };
 
-export function messageBody(e: ChangeEvent, t: Target): string {
+/** The title and body of one alert (design 3.2), pure for tests. */
+export function buildContent(
+  e: ChangeEvent,
+  t: Target,
+  moreChanges: boolean,
+): { title: string; body: string } {
   const x = TEXT[t.locale];
-  const n = t.flight_number;
-  if (e.field === 'status') return e.new_value === 'Canceled' ? x.cancelled(n) : x.diverted(n);
-  if (e.field === 'dep_gate') return x.depGate(n, e.new_value ?? '');
-  if (e.field === 'arr_gate') return x.arrGate(n, e.new_value ?? '');
-  const tz = e.field === 'dep_time' ? t.dep_tz : (t.arr_tz ?? t.dep_tz);
-  const time = e.new_value ? clockAt(e.new_value, tz) : '';
-  const later = !e.old_value || !e.new_value || Date.parse(e.new_value) > Date.parse(e.old_value);
-  if (e.field === 'dep_time') return later ? x.depLater(n, time) : x.depEarlier(n, time);
-  return later ? x.arrLater(n, time) : x.arrEarlier(n, time);
+  const n = t.flight_number_input || t.flight_number;
+  const to = t.arr_iata ?? '—';
+  let title: string;
+  let body: string;
+  if (e.field === 'status') {
+    const cancelled = e.new_value === 'Canceled';
+    title = `${n} ${cancelled ? x.cancelledTitle : x.divertedTitle}`;
+    body = cancelled
+      ? x.cancelled(t.dep_iata, to, shortDate(t.dep_date_local, t.locale))
+      : x.diverted(t.arr_iata);
+    // After a cancellation nothing else matters (design 3.1).
+    if (!cancelled && moreChanges) body += x.more;
+  } else if (e.field === 'dep_gate' || e.field === 'arr_gate') {
+    title = `${n}${e.field === 'dep_gate' ? x.gateTitle : x.arrGateTitle}`;
+    body = (e.field === 'dep_gate' ? x.depGate : x.arrGate)(e.new_value ?? '', e.old_value);
+    if (moreChanges) body += x.more;
+  } else {
+    const dep = e.field === 'dep_time';
+    const tz = dep ? t.dep_tz : (t.arr_tz ?? t.dep_tz);
+    const apt = dep ? t.dep_iata : to;
+    const later = !e.old_value || !e.new_value || Date.parse(e.new_value) > Date.parse(e.old_value);
+    title = dep
+      ? `${n} ${later ? x.delayed : x.earlier}`
+      : `${n}${later ? x.arrLaterTitle : x.arrEarlierTitle}`;
+    let time = e.new_value ? clockAt(e.new_value, tz) : '—';
+    // A time on another day than the old one says the day (design 3.1).
+    if (e.new_value && e.old_value && dateAt(e.new_value, tz) !== dateAt(e.old_value, tz)) {
+      time = x.onDate(time, shortDate(dateAt(e.new_value, tz), t.locale));
+    }
+    body = (dep ? x.newDep : x.newArr)(time, apt);
+    if (e.old_value) body += x.was(clockAt(e.old_value, tz));
+    if (moreChanges) body += x.more;
+  }
+  return t.locale === 'he' ? { title: RLM + title, body: RLM + body } : { title, body };
 }
 
 /** One message per (watch, user, device): the lead change of that watch's events. */
@@ -109,12 +217,13 @@ export function buildMessages(
     const list = byWatch.get(t.watch_id);
     if (!list?.length) continue;
     const lead = leadEvent(list);
+    const { title, body } = buildContent(lead, t, hasMoreChanges(list, lead));
     out.push({
       tokenId: t.token_id,
       message: {
         to: t.token,
-        title: TEXT[t.locale].title(t.flight_number),
-        body: messageBody(lead, t),
+        title,
+        body,
         data: { v: 1, type: 'flight_change', flightId: t.flight_id },
         channelId: 'flight-changes',
         priority: 'high',
