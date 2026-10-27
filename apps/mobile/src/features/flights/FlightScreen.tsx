@@ -48,6 +48,8 @@ import {
   type Errors,
   type FlightFormValues,
   type PickedAirport,
+  continuedDirection,
+  draftLeg,
 } from './flightFormRules';
 import {
   DAYS_AHEAD,
@@ -59,7 +61,11 @@ import {
   type Flight,
   type FlightSnapshot,
 } from './flightModel';
-import { deleteFlight, lookupFlight, saveFlight } from './flightsApi';
+import { deleteFlight, lookupFlight, saveFlight, setSameBooking } from './flightsApi';
+import { useDestination } from '@/features/destination/destinationData';
+import { TransitNotice, transitWarning, waitText } from './ConnectionParts';
+import { connections, layover, sameBooking as answerOf } from './connections';
+import { useTripFlights } from './flightsStore';
 import { dayMonth, spellCode, zonedWall } from './flightTime';
 
 export interface FlightScreenTrip {
@@ -99,7 +105,14 @@ export function FlightScreen({
   insetsTop: number;
   insetsBottom: number;
   onClose: () => void;
-  onSaved: (flightId: string, number: string, direction: Direction, isNew: boolean) => void;
+  /** bookingFailed: saved, but the "same booking" answer didn't go (sprint 7 design 6.3). */
+  onSaved: (
+    flightId: string,
+    number: string,
+    direction: Direction,
+    isNew: boolean,
+    bookingFailed?: boolean,
+  ) => void;
   onDeleted: (flightId: string) => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -127,6 +140,12 @@ export function FlightScreen({
   const [pnrShown, setPnrShown] = useState(false);
   const [airports, setAirports] = useState<Airport[] | null>(null);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  // Sprint 7: the trip's other flights, for the connection this one makes (design 6).
+  const tripFlights = useTripFlights(trip.id).flights;
+  const destination = useDestination();
+  const [dirTouched, setDirTouched] = useState(false);
+  /** The "same booking?" answers by the other leg's id; absent: not touched (design 6.3). */
+  const [answers, setAnswers] = useState<Record<string, boolean | null>>({});
   const now = new Date();
   const today = todayPg();
 
@@ -255,6 +274,60 @@ export function FlightScreen({
     setStep('details');
   };
 
+  // Design 6.1: a continuing leg takes the direction of the one it continues,
+  // when adding, until the user picks one.
+  const draft = draftLeg(values, id, trip.id);
+  const others = tripFlights.filter((f) => f.id !== id);
+  const auto =
+    !editing && !dirTouched && step === 'details' ? continuedDirection(draft, others) : null;
+  const [autoFor, setAutoFor] = useState<string | null>(null);
+  const autoKey = auto ? `${auto.prev.id}:${auto.direction}` : null;
+  if (auto && autoKey !== autoFor) {
+    setAutoFor(autoKey);
+    if (values.direction !== auto.direction)
+      setValues((v) => ({ ...v, direction: auto.direction }));
+  }
+  const autoRef = useRef(auto);
+  useEffect(() => {
+    autoRef.current = auto;
+  });
+  useEffect(() => {
+    const a = autoRef.current;
+    if (!autoFor || !a) return;
+    AccessibilityInfo.announceForAccessibility(
+      t('flight.directionAutoA11y', {
+        direction: t(`flight.dir.${a.direction}`),
+        prev: spellCode(a.prev.numberInput || a.prev.number),
+      }),
+    );
+  }, [autoFor, t]);
+  // Design 6.2: the connections this flight makes, with its values as typed.
+  const asFlight = draft
+    ? ({
+        ...(flight ?? {}),
+        ...draft,
+        numberInput: values.numberInput,
+        number: values.numberInput,
+        watch: null,
+      } as Flight)
+    : null;
+  const formLinks = asFlight
+    ? connections([...others, asFlight]).filter((c) => c.prevId === id || c.nextId === id)
+    : [];
+  const byIdForm = new Map([...others, ...(asFlight ? [asFlight] : [])].map((f) => [f.id, f]));
+
+  /** After the flight saved: the answers the user gave, on each later leg (design 6.3). */
+  const saveBooking = async () => {
+    let failed = false;
+    for (const c of formLinks) {
+      const other = c.prevId === id ? c.nextId : c.prevId;
+      if (!(other in answers)) continue;
+      const result = await setSameBooking(c.nextId, c.prevId, answers[other]!);
+      if (result !== 'ok') failed = true;
+    }
+    return failed;
+  };
+
   const save = async () => {
     const found = checkDetails(values, today);
     setErrors(found);
@@ -271,7 +344,8 @@ export function FlightScreen({
       AccessibilityInfo.announceForAccessibility(
         t('flight.saved', { number: spellCode(saved.number) }),
       );
-      onSaved(id, saved.number, saved.direction, !editing);
+      const bookingFailed = await saveBooking();
+      onSaved(id, saved.number, saved.direction, !editing, bookingFailed);
     } else if (result === 'consent') {
       // The consent screen opens over this one, which keeps everything (as trips).
       setSaveNotice('consent');
@@ -417,14 +491,143 @@ export function FlightScreen({
                 values.date === defaultDate(values.direction, trip)
                   ? defaultDate(d, trip)
                   : values.date;
+              setDirTouched(true);
               update({ direction: d, date, depDate: step === 'search' ? date : values.depDate });
             },
             `flight-dir-${d === 'out' ? 'outbound' : d}`,
           ),
         )}
       </View>
+      {auto && values.direction === auto.direction ? (
+        <Text
+          style={[styles.footnote, { color: palette.textSecondary }]}
+          accessibilityLiveRegion="polite"
+          testID="flight-direction-auto"
+        >
+          {t('flight.directionAuto', {
+            prev: isolateLtr(auto.prev.numberInput || auto.prev.number),
+          })}
+        </Text>
+      ) : null}
     </View>
   );
+
+  // Design 6.2: one block per connection this flight makes.
+  const connectionBlock = (c: (typeof formLinks)[number], i: number) => {
+    const prev = byIdForm.get(c.prevId)!;
+    const next = byIdForm.get(c.nextId)!;
+    const other = c.prevId === id ? next : prev;
+    const otherNo = other.numberInput || other.number;
+    const l = layover(prev, next, now);
+    const route = [prev.depIata, c.airport, next.arrIata ?? '—'].map(isolateLtr).join(' ‹ ');
+    const touched = other.id in answers;
+    const answer = touched ? answers[other.id]! : editing ? answerOf(next, prev.id) : undefined;
+    const transit = transitWarning(
+      c.airport,
+      airports,
+      destination.data?.advisories ?? null,
+      trip.countryAdm0,
+    );
+    const pick = (v: boolean | null) =>
+      setAnswers((a) => {
+        // Tapping the chosen chip again clears it, like the cabin (design 6.2).
+        if (other.id in a && a[other.id] === v) {
+          const rest = { ...a };
+          delete rest[other.id];
+          return rest;
+        }
+        return { ...a, [other.id]: v };
+      });
+    const statusText =
+      l.status === 'ok' || l.status === 'short' || l.status === 'risky'
+        ? ` · ${t(`layover.status.${l.status}`)}`
+        : '';
+    return (
+      <View
+        key={other.id}
+        style={[
+          styles.gap8,
+          i > 0 && { borderTopWidth: 1, borderTopColor: palette.borderSubtle, paddingTop: 12 },
+        ]}
+        testID={`flight-connection-${other.id}`}
+      >
+        <Text style={[styles.body, { color: palette.textPrimary }]}>
+          {c.nextId === id
+            ? t('flight.connectionContinues', { prev: isolateLtr(otherNo), route })
+            : t('flight.connectionContinuedBy', { next: isolateLtr(otherNo), route })}
+        </Text>
+        <Text
+          style={[
+            styles.callout,
+            {
+              color:
+                l.status === 'missed' || l.status === 'invalid'
+                  ? palette.textAlert
+                  : palette.textPrimary,
+            },
+          ]}
+          accessibilityValue={{ text: l.status }}
+          testID={`flight-connection-${other.id}-wait`}
+        >
+          {l.status === 'missed'
+            ? t('layover.missed')
+            : l.status === 'invalid'
+              ? t('layover.invalid')
+              : l.minutes !== null
+                ? `${t('layover.wait', { time: waitText(l.minutes, t), apt: isolateLtr(c.airport) })}${statusText}`
+                : null}
+        </Text>
+        <Text
+          style={[styles.caption, { color: palette.textSecondary }]}
+          importantForAccessibility="no"
+        >
+          {t('sameBooking.question', { other: isolateLtr(otherNo) })}
+        </Text>
+        <View
+          style={styles.chips}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('sameBooking.question', { other: spellCode(otherNo) })}
+          testID={`flight-same-booking-${other.id}`}
+        >
+          {chip(
+            t('sameBooking.chipYes'),
+            answer === true,
+            () => pick(true),
+            `flight-same-booking-${other.id}-yes`,
+          )}
+          {chip(
+            t('sameBooking.chipNo'),
+            answer === false,
+            () => pick(false),
+            `flight-same-booking-${other.id}-no`,
+          )}
+          {chip(
+            t('sameBooking.chipUnknown'),
+            touched && answers[other.id] === null,
+            () => pick(null),
+            `flight-same-booking-${other.id}-unknown`,
+          )}
+        </View>
+        {answer === false ? (
+          <InlineNotice
+            text={t('layover.separate', {
+              prev: isolateLtr(prev.numberInput || prev.number),
+              next: isolateLtr(next.numberInput || next.number),
+            })}
+            colorScheme={colorScheme}
+            testID={`flight-warning-separate-${other.id}`}
+          />
+        ) : null}
+        {transit ? (
+          <TransitNotice
+            warning={transit}
+            colorScheme={colorScheme}
+            testID={`flight-warning-transit-${other.id}`}
+          />
+        ) : null}
+      </View>
+    );
+  };
 
   const airportField = (side: 'origin' | 'destination') => {
     const p = values[side];
@@ -811,6 +1014,17 @@ export function FlightScreen({
           colorScheme={colorScheme}
           testID="flight-arr-terminal"
         />
+        {formLinks.length > 0 ? (
+          <View style={styles.gap8} testID="flight-connection">
+            <Text
+              style={[styles.title3, { color: palette.textPrimary }]}
+              accessibilityRole="header"
+            >
+              {t('flight.connectionTitle')}
+            </Text>
+            {formLinks.map(connectionBlock)}
+          </View>
+        ) : null}
         <Text style={[styles.title3, { color: palette.textPrimary }]} accessibilityRole="header">
           {t('flight.booking')}
         </Text>
@@ -1029,6 +1243,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'left',
   },
+  callout: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20, textAlign: 'left' },
   body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 24, textAlign: 'left' },
   footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, textAlign: 'left' },
   numeric: {

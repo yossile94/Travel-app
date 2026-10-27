@@ -134,6 +134,7 @@ describe('FlightScreen (sprint 5 F-016, design 2–8)', () => {
       'LY81',
       'out',
       true,
+      false,
     );
   });
 

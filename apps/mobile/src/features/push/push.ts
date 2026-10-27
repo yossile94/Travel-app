@@ -333,13 +333,16 @@ export async function unregisterDevice(): Promise<void> {
   await AsyncStorage.removeItem(TOKEN_KEY).catch(() => {});
 }
 
+/** The alerts that open a flight: a change, or a connection at risk (sprint 7 design 8.4). */
+export const ALERT_TYPES = new Set(['flight_change', 'connection_risk']);
+
 /** A notification tapped (or the one that opened the app): the user's own flight row. */
 export function flightIdOf(
   response: Notifications.NotificationResponse | null | undefined,
 ): string | null {
   const data = response?.notification.request.content.data as
     { v?: unknown; type?: string; flightId?: unknown } | undefined;
-  return data?.v === 1 && data.type === 'flight_change' && typeof data.flightId === 'string'
+  return data?.v === 1 && ALERT_TYPES.has(data.type ?? '') && typeof data.flightId === 'string'
     ? data.flightId
     : null;
 }

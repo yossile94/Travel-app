@@ -680,9 +680,11 @@ export function FlightsSection({
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
           onClose={() => setScreen(null)}
-          onSaved={(id, _number, direction, isNew) => {
+          onSaved={(id, _number, direction, isNew, bookingFailed) => {
             setScreen(null);
             setSavedFlight(id);
+            // Sprint 7 design 6.3: the flight is saved; only the booking answer needs another try.
+            if (bookingFailed) onToast(t('flight.sameBookingFailed'));
             void refreshTripFlights(trip.id);
             // Design 8.4: after adding an outbound flight, when there is no return yet.
             if (isNew && direction === 'out' && !flights.some((f) => f.direction === 'return')) {
