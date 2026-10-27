@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ספרינט 6: התראות על שינויי טיסה (הדמיה)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Tokens from docs/design/tokens.json. No new colours. */
+  :root {
+    --fs: 1;
+    --canvas:#FFFBF5; --surface:#FFFFFF; --raised:#FFFFFF; --alt:#FBF4E8; --tag:#FBF4E8;
+    --t1:#121C36; --t2:#4A5573; --t3:#646E8A; --link:#1561BC; --alert:#C81E16;
+    --pBg:#1561BC; --pFg:#FFFFFF; --secBg:#EEF6FF; --secFg:#104C94;
+    --infoBg:#EEF6FF; --infoFg:#104C94; --bSub:#F4E7D0; --bCtl:#7D869E;
+    --aSubBg:#FFF0EF; --aSubFg:#A0170F; --aBg:#C81E16; --aFg:#FFFFFF;
+    --thumbOff:#FFFFFF; --thumbOn:#FFFFFF; --scrim:rgba(6,11,24,0.48);
+    --toastBg:#121C36; --toastFg:#F3F6FC; --skel:#F4E7D0; --discBg:#E9EEFA; --discFg:#646E8A;
+  }
+  body.dark {
+    --canvas:#060B18; --surface:#0B1326; --raised:#121C36; --alt:#121C36; --tag:#1A2749;
+    --t1:#F3F6FC; --t2:#A3B3DB; --t3:#7487BD; --link:#6FB3FA; --alert:#FF5D52;
+    --pBg:#6FB3FA; --pFg:#060B18; --secBg:#1A2749; --secFg:#A9D2FF;
+    --infoBg:#1A2749; --infoFg:#A9D2FF; --bSub:#1A2749; --bCtl:#7487BD;
+    --aSubBg:#3A1414; --aSubFg:#FF8A80; --aBg:#FF5D52; --aFg:#060B18;
+    --thumbOff:#F3F6FC; --thumbOn:#060B18; --scrim:rgba(0,0,0,0.6); --skel:#1A2749;
+    --discBg:#1A2749; --discFg:#7487BD;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Rubik, system-ui, sans-serif; background:#d9dde6; color:#121C36; }
+  body.dark { background:#1d2230; }
+  .panel { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:16px; align-items:center;
+    padding:10px 16px; background:#121C36; color:#F3F6FC; font-size:14px; }
+  .panel label { display:flex; gap:6px; align-items:center; }
+  .panel b { font-weight:600; }
+  .row { display:flex; flex-wrap:wrap; gap:28px; padding:24px; align-items:flex-start; }
+  .frame { width:411px; }
+  .cap { font-size:13px; color:#34477D; margin:0 0 8px; min-height:34px; }
+  body.dark .cap { color:#A3B3DB; }
+  .phone { position:relative; width:411px; height:860px; border-radius:28px; overflow:hidden;
+    background:var(--canvas); color:var(--t1); box-shadow:0 8px 30px rgba(18,28,54,.25); }
+  .phone.tall { height:auto; min-height:860px; }
+  .globe { position:absolute; inset:0; background: radial-gradient(circle at 50% 38%, #1F3A68 0 30%, #0A1A3C 31% 48%, #03060F 49%); }
+  .status { position:absolute; top:0; inset-inline:0; height:28px; display:flex; justify-content:space-between;
+    align-items:center; padding:0 18px; font-size:12px; color:#F3F6FC; direction:ltr; z-index:3; }
+  .status svg { width:14px; height:14px; }
+  /* type scale (tokens) with font scaling */
+  .title2 { font-size:calc(22px*var(--fs)); line-height:calc(28px*var(--fs)); font-weight:600; margin:0; }
+  .title3 { font-size:calc(18px*var(--fs)); line-height:calc(24px*var(--fs)); font-weight:600; margin:0; }
+  .body { font-size:calc(16px*var(--fs)); line-height:calc(24px*var(--fs)); margin:0; }
+  .bodyS { font-size:calc(16px*var(--fs)); line-height:calc(24px*var(--fs)); font-weight:500; margin:0; }
+  .callout { font-size:calc(15px*var(--fs)); line-height:calc(22px*var(--fs)); margin:0; }
+  .foot { font-size:calc(13px*var(--fs)); line-height:calc(18px*var(--fs)); margin:0; }
+  .capt { font-size:calc(12px*var(--fs)); line-height:calc(16px*var(--fs)); font-weight:500; margin:0; }
+  .code { font-variant-numeric:tabular-nums; letter-spacing:1.6px; font-weight:500; }
+  .num { font-variant-numeric:tabular-nums; }
+  .ltr { direction:ltr; unicode-bidi:isolate; }
+  .t2 { color:var(--t2); } .t3 { color:var(--t3); } .lnk { color:var(--link); }
+  /* bottom sheet */
+  .scrim { position:absolute; inset:0; background:var(--scrim); }
+  .sheet { position:absolute; inset-inline:0; bottom:0; background:var(--raised); border-radius:28px 28px 0 0;
+    padding:8px 16px 24px; max-height:86%; overflow:auto; }
+  body.dark .sheet { border-top:1px solid var(--bSub); }
+  .handle { width:32px; height:4px; border-radius:2px; background:var(--bCtl); opacity:.5; margin:4px auto 8px; }
+  .x { position:absolute; inset-inline-end:4px; top:8px; width:48px; height:48px; display:grid; place-items:center; color:var(--t2); }
+  .stack { display:flex; flex-direction:column; gap:12px; }
+  .btn { min-height:48px; border-radius:999px; border:0; font:inherit; font-size:calc(16px*var(--fs)); font-weight:500;
+    display:flex; align-items:center; justify-content:center; padding:0 20px; width:100%; }
+  .btn.primary { background:var(--pBg); color:var(--pFg); }
+  .btn.text { background:none; color:var(--link); width:auto; align-self:center; }
+  .btn.secondary { background:var(--secBg); color:var(--secFg); }
+  /* notification preview */
+  .preview { position:relative; background:var(--surface); border-radius:12px; padding:12px; }
+  body.dark .preview { border:1px solid var(--bSub); }
+  .preview .head { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding-inline-end:64px; }
+  .tagEx { position:absolute; inset-inline-end:10px; top:10px; background:var(--tag); color:var(--t2);
+    border-radius:999px; padding:2px 8px; }
+  /* card behind */
+  .card { position:absolute; inset-inline:12px; bottom:12px; background:var(--surface); border-radius:24px; padding:16px; }
+  body.dark .card { border:1px solid var(--bSub); }
+  .openRow { background:var(--alt); border-radius:12px; padding:12px; margin-top:12px; }
+  body.dark .openRow { background:#1A2749; }
+  .frow { background:var(--surface); border-radius:12px; padding:12px; margin-top:8px; }
+  body.dark .frow { border:1px solid var(--bSub); }
+  .flash { box-shadow:0 0 0 3px var(--pBg) inset; }
+  .chip { display:inline-flex; gap:4px; align-items:center; border-radius:999px; padding:2px 8px; }
+  .chip.alertS { background:var(--aSubBg); color:var(--aSubFg); }
+  .chip.alertF { background:var(--aBg); color:var(--aFg); }
+  .between { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .strike { text-decoration:line-through; }
+  .alertTxt { color:var(--alert); font-weight:500; }
+  /* system UI mocks (Android) */
+  .sys { font-family: Roboto, system-ui, sans-serif; }
+  .dialog { position:absolute; inset-inline:28px; top:30%; background:#ECEEF4; color:#1A1C22; border-radius:28px; padding:24px; }
+  body.dark .dialog { background:#2B2F38; color:#E3E5EC; }
+  .dialog .dbtn { display:block; width:100%; margin-top:8px; padding:12px; border-radius:999px; border:0;
+    background:#D7DEF5; color:#1A1C22; font:inherit; font-weight:500; }
+  body.dark .dialog .dbtn { background:#3D4558; color:#E3E5EC; }
+  .shade { position:absolute; inset:0; background:#1A1C22; padding:40px 10px 10px; overflow:auto; }
+  .notif { background:#2B2F38; color:#E3E5EC; border-radius:20px; padding:12px 14px; margin-bottom:6px; }
+  .notif .app { display:flex; gap:6px; align-items:center; font-size:12px; color:#A9D2FF; }
+  .notif .nt { font-weight:600; font-size:15px; margin:4px 0 2px; }
+  .notif .nb { font-size:14px; line-height:20px; color:#C7CBD6; }
+  .notif.bad { outline:2px dashed #FF8A80; }
+  .shadeLabel { color:#A3B3DB; font-size:12px; margin:10px 4px 6px; }
+  .lock { position:absolute; inset:0; background:linear-gradient(#0A2A52,#03060F); color:#F3F6FC; padding:120px 16px 16px; }
+  .lock .clock { font-size:64px; text-align:center; direction:ltr; font-weight:300; }
+  /* toast */
+  .toast { position:absolute; inset-inline:24px; top:96px; background:var(--toastBg); color:var(--toastFg);
+    border-radius:999px; padding:10px 18px; text-align:center; font-size:calc(15px*var(--fs)); }
+  .notice { display:flex; gap:8px; padding:12px; border-radius:12px; background:var(--infoBg); color:var(--infoFg); }
+  .notice svg { flex:none; }
+  /* account rows */
+  .lrow { display:flex; gap:12px; align-items:flex-start; min-height:56px; padding:12px 0; }
+  .lrow .grow { flex:1; }
+  .lrow .ic { color:var(--t2); flex:none; margin-top:0; }
+  .divider { height:1px; background:var(--bSub); margin:8px 0; }
+  .switch { flex:none; width:52px; height:32px; border-radius:16px; position:relative; margin-top:calc(-4px + 0px); }
+  .switch.off { background:var(--bCtl); } .switch.on { background:var(--pBg); }
+  .switch i { position:absolute; top:6px; width:20px; height:20px; border-radius:50%; }
+  .switch.off i { inset-inline-start:6px; background:var(--thumbOff); }
+  .switch.on i { inset-inline-end:4px; top:4px; width:24px; height:24px; background:var(--thumbOn); }
+  .switch.blocked { opacity:.55; }
+  .stateTag { font-size:11px; color:var(--t3); font-family:monospace; direction:ltr; display:inline-block; }
+  .skel { height:12px; width:160px; border-radius:6px; background:var(--skel); margin-top:6px; }
+  .mini { transform:scale(.62); transform-origin:top right; width:411px; height:860px; }
+  html[dir=ltr] .mini { transform-origin:top left; }
+  .miniWrap { width:255px; height:534px; overflow:hidden; border-radius:18px; position:relative; }
+  .seq { display:flex; gap:10px; }
+  .seqCap { font-size:12px; color:#34477D; margin:4px 0 0; width:255px; }
+  body.dark .seqCap { color:#A3B3DB; }
+</style>
+</head>
+<body>
+<div class="panel" role="toolbar" aria-label="הגדרות ההדמיה">
+  <b>ספרינט 6 · Push</b>
+  <label><input type="checkbox" id="dark"> כהה</label>
+  <label>גופן <select id="fs"><option value="1">100%</option><option value="1.3">130%</option></select></label>
+  <label>שפה (גיליון ומגירה) <select id="lang"><option value="he">עברית</option><option value="en">English</option></select></label>
+  <label>Android <select id="api"><option value="13">13 ומעלה</option><option value="12">12 ומטה</option></select></label>
+  <span style="opacity:.75">כל המספרים והשעות להדגמה בלבד</span>
+</div>
+
+<!-- Reused SVGs -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="plane" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2c.9 0 1.5.9 1.5 2v5.2l7.5 4.4V16l-7.5-2.3v4.9l2.5 1.8V22L12 21l-4 1v-1.6l2.5-1.8v-4.9L3 16v-2.4l7.5-4.4V4c0-1.1.6-2 1.5-2z"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15L6 16z"/><path d="M10 20a2 2 0 0 0 4 0"/></g></symbol>
+  <symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="info" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 8v5m0-8.5v.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="row" id="screens"></div>
+
+<script>
+const S = {
+  he: {
+    title:'נעדכן אתכם כשהטיסה משתנה',
+    body:'דחייה, הקדמה, שער חדש, ביטול או הסטה. ההתראה מגיעה גם כשהאפליקציה סגורה.',
+    privacy:'בהתראה יש רק מספר הטיסה והשינוי, בלי קוד הזמנה ובלי שם הנסיעה.',
+    androidNote:'בלחיצה על "אישור" Android ישאל אם לאפשר התראות.',
+    allow:'אישור', later:'לא עכשיו', footnote:'אפשר לשנות בכל זמן בחשבון.',
+    example:'דוגמה', now:'עכשיו', app:'האפליקציה',
+    n: [
+      ['LY81 נדחתה','המראה חדשה: 01:10 ב-21.12, שעון TLV. במקום 23:40.'],
+      ['LY81 הוקדמה','המראה חדשה: 22:50, שעון TLV. במקום 23:40.'],
+      ['LY82: השער הוחלף','שער ההמראה החדש: C3. במקום D7.'],
+      ['LY81 בוטלה','הטיסה מ-TLV ל-BKK ב-20.12 בוטלה. כדאי לבדוק מול חברת התעופה.'],
+      ['TG682 הוסטה','הטיסה הוסטה ל-DMK במקום BKK.'],
+      ['LY81: הנחיתה נדחתה','נחיתה צפויה: 18:45, שעון BKK. במקום 17:15.'],
+      ['LY81 נדחתה','המראה חדשה: 01:10 ב-21.12, שעון TLV. במקום 23:40. יש עוד שינויים בטיסה.'],
+    ],
+    rlmBad:'בלי RLM (שגוי): הכותרת מתחילה ב-LY81 ומיושרת לשמאל',
+    rlmGood:'עם RLM (נכון)',
+  },
+  en: {
+    title:"We'll tell you when your flight changes",
+    body:'Delays, earlier departures, gate changes, cancellations and diversions. Alerts arrive even when the app is closed.',
+    privacy:'Alerts show only the flight number and the change. No booking code, no trip name.',
+    androidNote:'When you tap "Allow", Android will ask you to confirm.',
+    allow:'Allow', later:'Not now', footnote:'You can change this any time in your account.',
+    example:'Example', now:'now', app:'The app',
+    n: [
+      ['LY81 delayed','New departure: 01:10 on 21 Dec, TLV time. Was 23:40.'],
+      ['LY81 moved earlier','New departure: 22:50, TLV time. Was 23:40.'],
+      ['LY82 gate change','New departure gate: C3. Was D7.'],
+      ['LY81 cancelled','Your flight from TLV to BKK on 20 Dec is cancelled. Check with the airline.'],
+      ['TG682 diverted','Diverted to DMK instead of BKK.'],
+      ['LY81 arrives later','New arrival: 18:45, BKK time. Was 17:15.'],
+      ['LY81 delayed','New departure: 01:10 on 21 Dec, TLV time. Was 23:40. There are more changes.'],
+    ],
+  }
+};
+const RLM = '‏';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function statusBar(){ return `<div class="status"><span class="num">14:05</span><svg><use href="#plane"/></svg></div>`; }
+
+function cardBehind(flash){
+  return `<div class="card">
+    <p class="title2">תאילנד</p><p class="callout t2 ltr" style="text-align:right">Thailand</p>
+    <div class="openRow">
+      <p class="capt t2">טיסות</p>
+      <div class="frow ${flash?'flash':''}">
+        <div class="between"><p class="capt t2">הלוך · <span class="ltr">20.12</span></p>
+          <span class="chip alertS capt">נדחתה</span></div>
+        <p class="callout"><span class="code ltr">LY81</span> <span class="t2">· אל על</span></p>
+        <div class="between"><span class="title3 code ltr">TLV</span><span class="t3">- - - ✈ - - -</span><span class="title3 code ltr">BKK</span></div>
+        <div class="between"><span class="num"><span class="alertTxt">01:10</span> <span class="foot t2 strike">23:40</span></span><span class="num">18:45</span></div>
+        <p class="foot t2">עודכן לפני 4 דק'</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function preview(L, n){
+  const [t,b] = S[L].n[0];
+  return `<div class="preview" dir="${L==='he'?'rtl':'ltr'}" role="img" aria-label="${S[L].example}: ${esc(t)}. ${esc(b.replace(' ב-21.12','').replace(' on 21 Dec',''))}">
+    <span class="tagEx capt">${S[L].example}</span>
+    <div class="head"><svg width="16" height="16" class="lnk"><use href="#plane"/></svg>
+      <span class="capt t2">${S[L].app} · ${S[L].now}</span></div>
+    <p class="bodyS" style="margin-top:4px">${esc(t)}</p>
+    <p class="callout">${esc(b.replace(' ב-21.12','').replace(' on 21 Dec',''))}</p>
+  </div>`;
+}
+
+function explainer(L, api){
+  const s = S[L];
+  return `<div class="sheet" dir="${L==='he'?'rtl':'ltr'}" role="dialog" aria-labelledby="pe-title" data-testid="push-explainer">
+    <div class="handle"></div>
+    <span class="x" aria-label="${L==='he'?'סגירה':'Close'}"><svg width="24" height="24"><use href="#close"/></svg></span>
+    <div class="stack">
+      <p class="title2" id="pe-title" style="padding-inline-end:44px">${s.title}</p>
+      <p class="body t2">${s.body}</p>
+      ${preview(L)}
+      <p class="foot t2">${s.privacy}</p>
+      ${api==='13' ? `<p class="foot t2" data-testid="push-explainer-android-note">${s.androidNote}</p>` : ''}
+      <button class="btn primary" data-testid="push-explainer-allow">${s.allow}</button>
+      <button class="btn text" data-testid="push-explainer-later">${s.later}</button>
+      <p class="foot t3" style="text-align:center">${s.footnote}</p>
+    </div>
+  </div>`;
+}
+
+function phone(inner, cls=''){ return `<div class="phone ${cls}">${inner}</div>`; }
+function frame(cap, inner){ return `<div class="frame"><p class="cap">${cap}</p>${inner}</div>`; }
+
+function notifHtml(L, t, b, useRlm){
+  const pre = (L==='he' && useRlm) ? RLM : '';
+  return `<div class="notif sys ${(L==='he' && !useRlm)?'bad':''}">
+    <div class="app"><svg width="14" height="14"><use href="#plane"/></svg><span>${S[L].app} · ${S[L].now}</span></div>
+    <div class="nt" dir="auto">${esc(pre+t)}</div>
+    <div class="nb" dir="auto">${esc(pre+b)}</div>
+  </div>`;
+}
+
+function accountRow(state){
+  const M = {
+    never_asked:['off','עוד לא הופעלו.','t2'],
+    on:['on','פועלות. נעדכן אתכם כשטיסה במעקב משתנה.','t2'],
+    off:['off','כבויות בכל המכשירים שלכם.','t2'],
+    blocked:['off blocked','חסומות בהגדרות של Android. הקישו כדי לפתוח את ההגדרות.','lnk'],
+    not_connected:['on','פועלות בחשבון. המכשיר הזה יתחבר כשיהיה חיבור.','t2'],
+  }[state];
+  return `<div class="lrow" role="${state==='blocked'?'button':'switch'}" aria-checked="${M[0].startsWith('on')}" data-testid="account-flight-alerts">
+    <svg class="ic" width="24" height="24"><use href="#bell"/></svg>
+    <div class="grow"><p class="body">התראות טיסה</p><p class="foot ${M[2]}" data-testid="account-flight-alerts-status">${M[1]}</p>
+      <span class="stateTag">${state}</span></div>
+    <span class="switch ${M[0]}"><i></i></span>
+  </div>`;
+}
+
+function render(){
+  const L = $('lang').value, api = $('api').value;
+  document.body.classList.toggle('dark', $('dark').checked);
+  document.documentElement.style.setProperty('--fs', $('fs').value);
+  const out = [];
+
+  // 1. Explainer over the card
+  out.push(frame(`1. גיליון ההסבר מעל הכרטיס, אחרי שמירה (Android ${api==='13'?'13 ומעלה: עם הערת Android':'12 ומטה: בלי הערה, "אישור" הוא ההסכמה'})`,
+    phone(`<div class="globe"></div>${statusBar()}${cardBehind(true)}<div class="scrim"></div>${explainer(L, api)}`)));
+
+  // 2. System dialog (13+)
+  out.push(frame('2. Android 13 ומעלה: דיאלוג המערכת אחרי "אישור" (של המערכת, איור בלבד). הגיליון נשאר מאחור עם "רגע…"',
+    phone(`<div class="globe"></div>${statusBar()}${cardBehind(false)}<div class="scrim"></div>
+      <div class="sheet" style="opacity:.6"><div class="handle"></div><div class="stack"><p class="title2">${S.he.title}</p>
+      <button class="btn primary">רגע…</button></div></div>
+      <div class="dialog sys" dir="rtl"><div style="text-align:center"><svg width="24" height="24"><use href="#bell"/></svg></div>
+      <p style="font-size:20px;text-align:center;margin:12px 0 16px">לאפשר ל<b>אפליקציה</b> לשלוח לך התראות?</p>
+      <button class="dbtn">אישור</button><button class="dbtn">אין אישור</button></div>`)));
+
+  // 3. Notification shade
+  const s = S[L];
+  let shade = `<div class="shade" dir="${L==='he'?'rtl':'ltr'}"><div class="shadeLabel">${L==='he'?'שש ההתראות, ועוד אחת עם "יש עוד שינויים"':'All six types, plus one with "more changes"'}</div>`;
+  s.n.forEach(([t,b]) => shade += notifHtml(L, t, b, true));
+  if (L==='he') {
+    shade += `<div class="shadeLabel">${S.he.rlmBad}</div>` + notifHtml('he', s.n[0][0], s.n[0][1], false);
+    shade += `<div class="shadeLabel">${S.he.rlmGood}</div>` + notifHtml('he', s.n[0][0], s.n[0][1], true);
+  }
+  shade += `</div>`;
+  out.push(frame('3. מגירת ההתראות. אייקון: מטוס לבן, החרטום למעלה. צבע הדגשה #1561BC (קיים)', phone(statusBar()+shade, 'tall')));
+
+  // 4. Lock screen
+  out.push(frame('4. מסך נעילה מאובטח: הערוץ PRIVATE, רק שם האפליקציה',
+    phone(`${statusBar()}<div class="lock sys"><div class="clock">14:05</div>
+      <div class="notif" style="margin-top:40px" dir="rtl"><div class="app"><svg width="14" height="14"><use href="#plane"/></svg><span>האפליקציה · עכשיו</span></div>
+      <div class="nb">התוכן מוסתר</div></div></div>`)));
+
+  // 5. Cold start sequence
+  const mini = (inner) => `<div class="miniWrap"><div class="mini">${phone(inner)}</div></div>`;
+  const sheetFlight = (offline) => `<div class="scrim"></div><div class="sheet"><div class="handle"></div>
+      <span class="x"><svg width="24" height="24"><use href="#close"/></svg></span>
+      <div class="stack"><p class="title2"><span class="code ltr">LY81</span> <span class="body">· הלוך</span></p>
+      <p class="callout t2">אל על</p>
+      ${offline ? `<p class="foot t2" data-testid="flight-sheet-cached">מוצג מהשמירה האחרונה · היום, 21:05</p>
+        <div class="notice" data-testid="flight-sheet-from-notification"><svg width="20" height="20"><use href="#info"/></svg>
+        <p class="callout">מההתראה: LY81 נדחתה. המראה חדשה: 01:10 ב-21.12, שעון TLV. במקום 23:40.</p></div>
+        <p class="capt t2">המראה</p><p class="body">תל אביב · נתב"ג · <span class="code ltr">TLV</span></p>
+        <p class="num">20.12.2026 · 23:40</p>`
+      : `<div><span class="chip alertS capt">נדחתה</span></div><p class="foot t2">עודכן עכשיו</p>
+        <p class="capt t2">המראה</p><p class="body">תל אביב · נתב"ג · <span class="code ltr">TLV</span></p>
+        <p class="num">21.12.2026 · <span class="alertTxt">01:10</span> <span class="foot t2 strike">23:40</span></p>
+        <p class="title3">היסטוריית שינויים</p>
+        <div class="flash" style="border-radius:8px;padding:6px"><p class="body">ההמראה נדחתה: מ-<span class="num">23:40</span> ל-<span class="num">01:10</span> (+1)</p><p class="foot t2">זוהה היום, 21:05</p></div>`}
+      <div class="between"><button class="btn secondary" style="width:auto">עריכה</button><button class="btn text">מחיקה</button></div>
+      </div></div>`;
+  out.push(`<div class="frame" style="width:auto"><p class="cap">5. פתיחה מהתראה כשהאפליקציה סגורה: מעוף למדינה ← שורת הנסיעה פתוחה ← גיליון הטיסה (עד ~3 שנ')</p>
+    <div class="seq">
+      <div>${mini(`<div class="globe" style="background:radial-gradient(circle at 60% 45%, #1F3A68 0 34%, #0A1A3C 35% 52%, #03060F 53%)"></div>${statusBar()}`)}<p class="seqCap">א. הגלובוס, ואז המעוף לתאילנד (1.2–1.8 שנ', flyTo)</p></div>
+      <div>${mini(`<div class="globe"></div>${statusBar()}${cardBehind(false)}`)}<p class="seqCap">ב. הכרטיס עלה, השורה פתוחה וגללה ל"טיסות" (300)</p></div>
+      <div>${mini(`<div class="globe"></div>${statusBar()}${cardBehind(false)}${sheetFlight(false)}`)}<p class="seqCap">ג. FlightSheet כשהכרטיס התייצב (~320). [הצעה] הבהוב על האירוע החדש</p></div>
+    </div></div>`);
+
+  // 6. Gone
+  out.push(frame('6. טיסה שנמחקה, משתמש מנותק או משתמש אחר: הגלובוס, בלי מעוף, Toast ארוך',
+    phone(`<div class="globe"></div>${statusBar()}<div class="toast" role="status" data-testid="toast">הטיסה הזו כבר לא קיימת.</div>`)));
+
+  // 7. Offline
+  out.push(frame('7. בלי רשת: הגיליון מהעותק המוצפן, ו"מההתראה" מעל הערכים הישנים',
+    phone(`<div class="globe" style="background:radial-gradient(circle at 50% 38%, #1F3A68 0 30%, #0A1A3C 31% 48%, #03060F 49%)"></div>${statusBar()}${cardBehind(false)}${sheetFlight(true)}`)));
+
+  // 8. Account
+  out.push(frame('8. החשבון: "התראות טיסה" בכל המצבים (בפועל מוצגת שורה אחת). המצב מתחת לכל שורה הוא accessibilityValue לבדיקה',
+    phone(`<div class="globe"></div>${statusBar()}<div class="scrim"></div><div class="sheet" style="max-height:92%" data-testid="account-sheet">
+      <div class="handle"></div><span class="x"><svg width="24" height="24"><use href="#close"/></svg></span>
+      <div class="lrow"><span style="width:48px;height:48px;border-radius:24px;background:var(--pBg);color:var(--pFg);display:grid;place-items:center;font-weight:600;font-size:20px;flex:none">י</span>
+        <div class="grow"><p class="title3">יוסי לוי</p><p class="foot t3">מחובר עם Google</p></div></div>
+      <div class="divider"></div>
+      ${accountRow('on')}${accountRow('off')}${accountRow('never_asked')}${accountRow('blocked')}${accountRow('not_connected')}
+      <div class="lrow"><svg class="ic" width="24" height="24"><use href="#bell"/></svg><div class="grow"><p class="body">התראות טיסה</p><div class="skel"></div><span class="stateTag">loading</span></div><span class="switch off" style="opacity:.4"><i></i></span></div>
+      <div class="notice" data-testid="account-flight-alerts-notice"><svg width="20" height="20"><use href="#info"/></svg><p class="callout">כדי לשנות את ההגדרה צריך חיבור.</p></div>
+      <div class="lrow"><svg class="ic" width="24" height="24"><use href="#shield"/></svg><div class="grow"><p class="body">ההסכמות שלי</p></div></div>
+      <div class="divider"></div>
+      <button class="btn secondary">התנתקות</button>
+    </div>`, 'tall')));
+
+  $('screens').innerHTML = out.join('');
+}
+['dark','fs','lang','api'].forEach(id => $(id).addEventListener('change', render));
+render();
+</script>
+</body>
+</html>

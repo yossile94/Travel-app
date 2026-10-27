@@ -42,6 +42,11 @@ import { MyTripsSheet } from '@/features/trips/MyTripsSheet';
 import { TripForm, type TripFormResult, type TripFormTarget } from '@/features/trips/TripForm';
 import { TripsButton } from '@/features/trips/TripsButton';
 import { useTrips } from '@/features/trips/TripsProvider';
+import { tripOfFlight } from '@/features/flights/flightsStore';
+import { PushExplainer } from '@/features/push/PushExplainer';
+import { launchedFromAlert, usePushOpen, type AlertText } from '@/features/push/usePushOpen';
+import { usePushSetup } from '@/features/push/usePushSetup';
+import { supabase } from '@/lib/supabase';
 import type { Trip } from '@/features/trips/tripsApi';
 import { tripStatus } from '@/features/trips/tripDates';
 import { globe, layout, motion } from '@/theme/tokens';
@@ -157,7 +162,12 @@ export function GlobeScreen() {
     seq: number;
   } | null>(null);
   const openSeq = useRef(0);
-  const [tripToast, setTripToast] = useState<{ text: string; at: number } | null>(null);
+  /** Sprint 6 AC-5: the flight a tapped alert opens, in the open trip's row. */
+  const [openFlight, setOpenFlight] = useState<string | null>(null);
+  const [alertText, setAlertText] = useState<AlertText | null>(null);
+  const [tripToast, setTripToast] = useState<{ text: string; at: number; long?: boolean } | null>(
+    null,
+  );
   const tripAdm0s = useMemo(
     () => (trips.countries ? [...trips.countries] : null),
     [trips.countries],
@@ -543,7 +553,65 @@ export function GlobeScreen() {
     sweepExports();
   }, [globeReady, trips]);
 
-  const showTripToast = useCallback((text: string) => setTripToast({ text, at: Date.now() }), []);
+  const showTripToast = useCallback(
+    (text: string, long?: boolean) => setTripToast({ text, at: Date.now(), long }),
+    [],
+  );
+
+  // Sprint 6 AC-5: a tapped alert flies to the country, opens the trip row and the flight's sheet.
+  const openFromAlert = useCallback(
+    async (flightId: string, text: AlertText) => {
+      // Slow to find: say the tap was taken (design 4.1).
+      const slow = setTimeout(() => showTripToast(t('push.opening')), 3000);
+      const found = await tripOfFlight(flightId);
+      clearTimeout(slow);
+      if (found === 'offline') {
+        showTripToast(t('push.openOffline'), true);
+        return;
+      }
+      const tripId = found === 'gone' ? null : found;
+      const known = [...(trips.cache?.upcoming ?? []), ...(trips.cache?.past ?? [])].find(
+        (trip) => trip.id === tripId,
+      );
+      let adm0 = known?.countryAdm0 ?? null;
+      if (tripId && !adm0 && supabase) {
+        const { data } = await supabase
+          .from('trips')
+          .select('country_adm0')
+          .eq('id', tripId)
+          .maybeSingle();
+        adm0 = (data as { country_adm0: string } | null)?.country_adm0 ?? null;
+      }
+      if (!tripId || !adm0 || !countryByAdm0(adm0)) {
+        showTripToast(t('flight.gone'), true);
+        return;
+      }
+      setAlertText(text);
+      setMyTripsOpen(false);
+      setOpenTrip({ id: tripId, adm0, seq: ++openSeq.current });
+      setOpenFlight(`${flightId}:${openSeq.current}`);
+      dispatch({ type: 'countryTapped', country: { adm0 } });
+    },
+    [trips.cache, showTripToast, t],
+  );
+  usePushOpen(
+    auth.state.status === 'signedIn' && trips.firstLoad,
+    (id, text) => void openFromAlert(id, text),
+  );
+
+  // Sprint 6 F-018: the channel, the consent on the server, and the alerts explainer.
+  const quietRef = useRef<() => boolean>(() => true);
+  const push = usePushSetup({
+    userId: auth.state.status === 'signedIn' ? auth.state.user.id : null,
+    ready: globeReady && trips.firstLoad && auth.state.status === 'signedIn',
+    isQuiet: useCallback(() => quietRef.current(), []),
+    onToast: showTripToast,
+  });
+  // Nothing else on screen: no form, list, sheet, search or consent (design 2.2).
+  useEffect(() => {
+    quietRef.current = () =>
+      !tripForm && !myTripsOpen && !sheetOpen && !searchOpen && !consentShown;
+  });
 
   const newTrip = useCallback(() => {
     if (!selectedCountry) return;
@@ -619,6 +687,10 @@ export function GlobeScreen() {
   useEffect(() => {
     if (auth.state.status === 'needsConsent') autoDecided.current = true;
   }, [auth.state.status]);
+  // Opened from an alert: the alert wins (sprint 6 design 4.1 step 4).
+  useEffect(() => {
+    if (launchedFromAlert()) autoDecided.current = true;
+  }, []);
   useEffect(() => {
     if (autoDecided.current || !globeReady || !trips.firstLoad || auth.state.status !== 'signedIn')
       return;
@@ -768,6 +840,9 @@ export function GlobeScreen() {
                     onNoticeHeight={onNoticeHeight}
                     initiallyOpen={openTrip?.id ?? null}
                     openSeq={openTrip?.seq ?? 0}
+                    openFlight={openFlight}
+                    alertText={alertText}
+                    onTrackedFlightSaved={() => void push.offer()}
                     onNewTrip={newTrip}
                     onDuplicateTrip={(source) =>
                       setTripForm({ kind: 'duplicate', country: selectedCountry, source })
@@ -902,10 +977,22 @@ export function GlobeScreen() {
         <Toast
           key={tripToast.at}
           text={tripToast.text}
+          long={tripToast.long}
           top={insets.top + layout.overlayTop}
           onDone={() => setTripToast(null)}
         />
       )}
+
+      <PushExplainer
+        visible={push.visible}
+        number={push.number}
+        androidNote={push.androidNote}
+        colorScheme={colorScheme}
+        reduceMotion={reduceMotion === true}
+        insetsBottom={insets.bottom}
+        onAllow={push.allow}
+        onLater={push.later}
+      />
 
       {/* Design 2.3: "signed in as" waits until the trip form closes. */}
       {/* One toast at a time: the trip's first, then "signed in as" (review). */}

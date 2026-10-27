@@ -71,6 +71,12 @@ interface Props {
   /** Sprint 3 AC-9: a new trip to the same country, copied without dates. */
   onDuplicateTrip: (trip: Trip) => void;
   onToast: (text: string) => void;
+  /** "flightId:seq": a tapped alert's flight, opened in the open trip (sprint 6 AC-5). */
+  openFlight?: string | null;
+  /** That alert's text, for an offline copy (sprint 6 design 4.4). */
+  alertText?: { title: string; body: string } | null;
+  /** A tracked flight saved: the alerts explainer may follow (sprint 6 design 2.2). */
+  onTrackedFlightSaved?: () => void;
 }
 
 export function CardTrips({
@@ -84,6 +90,9 @@ export function CardTrips({
   onEditTrip,
   onDuplicateTrip,
   onToast,
+  openFlight = null,
+  alertText = null,
+  onTrackedFlightSaved,
 }: Props) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
@@ -293,6 +302,9 @@ export function CardTrips({
                   colorScheme={colorScheme}
                   readOnly={readOnly}
                   onToast={onToast}
+                  openFlight={openFlight}
+                  alertText={alertText}
+                  onTrackedFlightSaved={onTrackedFlightSaved}
                 />
                 {trip.cities.length > 0 ? (
                   <View

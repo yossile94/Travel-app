@@ -6,7 +6,7 @@
  * added, the return-flight prompt. Offline it reads from the device copy and
  * every write is blocked (sprint 4 pattern).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -60,6 +60,8 @@ const PNR_MASK = '••••••';
 const LRI = '⁦';
 const PDI = '⁩';
 const PNR_AUTO_HIDE_MS = 30_000;
+/** The explainer, after the flight's screen closes (sprint 6 design 2.3, timing.push.explainerDelay). */
+const EXPLAINER_DELAY_MS = 400;
 
 /** "עודכן לפני 4 דק'" (design 9.5), from the provider's last check. */
 export function updatedText(
@@ -433,12 +435,21 @@ export function FlightsSection({
   colorScheme,
   readOnly,
   onToast,
+  openFlight = null,
+  alertText = null,
+  onTrackedFlightSaved,
 }: {
   trip: FlightScreenTrip;
   colorScheme: ColorScheme;
   /** The card shows the device copy: every write blocked (sprint 4 design 10.3). */
   readOnly: boolean;
   onToast: (text: string) => void;
+  /** "flightId:seq" from a tapped alert: its sheet opens once the flight is here (AC-5). */
+  openFlight?: string | null;
+  /** What that alert said, shown over an offline copy (sprint 6 design 4.4). */
+  alertText?: { title: string; body: string } | null;
+  /** A tracked flight saved and every screen of it closed (sprint 6 design 2.3). */
+  onTrackedFlightSaved?: () => void;
 }) {
   const { t } = useTranslation();
   const p = colors[colorScheme];
@@ -464,7 +475,33 @@ export function FlightsSection({
   }, [trip.id]);
 
   const flights = [...data.flights].sort(byDeparture);
+  const [openedFor, setOpenedFor] = useState<string | null>(null);
+  const wanted = openFlight?.split(':')[0] ?? null;
+  if (openFlight && openFlight !== openedFor && flights.some((f) => f.id === wanted)) {
+    setOpenedFor(openFlight);
+    setSheet(wanted);
+  }
   const open = flights.find((f) => f.id === sheet) ?? null;
+
+  // Sprint 6 design 2.3: the explainer waits for the return prompt and the
+  // return flight's screen, then comes 400 ms after the last one closes.
+  const [savedFlight, setSavedFlight] = useState<string | null>(null);
+  const saved = flights.find((f) => f.id === savedFlight);
+  const offerNow = saved !== undefined && !screen && !returnPrompt;
+  const offer = useRef(onTrackedFlightSaved);
+  useEffect(() => {
+    offer.current = onTrackedFlightSaved;
+  }, [onTrackedFlightSaved]);
+  useEffect(() => {
+    if (!offerNow) return;
+    const tracked = saved.watch !== null;
+    const timer = setTimeout(() => {
+      setSavedFlight(null);
+      if (tracked) offer.current?.();
+    }, EXPLAINER_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [offerNow, saved]);
+
   const guard = (action: () => void) => () => (offline ? setBlocked(true) : action());
 
   return (
@@ -554,8 +591,9 @@ export function FlightsSection({
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
           onClose={() => setScreen(null)}
-          onSaved={(_id, _number, direction, isNew) => {
+          onSaved={(id, _number, direction, isNew) => {
             setScreen(null);
+            setSavedFlight(id);
             void refreshTripFlights(trip.id);
             // Design 8.4: after adding an outbound flight, when there is no return yet.
             if (isNew && direction === 'out' && !flights.some((f) => f.direction === 'return')) {
@@ -578,6 +616,7 @@ export function FlightsSection({
         insetsBottom={insets.bottom}
         offline={offline}
         cachedAt={data.fromCache ? data.savedAt : null}
+        alertText={open && open.id === wanted ? alertText : null}
         onClose={() => setSheet(null)}
         onEdit={(f) => {
           setSheet(null);
@@ -664,6 +703,7 @@ function FlightSheet({
   insetsBottom,
   offline,
   cachedAt,
+  alertText,
   onClose,
   onEdit,
   onDeleted,
@@ -677,6 +717,7 @@ function FlightSheet({
   insetsBottom: number;
   offline: boolean;
   cachedAt: string | null;
+  alertText: { title: string; body: string } | null;
   onClose: () => void;
   onEdit: (f: Flight) => void;
   onDeleted: () => void;
@@ -807,6 +848,13 @@ function FlightSheet({
               text={t('offline.cachedAt', { when: cachedWhen(cachedAt, t) })}
               colorScheme={colorScheme}
               testID="flight-sheet-cached"
+            />
+          ) : null}
+          {cachedAt && alertText ? (
+            <InlineNotice
+              text={t('push.fromNotification', alertText)}
+              colorScheme={colorScheme}
+              testID="flight-sheet-from-notification"
             />
           ) : null}
           <View style={styles.chips}>
