@@ -642,14 +642,15 @@ export function GlobeScreen() {
   });
   // A flight saved from the trip form: offered once the form is closed (design 2.3, Raz review 4).
   const [formFlight, setFormFlight] = useState<string | null>(null);
+  const offerPush = push.offer;
   useEffect(() => {
     if (!formFlight || tripForm) return;
     const timer = setTimeout(() => {
       setFormFlight(null);
-      if (flightTracked(formFlight) !== false) void push.offer();
+      if (flightTracked(formFlight) === true) void offerPush();
     }, 400);
     return () => clearTimeout(timer);
-  }, [formFlight, tripForm, push]);
+  }, [formFlight, tripForm, offerPush]);
 
   const newTrip = useCallback(() => {
     if (!selectedCountry) return;

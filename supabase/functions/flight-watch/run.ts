@@ -172,9 +172,12 @@ async function sendOnce(deps: Deps, batch: Parameters<PushSender['send']>[0]) {
   return deps.push.send(batch);
 }
 
-export async function sendAlerts(deps: Deps): Promise<{ sent: number }> {
+/** `started`: the run's start, so the checks and the sends share one time budget (Raz re-review 4). */
+export async function sendAlerts(
+  deps: Deps,
+  started = deps.now().getTime(),
+): Promise<{ sent: number }> {
   const { db } = deps;
-  const started = deps.now().getTime();
   const events = await db.claimNotifications(500);
   if (events.length === 0) return { sent: 0 };
   const byWatch = new Map<number, ChangeEvent[]>();
@@ -183,16 +186,38 @@ export async function sendAlerts(deps: Deps): Promise<{ sent: number }> {
   let messages = 0;
   const dead: number[] = [];
   const left = [...byWatch];
-  while (left.length > 0) {
-    if (deps.now().getTime() - started > RUN_BUDGET_MS || messages >= MAX_MESSAGES) break;
-    const [watchId, list] = left.shift()!;
-    const receipts: { ticket: string; tokenId: number }[] = [];
-    let failed = false;
-    let after = 0;
+  try {
+    while (left.length > 0) {
+      if (deps.now().getTime() - started > RUN_BUDGET_MS || messages >= MAX_MESSAGES) break;
+      const [watchId, list] = left.shift()!;
+      sent += await sendWatch(deps, list, watchId, dead, (n) => (messages += n));
+    }
+  } finally {
+    // Whatever stopped the run, the rest goes back and dead devices go (Dudi re-review 1).
+    if (left.length > 0) await db.release(left.flatMap(([, list]) => list.map((e) => e.id)));
+    if (dead.length) await db.deleteTokens(dead);
+  }
+  return { sent };
+}
+
+/** One watch's alerts: every page of recipients, then its changes marked or released. */
+async function sendWatch(
+  deps: Deps,
+  list: ChangeEvent[],
+  watchId: number,
+  dead: number[],
+  count: (n: number) => void,
+): Promise<number> {
+  const { db } = deps;
+  const receipts: { ticket: string; tokenId: number }[] = [];
+  const ids = list.map((e) => e.id);
+  let failed = false;
+  let after = 0;
+  try {
     for (;;) {
       const page = await db.targets(watchId, after, TARGETS_PAGE);
       const out = buildMessages(list, page);
-      messages += out.length;
+      count(out.length);
       for (let i = 0; i < out.length && !failed; i += PUSH_BATCH * PARALLEL) {
         const batches: (typeof out)[] = [];
         for (let j = i; j < Math.min(out.length, i + PUSH_BATCH * PARALLEL); j += PUSH_BATCH) {
@@ -223,19 +248,20 @@ export async function sendAlerts(deps: Deps): Promise<{ sent: number }> {
       if (failed || page.length < TARGETS_PAGE) break;
       after = page[page.length - 1]!.token_id;
     }
-    const ids = list.map((e) => e.id);
-    if (failed && receipts.length === 0) {
-      // Nothing went: the next run sends it, a minute from now, not ten.
-      await db.release(ids);
-      continue;
-    }
-    // Sent (to some devices at least): marked now, so a later failure never sends it twice.
-    await db.markSent(ids, receipts);
-    sent += receipts.length;
+  } catch (error) {
+    // A later page failed to read: what went is marked, else it is released; the run stops.
+    if (receipts.length > 0) await db.markSent(ids, receipts);
+    else await db.release(ids);
+    throw error;
   }
-  if (left.length > 0) await db.release(left.flatMap(([, list]) => list.map((e) => e.id)));
-  if (dead.length) await db.deleteTokens(dead);
-  return { sent };
+  if (failed && receipts.length === 0) {
+    // Nothing went: the next run sends it, a minute from now, not ten.
+    await db.release(ids);
+    return 0;
+  }
+  // Sent (to some devices at least): marked now, so a later failure never sends it twice.
+  await db.markSent(ids, receipts);
+  return receipts.length;
 }
 
 /** Expo's receipts, 15 minutes or more after sending (AC-2): dead devices go. */

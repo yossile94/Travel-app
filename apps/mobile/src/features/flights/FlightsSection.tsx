@@ -477,7 +477,8 @@ export function FlightsSection({
   const flights = [...data.flights].sort(byDeparture);
   const [openedFor, setOpenedFor] = useState<string | null>(null);
   const wanted = openFlight?.split(':')[0] ?? null;
-  if (openFlight && openFlight !== openedFor && flights.some((f) => f.id === wanted)) {
+  // A flight's screen open in the card: the sheet waits for it to close (Raz re-review 1).
+  if (openFlight && openFlight !== openedFor && !screen && flights.some((f) => f.id === wanted)) {
     setOpenedFor(openFlight);
     setSheet(wanted);
   }

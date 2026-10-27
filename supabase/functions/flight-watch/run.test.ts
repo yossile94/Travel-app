@@ -456,6 +456,30 @@ Deno.test('a timeout is not retried: Expo may already have it', async () => {
   assertEquals(calls, 1);
 });
 
+Deno.test(
+  'a page that fails to read: what went is marked, the rest released (Dudi re-review 1)',
+  async () => {
+    const w = fakeWorld(new Date('2026-11-01T15:00:00Z'));
+    const all = Array.from({ length: 600 }, (_, i) =>
+      target({ token_id: i + 1, token: 'ExponentPushToken[' + i + ']' }),
+    );
+    w.deps.db.claimNotifications = () =>
+      Promise.resolve([
+        { id: 1, watch_id: 1, field: 'dep_gate', old_value: 'B1', new_value: 'B2' },
+        { id: 2, watch_id: 2, field: 'dep_gate', old_value: 'C1', new_value: 'C2' },
+      ]);
+    w.deps.db.targets = (_id, after, limit) =>
+      after === 0 ? Promise.resolve(all.slice(0, limit)) : Promise.reject(new Error('read failed'));
+    const marked: number[] = [];
+    const released: number[] = [];
+    w.deps.db.markSent = (ids) => (marked.push(...ids), Promise.resolve());
+    w.deps.db.release = (ids) => (released.push(...ids), Promise.resolve());
+    await assertRejects(() => sendAlerts(w.deps));
+    assertEquals(marked, [1]);
+    assertEquals(released, [2]);
+  },
+);
+
 Deno.test('receipts: a dead device is dropped', async () => {
   const w = fakeWorld(new Date('2026-11-01T15:00:00Z'));
   const deleted: number[][] = [];

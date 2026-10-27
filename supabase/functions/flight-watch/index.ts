@@ -121,7 +121,8 @@ Deno.serve(async (req) => {
   const body = (await req.json().catch(() => ({}))) as { task?: string };
   const d = deps();
   if (body.task === 'receipts') return json(200, await readReceipts(d));
+  const started = Date.now();
   const checks = await checkFlights(d);
-  const alerts = await sendAlerts(d);
+  const alerts = await sendAlerts(d, started);
   return json(200, { ...checks, ...alerts });
 });
