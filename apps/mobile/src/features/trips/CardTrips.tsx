@@ -75,6 +75,7 @@ interface Props {
   openFlight?: string | null;
   /** That alert's text, for an offline copy (sprint 6 design 4.4). */
   alertText?: { title: string; body: string } | null;
+  onAlertFlightShown?: () => void;
   /** A tracked flight saved: the alerts explainer may follow (sprint 6 design 2.2). */
   onTrackedFlightSaved?: () => void;
 }
@@ -92,6 +93,7 @@ export function CardTrips({
   onToast,
   openFlight = null,
   alertText = null,
+  onAlertFlightShown,
   onTrackedFlightSaved,
 }: Props) {
   const { t, i18n } = useTranslation();
@@ -304,6 +306,7 @@ export function CardTrips({
                   onToast={onToast}
                   openFlight={openFlight}
                   alertText={alertText}
+                  onAlertFlightShown={onAlertFlightShown}
                   onTrackedFlightSaved={onTrackedFlightSaved}
                 />
                 {trip.cities.length > 0 ? (

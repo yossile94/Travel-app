@@ -448,6 +448,7 @@ export function FlightsSection({
   onToast,
   openFlight = null,
   alertText = null,
+  onAlertFlightShown,
   onTrackedFlightSaved,
 }: {
   trip: FlightScreenTrip;
@@ -459,6 +460,8 @@ export function FlightsSection({
   openFlight?: string | null;
   /** What that alert said, shown over an offline copy (sprint 6 design 4.4). */
   alertText?: { title: string; body: string } | null;
+  /** The alert's flight is open: the request is done, never replayed (QA S6 #1). */
+  onAlertFlightShown?: () => void;
   /** A tracked flight saved and every screen of it closed (sprint 6 design 2.3). */
   onTrackedFlightSaved?: () => void;
 }) {
@@ -487,13 +490,23 @@ export function FlightsSection({
 
   const flights = [...data.flights].sort(byDeparture);
   const [openedFor, setOpenedFor] = useState<string | null>(null);
+  /** The flight whose sheet shows the alert's text; it stays while that sheet is open. */
+  const [alertFor, setAlertFor] = useState<string | null>(null);
   const wanted = openFlight?.split(':')[0] ?? null;
   // A flight's screen open in the card: the sheet waits for it to close (Raz re-review 1).
   if (openFlight && openFlight !== openedFor && !screen && flights.some((f) => f.id === wanted)) {
     setOpenedFor(openFlight);
     setSheet(wanted);
+    setAlertFor(wanted);
   }
   const open = flights.find((f) => f.id === sheet) ?? null;
+  const shown = useRef(onAlertFlightShown);
+  useEffect(() => {
+    shown.current = onAlertFlightShown;
+  }, [onAlertFlightShown]);
+  useEffect(() => {
+    if (openFlight && openedFor === openFlight) shown.current?.();
+  }, [openFlight, openedFor]);
 
   // Sprint 7: routes and their layovers, worked out each render (design 2.1).
   const items = routes(flights);
@@ -707,8 +720,11 @@ export function FlightsSection({
         insetsBottom={insets.bottom}
         offline={offline}
         cachedAt={data.fromCache ? data.savedAt : null}
-        alertText={open && open.id === wanted ? alertText : null}
-        onClose={() => setSheet(null)}
+        alertText={open && open.id === alertFor ? alertText : null}
+        onClose={() => {
+          setSheet(null);
+          setAlertFor(null);
+        }}
         onEdit={(f) => {
           setSheet(null);
           setScreen({ flight: f, direction: f.direction });

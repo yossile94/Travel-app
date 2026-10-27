@@ -883,6 +883,7 @@ export function GlobeScreen() {
                     openSeq={openTrip?.seq ?? 0}
                     openFlight={openFlight}
                     alertText={alertText}
+                    onAlertFlightShown={() => setOpenFlight(null)}
                     onTrackedFlightSaved={() => void push.offer()}
                     onNewTrip={newTrip}
                     onDuplicateTrip={(source) =>
