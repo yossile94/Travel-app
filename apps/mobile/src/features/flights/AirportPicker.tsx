@@ -85,7 +85,7 @@ export function AirportPicker({
   useEffect(() => {
     const timer = setTimeout(
       () => field.current?.focus(),
-      (reduceMotion ? motion.short : motion.medium) + 50,
+      (reduceMotion ? motion.short : motion.medium) + 350,
     );
     return () => clearTimeout(timer);
   }, [reduceMotion]);

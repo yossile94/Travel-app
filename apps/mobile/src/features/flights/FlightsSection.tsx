@@ -698,7 +698,9 @@ function FlightSheet({
   }, [flight, airports]);
   const airportName = (iata: string | null) => {
     const a = iata ? airports?.find((x) => x.iata === iata) : undefined;
-    return a ? `${airportTitle(a, i18n.language)} · ${iata}` : (iata ?? '—');
+    // Each part isolated: an English name never swaps places with the code (QA S5 R-2).
+    const parts = a ? [...airportTitle(a, i18n.language).split(' · '), iata!] : [iata ?? '—'];
+    return parts.map(isolateOwn).join(' · ');
   };
 
   // The booking code hides again after 30 s, on close and in the background (design 7.2).
@@ -763,7 +765,7 @@ function FlightSheet({
         <Text style={[styles.caption, { color: p.textSecondary }]} accessibilityRole="header">
           {t(side === 'dep' ? 'flight.departure' : 'flight.arrival')}
         </Text>
-        <Text style={[styles.body, { color: p.textPrimary }]}>{isolateOwn(airportName(iata))}</Text>
+        <Text style={[styles.body, { color: p.textPrimary }]}>{airportName(iata)}</Text>
         <Text style={[styles.numeric, { color: s.changed ? p.textAlert : p.textPrimary }]}>
           {isolateLtr(`${date ? `${dayMonth(date)}.${date.slice(0, 4)} · ` : ''}${s.local ?? '—'}`)}
           {s.scheduled ? (

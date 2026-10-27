@@ -7,6 +7,9 @@ import type { Flight } from './flightModel';
 import { FlightsSection, updatedText } from './FlightsSection';
 import type { TripFlights } from './flightsStore';
 
+// The first render also loads the section's modules: room for a busy parallel run (QA S5 retest).
+jest.setTimeout(15_000);
+
 const mockState: { value: TripFlights } = {
   value: { flights: [], status: 'ready', fromCache: false, savedAt: null },
 };
@@ -106,6 +109,13 @@ const show = (readOnly = false) =>
   );
 
 describe('FlightsSection (sprint 5 design 9–12)', () => {
+  // Warm the modules once, outside any test's own time.
+  beforeAll(async () => {
+    mockState.value = { flights: [], status: 'ready', fromCache: false, savedAt: null };
+    await show();
+    await screen.unmount();
+  });
+
   it('an empty trip: add, the help line, no credit', async () => {
     mockState.value = { flights: [], status: 'ready', fromCache: false, savedAt: null };
     await show();
