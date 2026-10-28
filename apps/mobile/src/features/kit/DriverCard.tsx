@@ -157,7 +157,12 @@ export function DriverCard({
           </Text>
           {hotel.addressLocal ? (
             <Text
-              style={[styles.en, styles.ltr, { color: p.textSecondary }]}
+              style={[
+                styles.en,
+                styles.ltr,
+                { textAlign: alignFor('ltr') },
+                { color: p.textSecondary },
+              ]}
               selectable
               maxFontSizeMultiplier={2}
             >
@@ -166,7 +171,12 @@ export function DriverCard({
           ) : null}
           {hotel.phone ? (
             <Text
-              style={[styles.phone, styles.ltr, { color: p.textPrimary }]}
+              style={[
+                styles.phone,
+                styles.ltr,
+                { textAlign: alignFor('ltr') },
+                { color: p.textPrimary },
+              ]}
               maxFontSizeMultiplier={2}
             >
               {isolateLtr(formatPhone(hotel.phone))}
@@ -233,7 +243,7 @@ const styles = StyleSheet.create({
   name: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
   en: { fontFamily: fonts.regular, fontSize: 18, lineHeight: 24 },
   phone: { fontFamily: fonts.medium, fontSize: 17, lineHeight: 22, fontVariant: ['tabular-nums'] },
-  ltr: { writingDirection: 'ltr', textAlign: alignFor('ltr') },
+  ltr: { writingDirection: 'ltr' },
   bar: {
     flexDirection: 'row',
     flexWrap: 'wrap',

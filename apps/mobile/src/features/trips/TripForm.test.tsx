@@ -7,6 +7,8 @@ import { Alert } from 'react-native';
 import { countryByAdm0 } from '@/features/globe/countryData';
 
 import { TripForm } from './TripForm';
+import { syncInsuranceReminder } from '@/features/kit/insuranceReminder';
+
 import { saveTrip, type Trip } from './tripsApi';
 
 const mockRecheck = jest.fn(async () => true);
@@ -18,6 +20,11 @@ jest.mock('@/features/auth/AuthProvider', () => ({
     state: { status: 'signedIn', user: { id: 'u1' } },
     recheckConsent: mockRecheck,
   }),
+}));
+// Sprint 8 AC-10 (Dana 1): saving a trip (re)schedules its insurance reminder.
+jest.mock('@/features/kit/insuranceReminder', () => ({
+  syncInsuranceReminder: jest.fn(async () => 'scheduled'),
+  cancelInsuranceReminder: jest.fn(async () => {}),
 }));
 jest.mock('./tripsApi', () => ({
   saveTrip: jest.fn(async () => 'ok'),
@@ -106,6 +113,12 @@ describe('TripForm, duplicate (sprint 3 AC-9)', () => {
     expect(trip.travelers).toEqual(source.travelers);
     expect(trip.cities).toEqual(source.cities);
     expect(onDone).toHaveBeenCalledWith({ kind: 'created', trip });
+    // A new trip has no insurance: its reminder is scheduled.
+    expect(syncInsuranceReminder).toHaveBeenCalledWith(
+      trip,
+      false,
+      expect.objectContaining({ title: expect.any(String) }),
+    );
   });
 
   it('a consent refusal keeps the form and asks for consent again', async () => {

@@ -197,3 +197,24 @@ export function tripHasKit(tripId: string): boolean {
   const s = state.get(tripId);
   return !!s && (s.hotels.length > 0 || s.insurance !== null);
 }
+
+/** A deleted trip's kit leaves memory and the device copy (Dana 3). */
+export async function forgetTripKit(tripId: string): Promise<void> {
+  state.delete(tripId);
+  notify();
+  const user = await userId();
+  if (!user) return;
+  const generation = tripsCacheGeneration();
+  const cache = await readCache(user);
+  if (!cache || !cache.trips.some((t) => t.tripId === tripId)) return;
+  writes = writes
+    .then(async () => {
+      if (tripsCacheGeneration() !== generation) return;
+      await secureSessionStorage.setItem(
+        keyOf(user),
+        JSON.stringify({ ...cache, trips: cache.trips.filter((t) => t.tripId !== tripId) }),
+      );
+    })
+    .catch(() => {});
+  await writes;
+}

@@ -1,6 +1,17 @@
 import NetInfo from '@react-native-community/netinfo';
 
+import { cancelInsuranceReminder } from '@/features/kit/insuranceReminder';
+import { forgetTripKit } from '@/features/kit/kitStore';
+import { removePolicy } from '@/features/kit/policyFile';
+
 import { deleteTrip, loadTripCountries, loadTripPage, saveTrip, type Trip } from './tripsApi';
+
+// Sprint 8 AC-9, AC-10 (Dana 1, 2): a deleted trip takes its device-only kit.
+jest.mock('@/features/kit/insuranceReminder', () => ({
+  cancelInsuranceReminder: jest.fn(async () => {}),
+}));
+jest.mock('@/features/kit/kitStore', () => ({ forgetTripKit: jest.fn(async () => {}) }));
+jest.mock('@/features/kit/policyFile', () => ({ removePolicy: jest.fn() }));
 
 /** A query builder that records each call and answers with `mockAnswer`. */
 const mockCalls: [string, ...unknown[]][] = [];
@@ -202,6 +213,10 @@ describe('trips on the server (sprint 2 F-006)', () => {
     expect(await deleteTrip(trip.id)).toBe('gone');
     mockAnswer.value = { data: [{ id: trip.id }], error: null };
     expect(await deleteTrip(trip.id)).toBe('ok');
+    // Sprint 8: the reminder, the policy file and the kit copy go with it.
+    expect(cancelInsuranceReminder).toHaveBeenCalledWith(trip.id);
+    expect(removePolicy).toHaveBeenCalledWith(trip.id);
+    expect(forgetTripKit).toHaveBeenCalledWith(trip.id);
   });
 
   it('never writes offline', async () => {

@@ -170,6 +170,8 @@ export type OpenResult = 'ok' | 'missing' | 'noViewer' | 'error';
 
 /** Decrypts to a cache copy and opens it in the system viewer (Android). */
 export async function openPolicy(tripId: string): Promise<OpenResult> {
+  // Android only for now: nothing is decrypted where it can't be opened (Dana 4).
+  if (Platform.OS !== 'android') return 'error';
   const meta = policyMeta(tripId);
   if (!meta) return 'missing';
   clearViews();
@@ -195,7 +197,6 @@ export async function openPolicy(tripId: string): Promise<OpenResult> {
     reader.close();
     writer.close();
     reader = writer = null;
-    if (Platform.OS !== 'android') return 'error';
     try {
       await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
         data: out.contentUri,

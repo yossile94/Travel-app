@@ -4,6 +4,7 @@
  * only, never the error object (PostgREST's details hold the user's row).
  */
 import { cancelInsuranceReminder } from '@/features/kit/insuranceReminder';
+import { forgetTripKit } from '@/features/kit/kitStore';
 import { removePolicy } from '@/features/kit/policyFile';
 import NetInfo from '@react-native-community/netinfo';
 
@@ -221,5 +222,6 @@ export async function deleteTrip(id: string): Promise<WriteResult> {
   // Sprint 8 AC-9, AC-10: this device's policy file and the trip's reminder go too.
   removePolicy(id);
   void cancelInsuranceReminder(id);
+  void forgetTripKit(id);
   return data && data.length > 0 ? 'ok' : 'gone';
 }
