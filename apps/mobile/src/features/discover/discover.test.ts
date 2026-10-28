@@ -166,6 +166,30 @@ describe('discovery rules (sprint 9 AC-1 to AC-9)', () => {
     expect(hits).not.toContain('YEM');
   });
 
+  it('a rainy failure carries its days for the card (Raz B-2)', () => {
+    const rainy: DiscoverInput = {
+      ...input,
+      countries: [{ adm0: 'AAA', label: [35, 33] }],
+      pointsOf: () => [{ temps: Array(12).fill(2000), wet: Array(12).fill(14), city: null }],
+    };
+    const [r] = rainy.countries.map((c) =>
+      evaluate(rainy, c, { ...NO_FILTERS, month: 6, weatherOn: true, weather: 'mild' }),
+    );
+    expect(r).toMatchObject({ match: false, failure: 'rainy', reasons: { rain: 14 } });
+    const noWet = {
+      ...rainy,
+      pointsOf: () => [{ temps: Array(12).fill(2000), wet: null, city: null }],
+    };
+    expect(
+      evaluate(noWet, rainy.countries[0]!, {
+        ...NO_FILTERS,
+        month: 6,
+        weatherOn: true,
+        weather: 'mild',
+      }).failure,
+    ).toBe('noClimate');
+  });
+
   it('ties sort by code, so the order is stable (Raz 13)', () => {
     const a = discover(input, { ...NO_FILTERS, near: true }).map((r) => r.adm0);
     const b = discover(

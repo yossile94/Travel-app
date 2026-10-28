@@ -21,6 +21,11 @@ export interface SelectionState {
   selected: SelectedCountry | null;
   /** True from a tap until the camera reaches the country. */
   flying: boolean;
+  /**
+   * The city's pin is hidden (a new search, AC-13). The city stays selected,
+   * so the camera doesn't fly back to the country (Raz, sprint 9 B-1).
+   */
+  pinHidden?: boolean;
 }
 
 export type SelectionEvent =
@@ -28,7 +33,7 @@ export type SelectionEvent =
   | { type: 'oceanTapped' }
   | { type: 'backPressed' }
   | { type: 'flightEnded' }
-  /** AC-13: the pin goes on a new search; the country stays selected. */
+  /** AC-13: the pin goes on a new search; the country and its city stay selected. */
   | { type: 'cityCleared' };
 
 export const initialSelection: SelectionState = { selected: null, flying: false };
@@ -41,7 +46,8 @@ export function selectionReducer(state: SelectionState, event: SelectionEvent): 
       if (
         state.selected?.adm0 === event.country.adm0 &&
         state.selected.city?.id === event.country.city?.id &&
-        !state.flying
+        !state.flying &&
+        !state.pinHidden
       )
         return state;
       return { selected: event.country, flying: true };
@@ -51,7 +57,7 @@ export function selectionReducer(state: SelectionState, event: SelectionEvent): 
     case 'flightEnded':
       return state.flying ? { ...state, flying: false } : state;
     case 'cityCleared':
-      return state.selected?.city ? { ...state, selected: { adm0: state.selected.adm0 } } : state;
+      return state.selected?.city && !state.pinHidden ? { ...state, pinHidden: true } : state;
   }
 }
 

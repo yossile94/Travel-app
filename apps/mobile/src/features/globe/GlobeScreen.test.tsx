@@ -10,7 +10,7 @@ import { withTiming } from 'react-native-reanimated';
 import '@/i18n';
 import { motion } from '@/theme/tokens';
 
-import { HOME_ZOOM } from './camera';
+import { CITY_ZOOM, HOME_ZOOM } from './camera';
 import { GlobeScreen } from './GlobeScreen';
 import { LAYER } from './GlobeLayers';
 
@@ -197,8 +197,23 @@ jest.mock('@/features/discover/discoverData', () => {
         : { status: 'idle', retry: () => {} },
   };
 });
-/** Sprint 9: a fixed advisories copy for "family"; null keeps the real store. */
-let mockDestination: null | Record<string, unknown> = null;
+/** Sprint 9: a fixed advisories copy for "family"; 'failed': no copy at all; null keeps the real store. */
+let mockDestination: null | 'failed' | Record<string, unknown> = null;
+/** Sprint 9 AC-12: the cities search answers these, each with its point. */
+let mockCityHits: { id: number; nameHe: string; nameEn: string; adm0: string; point: number[] }[] =
+  [];
+jest.mock('@/features/trips/citiesData', () => {
+  const actual = jest.requireActual<typeof import('@/features/trips/citiesData')>(
+    '@/features/trips/citiesData',
+  );
+  return {
+    ...actual,
+    globalCityIndex: () => Promise.resolve(),
+    searchAllCities: async () =>
+      mockCityHits.map((c) => ({ ...c, ascii: c.nameEn, population: 1e6 })),
+    cityPoint: (id: number) => mockCityHits.find((c) => c.id === id)?.point ?? null,
+  };
+});
 jest.mock('@/features/destination/destinationData', () => {
   const actual = jest.requireActual<typeof import('@/features/destination/destinationData')>(
     '@/features/destination/destinationData',
@@ -206,7 +221,11 @@ jest.mock('@/features/destination/destinationData', () => {
   return {
     ...actual,
     useDestination: (mockLoad?: boolean) =>
-      mockDestination ? { data: mockDestination, failed: false } : actual.useDestination(mockLoad),
+      mockDestination === 'failed'
+        ? { data: null, failed: true }
+        : mockDestination
+          ? { data: mockDestination, failed: false }
+          : actual.useDestination(mockLoad),
   };
 });
 
@@ -292,6 +311,7 @@ beforeEach(() => {
   mockTrips.firstLoad = false;
   mockTrips.nextTrip = null;
   mockDestination = null;
+  mockCityHits = [];
 });
 afterEach(() => jest.useRealTimers());
 
@@ -1054,5 +1074,76 @@ describe('discovery search (sprint 9 F-023)', () => {
     expect(screen.getByTestId('card-match').props.accessibilityValue.text).toBe('match');
     expect(screen.getByTestId('card-match-level')).toHaveTextContent('אזהרה רמה 1');
     expect(screen.getByTestId('card-match-hours')).toBeOnTheScreen();
+  });
+});
+
+describe('a city from search (sprint 9 AC-12, AC-13)', () => {
+  const miami = {
+    id: 4164138,
+    nameHe: 'מיאמי',
+    nameEn: 'Miami',
+    adm0: 'USA',
+    point: [-80.19, 25.77],
+  };
+  const pin = () =>
+    screen.getByTestId('globe-city-pin', { includeHiddenElements: true }).props.accessibilityValue
+      .text;
+
+  async function chooseMiami() {
+    mockCityHits = [miami];
+    await fireEvent.press(screen.getByTestId('search-open'));
+    await fireEvent.changeText(screen.getByTestId('search-input'), 'מיאמי');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await fireEvent.press(screen.getByTestId('search-city-4164138'));
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+
+  it('flies to the city at the city zoom, and pins it once the camera arrives', async () => {
+    await render(<GlobeScreen />);
+    await chooseMiami();
+    const move = lastMoveWhere((m) => m.animationMode === 'flyTo');
+    expect(move.centerCoordinate).toEqual([-80.19, 25.77]);
+    expect(move.zoomLevel).toBe(CITY_ZOOM);
+    expect(pin()).toBe('');
+    await act(async () => jest.advanceTimersByTime(2_000));
+    expect(pin()).toBe('4164138');
+  });
+
+  it('a new search hides the pin and never flies back to the country (Raz B-1)', async () => {
+    await render(<GlobeScreen />);
+    await chooseMiami();
+    await act(async () => jest.advanceTimersByTime(2_000));
+    const moves = mockMap.setCamera.mock.calls.length;
+    await fireEvent.press(screen.getByTestId('search-open'));
+    await act(async () => jest.advanceTimersByTime(2_000));
+    expect(pin()).toBe('');
+    expect(mockMap.setCamera.mock.calls.length).toBe(moves);
+  });
+
+  it('closing the card drops the pin (AC-13)', async () => {
+    await render(<GlobeScreen />);
+    await chooseMiami();
+    await act(async () => jest.advanceTimersByTime(2_000));
+    await fireEvent.press(screen.getByTestId('card-close'));
+    expect(pin()).toBe('');
+  });
+});
+
+describe('family with no advisories copy (sprint 9 AC-10)', () => {
+  it('the chip is disabled and explains itself; the barred list still holds', async () => {
+    mockDestination = 'failed';
+    await render(<GlobeScreen />);
+    const chip = screen.getByTestId('discover-chip-family');
+    expect(chip.props.accessibilityValue.text).toBe('disabled');
+    await fireEvent.press(chip);
+    expect(screen.getByText(/כדי לסנן למשפחות צריך את אזהרות המסע/)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('discover-chip-near'));
+    const matched = screen.getByTestId('globe-discover', { includeHiddenElements: true }).props
+      .accessibilityValue.text as string;
+    expect(matched.split(',')).not.toContain('LBN');
   });
 });

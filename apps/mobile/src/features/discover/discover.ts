@@ -176,7 +176,8 @@ function pointFailure(
   }
   if (f.weather === 'hot' || f.weather === 'mild') {
     const wet = p.wet?.[f.month];
-    if (wet === undefined || wet > (f.weather === 'hot' ? 8 : 10)) return 'rainy';
+    if (wet === undefined) return 'noClimate';
+    if (wet > (f.weather === 'hot' ? 8 : 10)) return 'rainy';
   }
   if (f.weather === 'hot' && !coastal) return 'noCoast';
   return null;
@@ -241,6 +242,7 @@ export function evaluate(
   if (!first) {
     // The failure shown is the country's own point's, never a city's (Raz, design 3).
     reasons.temp = shownTemp(own.temps[f.month]!);
+    if (ownFailure === 'rainy') reasons.rain = own.wet?.[f.month];
     return done(ownFailure);
   }
   reasons.temp = shownTemp(first.temps[f.month]!);

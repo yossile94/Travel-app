@@ -234,6 +234,7 @@ export function GlobeScreen() {
   /** Sprint 9 AC-12: a city chosen in search; its pin shows once the camera arrives. */
   const selectedCity = selection.selected?.city ?? null;
   const selectedCityId = selectedCity?.id ?? null;
+  const pinShown = Boolean(selectedCity) && !selection.flying && !selection.pinHidden;
 
   // Sprint 9 F-023: discovery search. One state for the session (design 1,
   // 19.2): opening a card, search or "My trips" keeps it; only "clear", back
@@ -1080,7 +1081,7 @@ export function GlobeScreen() {
               reduceMotion={reduceMotion === true}
               tripAdm0s={tripAdm0s}
               discoverAdm0s={discoverAdm0s}
-              cityPin={selectedCity && !selection.flying ? selectedCity.point : null}
+              cityPin={pinShown ? selectedCity!.point : null}
             />
             <NextTripPin
               feature={pinFeature}
@@ -1117,17 +1118,22 @@ export function GlobeScreen() {
         accessible={false}
         importantForAccessibility="no-hide-descendants"
         accessibilityValue={{
-          text: selectedCity && !selection.flying ? String(selectedCity.id) : '',
+          text: pinShown ? String(selectedCity!.id) : '',
         }}
         testID="globe-city-pin"
       />
-      <Text style={styles.hook} accessibilityLiveRegion="polite" testID="discover-announcer">
+      <Text
+        style={styles.hook}
+        importantForAccessibility="no-hide-descendants"
+        testID="discover-announcer"
+      >
         {announcement ?? ''}
       </Text>
 
       {discoverOn && (
         <DiscoverPanel
           state={panelState}
+          resultsKey={matchedKey}
           filters={filters}
           colorScheme={colorScheme}
           reduceMotion={reduceMotion === true}

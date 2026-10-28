@@ -55,6 +55,8 @@ export interface WithoutOption {
 
 interface Props {
   state: PanelState;
+  /** The matching list's content: a refresh with the same countries keeps the scroll (Raz m-2). */
+  resultsKey: string;
   filters: DiscoverFilters;
   colorScheme: ColorScheme;
   reduceMotion: boolean;
@@ -78,6 +80,7 @@ interface Props {
 
 export function DiscoverPanel({
   state,
+  resultsKey,
   filters,
   colorScheme,
   reduceMotion,
@@ -97,7 +100,6 @@ export function DiscoverPanel({
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
   const { height: windowHeight } = useWindowDimensions();
-  const results = state.kind === 'results' ? state.results : null;
 
   // Design 14: up from below in 320 ms; with reduced motion, a 200 ms fade.
   const enter = useSharedValue(0);
@@ -117,12 +119,12 @@ export function DiscoverPanel({
   );
 
   // Design 8.10: pages of 50; a new result starts at the top with one page.
-  const [paging, setPaging] = useState({ results, pages: 1 });
-  if (paging.results !== results) setPaging({ results, pages: 1 });
+  const [paging, setPaging] = useState({ key: resultsKey, pages: 1 });
+  if (paging.key !== resultsKey) setPaging({ key: resultsKey, pages: 1 });
   const listRef = useRef<FlatList<DiscoverResult>>(null);
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [results]);
+  }, [resultsKey]);
 
   const rows = useRef(new Map<string, ComponentRef<typeof Pressable>>());
   useEffect(() => {

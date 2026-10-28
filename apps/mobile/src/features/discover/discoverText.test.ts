@@ -121,6 +121,13 @@ describe('the rest of the panel', () => {
       failureText(result({ match: false, failure: 'far', reasons: { hours: 9 } }), f, he),
     ).toBe('כ-9 שעות טיסה');
     expect(failureText(result({}), f, he)).toBeNull();
+    expect(
+      failureText(
+        result({ match: false, failure: 'rainy', reasons: { hours: 3, temp: 20, rain: 14 } }),
+        f,
+        he,
+      ),
+    ).toBe('14 ימי גשם ביולי');
   });
 
   it('the advisories date is the newest fetchedAt', () => {

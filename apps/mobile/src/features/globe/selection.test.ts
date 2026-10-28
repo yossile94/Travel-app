@@ -96,12 +96,16 @@ describe('a city from search (sprint 9 AC-12, AC-13)', () => {
     ).toBe(settled);
   });
 
-  it('a new search drops the pin and keeps the country', () => {
+  it('a new search hides the pin and keeps the country and its city (Raz B-1)', () => {
     const settled = run(
       { type: 'countryTapped', country: { ...usa, city: miami } },
       { type: 'flightEnded' },
       { type: 'cityCleared' },
     );
-    expect(settled).toEqual({ selected: usa, flying: false });
+    expect(settled).toEqual({ selected: { ...usa, city: miami }, flying: false, pinHidden: true });
+    // Choosing the same city again shows the pin again (a new flight).
+    expect(
+      selectionReducer(settled, { type: 'countryTapped', country: { ...usa, city: miami } }),
+    ).toEqual({ selected: { ...usa, city: miami }, flying: true });
   });
 });
