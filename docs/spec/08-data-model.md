@@ -8,8 +8,9 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
 | consents | user_id, doc_type, doc_version, action, platform, app_version, created_at | Insert בלבד לבעלים; ללא Update/Delete. השרת קובע את user_id ואת created_at, ומאשר רק את הגרסה הנוכחית של התנאים והמדיניות. בלי מפתח זר ל-auth.users, כדי שהיומן יישאר אחרי מחיקת חשבון (ספרינט 1) |
 | legal_documents | doc_type (terms/privacy), version, url, published_at | קריאה לכולם, כתיבה לאדמין (service role) בלבד. הגרסה הנוכחית: המאוחרת שכבר פורסמה (התצוגה current_legal_documents). גרסה חדשה מחייבת הסכמה מחדש (ספרינט 1, AC-18) |
 | companions | user_id, display_name, birth_year | בעלים בלבד. **נדחה** (ADR-007): בספרינט 3 נוסעים נשמרים לכל נסיעה, בלי רשימת מלווים קבועה |
-| countries | iso2, name_he, name_en, name_local, aliases[], languages[], emergency_numbers | קריאה לכולם, כתיבה לאדמין |
-| missions | country_iso2, type, address, phones, hours, lat/lng, covers[], verified_at, source_url | קריאה לכולם, כתיבה לאדמין |
+| countries | iso2, name_he, name_en, name_local, aliases[], languages[] | קריאה לכולם, כתיבה לאדמין |
+| missions | adm0, type, city, address, phones, hours, covers[] (קודי adm0), verified_at, source_url | קריאה לכולם, כתיבה ל-service role (אדמין בספרינט 10). שטח בלי שורה משלו יורש מהמדינה הריבונית (ספרינט 8) |
+| emergency_numbers | adm0, police, ambulance, fire, tourist_police, shared, source_url, verified_at | כמו missions. במקום countries.emergency_numbers (ספרינט 8) |
 | trips | id (UUID שנוצר במכשיר), user_id (on delete cascade), country_adm0 (קוד האזור בגלובוס, למשל THA; לא ISO, כי שטחים חולקים קוד ISO עם המדינה הריבונית), title, start_date, end_date, notes. הסטטוס (מתוכננת, בנסיעה, הסתיימה) מחושב בלקוח מהתאריכים ולא נשמר (ספרינט 3) | בעלים בלבד. יצירה ועריכה רק עם הסכמה לגרסה הנוכחית; מחיקה תמיד (ספרינט 2) |
 | exchange_rates | currency, rate_to_ils, rate_to_usd, source (boi / erapi), rate_date, fetched_at | קריאה לשער האחרון בלבד, דרך תצוגה. כתיבה ל-service role (ספרינט 4) |
 | country_advisories | adm0, entry_status, nsc_level, nsc_text, mfa_text, health_text, links, verified_at, fetched_at | קריאה לכולם, כתיבה ל-service role. במקום שדות בטבלה countries (ספרינט 4) |
@@ -21,8 +22,8 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
 | flight_watch | id, flight_number, dep_date_local (ייחודיים יחד), last_snapshot (jsonb), last_notified (jsonb), next_check_at, attempts, locked_until, state (active/paused/stopped/failed) | Service role בלבד. משמש גם כתור, עם `for update skip locked` (ADR-010, ספרינט 5) |
 | flight_events | watch_id, field, old_value, new_value, detected_at | קריאה רק דרך RPC של בעלי טיסה תואמת. נמחק 7 ימים אחרי הנחיתה, יחד עם תמונת המצב (רישיון AeroDataBox, ספרינט 5) |
 | provider_usage | month, provider, units | Service role בלבד. תקרה קשיחה של 360 יחידות בחודש ב-POC (ספרינט 5) |
-| hotels | trip_id, place_id, name_en, name_local, address_en, address_local, lang, phone, lat/lng, check_in, check_out, booking_ref | דרך הבעלות על trip |
-| insurance | trip_id, provider, policy_number, valid_until, emergency_phone | דרך הבעלות על trip |
+| hotels | id, trip_id, user_id, name, address_en, address_local, phone (E.164), check_in, check_out, booking_ref. עד 10 לנסיעה. place_id, lat/lng ו-lang נדחים עד Places | דרך הבעלות על trip, עם שער הסכמה, דרך RPC (ספרינט 8) |
+| insurance | trip_id (ייחודי), user_id, provider, policy_number, valid_until, emergency_phone, notes (עד 300). קובץ הפוליסה רק במכשיר, מוצפן | כמו hotels (ספרינט 8) |
 | curated_places | country_iso2, city, category, title, body, lat/lng, status | קריאה לכולם (published), כתיבה לאדמין |
 | saved_places | trip_id, place_ref | דרך הבעלות על trip |
 | push_tokens | user_id, token, platform | בעלים בלבד |
@@ -44,4 +45,4 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
   - המכשיר מוריד רק שורות שהשתנו מאז הסנכרון האחרון שלו.
   - הפרטים יתועדו בהחלטת ארכיטקטורה (ADR) בספרינט 0.
 
-**פער פתוח (2026-10-26):** הנסיעות מזוהות לפי קוד האזור בגלובוס (adm0), אבל countries, missions ו-curated_places עדיין לפי ISO. כשנסיעה תצטרך נציגויות או המלצות של היעד, צריך מיפוי adm0 ← ISO, ולשטחים שחולקים קוד ISO עם המדינה הריבונית צריך החלטה. נפתר בתכנון הספרינט שמחבר ביניהם.
+**פער adm0 ו-ISO (נפתח 2026-10-26, נסגר חלקית בספרינט 8):** missions ו-emergency_numbers לפי adm0, כמו country_advisories. שטח שחולק קוד ISO עם המדינה הריבונית יורש את הנתונים שלה, אלא אם יש לו שורה משלו. countries ו-curated_places עדיין לפי ISO, וייסגרו בספרינט שמחבר אותם.
