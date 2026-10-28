@@ -50,7 +50,8 @@ export async function ensureChannel(name: string, description: string): Promise<
     description,
     importance: AndroidImportance.HIGH,
     lockscreenVisibility: AndroidNotificationVisibility.PRIVATE,
-    sound: 'default',
+    // No `sound`: left out, Android uses the system's default sound; a value
+    // is a custom file's name, so 'default' logs "custom sound not found".
     showBadge: false,
   });
 }
