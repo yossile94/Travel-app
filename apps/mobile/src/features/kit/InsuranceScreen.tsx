@@ -25,7 +25,9 @@ import {
   type Insurance,
   type InsuranceField,
   type InsuranceForm,
+  numDate,
 } from './kitModel';
+import { alignFor } from './DriverCard';
 import { FormShell } from './kitUi';
 
 const FIELDS: readonly InsuranceField[] = ['provider', 'policyNumber', 'emergencyPhone', 'notes'];
@@ -167,7 +169,7 @@ export function InsuranceScreen({
         value={values.policyNumber}
         onChangeText={(policyNumber) => set({ policyNumber })}
         autoCorrect={false}
-        style={{ textAlign: 'left', writingDirection: 'ltr' }}
+        style={{ textAlign: alignFor('ltr'), writingDirection: 'ltr' }}
         error={text('policyNumber', errors.policyNumber)}
         counter={counter(values.policyNumber, 32, LIMITS.ref)}
         colorScheme={colorScheme}
@@ -175,7 +177,7 @@ export function InsuranceScreen({
       />
       <DateField
         label={t('insurance.until')}
-        value={values.validUntil ? isolateLtr(formatDate(values.validUntil, t)) : null}
+        value={values.validUntil ? isolateLtr(numDate(values.validUntil)) : null}
         placeholder="—"
         a11yLabel={`${t('insurance.until')}, ${values.validUntil ? formatDate(values.validUntil, t) : t('flight.noDataA11y')}`}
         a11yHint={t('tripForm.dateHint')}
@@ -194,8 +196,8 @@ export function InsuranceScreen({
       {warn ? (
         <InlineNotice
           text={t('insurance.warn.endsEarly', {
-            date: isolateLtr(formatDate(values.validUntil!, t)),
-            end: isolateLtr(formatDate(trip.endDate, t)),
+            date: isolateLtr(numDate(values.validUntil!)),
+            end: isolateLtr(numDate(trip.endDate)),
           })}
           colorScheme={colorScheme}
           testID="insurance-ends-early"
@@ -209,7 +211,7 @@ export function InsuranceScreen({
         onChangeText={(emergencyPhone) => set({ emergencyPhone })}
         keyboardType="phone-pad"
         autoFocus={focusHotline}
-        style={{ textAlign: 'left', writingDirection: 'ltr' }}
+        style={{ textAlign: alignFor('ltr'), writingDirection: 'ltr' }}
         error={text('emergencyPhone', errors.emergencyPhone)}
         colorScheme={colorScheme}
         testID="insurance-hotline"

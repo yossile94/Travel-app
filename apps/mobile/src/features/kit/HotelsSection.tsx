@@ -24,10 +24,10 @@ import {
 } from '@/components/icons';
 import { isolateLtr, isolateOwn } from '@/features/globe/BoardingPassCard';
 import { useReduceMotion } from '@/features/globe/useReduceMotion';
-import { formatDate, formatRange, todayPg } from '@/features/trips/tripDates';
+import { formatDate, todayPg } from '@/features/trips/tripDates';
 import { colors, type ColorScheme } from '@/theme/tokens';
 
-import { DriverCard, mapsUrl, shareText, textDirection } from './DriverCard';
+import { alignFor, DriverCard, mapsUrl, shareText, textDirection } from './DriverCard';
 import { HotelScreen, type KitTrip } from './HotelScreen';
 import { deleteHotel } from './kitApi';
 import {
@@ -37,6 +37,7 @@ import {
   nights,
   type Hotel,
   type Insurance,
+  numRange,
 } from './kitModel';
 import { refreshTripKit } from './kitStore';
 import { formatPhone, telUrl } from './phone';
@@ -62,7 +63,7 @@ function HotelRow({
 }) {
   const { t } = useTranslation();
   const p = colors[colorScheme];
-  const range = isolateLtr(formatRange(hotel.checkIn, hotel.checkOut, t));
+  const range = isolateLtr(numRange(hotel.checkIn, hotel.checkOut));
   const n = nightsText(hotel, t);
   const now = isNowHotel(hotel, today);
   return (
@@ -274,7 +275,7 @@ export function HotelsSection({
             </Text>
             <Text style={[styles.footnote, styles.tabular, { color: p.textSecondary }]}>
               {t('hotels.rowDates', {
-                range: isolateLtr(formatRange(open.checkIn, open.checkOut, t)),
+                range: isolateLtr(numRange(open.checkIn, open.checkOut)),
                 nights: nightsText(open, t),
               })}
             </Text>
@@ -328,9 +329,7 @@ export function HotelsSection({
                   style={[
                     styles.body,
                     { color: p.textPrimary, writingDirection: textDirection(open.addressLocal) },
-                    textDirection(open.addressLocal) === 'rtl'
-                      ? { textAlign: 'right' }
-                      : { textAlign: 'left' },
+                    { textAlign: alignFor(textDirection(open.addressLocal)) },
                   ]}
                   testID="hotel-sheet-address-local"
                 >
@@ -341,7 +340,7 @@ export function HotelsSection({
                 selectable
                 style={[
                   styles.footnote,
-                  { color: p.textSecondary, writingDirection: 'ltr', textAlign: 'left' },
+                  { color: p.textSecondary, writingDirection: 'ltr', textAlign: alignFor('ltr') },
                 ]}
               >
                 {open.addressEn}

@@ -24,7 +24,7 @@ import { SourcesSheet } from '@/features/climate/SourcesSheet';
 import { countryByAdm0 } from '@/features/globe/countryData';
 import { useReduceMotion } from '@/features/globe/useReduceMotion';
 import { isolateLtr } from '@/features/globe/BoardingPassCard';
-import { textDirection } from '@/features/kit/DriverCard';
+import { alignFor, textDirection } from '@/features/kit/DriverCard';
 import { countryWords } from '@/features/kit/hebrewPrefix';
 import type { Insurance } from '@/features/kit/kitModel';
 import { DialRow, openUrl, styles as kit } from '@/features/kit/kitUi';
@@ -66,7 +66,8 @@ function SourceLine({
   const { t } = useTranslation();
   const p = colors[colorScheme];
   const name = sourceName(url);
-  const when = isolateLtr(formatDate(date, t));
+  // Design 13.5: "12.10.2026", digits only, so the line never reorders in RTL.
+  const when = isolateLtr(date.split('-').reverse().map(Number).join('.'));
   return (
     <Pressable
       accessibilityRole="link"
@@ -261,7 +262,7 @@ function Groups({
                       {
                         color: p.textPrimary,
                         writingDirection: textDirection(address),
-                        textAlign: textDirection(address) === 'rtl' ? 'right' : 'left',
+                        textAlign: alignFor(textDirection(address)),
                       },
                     ]}
                   >

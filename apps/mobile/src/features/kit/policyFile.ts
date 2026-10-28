@@ -14,6 +14,7 @@
 import aesjs from 'aes-js';
 import * as Crypto from 'expo-crypto';
 import { Directory, File, FileMode, Paths } from 'expo-file-system';
+import * as IntentLauncher from 'expo-intent-launcher';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -88,6 +89,8 @@ async function encryptPolicy(
   const tmp = new File(dir(), `${tripId}.tmp`);
   let reader: ReturnType<File['open']> | null = null;
   let writer: ReturnType<File['open']> | null = null;
+  // After a move the File points at its new place: never clean it up then (device QA).
+  let moved = false;
   try {
     if (!dir().exists) dir().create({ intermediates: true });
     if (tmp.exists) tmp.delete();
@@ -112,9 +115,10 @@ async function encryptPolicy(
     reader = writer = null;
     const target = dataFile(tripId);
     if (target.exists) target.delete();
-    tmp.move(target);
+    tmp.moveSync(target);
+    moved = true;
     const meta: PolicyMeta = { kind, mime: source.mimeType!, size: done, addedAt: today };
-    metaFile(tripId).write(JSON.stringify(meta));
+    metaFile(tripId).writeSync(JSON.stringify(meta));
     return 'ok';
   } catch (error) {
     console.warn('[kit] policy save failed', (error as Error)?.name);
@@ -123,7 +127,7 @@ async function encryptPolicy(
     try {
       reader?.close();
       writer?.close();
-      if (tmp.exists) tmp.delete();
+      if (!moved && tmp.exists) tmp.delete();
     } catch {
       // Best effort.
     }
@@ -192,7 +196,6 @@ export async function openPolicy(tripId: string): Promise<OpenResult> {
     writer.close();
     reader = writer = null;
     if (Platform.OS !== 'android') return 'error';
-    const IntentLauncher = await import('expo-intent-launcher');
     try {
       await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
         data: out.contentUri,

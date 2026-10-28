@@ -8,7 +8,16 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import {
+  I18nManager,
+  Modal,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { Button } from '@/components/fields';
 import { ClearIcon, NavigateIcon, PhoneIcon, ShareIcon } from '@/components/icons';
@@ -40,6 +49,13 @@ export function textDirection(text: string): 'rtl' | 'ltr' {
   }
   return 'ltr';
 }
+
+/**
+ * The physical side for a text's own direction. React Native swaps 'left' and
+ * 'right' when the app is RTL, so an English address needs 'right' in Hebrew.
+ */
+export const alignFor = (dir: 'rtl' | 'ltr'): 'left' | 'right' =>
+  (dir === 'rtl') !== I18nManager.isRTL ? 'right' : 'left';
 
 export const mapsUrl = (h: Pick<Hotel, 'name' | 'addressEn'>) =>
   `geo:0,0?q=${encodeURIComponent(`${h.name}, ${h.addressEn}`)}`;
@@ -78,7 +94,7 @@ export function DriverCard({
     fontSize: size,
     lineHeight: Math.round(size * 1.25),
     writingDirection: dir,
-    textAlign: dir === 'rtl' ? ('right' as const) : ('left' as const),
+    textAlign: alignFor(dir),
   };
 
   return (
@@ -130,7 +146,13 @@ export function DriverCard({
             {big}
           </Text>
           <View style={[styles.rule, { backgroundColor: p.borderSubtle }]} />
-          <Text style={[styles.name, { color: p.textPrimary }]} maxFontSizeMultiplier={2}>
+          <Text
+            style={[
+              styles.name,
+              { color: p.textPrimary, textAlign: alignFor(textDirection(hotel.name)) },
+            ]}
+            maxFontSizeMultiplier={2}
+          >
             {hotel.name}
           </Text>
           {hotel.addressLocal ? (
@@ -208,10 +230,10 @@ const styles = StyleSheet.create({
   measure: { position: 'absolute', opacity: 0, start: 24, end: 24, top: 16 },
   hidden: { opacity: 0 },
   rule: { height: 1, marginVertical: 8 },
-  name: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28, textAlign: 'left' },
+  name: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
   en: { fontFamily: fonts.regular, fontSize: 18, lineHeight: 24 },
   phone: { fontFamily: fonts.medium, fontSize: 17, lineHeight: 22, fontVariant: ['tabular-nums'] },
-  ltr: { writingDirection: 'ltr', textAlign: 'left' },
+  ltr: { writingDirection: 'ltr', textAlign: alignFor('ltr') },
   bar: {
     flexDirection: 'row',
     flexWrap: 'wrap',

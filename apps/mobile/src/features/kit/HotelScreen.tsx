@@ -13,13 +13,7 @@ import { Button, DateField, TextField } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { isolateLtr, isolateOwn } from '@/features/globe/BoardingPassCard';
-import {
-  codePointLength,
-  formatDate,
-  formatRange,
-  fromPgDate,
-  toPgDate,
-} from '@/features/trips/tripDates';
+import { codePointLength, formatDate, fromPgDate, toPgDate } from '@/features/trips/tripDates';
 import { colors, type ColorScheme } from '@/theme/tokens';
 
 import { saveHotel } from './kitApi';
@@ -33,7 +27,10 @@ import {
   type HotelError,
   type HotelField,
   type HotelForm,
+  numDate,
+  numRange,
 } from './kitModel';
+import { alignFor } from './DriverCard';
 import { FormShell, styles } from './kitUi';
 
 export interface KitTrip {
@@ -99,7 +96,7 @@ export function HotelScreen({
     null,
   );
   const refs = useRef<Partial<Record<HotelField, { focus?: () => void } | null>>>({});
-  const range = isolateLtr(formatRange(trip.startDate, trip.endDate, t));
+  const range = isolateLtr(numRange(trip.startDate, trip.endDate));
 
   const errors = tried ? hotelErrors(values, trip) : {};
   const text = (field: HotelField, e: HotelError | undefined): string | undefined => {
@@ -240,7 +237,7 @@ export function HotelScreen({
         value={values.addressEn}
         onChangeText={(addressEn) => set({ addressEn })}
         multiline
-        style={{ textAlign: 'left', writingDirection: 'ltr' }}
+        style={{ textAlign: alignFor('ltr'), writingDirection: 'ltr' }}
         error={text('addressEn', errors.addressEn)}
         counter={counter(values.addressEn, 180, LIMITS.address)}
         colorScheme={colorScheme}
@@ -266,7 +263,7 @@ export function HotelScreen({
         value={values.phone}
         onChangeText={(phone) => set({ phone })}
         keyboardType="phone-pad"
-        style={{ textAlign: 'left', writingDirection: 'ltr' }}
+        style={{ textAlign: alignFor('ltr'), writingDirection: 'ltr' }}
         error={text('phone', errors.phone)}
         colorScheme={colorScheme}
         testID="hotel-phone"
@@ -277,7 +274,7 @@ export function HotelScreen({
             <DateField
               ref={(r) => void (refs.current.checkIn = r)}
               label={t('hotel.checkIn')}
-              value={values.checkIn ? isolateLtr(formatDate(values.checkIn, t)) : null}
+              value={values.checkIn ? isolateLtr(numDate(values.checkIn)) : null}
               placeholder="—"
               a11yLabel={`${t('hotel.checkIn')}, ${values.checkIn ? formatDate(values.checkIn, t) : t('flight.noDataA11y')}`}
               a11yHint={t('tripForm.dateHint')}
@@ -291,7 +288,7 @@ export function HotelScreen({
             <DateField
               ref={(r) => void (refs.current.checkOut = r)}
               label={t('hotel.checkOut')}
-              value={values.checkOut ? isolateLtr(formatDate(values.checkOut, t)) : null}
+              value={values.checkOut ? isolateLtr(numDate(values.checkOut)) : null}
               placeholder="—"
               a11yLabel={`${t('hotel.checkOut')}, ${values.checkOut ? formatDate(values.checkOut, t) : t('flight.noDataA11y')}`}
               a11yHint={t('tripForm.dateHint')}
@@ -317,7 +314,7 @@ export function HotelScreen({
         onChangeText={(bookingRef) => set({ bookingRef })}
         autoCapitalize="characters"
         autoCorrect={false}
-        style={{ textAlign: 'left', writingDirection: 'ltr' }}
+        style={{ textAlign: alignFor('ltr'), writingDirection: 'ltr' }}
         error={text('bookingRef', errors.bookingRef)}
         counter={counter(values.bookingRef, 32, LIMITS.ref)}
         colorScheme={colorScheme}

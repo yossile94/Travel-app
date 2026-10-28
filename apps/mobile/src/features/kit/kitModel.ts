@@ -178,3 +178,14 @@ export const endsEarly = (validUntil: string | null, endDate: string) =>
 
 /** AC-10: the insurance reminder's day, a week before departure. */
 export const reminderDay = (startDate: string) => addDays(startDate, -7);
+
+/** "28.10.2026": digits only, so a date never reorders inside RTL text (design 3.2, 13.5). */
+export const numDate = (d: string) => d.split('-').reverse().map(Number).join('.');
+
+/** "20.12 – 24.12" (design 3.2); the year only when the range crosses one. */
+export function numRange(from: string, to: string): string {
+  const short = (d: string) => numDate(d).split('.').slice(0, 2).join('.');
+  return from.slice(0, 4) === to.slice(0, 4)
+    ? `${short(from)} – ${short(to)}`
+    : `${numDate(from)} – ${numDate(to)}`;
+}

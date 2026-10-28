@@ -42,7 +42,7 @@ import type { KitTrip } from './HotelScreen';
 import { InsuranceScreen } from './InsuranceScreen';
 import { syncInsuranceReminder, type ReminderText } from './insuranceReminder';
 import { deleteInsurance } from './kitApi';
-import { endsEarly, type Insurance } from './kitModel';
+import { endsEarly, type Insurance, numDate } from './kitModel';
 import { refreshTripKit } from './kitStore';
 import { DialRow, SecretRow, SectionTitle, styles } from './kitUi';
 import {
@@ -154,7 +154,7 @@ function PolicyFile({ tripId, colorScheme }: { tripId: string; colorScheme: Colo
                 {t('policyFile.meta', {
                   kind: t(meta.kind === 'pdf' ? 'policyFile.kindPdf' : 'policyFile.kindImage'),
                   size: t('policyFile.size', { n: (meta.size / 1024 / 1024).toFixed(1) }),
-                  date: isolateLtr(formatDate(meta.addedAt, t)),
+                  date: isolateLtr(numDate(meta.addedAt)),
                 })}
               </Text>
               <Text style={[styles.footnote, { color: p.textSecondary }]}>
@@ -299,7 +299,7 @@ export function InsuranceSection({
     ]);
 
   const untilText = insurance?.validUntil
-    ? t('insurance.validUntil', { date: isolateLtr(formatDate(insurance.validUntil, t)) })
+    ? t('insurance.validUntil', { date: isolateLtr(numDate(insurance.validUntil)) })
     : null;
 
   return (
