@@ -14,4 +14,4 @@
 | מודרציה (שלב קהילה) | דיווחים, הסרת תוכן, חסימת משתמשים | Moderator |
 | דשבורד | משתמשים פעילים, נסיעות פעילות לפי מדינה, מדדי פרק 1 | כולם |
 
-**הרשאות:** RBAC עם 4 תפקידים (Admin, Content Editor, Support, Moderator), מאוחסן ב-custom claims של Supabase Auth ונאכף ב-RLS – לא רק ב-UI. עקרון הרשאה מינימלית.
+**הרשאות:** RBAC עם 4 תפקידים (Admin, Content Editor, Support, Moderator), מאוחסן בטבלה `admin_roles` ונאכף ב-RLS דרך `has_role()`, שבודקת גם AAL2 – לא רק ב-UI. לא משתמשים ב-custom claims: תפקיד שהוסר נחסם מיד (ספרינט 10, ADR-015). עקרון הרשאה מינימלית.

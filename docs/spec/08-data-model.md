@@ -13,7 +13,8 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
 | emergency_numbers | adm0, police, ambulance, fire, tourist_police, shared, source_url, verified_at | כמו missions. במקום countries.emergency_numbers (ספרינט 8) |
 | trips | id (UUID שנוצר במכשיר), user_id (on delete cascade), country_adm0 (קוד האזור בגלובוס, למשל THA; לא ISO, כי שטחים חולקים קוד ISO עם המדינה הריבונית), title, start_date, end_date, notes. הסטטוס (מתוכננת, בנסיעה, הסתיימה) מחושב בלקוח מהתאריכים ולא נשמר (ספרינט 3) | בעלים בלבד. יצירה ועריכה רק עם הסכמה לגרסה הנוכחית; מחיקה תמיד (ספרינט 2) |
 | exchange_rates | currency, rate_to_ils, rate_to_usd, source (boi / erapi), rate_date, fetched_at | קריאה לשער האחרון בלבד, דרך תצוגה. כתיבה ל-service role (ספרינט 4) |
-| country_advisories | adm0, entry_status, nsc_level, nsc_text, mfa_text, health_text, links, verified_at, fetched_at | קריאה לכולם, כתיבה ל-service role. במקום שדות בטבלה countries (ספרינט 4) |
+| country_advisories | adm0, entry_status, nsc_level, nsc_text, mfa_text, health_text, links, verified_at, fetched_at, passport_validity_months (0–12, ספרינט 10) | קריאה לכולם, כתיבה ל-service role. עורכי תוכן כותבים רק ל-`entry_*` ול-`passport_validity_months` (ספרינט 10). במקום שדות בטבלה countries (ספרינט 4) |
+| admin_roles | user_id, role (admin / content_editor / support / moderator), granted_by, created_at | קריאה וכתיבה ל-Admin בלבד, דרך `has_role()` עם AAL2. אסור להסיר את ה-Admin האחרון (ספרינט 10) |
 | country_advisory_changes | adm0, field, old_value, new_value, changed_at | בלי גישה ללקוח. בסיס ל-Push בעתיד (ספרינט 4) |
 | account_deletions | user_id, deleted_at, reason (user_request / no_consent_30d) | בלי גישה ללקוח. כתיבה רק בפונקציית המחיקה בשרת. ממנה נספרת תקופת השמירה של consents (ספרינט 2) |
 | trip_travelers | trip_id, user_id, position (0–8), name (1–40), relation (partner/child/parent/friend/other או ריק) | בעלים בלבד, דרך מפתח זר מורכב (trip_id, user_id) ל-trips. Insert ו-Delete עם הסכמה, בלי Update. "אני" לא נשמר (ספרינט 3, ADR-007) |
@@ -27,7 +28,7 @@ Row Level Security מופעל על כל טבלה ללא יוצא מן הכלל; 
 | curated_places | country_iso2, city, category, title, body, lat/lng, status | קריאה לכולם (published), כתיבה לאדמין |
 | saved_places | trip_id, place_ref | דרך הבעלות על trip |
 | push_tokens | user_id, token, platform | בעלים בלבד |
-| admin_audit_log | actor_id, action, entity, entity_id, diff, created_at | Insert בלבד; קריאה לאדמין |
+| admin_audit_log | actor_id, actor_email, action, entity, entity_id, diff, created_at | Insert בטריגר בלבד; אין UPDATE ו-DELETE לאף תפקיד; קריאה לאדמין |
 
 **תוספות לטבלאות (פיצ'רים 5.8, 5.9 ופרק 12):** טבלה חדשה exchange_rates (currency, rate_to_ils, rate_to_usd, source, fetched_at) – קריאה לכולם, כתיבה ל-Service role בלבד. בטבלת countries נוספים השדות timezones[], default_timezone, currency_code ו-region_color (גוון היעד בעיצוב), וכן entry_status ושדות nsc_level, nsc_updated_at ו-nsc_source_url לאזהרות מסע (5.10). בטבלת flights נוספים direction (out/return/internal), same_booking ו-same_booking_prev (לקונקשנים, 5.3; המסלול מוסק, בלי route_id ו-leg_order, ADR-012). טבלאות חדשות: itinerary_items (trip_id, day_date, time, title, place_ref, source manual/auto, sort_order) – RLS דרך הבעלות על trip; ו-min_connection_times לשדות תעופה (iata, minutes, source_url, verified_at) – קריאה לכולם, כתיבה ל-service role עד האדמין (ספרינט 8). תאריך תפוגת הדרכון לא נשמר בשרת (6.4).
 
