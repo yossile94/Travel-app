@@ -10,7 +10,7 @@ import { withTiming } from 'react-native-reanimated';
 import '@/i18n';
 import { motion } from '@/theme/tokens';
 
-import { HOME_ZOOM } from './camera';
+import { CITY_ZOOM, HOME_ZOOM } from './camera';
 import { GlobeScreen } from './GlobeScreen';
 import { LAYER } from './GlobeLayers';
 
@@ -168,6 +168,67 @@ jest.mock('./useCountriesAsset', () => ({
 }));
 jest.mock('./useReduceMotion', () => ({ useReduceMotion: () => mockReduceMotion }));
 
+// Sprint 9: discovery runs on the real bundled files, read once for this file.
+jest.mock('@/features/discover/discoverData', () => {
+  const actual = jest.requireActual<typeof import('@/features/discover/discoverData')>(
+    '@/features/discover/discoverData',
+  );
+  const { parseClimate } = jest.requireActual<typeof import('@/features/climate/climateData')>(
+    '@/features/climate/climateData',
+  );
+  const { readFileSync } = jest.requireActual<{
+    readFileSync(mockFile: string, mockEncoding: 'utf8'): string;
+  }>('fs');
+  let base: ReturnType<typeof actual.buildBase> | null = null;
+  const load = () => {
+    // Jest runs from apps/mobile.
+    const dir = `${process.cwd()}/assets/data`;
+    const areas = JSON.parse(readFileSync(`${dir}/cities.dat`, 'utf8')).areas;
+    return actual.buildBase(
+      parseClimate(readFileSync(`${dir}/climate.dat`, 'utf8')),
+      new Map(Object.entries(areas)),
+    );
+  };
+  return {
+    ...actual,
+    useDiscoverData: (mockEnabled: boolean) =>
+      mockEnabled
+        ? { status: 'ready', base: (base ??= load()), retry: () => {} }
+        : { status: 'idle', retry: () => {} },
+  };
+});
+/** Sprint 9: a fixed advisories copy for "family"; 'failed': no copy at all; null keeps the real store. */
+let mockDestination: null | 'failed' | Record<string, unknown> = null;
+/** Sprint 9 AC-12: the cities search answers these, each with its point. */
+let mockCityHits: { id: number; nameHe: string; nameEn: string; adm0: string; point: number[] }[] =
+  [];
+jest.mock('@/features/trips/citiesData', () => {
+  const actual = jest.requireActual<typeof import('@/features/trips/citiesData')>(
+    '@/features/trips/citiesData',
+  );
+  return {
+    ...actual,
+    globalCityIndex: () => Promise.resolve(),
+    searchAllCities: async () =>
+      mockCityHits.map((c) => ({ ...c, ascii: c.nameEn, population: 1e6 })),
+    cityPoint: (id: number) => mockCityHits.find((c) => c.id === id)?.point ?? null,
+  };
+});
+jest.mock('@/features/destination/destinationData', () => {
+  const actual = jest.requireActual<typeof import('@/features/destination/destinationData')>(
+    '@/features/destination/destinationData',
+  );
+  return {
+    ...actual,
+    useDestination: (mockLoad?: boolean) =>
+      mockDestination === 'failed'
+        ? { data: null, failed: true }
+        : mockDestination
+          ? { data: mockDestination, failed: false }
+          : actual.useDestination(mockLoad),
+  };
+});
+
 /** Sign-in state as the screen sees it; the provider itself is tested on its own. */
 const mockAuth = {
   state: { status: 'unavailable' } as Record<string, unknown>,
@@ -249,6 +310,8 @@ beforeEach(() => {
   mockAuth.notice = null;
   mockTrips.firstLoad = false;
   mockTrips.nextTrip = null;
+  mockDestination = null;
+  mockCityHits = [];
 });
 afterEach(() => jest.useRealTimers());
 
@@ -924,5 +987,250 @@ describe('GlobeScreen', () => {
       await tap({ pin: { adm0: 'GRC', tripId: 'trip-grc' }, country: { adm0: 'TUR', code: 'TR' } });
       expect(screen.getByText('יוון')).toBeOnTheScreen();
     });
+  });
+});
+
+describe('discovery search (sprint 9 F-023)', () => {
+  const matched = () =>
+    (
+      screen.getByTestId('globe-discover', { includeHiddenElements: true }).props.accessibilityValue
+        ?.text as string
+    )
+      .split(',')
+      .filter(Boolean);
+
+  it('"close to Israel" colours Cyprus and Greece, not Thailand, and lists them (AC-4, AC-6)', async () => {
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-near'));
+    expect(matched()).toEqual(expect.arrayContaining(['CYP', 'GRC']));
+    expect(matched()).not.toContain('THA');
+    expect(matched()).not.toContain('ISR');
+    expect(screen.getByTestId('discover-row-CYP')).toBeOnTheScreen();
+    expect(screen.getByTestId('discover-count')).toHaveTextContent(
+      `${matched().length} מדינות מתאימות`,
+    );
+    expect(screen.getByTestId('discover-disclaimer')).toBeOnTheScreen();
+    expect(mockMap.lines['discover-coarse-line']).toBeDefined();
+  });
+
+  it('December and hot: Thailand, not Greece; the month comes from the one picker (AC-1, AC-3)', async () => {
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-weather'));
+    // No type yet: the month only, nothing coloured (Raz 2).
+    expect(screen.getByTestId('discover-choose-type')).toBeOnTheScreen();
+    expect(matched()).toEqual([]);
+    await fireEvent.press(screen.getByTestId('discover-month'));
+    await fireEvent.press(screen.getByTestId('discover-month-12'));
+    await fireEvent.press(screen.getByTestId('discover-type-hot'));
+    expect(matched()).toContain('THA');
+    expect(matched()).not.toContain('GRC');
+    expect(screen.getByTestId('discover-month').props.accessibilityValue.text).toBe('12');
+  });
+
+  it('"clear" turns everything off and restores the globe (AC-5)', async () => {
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-near'));
+    await fireEvent.press(screen.getByTestId('discover-clear'));
+    expect(
+      screen.getByTestId('globe-discover', { includeHiddenElements: true }).props.accessibilityValue
+        .text,
+    ).toBe('');
+    expect(screen.queryByTestId('discover-panel')).toBeNull();
+    expect(screen.getByTestId('discover-chip-near').props.accessibilityValue.text).toBe('off');
+  });
+
+  it('back clears discovery when no card is open (design 15)', async () => {
+    const handlers: (() => boolean)[] = [];
+    const spy = jest
+      .spyOn(BackHandler, 'addEventListener')
+      .mockImplementation((_event, handler) => {
+        handlers.push(handler as () => boolean);
+        return { remove: () => handlers.splice(handlers.indexOf(handler as () => boolean), 1) };
+      });
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-near'));
+    await act(async () => {
+      handlers.at(-1)!();
+    });
+    expect(screen.queryByTestId('discover-panel')).toBeNull();
+    spy.mockRestore();
+  });
+
+  it('family: the card from a row says why it matches (AC-2, AC-7)', async () => {
+    mockDestination = {
+      rates: new Map(),
+      from: 'server',
+      advisories: new Map([
+        ['CYP', { adm0: 'CYP', entryStatus: 'allowed', nscLevels: [1], fetchedAt: null }],
+        ['TUR', { adm0: 'TUR', entryStatus: 'allowed', nscLevels: [3], fetchedAt: null }],
+      ]),
+    };
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-family'));
+    await fireEvent.press(screen.getByTestId('discover-month'));
+    await fireEvent.press(screen.getByTestId('discover-month-5'));
+    expect(matched()).toEqual(['CYP']);
+    await fireEvent.press(screen.getByTestId('discover-row-CYP'));
+    expect(screen.getByTestId('card-match').props.accessibilityValue.text).toBe('match');
+    expect(screen.getByTestId('card-match-level')).toHaveTextContent('אזהרה רמה 1');
+    expect(screen.getByTestId('card-match-hours')).toBeOnTheScreen();
+  });
+});
+
+describe('a city from search (sprint 9 AC-12, AC-13)', () => {
+  const miami = {
+    id: 4164138,
+    nameHe: 'מיאמי',
+    nameEn: 'Miami',
+    adm0: 'USA',
+    point: [-80.19, 25.77],
+  };
+  const pin = () =>
+    screen.getByTestId('globe-city-pin', { includeHiddenElements: true }).props.accessibilityValue
+      .text;
+
+  async function chooseMiami() {
+    mockCityHits = [miami];
+    await fireEvent.press(screen.getByTestId('search-open'));
+    await fireEvent.changeText(screen.getByTestId('search-input'), 'מיאמי');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await fireEvent.press(screen.getByTestId('search-city-4164138'));
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+
+  it('flies to the city at the city zoom, and pins it once the camera arrives', async () => {
+    await render(<GlobeScreen />);
+    await chooseMiami();
+    const move = lastMoveWhere((m) => m.animationMode === 'flyTo');
+    expect(move.centerCoordinate).toEqual([-80.19, 25.77]);
+    expect(move.zoomLevel).toBe(CITY_ZOOM);
+    expect(pin()).toBe('');
+    await act(async () => jest.advanceTimersByTime(2_000));
+    expect(pin()).toBe('4164138');
+  });
+
+  it('a new search hides the pin and never flies back to the country (Raz B-1)', async () => {
+    await render(<GlobeScreen />);
+    await chooseMiami();
+    await act(async () => jest.advanceTimersByTime(2_000));
+    const moves = mockMap.setCamera.mock.calls.length;
+    await fireEvent.press(screen.getByTestId('search-open'));
+    await act(async () => jest.advanceTimersByTime(2_000));
+    expect(pin()).toBe('');
+    expect(mockMap.setCamera.mock.calls.length).toBe(moves);
+  });
+
+  it('the same city again after a search flies again and pins it (Raz B-3)', async () => {
+    await render(<GlobeScreen />);
+    await chooseMiami();
+    await act(async () => jest.advanceTimersByTime(2_000));
+    mockMap.setCamera.mockClear();
+    await chooseMiami();
+    expect(lastMoveWhere((m) => m.animationMode === 'flyTo').centerCoordinate).toEqual([
+      -80.19, 25.77,
+    ]);
+    await act(async () => jest.advanceTimersByTime(2_000));
+    expect(pin()).toBe('4164138');
+  });
+
+  it('closing the card drops the pin (AC-13)', async () => {
+    await render(<GlobeScreen />);
+    await chooseMiami();
+    await act(async () => jest.advanceTimersByTime(2_000));
+    await fireEvent.press(screen.getByTestId('card-close'));
+    expect(pin()).toBe('');
+  });
+});
+
+describe('family with no advisories copy (sprint 9 AC-10)', () => {
+  it('the chip is disabled and explains itself; the barred list still holds', async () => {
+    mockDestination = 'failed';
+    await render(<GlobeScreen />);
+    const chip = screen.getByTestId('discover-chip-family');
+    expect(chip.props.accessibilityValue.text).toBe('disabled');
+    await fireEvent.press(chip);
+    expect(screen.getByText(/כדי לסנן למשפחות צריך את אזהרות המסע/)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('discover-chip-near'));
+    const matched = screen.getByTestId('globe-discover', { includeHiddenElements: true }).props
+      .accessibilityValue.text as string;
+    expect(matched.split(',')).not.toContain('LBN');
+  });
+});
+
+describe('discovery: announcement, pages and the advisories date (Dana, sprint 9)', () => {
+  it('two quick changes make one announcement, of the last count, after the pause (design 12.2)', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    await render(<GlobeScreen />);
+    announce.mockClear();
+    await fireEvent.press(screen.getByTestId('discover-chip-near'));
+    await act(async () => jest.advanceTimersByTime(motion.discoverAnnounceDelay / 2));
+    await fireEvent.press(screen.getByTestId('discover-chip-weather'));
+    await fireEvent.press(screen.getByTestId('discover-type-pleasant'));
+    await act(async () => jest.advanceTimersByTime(motion.discoverAnnounceDelay - 1));
+    expect(announce).not.toHaveBeenCalled();
+    await act(async () => jest.advanceTimersByTime(1));
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('discover-count')).toHaveTextContent(announce.mock.calls[0]![0]);
+    expect(announce.mock.calls[0]![0]).toMatch(/מדינות מתאימות|מדינה אחת מתאימה/);
+  });
+
+  it('the list shows 50 rows, and the next 50 at the end (design 8.10)', async () => {
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-weather'));
+    await fireEvent.press(screen.getByTestId('discover-month'));
+    await fireEvent.press(screen.getByTestId('discover-month-4'));
+    await fireEvent.press(screen.getByTestId('discover-type-pleasant'));
+    const total = Number(
+      (
+        screen.getByTestId('globe-discover', { includeHiddenElements: true }).props
+          .accessibilityValue.text as string
+      )
+        .split(',')
+        .filter(Boolean).length,
+    );
+    expect(total).toBeGreaterThan(50);
+    const list = () => screen.getByTestId('discover-list');
+    expect(list().props.data).toHaveLength(50);
+    await act(async () => list().props.onEndReached({ distanceFromEnd: 0 }));
+    expect(list().props.data).toHaveLength(Math.min(100, total));
+  });
+
+  it('family offline says the date of the advisories copy; not from the server (design 8.6)', async () => {
+    mockDestination = {
+      rates: new Map(),
+      from: 'device',
+      advisories: new Map([
+        [
+          'CYP',
+          {
+            adm0: 'CYP',
+            entryStatus: 'allowed',
+            nscLevels: [1],
+            fetchedAt: '2026-10-20T08:00:00Z',
+          },
+        ],
+        [
+          'GRC',
+          {
+            adm0: 'GRC',
+            entryStatus: 'allowed',
+            nscLevels: [1],
+            fetchedAt: '2026-10-26T08:00:00Z',
+          },
+        ],
+      ]),
+    };
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-family'));
+    expect(screen.getByTestId('discover-advisories-as-of')).toHaveTextContent(/26/);
+    await fireEvent.press(screen.getByTestId('discover-clear'));
+    mockDestination = { ...mockDestination, from: 'server' };
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-family'));
+    expect(screen.queryByTestId('discover-advisories-as-of')).toBeNull();
   });
 });

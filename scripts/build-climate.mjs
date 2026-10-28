@@ -19,7 +19,12 @@
  *
  * The downloads are manual and need a free CEDA account (ADR-007): put the
  * three decade files cru_ts4.08.<1991.2000|2001.2010|2011.2020>.tmp.dat.gz in
- * .cache/cru/, then:  node scripts/build-climate.mjs
+ * .cache/cru/, and (sprint 9) the same three .wet.dat.gz for wet days, then:
+ *   node scripts/build-climate.mjs
+ *
+ * Version 2 (sprint 9, discovery search 5.12): "wet" holds the wet-day
+ * normals of the same slots, in whole days (one byte each, 0-31), 255 where a
+ * slot has none (a city's own normals). The rules are in whole days (Raz, D1).
  */
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
@@ -49,7 +54,16 @@ const SOURCE_SHA256 = {
     'b1b995d1af13ea90cf3a43d1f410faa6ca42ba2517db7c1b7a2468fa0d3d2fad',
   'cru_ts4.08.2011.2020.tmp.dat.gz':
     '149f5a32ccd9e285e43bfbeb355894d40ba9b019eec01017a6cf54878d8a0354',
+  // Sprint 9: wet-day frequency, downloaded from CEDA on 2026-10-28.
+  'cru_ts4.08.1991.2000.wet.dat.gz':
+    '07e57482afdadf4fb67d49d4a1e6a9fb2b81a4469d9279989175002063ac7b93',
+  'cru_ts4.08.2001.2010.wet.dat.gz':
+    '9f3e899f1f4be46cb5ea45e4efa894acd42fda82107710e19bf6f78e3b89e7c3',
+  'cru_ts4.08.2011.2020.wet.dat.gz':
+    'cba4722b55c7747cc8c274cd604a8e994daa951bb763b5d488504463afe80da8',
 };
+/** No wet-day value for a slot. */
+export const NO_WET = 255;
 const COLS = 720;
 const ROWS = 360;
 const CELLS = COLS * ROWS;
@@ -130,8 +144,11 @@ export function cellOf([lon, lat]) {
   return row * COLS + col;
 }
 
-/** Monthly normals per cell, in hundredths of a degree, from the decade files (tenths). */
-async function readNormals(files) {
+/**
+ * Monthly normals per cell from the decade files: tmp comes in tenths of a
+ * degree (x10 gives hundredths), wet in hundredths of a day (x1).
+ */
+async function readNormals(files, factor = 10) {
   const sum = new Float64Array(CELLS * 12);
   const count = new Uint8Array(CELLS * 12);
   const hashes = {};
@@ -170,7 +187,7 @@ async function readNormals(files) {
       const i = cell * 12 + m;
       if (count[i] !== 30) break;
       // Tenths in the file, hundredths out: the only rounding before the display.
-      months.push(Math.round((sum[i] / 30) * 10));
+      months.push(Math.round((sum[i] / 30) * factor));
     }
     if (months.length === 12) normals.set(cell, months);
   }
@@ -209,6 +226,11 @@ async function main() {
   const { normals, hashes } = await readNormals(
     DECADES.map((d) => join(cruDir, `cru_ts4.08.${d}.tmp.dat.gz`)),
   );
+  const wet = await readNormals(
+    DECADES.map((d) => join(cruDir, `cru_ts4.08.${d}.wet.dat.gz`)),
+    1,
+  );
+  Object.assign(hashes, wet.hashes);
   const anomalous = anomalousCells(normals);
   for (const cell of anomalous) normals.delete(cell);
   const cities = await readJson('apps', 'mobile', 'assets', 'data', 'cities.dat');
@@ -226,10 +248,13 @@ async function main() {
 
   const slots = new Map();
   const cellsOut = [];
+  // The wet-day normals of the same slots; null when there are none (Raz, sprint 9).
+  const wetOut = [];
   const slotOf = (cell) => {
     if (!slots.has(cell)) {
       slots.set(cell, cellsOut.length);
       cellsOut.push(normals.get(cell));
+      wetOut.push(wet.normals.get(cell) ?? null);
     }
     return slots.get(cell);
   };
@@ -243,6 +268,7 @@ async function main() {
       if (CITY_NORMALS[id]) {
         cityPairs.push([id, cellsOut.length]);
         cellsOut.push(CITY_NORMALS[id].months.map((v) => Math.round(v * 100)));
+        wetOut.push(null);
         continue;
       }
       const p = point.get(id);
@@ -299,12 +325,18 @@ async function main() {
   cellsOut.forEach((months, s) =>
     months.forEach((v, m) => bytes.writeInt16LE(v, (s * 12 + m) * 2)),
   );
+  const wetBytes = Buffer.alloc(wetOut.length * 12);
+  wetOut.forEach((months, s) => {
+    // Hundredths of a day in, whole days out.
+    for (let m = 0; m < 12; m++)
+      wetBytes[s * 12 + m] = months ? Math.round(months[m] / 100) : NO_WET;
+  });
   let last = 0;
   const output = {
     format: 'travel-app-climate',
-    version: 1,
+    version: 2,
     source: {
-      name: 'CRU TS v4.08 tmp (CEDA), 1991-2020 monthly means',
+      name: 'CRU TS v4.08 tmp and wet (CEDA), 1991-2020 monthly means',
       licence: 'Open Government Licence v3.0',
       url: 'https://data.ceda.ac.uk/badc/cru/data/cru_ts/cru_ts_4.08/data/tmp',
       sha256: hashes,
@@ -315,6 +347,7 @@ async function main() {
     },
     scale: 100,
     cells: bytes.toString('base64'),
+    wet: wetBytes.toString('base64'),
     // Ids as deltas from the previous one: smaller, and they compress well.
     cities: cityPairs.flatMap(([id, slot]) => {
       const delta = id - last;

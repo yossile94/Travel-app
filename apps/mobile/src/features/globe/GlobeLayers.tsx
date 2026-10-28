@@ -87,6 +87,10 @@ interface Props {
   reduceMotion: boolean;
   /** Countries with trips (sprint 2 design 7); null: none shown (signed out, not loaded). */
   tripAdm0s: readonly string[] | null;
+  /** Sprint 9 discovery: the matching countries; null when discovery is off (design 19.3). */
+  discoverAdm0s?: readonly string[] | null;
+  /** Sprint 9 AC-12: the temporary pin of a city chosen in search; null: none. */
+  cityPin?: [number, number] | null;
 }
 
 /**
@@ -103,11 +107,39 @@ export const GlobeLayers = memo(function GlobeLayers({
   highlightedAdm0,
   reduceMotion,
   tripAdm0s,
+  discoverAdm0s = null,
+  cityPin = null,
 }: Props) {
   const highlight = useHighlight(highlightedAdm0, reduceMotion);
+  // Design 5.3: the trips step back while discovery is on, and return in 200 ms.
+  const discoverOn = discoverAdm0s !== null;
+  const [usedDiscover, setUsedDiscover] = useState(false);
+  if (discoverOn && !usedDiscover) setUsedDiscover(true);
   const trips = useMemo(
-    () => tripStyles(tripAdm0s, highlightedAdm0, reduceMotion),
-    [tripAdm0s, highlightedAdm0, reduceMotion],
+    () => tripStyles(tripAdm0s, highlightedAdm0, reduceMotion, discoverOn, usedDiscover),
+    [tripAdm0s, highlightedAdm0, reduceMotion, discoverOn, usedDiscover],
+  );
+  // The last list stays while the layers fade out after "clear" (design 14).
+  const [lastDiscover, setLastDiscover] = useState<readonly string[]>([]);
+  if (discoverAdm0s && discoverAdm0s !== lastDiscover) setLastDiscover(discoverAdm0s);
+  const discover = useMemo(
+    () => discoverStyles(discoverAdm0s ?? lastDiscover, discoverOn, highlightedAdm0, reduceMotion),
+    [discoverAdm0s, lastDiscover, discoverOn, highlightedAdm0, reduceMotion],
+  );
+  const pinShape = useMemo(
+    () => ({
+      type: 'FeatureCollection' as const,
+      features: cityPin
+        ? [
+            {
+              type: 'Feature' as const,
+              properties: {},
+              geometry: { type: 'Point' as const, coordinates: cityPin },
+            },
+          ]
+        : [],
+    }),
+    [cityPin],
   );
 
   const highlightStyles = useMemo(() => {
@@ -189,6 +221,16 @@ export const GlobeLayers = memo(function GlobeLayers({
         />
         <CircleLayer id="trips-small-ring" filter={trips.filter as never} style={trips.ring} />
         <CircleLayer
+          id="discover-small-ring-underlay"
+          filter={discover.filter as never}
+          style={discover.ringUnderlay}
+        />
+        <CircleLayer
+          id="discover-small-ring"
+          filter={discover.filter as never}
+          style={discover.ring}
+        />
+        <CircleLayer
           id="small-countries-ring-underlay"
           filter={highlightStyles.filter}
           style={highlightStyles.ringUnderlay}
@@ -221,6 +263,7 @@ export const GlobeLayers = memo(function GlobeLayers({
           maxZoom={detailedCountriesUrl && detailedDrawn ? globe.borderDetailMinZoom : undefined}
           highlight={highlightStyles}
           trips={trips}
+          discover={discover}
         />
       )}
       {detailedCountriesUrl && (
@@ -231,8 +274,34 @@ export const GlobeLayers = memo(function GlobeLayers({
           minZoom={globe.borderDetailMinZoom}
           highlight={highlightStyles}
           trips={trips}
+          discover={discover}
         />
       )}
+
+      {/* Sprint 9 design 10.2: above the selection, under the next-trip pin; no tap target. */}
+      <ShapeSource id="city-pin" shape={pinShape}>
+        <CircleLayer
+          id="city-pin-underlay"
+          aboveLayerID="small-countries-ring"
+          style={{
+            circleRadius: globe.cityPin.radius,
+            circleOpacity: 0,
+            circleStrokeWidth: globe.cityPin.underlayWidth,
+            circleStrokeColor: globe.cityPin.underlayColor,
+            circleStrokeOpacity: globe.cityPin.underlayOpacity,
+          }}
+        />
+        <CircleLayer
+          id="city-pin"
+          aboveLayerID="city-pin-underlay"
+          style={{
+            circleRadius: globe.cityPin.radius,
+            circleColor: globe.cityPin.fill,
+            circleStrokeWidth: globe.cityPin.strokeWidth,
+            circleStrokeColor: globe.cityPin.strokeColor,
+          }}
+        />
+      </ShapeSource>
     </>
   );
 });
@@ -251,6 +320,7 @@ interface BorderLevelProps {
     outline: object;
   };
   trips: TripStyles;
+  discover: DiscoverStyles;
 }
 
 /**
@@ -266,6 +336,7 @@ function BorderLevel({
   maxZoom,
   highlight,
   trips,
+  discover,
 }: BorderLevelProps) {
   const layerProps = {
     belowLayerID: LAYER.smallHitWide,
@@ -307,6 +378,31 @@ function BorderLevel({
         filter={['all', trips.filter, LINE_FILTER] as never}
         style={trips.line}
       />
+      {/* Discovery (design 5.2): the dim, then the matches, under the selection. */}
+      <FillLayer
+        id={`discover-${level}-dim`}
+        {...layerProps}
+        filter={discover.dimFilter as never}
+        style={discover.dim}
+      />
+      <FillLayer
+        id={`discover-${level}-fill`}
+        {...layerProps}
+        filter={discover.filter as never}
+        style={discover.fill}
+      />
+      <LineLayer
+        id={`discover-${level}-underlay`}
+        {...layerProps}
+        filter={['all', discover.filter, LINE_FILTER] as never}
+        style={discover.underlay}
+      />
+      <LineLayer
+        id={`discover-${level}-line`}
+        {...layerProps}
+        filter={['all', discover.filter, LINE_FILTER] as never}
+        style={discover.line}
+      />
       <FillLayer
         id={`highlight-${level}-fill`}
         {...layerProps}
@@ -347,9 +443,22 @@ function tripStyles(
   adm0s: readonly string[] | null,
   selected: string | null,
   reduceMotion: boolean,
+  /** Sprint 9 design 5.3: opacity 0 while discovery is on (the layers stay mounted). */
+  discoverOn = false,
+  /** After discovery the trips come back in 200 ms, not the first-load fade (design 14). */
+  afterDiscover = false,
 ) {
-  const shown = adm0s !== null ? 1 : 0;
-  const fade = { duration: shown && !reduceMotion ? motion.highlight : 0, delay: 0 };
+  const shown = adm0s !== null && !discoverOn ? 1 : 0;
+  const duration = reduceMotion
+    ? 0
+    : discoverOn
+      ? globe.discover.layerFadeIn
+      : shown
+        ? afterDiscover
+          ? globe.discover.layerFadeOut
+          : motion.highlight
+        : 0;
+  const fade = { duration, delay: 0 };
   return {
     filter: [
       'all',
@@ -388,6 +497,68 @@ function tripStyles(
       circleOpacity: 0,
       circleStrokeWidth: globe.trips.ringWidth,
       circleStrokeColor: globe.trips.color,
+      circleStrokeOpacity: shown,
+      circleStrokeOpacityTransition: fade,
+    },
+  };
+}
+
+type DiscoverStyles = ReturnType<typeof discoverStyles>;
+
+/**
+ * Discovery (sprint 9 design 5–7, ADR-014): one 'in' filter on the matching
+ * list for the colour and the rings, its opposite for the dim, both without
+ * the selected country. A country joining or leaving is instant; the layers
+ * fade only when discovery starts (300 ms) or is cleared (200 ms). With no
+ * match at all nothing dims: an all-dark globe looks broken (design 6).
+ */
+function discoverStyles(
+  adm0s: readonly string[],
+  on: boolean,
+  selected: string | null,
+  reduceMotion: boolean,
+) {
+  const shown = on ? 1 : 0;
+  const d = globe.discover;
+  const fade = { duration: reduceMotion ? 0 : on ? d.layerFadeIn : d.layerFadeOut, delay: 0 };
+  const inList = ['in', ['get', 'adm0'], ['literal', adm0s]];
+  const notSelected = ['!=', ['get', 'adm0'], selected ?? ''];
+  return {
+    filter: ['all', inList, notSelected] as const,
+    dimFilter: ['all', ['!', inList], notSelected] as const,
+    dim: {
+      fillColor: d.dimColor,
+      fillOpacity: adm0s.length ? d.dimOpacity * shown : 0,
+      fillOpacityTransition: fade,
+    },
+    fill: { fillColor: d.color, fillOpacity: d.fillOpacity * shown, fillOpacityTransition: fade },
+    underlay: {
+      lineColor: d.underlayColor,
+      lineWidth: d.underlayWidth,
+      lineOpacity: d.underlayOpacity * shown,
+      lineOpacityTransition: fade,
+      lineJoin: 'round' as const,
+    },
+    line: {
+      lineColor: d.color,
+      lineWidth: d.lineWidth,
+      lineOpacity: shown,
+      lineOpacityTransition: fade,
+      lineJoin: 'round' as const,
+    },
+    ringUnderlay: {
+      circleRadius: d.ringRadius,
+      circleOpacity: 0,
+      circleStrokeWidth: d.ringUnderlayWidth,
+      circleStrokeColor: d.underlayColor,
+      circleStrokeOpacity: 0.6 * shown,
+      circleStrokeOpacityTransition: fade,
+    },
+    ring: {
+      circleRadius: d.ringRadius,
+      circleOpacity: 0,
+      circleStrokeWidth: d.ringWidth,
+      circleStrokeColor: d.color,
       circleStrokeOpacity: shown,
       circleStrokeOpacityTransition: fade,
     },

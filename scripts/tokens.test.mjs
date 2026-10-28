@@ -54,6 +54,30 @@ describe('design tokens in the app', () => {
     expectValue('highlightColor', 'color.dark.region.default');
   });
 
+  it('match the sprint 9 discovery tokens', () => {
+    const block = app.slice(app.indexOf('discover: {'), app.indexOf('cityPin: {'));
+    for (const [name, key] of [
+      ['color', 'color'],
+      ['fillOpacity', 'fillOpacity'],
+      ['lineWidth', 'lineWidth'],
+      ['dimOpacity', 'dim.opacity'],
+      ['dimColor', 'dim.color'],
+      ['ringRadius', 'ring.radius'],
+    ]) {
+      const value = design[`globe.final.discover.${key}`];
+      const literal = typeof value === 'string' ? `'${value}'` : String(value);
+      assert.ok(block.includes(`${name}: ${literal}`), `discover.${name} should be ${literal}`);
+    }
+    const pin = app.slice(app.indexOf('cityPin: {'), app.indexOf('searchScrim'));
+    for (const key of ['radius', 'fill', 'strokeColor', 'zoom']) {
+      const value = design[`globe.final.cityPin.${key}`];
+      const literal = typeof value === 'string' ? `'${value}'` : String(value);
+      assert.ok(pin.includes(`${key}: ${literal}`), `cityPin.${key} should be ${literal}`);
+    }
+    expectValue('discoverPanelPeek', 'layout.discover.panel.peek');
+    expectValue('discoverChipsTop', 'layout.discover.chipsTop');
+  });
+
   it('match the motion tokens', () => {
     expectValue('sheet', 'motion.duration.sheet');
     expectValue('highlight', 'motion.duration.highlight');

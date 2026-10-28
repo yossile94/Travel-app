@@ -18,9 +18,14 @@ interface Props {
   colorScheme: ColorScheme;
   /** Today's local date ("YYYY-MM-DD"): the trips' shared "day changed" value (Raz, T5). */
   today: string;
+  /**
+   * A city chosen in search (sprint 9 AC-12, design 10.3): its value and name
+   * when it has one; otherwise the area's point with its own city.
+   */
+  city?: { id: number; nameHe: string; nameEn: string } | null;
 }
 
-export function CardTemperature({ adm0, colorScheme, today }: Props) {
+export function CardTemperature({ adm0, colorScheme, today, city: chosen = null }: Props) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
   const state = useClimate();
@@ -34,7 +39,8 @@ export function CardTemperature({ adm0, colorScheme, today }: Props) {
       </View>
     ) : null;
   }
-  const area = state.climate.area(adm0);
+  const chosenNormals = chosen ? state.climate.city(chosen.id) : null;
+  const area = chosenNormals ? { normals: chosenNormals, city: chosen } : state.climate.area(adm0);
   if (!area) return null;
 
   const month = Number(today.slice(5, 7));

@@ -36,7 +36,29 @@ import { AccountButton } from '@/features/auth/AccountButton';
 import { SignInSheet } from '@/features/auth/AccountSheets';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ConsentScreen } from '@/features/auth/ConsentScreen';
-import { SearchBar } from '@/features/search/SearchBar';
+import { CardMatch } from '@/features/discover/CardMatch';
+import {
+  anyFilter,
+  discover,
+  evaluate,
+  NEVER,
+  nextMonth,
+  NO_FILTERS,
+  type DiscoverFilters,
+  type DiscoverInput,
+} from '@/features/discover/discover';
+import { DiscoverChips } from '@/features/discover/DiscoverChips';
+import { useDiscoverData } from '@/features/discover/discoverData';
+import {
+  DiscoverPanel,
+  type PanelState,
+  type WithoutOption,
+} from '@/features/discover/DiscoverPanel';
+import { advisoriesAsOf, countText } from '@/features/discover/discoverText';
+import { MonthSheet } from '@/features/discover/MonthSheet';
+import { useDestination } from '@/features/destination/destinationData';
+import { SearchBar, type SearchCity } from '@/features/search/SearchBar';
+import { cityPoint } from '@/features/trips/citiesData';
 import { CardTrips } from '@/features/trips/CardTrips';
 import { MyTripsSheet } from '@/features/trips/MyTripsSheet';
 import { TripForm, type TripFormResult, type TripFormTarget } from '@/features/trips/TripForm';
@@ -53,13 +75,13 @@ import { tripStatus } from '@/features/trips/tripDates';
 import { globe, layout, motion } from '@/theme/tokens';
 
 import { BoardingPassCard, CARD_GAP } from './BoardingPassCard';
-import { HOME_CENTER, HOME_ZOOM, flightDuration, zoomForSpan } from './camera';
+import { CITY_ZOOM, HOME_CENTER, HOME_ZOOM, flightDuration, zoomForSpan } from './camera';
 import { countryByAdm0 } from './countryData';
 import { GlobeLayers, LAYER } from './GlobeLayers';
 import { NEXT_TRIP_HIT, NextTripPin, type NextTripFeature } from './NextTripPin';
 import { loadClimate } from '@/features/climate/climateData';
 import { hasMapboxToken, turnOffMapboxTelemetryOnce } from './mapbox';
-import { logGlobeReady, markGlobeMounted, markMyTripsOpened } from './perfLog';
+import { logDiscover, logGlobeReady, markGlobeMounted, markMyTripsOpened } from './perfLog';
 import { resolveTap, type TapHits } from './resolveTap';
 import { SystemScrims } from './SystemScrims';
 import { isTap, type TouchDown } from './tapGesture';
@@ -209,6 +231,127 @@ export function GlobeScreen() {
 
   const selectedAdm0 = selection.selected?.adm0 ?? null;
   const selectedCountry = selectedAdm0 ? countryByAdm0(selectedAdm0) : undefined;
+  /** Sprint 9 AC-12: a city chosen in search; its pin shows once the camera arrives. */
+  const selectedCity = selection.selected?.city ?? null;
+  const pinShown = Boolean(selectedCity) && !selection.flying && !selection.pinHidden;
+
+  // Sprint 9 F-023: discovery search. One state for the session (design 1,
+  // 19.2): opening a card, search or "My trips" keeps it; only "clear", back
+  // and a restart reset it.
+  const [filters, setFilters] = useState<DiscoverFilters>(() => ({
+    ...NO_FILTERS,
+    month: nextMonth(),
+  }));
+  const discoverOn = filters.family || filters.near || filters.weatherOn;
+  const [monthOpen, setMonthOpen] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [panelHeight, setPanelHeight] = useState(0);
+  /** The row a card was opened from, and the focus it gets back (design 12.3). */
+  const [rowOpened, setRowOpened] = useState<string | null>(null);
+  const [refocus, setRefocus] = useState<{ adm0: string; seq: number } | null>(null);
+  if (!selectedAdm0 && rowOpened) {
+    setRowOpened(null);
+    setRefocus({ adm0: rowOpened, seq: (refocus?.seq ?? 0) + 1 });
+  }
+  const chipsShown =
+    Boolean(countries.url) &&
+    !selectedAdm0 &&
+    !searchOpen &&
+    !sheetOpen &&
+    !consentShown &&
+    !myTripsOpen &&
+    !tripForm;
+  // Raz: both files and the advisories load when the chips first show, not on a tap.
+  const [chipsSeen, setChipsSeen] = useState(false);
+  if (chipsShown && globeReady && !chipsSeen) setChipsSeen(true);
+  const discoverData = useDiscoverData(chipsSeen);
+  const destination = useDestination(chipsSeen);
+  const advisories = destination.data?.advisories ?? null;
+  /** No advisories copy at all (design 11.2): "family" explains instead. */
+  const familyUnavailable = !destination.data && destination.failed;
+  const discoverBase = discoverData.status === 'ready' ? discoverData.base : null;
+  const discoverInput = useMemo(
+    (): DiscoverInput | null => (discoverBase ? { ...discoverBase, advisories } : null),
+    [discoverBase, advisories],
+  );
+  /** "Family" waits for the first advisories read (design 11.3). */
+  const familyWaiting = filters.family && !advisories;
+  const results = useMemo(() => {
+    if (!discoverInput || familyWaiting || !anyFilter(filters)) return null;
+    return discover(discoverInput, filters);
+  }, [discoverInput, familyWaiting, filters]);
+  // One list for every layer, a new array only when its content changes (design 19.3).
+  const matchedKey = results ? results.map((x) => x.adm0).join(',') : '';
+  const discoverAdm0s = useMemo(
+    () => (discoverOn ? (matchedKey ? matchedKey.split(',') : []) : null),
+    [discoverOn, matchedKey],
+  );
+  // AC-11 (design 19.4): from the tap to the frame after the layers got the new list.
+  const discoverTapAt = useRef<number | null>(null);
+  const chipCount = [filters.family, filters.near, filters.weatherOn].filter(Boolean).length;
+  const resultCount = results?.length ?? 0;
+  useEffect(() => {
+    const at = discoverTapAt.current;
+    if (at === null) return;
+    // A change that leaves nothing to colour still ends this tap (Dana, sprint 9 note 3).
+    discoverTapAt.current = null;
+    if (results === null) return;
+    const frame = requestAnimationFrame(() => logDiscover(Date.now() - at, chipCount, resultCount));
+    return () => cancelAnimationFrame(frame);
+  }, [results, chipCount, resultCount]);
+  const panelState: PanelState =
+    discoverData.status === 'failed'
+      ? { kind: 'error' }
+      : !discoverInput || familyWaiting
+        ? { kind: 'loading' }
+        : !anyFilter(filters)
+          ? { kind: 'chooseType' }
+          : { kind: 'results', results: results ?? [] };
+  // Design 8.6: each chip that can go, with what it would leave.
+  const without = useMemo((): WithoutOption[] => {
+    if (!discoverInput || !results || results.length) return [];
+    const options: WithoutOption[] = [];
+    const tryOff = (chip: WithoutOption['chip'], label: string, f: DiscoverFilters) => {
+      if (!anyFilter(f)) return;
+      const count = discover(discoverInput, f).length;
+      if (count) options.push({ chip, label, count });
+    };
+    if (filters.family) tryOff('family', t('discover.chipFamily'), { ...filters, family: false });
+    if (filters.near) tryOff('near', t('discover.chipNear'), { ...filters, near: false });
+    if (filters.weather)
+      tryOff('weather', t('discover.chipWeather'), {
+        ...filters,
+        weatherOn: false,
+        weather: null,
+      });
+    return options;
+  }, [discoverInput, results, filters, t]);
+  // AC-7: the card says why the country matches, or the first rule it fails.
+  const cardMatch = useMemo(() => {
+    if (!discoverOn || !discoverInput || !selectedCountry || familyWaiting) return null;
+    if (!anyFilter(filters) || NEVER.has(selectedCountry.adm0)) return null;
+    return evaluate(discoverInput, selectedCountry, filters);
+  }, [discoverOn, discoverInput, selectedCountry, familyWaiting, filters]);
+  const advisoriesDate = useMemo(
+    () => (destination.data?.from === 'device' ? advisoriesAsOf(advisories?.values()) : null),
+    [destination.data, advisories],
+  );
+  // Design 12.2: every change is announced, after a pause, so two quick taps say only the last.
+  const announcement = !discoverOn
+    ? null
+    : panelState.kind === 'results'
+      ? countText(panelState.results.length, t)
+      : panelState.kind === 'chooseType'
+        ? t('discover.chooseType')
+        : null;
+  useEffect(() => {
+    if (!announcement) return;
+    const timer = setTimeout(
+      () => AccessibilityInfo.announceForAccessibility(announcement),
+      motion.discoverAnnounceDelay,
+    );
+    return () => clearTimeout(timer);
+  }, [announcement, filters]);
 
   // Any other country, or none, drops it (review): reopening later starts closed.
   if (openTrip && selectedAdm0 !== openTrip.adm0) setOpenTrip(null);
@@ -249,7 +392,8 @@ export function GlobeScreen() {
     !sheetOpen &&
     !consentShown &&
     !myTripsOpen &&
-    !tripForm;
+    !tripForm &&
+    !discoverOn;
   // Sprint 3 design 9.4: the pin's pulse runs only while the globe is free,
   // with no idle wait (the reduced-motion check is the pin's own).
   const pulseAllowed =
@@ -372,9 +516,10 @@ export function GlobeScreen() {
     void (async () => {
       const from = (await getCenter()) ?? HOME_CENTER;
       if (cancelled) return;
+      const target = selectedCity?.point ?? country.label;
       const stop = {
-        centerCoordinate: country.label,
-        zoomLevel: zoomForSpan(country.span),
+        centerCoordinate: target,
+        zoomLevel: selectedCity ? CITY_ZOOM : zoomForSpan(country.span),
         padding: {
           paddingTop: insets.top,
           paddingBottom: cardHeight.current + insets.bottom + CARD_GAP * 2,
@@ -393,7 +538,7 @@ export function GlobeScreen() {
         return;
       }
 
-      const duration = flightDuration(from, country.label);
+      const duration = flightDuration(from, target);
       cameraRef.current?.setCamera({
         ...stop,
         animationMode: 'flyTo',
@@ -408,13 +553,33 @@ export function GlobeScreen() {
       // A card closed within the fade must not leave the screen covered.
       veil.set(withTiming(0, VEIL_FADE_IN));
     };
-    // Re-run only for a new selection; insets and motion settings are read at flight time.
+    // Every new request (a new selected object, even the same city again: Raz B-3), and
+    // never for a hidden pin or a finished flight, which keep the object.
+    // Insets and motion settings are read at flight time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAdm0]);
+  }, [selection.selected]);
 
   // When the card closes: back out to the whole globe (the padding persists
   // otherwise), and restart the 5 s idle countdown.
   const hadSelection = useRef(false);
+  const cityNameRef = useRef<string | null>(null);
+  useEffect(() => {
+    cityNameRef.current = selectedCity?.nameHe || selectedCity?.nameEn || null;
+  }, [selectedCity]);
+  // Design 8.9: the camera centres the globe in what the panel leaves visible.
+  const discoverPadding = discoverOn ? panelHeight : 0;
+  const discoverPaddingRef = useRef(0);
+  useEffect(() => {
+    discoverPaddingRef.current = discoverPadding;
+    if (selectedAdm0 || !globeReady) return;
+    cameraRef.current?.setCamera({
+      padding: { paddingTop: 0, paddingBottom: discoverPadding, paddingLeft: 0, paddingRight: 0 },
+      animationMode: reduceMotion ? 'none' : 'easeTo',
+      animationDuration: reduceMotion ? 0 : motion.discoverPanelResize,
+    });
+    // Only the panel's height moves the camera; a card's flight sets its own padding.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discoverPadding]);
   /** The country opened at the active trip, announced on its own (design 10.2). */
   const quietSelection = useRef<string | null>(null);
   useEffect(() => {
@@ -422,7 +587,13 @@ export function GlobeScreen() {
       hadSelection.current = true;
       const country = countryByAdm0(selectedAdm0);
       // Opening at the active trip makes one announcement of its own (design 10.2).
+      const city = cityNameRef.current;
       if (quietSelection.current === selectedAdm0) quietSelection.current = null;
+      else if (country && city)
+        // Sprint 9 design 12.2: "Miami, United States".
+        AccessibilityInfo.announceForAccessibility(
+          t('discover.cityShown', { city, country: country.nameHe }),
+        );
       else if (country)
         AccessibilityInfo.announceForAccessibility(t('globe.selected', { name: country.nameHe }));
       return;
@@ -431,7 +602,13 @@ export function GlobeScreen() {
     hadSelection.current = false;
     cameraRef.current?.setCamera({
       zoomLevel: HOME_ZOOM,
-      padding: { paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: 0 },
+      // Discovery keeps the globe above its panel (Raz, design 8.9).
+      padding: {
+        paddingTop: 0,
+        paddingBottom: discoverPaddingRef.current,
+        paddingLeft: 0,
+        paddingRight: 0,
+      },
       animationMode: reduceMotion ? 'none' : 'easeTo',
       animationDuration: reduceMotion ? 0 : motion.flyToMin,
     });
@@ -454,16 +631,66 @@ export function GlobeScreen() {
   const openSearch = useCallback(() => {
     userInteracted.current = true;
     if (rotationAllowedRef.current) stopRotation();
+    dispatch({ type: 'cityCleared' });
     setSearchOpen(true);
   }, [stopRotation]);
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
     setLastInteractionAt(Date.now());
   }, []);
-  const selectFromSearch = useCallback((adm0: string) => {
+  const selectFromSearch = useCallback((adm0: string, city?: SearchCity) => {
     setSearchOpen(false);
-    if (countryByAdm0(adm0)) dispatch({ type: 'countryTapped', country: { adm0 } });
+    if (!countryByAdm0(adm0)) return;
+    // AC-12: a city with a known point flies there; otherwise to its country.
+    const point = city ? cityPoint(city.id) : null;
+    dispatch({
+      type: 'countryTapped',
+      country: city && point ? { adm0, city: { ...city, point } } : { adm0 },
+    });
   }, []);
+
+  // Sprint 9: the discovery chips.
+  const changeFilters = useCallback(
+    (next: (f: DiscoverFilters) => DiscoverFilters) => {
+      userInteracted.current = true;
+      if (rotationAllowedRef.current) stopRotation();
+      discoverTapAt.current = Date.now();
+      setFilters(next);
+    },
+    [stopRotation],
+  );
+  const clearDiscover = useCallback(() => {
+    setFilters({ ...NO_FILTERS, month: nextMonth() });
+    setPanelCollapsed(false);
+    setMonthOpen(false);
+    setRowOpened(null);
+    dispatch({ type: 'cityCleared' });
+    setLastInteractionAt(Date.now());
+    AccessibilityInfo.announceForAccessibility(t('discover.cleared'));
+  }, [t]);
+  const openFromPanel = useCallback((adm0: string) => {
+    if (!countryByAdm0(adm0)) return;
+    setRowOpened(adm0);
+    dispatch({ type: 'countryTapped', country: { adm0 } });
+  }, []);
+  // Design 15: back clears discovery, after the month sheet, search and the card.
+  useEffect(() => {
+    if (!discoverOn || selectedAdm0 || searchOpen || monthOpen) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      clearDiscover();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [discoverOn, selectedAdm0, searchOpen, monthOpen, clearDiscover]);
+  // Design 11.2: the copy is gone (another device deleted the account): "family" turns off.
+  useEffect(() => {
+    if (!filters.family || !familyUnavailable) return;
+    const timer = setTimeout(() => {
+      setFilters((f) => ({ ...f, family: false }));
+      setTripToast({ text: t('discover.familyUnavailable'), at: Date.now(), long: true });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [filters.family, familyUnavailable, t]);
 
   const handleTap = useCallback(
     async (point: [number, number]) => {
@@ -802,7 +1029,14 @@ export function GlobeScreen() {
     !searchOpen &&
     !sheetOpen &&
     !myTripsOpen &&
-    !tripForm;
+    !tripForm &&
+    !discoverOn;
+  // Toasts and the error banner move below the chip rows (design 2.1, 19.8).
+  const overlayTop = !chipsShown
+    ? layout.overlayTop
+    : filters.family || filters.weatherOn
+      ? layout.discoverOverlayTopTwoRows
+      : layout.discoverOverlayTopOneRow;
 
   return (
     <View style={styles.screen}>
@@ -849,6 +1083,8 @@ export function GlobeScreen() {
               highlightedAdm0={selectedAdm0}
               reduceMotion={reduceMotion === true}
               tripAdm0s={tripAdm0s}
+              discoverAdm0s={discoverAdm0s}
+              cityPin={pinShown ? selectedCity!.point : null}
             />
             <NextTripPin
               feature={pinFeature}
@@ -867,10 +1103,98 @@ export function GlobeScreen() {
       />
 
       {countries.error && (
-        <View style={[styles.banner, { top: insets.top + layout.overlayTop }]} pointerEvents="none">
+        <View style={[styles.banner, { top: insets.top + overlayTop }]} pointerEvents="none">
           <Text style={styles.message}>{t('globe.loadError')}</Text>
         </View>
       )}
+
+      {/* E2E hooks (design 17): the coloured list and the city pin, without a screenshot. */}
+      <View
+        style={styles.hook}
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
+        accessibilityValue={{ text: discoverAdm0s ? [...discoverAdm0s].sort().join(',') : '' }}
+        testID="globe-discover"
+      />
+      <View
+        style={styles.hook}
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
+        accessibilityValue={{
+          text: pinShown ? String(selectedCity!.id) : '',
+        }}
+        testID="globe-city-pin"
+      />
+      <Text
+        style={styles.hook}
+        importantForAccessibility="no-hide-descendants"
+        testID="discover-announcer"
+      >
+        {announcement ?? ''}
+      </Text>
+
+      {discoverOn && (
+        <DiscoverPanel
+          state={panelState}
+          resultsKey={matchedKey}
+          filters={filters}
+          colorScheme={colorScheme}
+          reduceMotion={reduceMotion === true}
+          insetsBottom={insets.bottom}
+          hidden={Boolean(selectedAdm0) || searchOpen}
+          collapsed={panelCollapsed}
+          onCollapsed={setPanelCollapsed}
+          advisoriesAsOf={advisoriesDate}
+          without={without}
+          onWithout={(chip) =>
+            changeFilters((f) =>
+              chip === 'family'
+                ? { ...f, family: false }
+                : chip === 'near'
+                  ? { ...f, near: false }
+                  : { ...f, weatherOn: false, weather: null },
+            )
+          }
+          onClear={clearDiscover}
+          onRetry={discoverData.retry}
+          onRow={openFromPanel}
+          refocus={refocus}
+          onHeight={setPanelHeight}
+        />
+      )}
+      {chipsShown && (
+        <DiscoverChips
+          colorScheme={colorScheme}
+          top={insets.top + layout.discoverChipsTop}
+          filters={filters}
+          familyUnavailable={familyUnavailable}
+          onFamily={() =>
+            familyUnavailable
+              ? showTripToast(t('discover.familyUnavailable'), true)
+              : changeFilters((f) => ({ ...f, family: !f.family }))
+          }
+          onWeather={() =>
+            changeFilters((f) =>
+              f.weatherOn ? { ...f, weatherOn: false, weather: null } : { ...f, weatherOn: true },
+            )
+          }
+          onNear={() => changeFilters((f) => ({ ...f, near: !f.near }))}
+          onMonth={() => setMonthOpen(true)}
+          onType={(weather) => changeFilters((f) => ({ ...f, weather }))}
+        />
+      )}
+      <MonthSheet
+        visible={monthOpen}
+        month={filters.month}
+        colorScheme={colorScheme}
+        reduceMotion={reduceMotion === true}
+        insetsBottom={insets.bottom}
+        onPick={(month) => {
+          setMonthOpen(false);
+          changeFilters((f) => ({ ...f, month }));
+        }}
+        onClose={() => setMonthOpen(false)}
+      />
 
       {/* The card steps aside while searching and comes back if nothing is chosen. */}
       {selectedCountry && (
@@ -883,6 +1207,12 @@ export function GlobeScreen() {
           bottomInset={insets.bottom}
           topInset={insets.top}
           today={trips.today}
+          city={selectedCity}
+          match={
+            cardMatch ? (
+              <CardMatch result={cardMatch} filters={filters} colorScheme={colorScheme} />
+            ) : undefined
+          }
           coupon={
             auth.state.status === 'signedIn' ||
             auth.state.status === 'signedOut' ||
@@ -1031,7 +1361,7 @@ export function GlobeScreen() {
           key={tripToast.at}
           text={tripToast.text}
           long={tripToast.long}
-          top={insets.top + layout.overlayTop}
+          top={insets.top + overlayTop}
           onDone={() => setTripToast(null)}
         />
       )}
@@ -1059,7 +1389,7 @@ export function GlobeScreen() {
                 : t('account.signedOut')
           }
           long={auth.notice.kind === 'deleted'}
-          top={insets.top + layout.overlayTop}
+          top={insets.top + overlayTop}
           onDone={auth.clearNotice}
         />
       )}
@@ -1084,6 +1414,8 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', padding: 24 },
   message: { color: '#F3F6FC', fontSize: 14, lineHeight: 20, textAlign: 'center' },
   veil: { backgroundColor: globe.atmosphere.spaceColor },
+  /** Test hooks and the live region: on screen for the accessibility tree, never seen. */
+  hook: { position: 'absolute', width: 1, height: 1, opacity: 0 },
   banner: {
     position: 'absolute',
     start: 16,

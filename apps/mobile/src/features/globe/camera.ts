@@ -1,12 +1,14 @@
 /**
  * Camera maths for the home globe (sprint 0 AC-2, AC-4).
  */
-import { motion } from '@/theme/tokens';
+import { globe, motion } from '@/theme/tokens';
 
 /** Zoom that shows the whole globe on a phone; the camera returns here when a card closes. */
 export const HOME_ZOOM = 1.2;
 export const MIN_COUNTRY_ZOOM = 1.6;
 export const MAX_COUNTRY_ZOOM = 6;
+/** A city chosen in search (sprint 9 AC-12, Raz): one fixed city zoom. */
+export const CITY_ZOOM = globe.cityPin.zoom;
 
 /** Starting view: Israel's longitude, tilted north so Europe and Africa are in view. */
 export const HOME_CENTER: [number, number] = [34.8, 22];

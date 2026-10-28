@@ -6,12 +6,17 @@
 import { Asset } from 'expo-asset';
 import { File } from 'expo-file-system';
 
+import { decodeBase64 } from '@/features/climate/climateData';
+
 import { entryOf, indexCities, searchCities, type CityEntry, type CityRow } from './citySearch';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const CITIES = require('../../../assets/data/cities.dat') as number;
 
 type Areas = Map<string, CityRow[]>;
+
+/** Each city's [lon, lat], by GeoNames id (sprint 9, cities.dat v2 "points"; Raz D2). */
+const pointById = new Map<number, [number, number]>();
 
 let areas: Promise<Areas> | null = null;
 const indexes = new Map<string, ReturnType<typeof indexCities>>();
@@ -20,7 +25,20 @@ function loadAreas(): Promise<Areas> {
   areas ??= (async () => {
     const asset = await Asset.fromModule(CITIES).downloadAsync();
     const text = await new File(asset.localUri ?? asset.uri).text();
-    const data = JSON.parse(text) as { areas: Record<string, CityRow[]> };
+    const data = JSON.parse(text) as {
+      areas: Record<string, CityRow[]>;
+      points?: Record<string, string>;
+    };
+    for (const [adm0, rows] of Object.entries(data.areas)) {
+      const encoded = data.points?.[adm0];
+      if (!encoded) continue;
+      const bytes = decodeBase64(encoded);
+      const view = new DataView(bytes.buffer);
+      rows.forEach(([id], i) => {
+        if ((i + 1) * 4 > bytes.length) return;
+        pointById.set(id, [view.getInt16(i * 4, true) / 100, view.getInt16(i * 4 + 2, true) / 100]);
+      });
+    }
     return new Map(Object.entries(data.areas));
   })().catch((error: unknown) => {
     // A later opening tries again.
@@ -82,3 +100,9 @@ export async function searchAllCities(query: string, limit = 5): Promise<GlobalC
 }
 
 export type { CityEntry };
+
+/** Every area's cities (largest first), for discovery search (sprint 9); loads the file once. */
+export const cityAreas = (): Promise<ReadonlyMap<string, readonly CityRow[]>> => loadAreas();
+
+/** A city's [lon, lat], once the list is loaded (sprint 9 AC-12); null when unknown. */
+export const cityPoint = (id: number): [number, number] | null => pointById.get(id) ?? null;

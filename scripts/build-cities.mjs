@@ -200,6 +200,7 @@ async function main() {
   const he = hebrewNames(heText.split('\n'));
 
   const byArea = new Map();
+  const pointOf = new Map();
   const tooLong = [];
   let dropped = 0;
   let sea = 0;
@@ -223,7 +224,9 @@ async function main() {
     if (!name) throw new Error(`city ${id} has no name left after cleaning`);
     const list = byArea.get(area.adm0) ?? [];
     // [id, Hebrew name or "", English name, ASCII name if different, population].
-    // No coordinates: the climate file maps cities to cells at build time.
+    // Coordinates go in "points" (sprint 9, the city fly-to); the climate file
+    // still maps cities to cells at build time.
+    pointOf.set(Number(id), point);
     list.push([Number(id), nameHe, name, ascii === name ? '' : ascii, population]);
     byArea.set(area.adm0, list);
   }
@@ -237,7 +240,7 @@ async function main() {
   const sha = createHash('sha256').update(citiesText).digest('hex');
   const output = {
     format: 'travel-app-cities',
-    version: 1,
+    version: 2,
     source: {
       name: 'GeoNames cities15000 + alternateNamesV2 (he)',
       licence: 'CC BY 4.0',
@@ -246,6 +249,21 @@ async function main() {
     },
     columns: ['id', 'nameHe', 'nameEn', 'ascii', 'population'],
     areas: Object.fromEntries([...byArea].sort(([a], [b]) => a.localeCompare(b))),
+    // Sprint 9 (Raz, D2): per area, in row order, int16 LE pairs of
+    // [lon x 100, lat x 100] (about 1 km), base64.
+    points: Object.fromEntries(
+      [...byArea]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([adm0, list]) => {
+          const buf = Buffer.alloc(list.length * 4);
+          list.forEach(([cityId], i) => {
+            const [lon, lat] = pointOf.get(cityId);
+            buf.writeInt16LE(Math.round(lon * 100), i * 4);
+            buf.writeInt16LE(Math.round(lat * 100), i * 4 + 2);
+          });
+          return [adm0, buf.toString('base64')];
+        }),
+    ),
   };
   await mkdir(outDir, { recursive: true });
   const text = JSON.stringify(output);

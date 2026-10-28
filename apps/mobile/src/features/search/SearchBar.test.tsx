@@ -46,7 +46,11 @@ describe('cities in the main search (sprint 4 F-014)', () => {
     expect(mockCities).toHaveBeenCalledWith('בנגקוק', 5);
     expect(screen.getByText('בנגקוק, תאילנד')).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId('search-city-1609350'));
-    expect(onSelect).toHaveBeenCalledWith('THA');
+    expect(onSelect).toHaveBeenCalledWith('THA', {
+      id: 1609350,
+      nameHe: 'בנגקוק',
+      nameEn: 'Bangkok',
+    });
   });
 
   it('countries do not wait for the city list, and one letter does not load it', async () => {

@@ -166,14 +166,17 @@ export interface DestinationState {
   failed: boolean;
 }
 
-/** The data for a card or a list; null until anything is known. */
-export function useDestination(): DestinationState {
+/**
+ * The data for a card or a list; null until anything is known. `load` false
+ * only listens (sprint 9: the globe asks once discovery needs it).
+ */
+export function useDestination(load = true): DestinationState {
   // A store, so an update published between render and subscribe is never
   // missed (Raz, S4-m2).
   const state = useSyncExternalStore(subscribe, () => snapshot);
   useEffect(() => {
-    void loadDestination();
-  }, []);
+    if (load) void loadDestination();
+  }, [load]);
   return state;
 }
 
