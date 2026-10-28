@@ -51,6 +51,9 @@ jest.mock('expo-notifications', () => ({
   scheduleNotificationAsync: jest.fn(async () => 'id'),
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
   getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  // Sprint 10: the passport alerts clear a shown notification when the trip is fine again.
+  dismissNotificationAsync: jest.fn(async () => undefined),
+  getPresentedNotificationsAsync: jest.fn(async () => []),
   AndroidNotificationVisibility: { PRIVATE: 2 },
   setNotificationHandler: jest.fn(),
   setNotificationChannelAsync: jest.fn(async () => null),
