@@ -233,7 +233,6 @@ export function GlobeScreen() {
   const selectedCountry = selectedAdm0 ? countryByAdm0(selectedAdm0) : undefined;
   /** Sprint 9 AC-12: a city chosen in search; its pin shows once the camera arrives. */
   const selectedCity = selection.selected?.city ?? null;
-  const selectedCityId = selectedCity?.id ?? null;
   const pinShown = Boolean(selectedCity) && !selection.flying && !selection.pinHidden;
 
   // Sprint 9 F-023: discovery search. One state for the session (design 1,
@@ -552,9 +551,11 @@ export function GlobeScreen() {
       // A card closed within the fade must not leave the screen covered.
       veil.set(withTiming(0, VEIL_FADE_IN));
     };
-    // Re-run only for a new selection; insets and motion settings are read at flight time.
+    // Every new request (a new selected object, even the same city again: Raz B-3), and
+    // never for a hidden pin or a finished flight, which keep the object.
+    // Insets and motion settings are read at flight time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAdm0, selectedCityId]);
+  }, [selection.selected]);
 
   // When the card closes: back out to the whole globe (the padding persists
   // otherwise), and restart the 5 s idle countdown.

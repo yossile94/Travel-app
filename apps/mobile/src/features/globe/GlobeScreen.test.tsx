@@ -1124,6 +1124,19 @@ describe('a city from search (sprint 9 AC-12, AC-13)', () => {
     expect(mockMap.setCamera.mock.calls.length).toBe(moves);
   });
 
+  it('the same city again after a search flies again and pins it (Raz B-3)', async () => {
+    await render(<GlobeScreen />);
+    await chooseMiami();
+    await act(async () => jest.advanceTimersByTime(2_000));
+    mockMap.setCamera.mockClear();
+    await chooseMiami();
+    expect(lastMoveWhere((m) => m.animationMode === 'flyTo').centerCoordinate).toEqual([
+      -80.19, 25.77,
+    ]);
+    await act(async () => jest.advanceTimersByTime(2_000));
+    expect(pin()).toBe('4164138');
+  });
+
   it('closing the card drops the pin (AC-13)', async () => {
     await render(<GlobeScreen />);
     await chooseMiami();
