@@ -5,6 +5,7 @@
  * runs on the device. Every rule lives in evaluate(); discover() lists the
  * matches (Raz, design note 10).
  */
+import { roundTemp } from '@/features/climate/tempFormat';
 import type { Advisory } from '@/features/destination/destinationData';
 
 export type Weather = 'hot' | 'mild' | 'cool' | 'winter';
@@ -58,8 +59,11 @@ export interface DiscoverReasons {
   hours: number;
   /** The highest NSC level (family). */
   nsc?: number;
-  /** Entry for Israelis: allowed, or not filled in yet (family). */
-  entry?: 'allowed' | 'check';
+  /**
+   * Entry for Israelis: with "family", allowed or not filled in yet; without
+   * it, only "restricted" is worth saying (design 8.4).
+   */
+  entry?: 'allowed' | 'check' | 'restricted';
   /** The shown mean that month, in whole degrees. */
   temp?: number;
   /** When the temperature is a city's, not the area's point (Raz 10). */
@@ -136,8 +140,11 @@ export function distanceKm([lon1, lat1]: [number, number], [lon2, lat2]: [number
 /** Spec 5.12: km ÷ 800 + 0.5, to the nearest half hour (a tie rounds up). */
 export const flightHours = (km: number) => Math.round((km / 800 + 0.5) * 2) / 2;
 
-/** The whole degrees shown (Raz 3): every rule compares these, never the hundredths. */
-export const shownTemp = (hundredths: number) => Math.round(hundredths / 100);
+/**
+ * The whole degrees shown (Raz 3): every rule compares these, never the
+ * hundredths, rounded exactly as the card rounds them (half away from zero).
+ */
+export const shownTemp = roundTemp;
 
 /** AC-3: half-open bands on the shown degrees, so every value has exactly one. */
 export function weatherOf(degrees: number): Weather {
@@ -196,16 +203,17 @@ export function evaluate(
   // Barred is never highlighted, in any mode (AC-9); with no device copy the bundled list stands in.
   if (advisory ? advisory.entryStatus === 'banned' : input.banned.has(adm0)) return done('barred');
   if (f.near && reasons.hours > NEAR_HOURS) return done('far');
+  if (!f.family && advisory?.entryStatus === 'restricted') reasons.entry = 'restricted';
   if (f.family) {
     const levels = advisory?.nscLevels ?? [];
     if (!levels.length) return done('noAdvisory');
     const top = Math.max(...levels);
+    reasons.nsc = top;
     if (top > 2) return done('nscHigh');
     const entry = advisory!.entryStatus;
     if (entry === 'restricted' || (entry !== 'allowed' && !FAMILY_ALLOWS_UNCHECKED_ENTRY)) {
       return done('entryRestricted');
     }
-    reasons.nsc = top;
     reasons.entry = entry === 'allowed' ? 'allowed' : 'check';
   }
   // The month matters to the family rule and to the weather chip, even with no type (a reason, no filter).

@@ -53,6 +53,8 @@ export const colors = {
     advisory3: '#B45309',
     advisory4: '#C81E16',
     advisoryEmpty: '#7D869E',
+    // Sprint 9 (design 8.2): the list dot that ties a row to the globe colour.
+    discoverSwatch: '#9B6BEA',
   },
   dark: {
     surfaceRaised: '#121C36',
@@ -99,6 +101,7 @@ export const colors = {
     advisory3: '#FFA94D',
     advisory4: '#FF5D52',
     advisoryEmpty: '#7487BD',
+    discoverSwatch: '#B896F5',
   },
 } as const;
 
@@ -189,6 +192,36 @@ export const globe = {
     ringWidth: 2,
     ringUnderlayWidth: 4,
   },
+  /**
+   * Discovery search (sprint 9 design 5–7): matching countries over the dim
+   * of the rest; trips hide while it is on (5.3). One value for both themes.
+   */
+  discover: {
+    color: '#B896F5',
+    fillOpacity: 0.35,
+    lineWidth: 1.4,
+    underlayColor: '#03060F',
+    underlayOpacity: 0.7,
+    underlayWidth: 3.6,
+    ringRadius: 7,
+    ringWidth: 2,
+    ringUnderlayWidth: 4,
+    dimColor: '#03060F',
+    dimOpacity: 0.55,
+    layerFadeIn: 300,
+    layerFadeOut: 200,
+  },
+  /** A city chosen in search (sprint 9 design 10.2): a temporary pin at a fixed city zoom. */
+  cityPin: {
+    radius: 6,
+    fill: '#F3F6FC',
+    strokeColor: '#FF7A57',
+    strokeWidth: 3,
+    underlayColor: '#03060F',
+    underlayOpacity: 0.6,
+    underlayWidth: 5,
+    zoom: 5.5,
+  },
   /** Dims the globe behind open search (sprint 1 design 2.1). */
   searchScrim: 'rgba(3,6,15,0.40)',
 } as const;
@@ -216,6 +249,14 @@ export const motion = {
   /** A loading skeleton shows only after this long, so a fast answer doesn't flash. */
   skeletonDelay: 150,
   skeletonPulse: 1000,
+  /** Sprint 9 design 14. */
+  discoverRefineIn: 200,
+  discoverRefineOut: 150,
+  discoverPanelEnter: 320,
+  discoverPanelExit: 200,
+  discoverPanelResize: 300,
+  discoverCityPin: 200,
+  discoverAnnounceDelay: 600,
 } as const;
 
 /** Lengths in code points after trim, as Postgres char_length counts them (sprint 2 design 3.3). */
@@ -256,6 +297,22 @@ export const layout = {
   dateFieldMinWidth: 160,
   formBarHeight: 56,
   couponNotchRadius: 11,
+  /** Sprint 9 design 2.1, 8.9: the discovery rows below insets.top, and the panel. */
+  discoverChipsTop: 108,
+  discoverRefineTop: 156,
+  discoverOverlayTopOneRow: 164,
+  discoverOverlayTopTwoRows: 212,
+  discoverPanelMaxRatio: 0.45,
+  discoverPanelPeek: 72,
+  discoverChipHeight: 40,
+  discoverChipHitSlop: 4,
+  discoverChipPadding: 14,
+  discoverChipGap: 8,
+  discoverRowMin: 64,
+  discoverSwatch: 10,
+  discoverMonthCellMin: 48,
+  discoverChipMaxFontScale: 1.6,
+  discoverPageSize: 50,
 } as const;
 
 export const radius = { xs: 4, md: 12, lg: 16, sheet: 28, pill: 999, flap: 4 } as const;

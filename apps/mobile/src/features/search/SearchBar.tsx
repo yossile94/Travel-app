@@ -56,7 +56,14 @@ interface Props {
   onOpen: () => void;
   /** Closed without choosing a country. */
   onClose: () => void;
-  onSelect: (adm0: string) => void;
+  /** A country, or a city with its country (sprint 9 AC-12: the camera flies to the city). */
+  onSelect: (adm0: string, city?: SearchCity) => void;
+}
+
+export interface SearchCity {
+  id: number;
+  nameHe: string;
+  nameEn: string;
 }
 
 /** Results start 8dp below the 48dp field row. */
@@ -235,10 +242,13 @@ export function SearchBar({
   }, [onClose]);
 
   const select = useCallback(
-    (entry: { adm0: string }) => {
+    (entry: { adm0: string } | GlobalCity) => {
       Keyboard.dismiss();
       setQuery('');
-      onSelect(entry.adm0);
+      onSelect(
+        entry.adm0,
+        'id' in entry ? { id: entry.id, nameHe: entry.nameHe, nameEn: entry.nameEn } : undefined,
+      );
     },
     [onSelect],
   );
@@ -525,7 +535,7 @@ function CityRow({
   city: GlobalCity;
   entry: EntryStatus | null;
   colorScheme: ColorScheme;
-  onPress: (entry: { adm0: string }) => void;
+  onPress: (entry: GlobalCity) => void;
 }) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];

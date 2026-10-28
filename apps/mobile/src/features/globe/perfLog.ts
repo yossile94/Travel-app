@@ -49,3 +49,9 @@ export function logSearchResults(query: string, ms: number) {
   if (!enabled) return;
   console.log(`[perf] search-results ms=${Math.round(ms)} length=${query.length}`);
 }
+
+/** Sprint 9 AC-11: the discovery computation; counts only, no month, type or countries (design 19.9). */
+export function logDiscover(ms: number, chips: number, results: number) {
+  if (!enabled) return;
+  console.log(`[perf] discover_compute_ms=${Math.round(ms)} chips=${chips} results=${results}`);
+}

@@ -103,6 +103,10 @@ interface Props {
   coupon?: (maxListHeight: number, onNoticeHeight: (height: number) => void) => ReactNode;
   /** Today's local date, from the trips' shared "day changed" event (sprint 3 AC-6, AC-10). */
   today?: string;
+  /** Sprint 9 AC-7: "why it matches", under the names, while discovery is on. */
+  match?: ReactNode;
+  /** Sprint 9 AC-12: a city chosen in search; its temperature and name replace the area's. */
+  city?: { id: number; nameHe: string; nameEn: string } | null;
 }
 
 /** The coupon's fixed parts around its list: padding, heading and "New trip" (design 2.1). */
@@ -120,6 +124,8 @@ export function BoardingPassCard({
   topInset = 0,
   coupon,
   today = todayPg(),
+  match,
+  city = null,
 }: Props) {
   const { t } = useTranslation();
   const { fontScale, height: windowHeight } = useWindowDimensions();
@@ -313,6 +319,7 @@ export function BoardingPassCard({
                   </Text>
                 </View>
               </View>
+              {match}
               {/* Sprint 4 design 1.1: can I enter, how safe is it, before the time and money. */}
               <CardSafety
                 country={country}
@@ -350,7 +357,12 @@ export function BoardingPassCard({
                 reduceMotion={reduceMotion}
                 insetsBottom={bottomInset}
               />
-              <CardTemperature adm0={country.adm0} colorScheme={colorScheme} today={today} />
+              <CardTemperature
+                adm0={country.adm0}
+                colorScheme={colorScheme}
+                today={today}
+                city={city}
+              />
               <CardSources
                 colorScheme={colorScheme}
                 reduceMotion={reduceMotion}

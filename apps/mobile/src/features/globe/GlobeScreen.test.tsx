@@ -168,6 +168,48 @@ jest.mock('./useCountriesAsset', () => ({
 }));
 jest.mock('./useReduceMotion', () => ({ useReduceMotion: () => mockReduceMotion }));
 
+// Sprint 9: discovery runs on the real bundled files, read once for this file.
+jest.mock('@/features/discover/discoverData', () => {
+  const actual = jest.requireActual<typeof import('@/features/discover/discoverData')>(
+    '@/features/discover/discoverData',
+  );
+  const { parseClimate } = jest.requireActual<typeof import('@/features/climate/climateData')>(
+    '@/features/climate/climateData',
+  );
+  const { readFileSync } = jest.requireActual<{
+    readFileSync(mockFile: string, mockEncoding: 'utf8'): string;
+  }>('fs');
+  let base: ReturnType<typeof actual.buildBase> | null = null;
+  const load = () => {
+    // Jest runs from apps/mobile.
+    const dir = `${process.cwd()}/assets/data`;
+    const areas = JSON.parse(readFileSync(`${dir}/cities.dat`, 'utf8')).areas;
+    return actual.buildBase(
+      parseClimate(readFileSync(`${dir}/climate.dat`, 'utf8')),
+      new Map(Object.entries(areas)),
+    );
+  };
+  return {
+    ...actual,
+    useDiscoverData: (mockEnabled: boolean) =>
+      mockEnabled
+        ? { status: 'ready', base: (base ??= load()), retry: () => {} }
+        : { status: 'idle', retry: () => {} },
+  };
+});
+/** Sprint 9: a fixed advisories copy for "family"; null keeps the real store. */
+let mockDestination: null | Record<string, unknown> = null;
+jest.mock('@/features/destination/destinationData', () => {
+  const actual = jest.requireActual<typeof import('@/features/destination/destinationData')>(
+    '@/features/destination/destinationData',
+  );
+  return {
+    ...actual,
+    useDestination: (mockLoad?: boolean) =>
+      mockDestination ? { data: mockDestination, failed: false } : actual.useDestination(mockLoad),
+  };
+});
+
 /** Sign-in state as the screen sees it; the provider itself is tested on its own. */
 const mockAuth = {
   state: { status: 'unavailable' } as Record<string, unknown>,
@@ -249,6 +291,7 @@ beforeEach(() => {
   mockAuth.notice = null;
   mockTrips.firstLoad = false;
   mockTrips.nextTrip = null;
+  mockDestination = null;
 });
 afterEach(() => jest.useRealTimers());
 
@@ -924,5 +967,92 @@ describe('GlobeScreen', () => {
       await tap({ pin: { adm0: 'GRC', tripId: 'trip-grc' }, country: { adm0: 'TUR', code: 'TR' } });
       expect(screen.getByText('יוון')).toBeOnTheScreen();
     });
+  });
+});
+
+describe('discovery search (sprint 9 F-023)', () => {
+  const matched = () =>
+    (
+      screen.getByTestId('globe-discover', { includeHiddenElements: true }).props.accessibilityValue
+        ?.text as string
+    )
+      .split(',')
+      .filter(Boolean);
+
+  it('"close to Israel" colours Cyprus and Greece, not Thailand, and lists them (AC-4, AC-6)', async () => {
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-near'));
+    expect(matched()).toEqual(expect.arrayContaining(['CYP', 'GRC']));
+    expect(matched()).not.toContain('THA');
+    expect(matched()).not.toContain('ISR');
+    expect(screen.getByTestId('discover-row-CYP')).toBeOnTheScreen();
+    expect(screen.getByTestId('discover-count')).toHaveTextContent(
+      `${matched().length} מדינות מתאימות`,
+    );
+    expect(screen.getByTestId('discover-disclaimer')).toBeOnTheScreen();
+    expect(mockMap.lines['discover-coarse-line']).toBeDefined();
+  });
+
+  it('December and hot: Thailand, not Greece; the month comes from the one picker (AC-1, AC-3)', async () => {
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-weather'));
+    // No type yet: the month only, nothing coloured (Raz 2).
+    expect(screen.getByTestId('discover-choose-type')).toBeOnTheScreen();
+    expect(matched()).toEqual([]);
+    await fireEvent.press(screen.getByTestId('discover-month'));
+    await fireEvent.press(screen.getByTestId('discover-month-12'));
+    await fireEvent.press(screen.getByTestId('discover-type-hot'));
+    expect(matched()).toContain('THA');
+    expect(matched()).not.toContain('GRC');
+    expect(screen.getByTestId('discover-month').props.accessibilityValue.text).toBe('12');
+  });
+
+  it('"clear" turns everything off and restores the globe (AC-5)', async () => {
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-near'));
+    await fireEvent.press(screen.getByTestId('discover-clear'));
+    expect(
+      screen.getByTestId('globe-discover', { includeHiddenElements: true }).props.accessibilityValue
+        .text,
+    ).toBe('');
+    expect(screen.queryByTestId('discover-panel')).toBeNull();
+    expect(screen.getByTestId('discover-chip-near').props.accessibilityValue.text).toBe('off');
+  });
+
+  it('back clears discovery when no card is open (design 15)', async () => {
+    const handlers: (() => boolean)[] = [];
+    const spy = jest
+      .spyOn(BackHandler, 'addEventListener')
+      .mockImplementation((_event, handler) => {
+        handlers.push(handler as () => boolean);
+        return { remove: () => handlers.splice(handlers.indexOf(handler as () => boolean), 1) };
+      });
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-near'));
+    await act(async () => {
+      handlers.at(-1)!();
+    });
+    expect(screen.queryByTestId('discover-panel')).toBeNull();
+    spy.mockRestore();
+  });
+
+  it('family: the card from a row says why it matches (AC-2, AC-7)', async () => {
+    mockDestination = {
+      rates: new Map(),
+      from: 'server',
+      advisories: new Map([
+        ['CYP', { adm0: 'CYP', entryStatus: 'allowed', nscLevels: [1], fetchedAt: null }],
+        ['TUR', { adm0: 'TUR', entryStatus: 'allowed', nscLevels: [3], fetchedAt: null }],
+      ]),
+    };
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-family'));
+    await fireEvent.press(screen.getByTestId('discover-month'));
+    await fireEvent.press(screen.getByTestId('discover-month-5'));
+    expect(matched()).toEqual(['CYP']);
+    await fireEvent.press(screen.getByTestId('discover-row-CYP'));
+    expect(screen.getByTestId('card-match').props.accessibilityValue.text).toBe('match');
+    expect(screen.getByTestId('card-match-level')).toHaveTextContent('אזהרה רמה 1');
+    expect(screen.getByTestId('card-match-hours')).toBeOnTheScreen();
   });
 });

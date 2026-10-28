@@ -34,6 +34,12 @@ export function countryByAdm0(adm0: string): CountryInfo | undefined {
   return entry ? { adm0, ...entry } : undefined;
 }
 
+/** Every area on the globe (sprint 9: what discovery search goes through). */
+export const allCountries: readonly CountryInfo[] = Object.entries(table).map(([adm0, entry]) => ({
+  adm0,
+  ...entry,
+}));
+
 export interface SmallCountryPoint {
   type: 'Feature';
   properties: { adm0: string };
