@@ -197,6 +197,9 @@ describe('flightIdOf (design 4.3)', () => {
     expect(flightIdOf(response({ v: 2, type: 'flight_change', flightId: 'f' }))).toBeNull();
     expect(flightIdOf(response({ v: 1, type: 'other', flightId: 'f' }))).toBeNull();
     expect(flightIdOf(response({ v: 1, type: 'flight_change' }))).toBeNull();
+    // Sprint 7 design 8.4: a connection at risk opens its next leg.
+    expect(flightIdOf(response({ v: 1, type: 'connection_risk', flightId: 'next' }))).toBe('next');
+    expect(flightIdOf(response({ v: 2, type: 'connection_risk', flightId: 'next' }))).toBeNull();
   });
 });
 

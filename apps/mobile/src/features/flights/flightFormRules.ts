@@ -270,3 +270,50 @@ export function toSaved(values: FlightFormValues) {
 /** Changed since the screen opened, the provider's fill included (design 8.2). */
 export const changed = (a: FlightFormValues, b: FlightFormValues) =>
   JSON.stringify(a) !== JSON.stringify(b);
+
+/**
+ * Sprint 7: the form's flight as a leg, for the connection rule (design 6.2);
+ * null until it has a departure airport, date and time.
+ */
+export function draftLeg(
+  values: FlightFormValues,
+  id: string,
+  tripId: string,
+): Pick<
+  Flight,
+  'id' | 'tripId' | 'direction' | 'depIata' | 'arrIata' | 'depSched' | 'arrSched'
+> | null {
+  const dep = wall(values.depDate, values.depTime, values.origin?.tz);
+  if (!values.origin || !dep) return null;
+  const arr = wall(values.arrDate, values.arrTime, values.destination?.tz);
+  return {
+    id,
+    tripId,
+    direction: values.direction,
+    depIata: values.origin.iata,
+    arrIata: values.destination?.iata ?? null,
+    depSched: dep.utc.toISOString(),
+    arrSched: arr?.utc.toISOString() ?? null,
+  };
+}
+
+/**
+ * Design 6.1: a new flight that continues one of the trip's flights (it
+ * leaves from where that one lands, after it and within 24 hours) starts in
+ * that flight's direction. The nearest landing before the departure wins.
+ */
+export function continuedDirection(
+  draft: ReturnType<typeof draftLeg>,
+  flights: Flight[],
+): { direction: Direction; prev: Flight } | null {
+  if (!draft?.depSched) return null;
+  const leaves = Date.parse(draft.depSched);
+  let best: Flight | null = null;
+  for (const f of flights) {
+    if (f.id === draft.id || f.arrIata !== draft.depIata || !f.arrSched) continue;
+    const landed = Date.parse(f.arrSched);
+    if (leaves <= landed || leaves - landed > 24 * 60 * 60_000) continue;
+    if (!best || landed > Date.parse(best.arrSched!)) best = f;
+  }
+  return best ? { direction: best.direction, prev: best } : null;
+}

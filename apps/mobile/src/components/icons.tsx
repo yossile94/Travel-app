@@ -302,3 +302,16 @@ export function BellIcon({ color, size = 24 }: IconProps) {
     </Svg>
   );
 }
+
+/** Sprint 7 design 3.1: the layover between two legs. Not mirrored: an object. */
+export function HourglassIcon({ color, size = 16 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"
+        stroke={color}
+        {...stroke}
+      />
+    </Svg>
+  );
+}

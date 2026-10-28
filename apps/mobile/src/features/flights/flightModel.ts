@@ -70,6 +70,16 @@ export interface Flight {
   pnr: string | null;
   seat: string | null;
   cabin: Cabin | null;
+  /**
+   * Sprint 7 AC-3: booked with the leg before? Valid only while
+   * sameBookingPrev is still that leg. Absent in a device copy from before.
+   */
+  sameBooking?: boolean | null;
+  sameBookingPrev?: string | null;
+  /** The arrival airport's minimum connection time, in minutes (AC-2). */
+  arrMct?: number | null;
+  /** That minimum is the general one, not the airport's own (design 3.5). */
+  arrMctDefault?: boolean;
   /** Null: never tracked (a past flight), or tracking over and its data deleted. */
   watch: FlightWatch | null;
 }

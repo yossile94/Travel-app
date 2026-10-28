@@ -4,6 +4,13 @@
  * the airport's clock. Nothing personal: the flight number and the change;
  * the data carries only the user's own flight row id (Raz 9).
  */
+import { clockAt, dateAt, RLM, shortDate } from './clock.ts';
+import {
+  buildConnectionContent,
+  connectionRisks,
+  type Around,
+  type TimeChange,
+} from './connection.ts';
 
 export type ChangeEvent = {
   id: number;
@@ -28,13 +35,26 @@ export type Target = {
   token_id: number;
   token: string;
   locale: 'he' | 'en';
-};
+} & Partial<Omit<Around, keyof RowFields>>;
+
+/** The flight row's own fields, which Around shares with Target. */
+type RowFields = Pick<
+  Around,
+  | 'flight_id'
+  | 'flight_number'
+  | 'flight_number_input'
+  | 'dep_iata'
+  | 'dep_tz'
+  | 'arr_iata'
+  | 'arr_tz'
+>;
 
 export type PushMessage = {
   to: string;
   title: string;
   body: string;
-  data: { v: 1; type: 'flight_change'; flightId: string };
+  /** flightId: the user's own flight row; for a connection, the next leg (sprint 7 design 8.4). */
+  data: { v: 1; type: 'flight_change' | 'connection_risk'; flightId: string };
   channelId: 'flight-changes';
   priority: 'high';
   ttl: number;
@@ -77,30 +97,7 @@ export function leadEvent(events: ChangeEvent[]): ChangeEvent {
   return { ...lead, old_value: first.old_value };
 }
 
-/** "01:10" at a time zone, 24-hour. */
-export function clockAt(iso: string, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(new Date(iso));
-}
-
-/** The local date "YYYY-MM-DD" at a time zone. */
-function dateAt(iso: string, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone }).format(new Date(iso));
-}
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** "21.12" in Hebrew, "21 Dec" in English (design 3.2). */
-function shortDate(date: string, locale: 'he' | 'en'): string {
-  const [, m, d] = date.split('-').map(Number) as [number, number, number];
-  return locale === 'he' ? `${d}.${m}` : `${d} ${MONTHS[m - 1]}`;
-}
-
-/** Right-to-left mark: a Hebrew line that starts with "LY81" still reads right to left (design 3.1). */
-const RLM = String.fromCharCode(0x200f);
+export { clockAt } from './clock.ts';
 
 type Text = {
   delayed: string;
@@ -214,26 +211,75 @@ export function buildContent(
   return t.locale === 'he' ? { title: RLM + title, body: RLM + body } : { title, body };
 }
 
-/** One message per (watch, user, device): the lead change of that watch's events. */
+/** A field's change over a watch's events: the latest value, from the first old one. */
+function changeOf(list: ChangeEvent[], field: 'dep_time' | 'arr_time'): TimeChange | null {
+  const same = list.filter((e) => e.field === field).sort((a, b) => a.id - b.id);
+  return same.length ? { old: same[0]!.old_value, new: same[same.length - 1]!.new_value } : null;
+}
+
+/**
+ * One message per (watch, user, device): the lead change of that watch's
+ * events, or, when it put a connection at risk, the connection alert
+ * (sprint 7 AC-4). `seen`: the run's connection alerts by device and next
+ * leg, so both legs' changes never send the same one twice (Raz design 6).
+ */
 export function buildMessages(
   events: ChangeEvent[],
   targets: Target[],
+  seen: Set<string> = new Set(),
+  /** The whole claim by watch, for the legs around each flight (Raz review 1). */
+  claim?: Map<number, ChangeEvent[]>,
 ): { message: PushMessage; tokenId: number }[] {
   const byWatch = new Map<number, ChangeEvent[]>();
   for (const e of events) byWatch.set(e.watch_id, [...(byWatch.get(e.watch_id) ?? []), e]);
+  const all = claim ?? byWatch;
+  const around = (watchId: number | null | undefined, field: 'dep_time' | 'arr_time') =>
+    watchId == null ? null : changeOf(all.get(watchId) ?? [], field);
   const out: { message: PushMessage; tokenId: number }[] = [];
   for (const t of targets) {
     const list = byWatch.get(t.watch_id);
     if (!list?.length) continue;
     const lead = leadEvent(list);
-    const { title, body } = buildContent(lead, t, hasMoreChanges(list, lead));
+    // Cancelled or diverted speaks for itself (AC-4, Raz design q2).
+    const risks =
+      lead.field === 'status'
+        ? []
+        : connectionRisks(
+            changeOf(list, 'dep_time'),
+            changeOf(list, 'arr_time'),
+            t as Around,
+            around(t.prev_watch_id, 'arr_time'),
+            around(t.next_watch_id, 'dep_time'),
+          );
+    // A connection whose alert went this run is skipped; a middle leg's other one
+    // still speaks (QA S7 #1).
+    const keyOf = (r: (typeof risks)[number]) => `${t.token_id}:${r.nextFlightId}`;
+    const risk = risks.find((r) => !seen.has(keyOf(r)));
+    let speaks = lead;
+    if (risk) {
+      seen.add(keyOf(risk));
+    } else if (risks.length > 0) {
+      // Every connection's alert went this run: the flight's other changes still go (Raz review 6).
+      const rest = list.filter((e) => e.field !== 'dep_time' && e.field !== 'arr_time');
+      if (rest.length === 0) continue;
+      speaks = leadEvent(rest);
+    }
+    const { title, body } = risk
+      ? buildConnectionContent(
+          risk,
+          t.locale,
+          risks.length > 1 || list.some((e) => e.field !== 'dep_time' && e.field !== 'arr_time'),
+        )
+      : buildContent(speaks, t, hasMoreChanges(list, speaks));
     out.push({
       tokenId: t.token_id,
       message: {
         to: t.token,
         title,
         body,
-        data: { v: 1, type: 'flight_change', flightId: t.flight_id },
+        data: risk
+          ? { v: 1, type: 'connection_risk', flightId: risk.nextFlightId }
+          : { v: 1, type: 'flight_change', flightId: t.flight_id },
         channelId: 'flight-changes',
         priority: 'high',
         // A delay alert hours late does harm (Raz 12).

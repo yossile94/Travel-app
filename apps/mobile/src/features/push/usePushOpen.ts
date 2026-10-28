@@ -11,7 +11,7 @@ import { useEffect, useRef } from 'react';
 
 import { refreshTripOf } from '@/features/flights/flightsStore';
 
-import { flightIdOf } from './push';
+import { ALERT_TYPES, flightIdOf } from './push';
 
 const HANDLED_KEY = 'push.handledResponseId';
 
@@ -97,7 +97,7 @@ export function usePushOpen({
     const tapped = Notifications.addNotificationResponseReceivedListener((r) => void handle(r));
     const received = Notifications.addNotificationReceivedListener((n) => {
       const data = n.request.content.data as { type?: string; flightId?: unknown } | undefined;
-      if (data?.type === 'flight_change' && typeof data.flightId === 'string') {
+      if (ALERT_TYPES.has(data?.type ?? '') && typeof data?.flightId === 'string') {
         refreshTripOf(data.flightId);
       }
     });

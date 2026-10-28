@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ספרינט 7: קונקשנים (הדמיה)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Tokens from apps/mobile/src/theme/tokens.ts. No new colours. */
+  :root {
+    --fs: 1;
+    --canvas:#FFFBF5; --surface:#FFFFFF; --raised:#FFFFFF; --openRow:#FBF4E8; --tag:#FBF4E8;
+    --t1:#121C36; --t2:#4A5573; --t3:#646E8A; --link:#1561BC; --alert:#C81E16;
+    --pBg:#1561BC; --pFg:#FFFFFF; --secBg:#EEF6FF; --secFg:#104C94;
+    --infoBg:#EEF6FF; --infoFg:#104C94; --bSub:#F4E7D0; --bCtl:#7D869E;
+    --okBg:#E8FAF7; --okFg:#0A665D;
+    --rBg:#FFF2EE; --rFg:#A8381A; --bBg:#C81E16; --bFg:#FFFFFF;
+    --scrim:rgba(6,11,24,0.48); --toastBg:#121C36; --toastFg:#F3F6FC;
+    --discBg:#E9EEFA; --discFg:#646E8A;
+  }
+  body.dark {
+    --canvas:#060B18; --surface:#0B1326; --raised:#121C36; --openRow:#1A2749; --tag:#1A2749;
+    --t1:#F3F6FC; --t2:#A3B3DB; --t3:#7487BD; --link:#6FB3FA; --alert:#FF5D52;
+    --pBg:#6FB3FA; --pFg:#060B18; --secBg:#1A2749; --secFg:#A9D2FF;
+    --infoBg:#1A2749; --infoFg:#A9D2FF; --bSub:#1A2749; --bCtl:#7487BD;
+    --okBg:#0D2B2E; --okFg:#8FE3D6;
+    --rBg:#1A2749; --rFg:#FF9677; --bBg:#FF5D52; --bFg:#060B18;
+    --scrim:rgba(0,0,0,0.6); --discBg:#1A2749; --discFg:#7487BD;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Rubik, system-ui, sans-serif; background:#d9dde6; color:#121C36; }
+  body.dark { background:#1d2230; }
+  .panel { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:16px; align-items:center;
+    padding:10px 16px; background:#121C36; color:#F3F6FC; font-size:14px; }
+  .panel label { display:flex; gap:6px; align-items:center; }
+  .row { display:flex; flex-wrap:wrap; gap:28px; padding:24px; align-items:flex-start; }
+  .frame { width:411px; }
+  .cap { font-size:13px; color:#34477D; margin:0 0 8px; min-height:34px; }
+  body.dark .cap { color:#A3B3DB; }
+  .phone { position:relative; width:411px; min-height:860px; border-radius:28px; overflow:hidden;
+    background:var(--canvas); color:var(--t1); box-shadow:0 8px 30px rgba(18,28,54,.25); }
+  .scrollable { padding:16px 12px 24px; }
+  /* type */
+  .title2 { font-size:calc(22px*var(--fs)); line-height:calc(28px*var(--fs)); font-weight:700; margin:0; }
+  .title3 { font-size:calc(18px*var(--fs)); line-height:calc(24px*var(--fs)); font-weight:600; margin:0; }
+  .body { font-size:calc(16px*var(--fs)); line-height:calc(24px*var(--fs)); margin:0; }
+  .callout { font-size:calc(15px*var(--fs)); line-height:calc(20px*var(--fs)); margin:0; }
+  .foot { font-size:calc(13px*var(--fs)); line-height:calc(18px*var(--fs)); margin:0; }
+  .capt { font-size:calc(12px*var(--fs)); line-height:calc(16px*var(--fs)); font-weight:600; margin:0; }
+  .code { font-size:calc(15px*var(--fs)); font-weight:600; letter-spacing:1.6px; font-variant-numeric:tabular-nums; }
+  .num { font-size:calc(17px*var(--fs)); font-weight:500; font-variant-numeric:tabular-nums; }
+  .iso { unicode-bidi:isolate; direction:ltr; }
+  .t2 { color:var(--t2); } .t3 { color:var(--t3); } .lnk { color:var(--link); } .al { color:var(--alert); font-weight:500; }
+  .strong { font-weight:500; }
+  /* card */
+  .card { background:var(--raised); border-radius:24px; padding:16px; }
+  body.dark .card { border:1px solid var(--bSub); }
+  .open { background:var(--openRow); border-radius:12px; padding:12px; margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+  .between { display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; }
+  .frow { background:var(--surface); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px; border:1px solid transparent; }
+  body.dark .frow { border-color:var(--bSub); }
+  .routeLine { display:flex; align-items:center; gap:6px; }
+  .dash { flex:1; border-top:1px dashed var(--bCtl); }
+  .times { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { display:inline-flex; gap:4px; align-items:center; border-radius:999px; padding:2px 8px;
+    font-size:calc(12px*var(--fs)); line-height:calc(16px*var(--fs)); font-weight:600; }
+  .chip svg { width:12px; height:12px; flex:none; }
+  .c-ok { background:var(--okBg); color:var(--okFg); }
+  .c-short { background:var(--infoBg); color:var(--infoFg); }
+  .c-risky, .c-restricted, .c-delayed { background:var(--rBg); color:var(--rFg); }
+  .c-banned, .c-cancelled { background:var(--bBg); color:var(--bFg); }
+  .mirror { transform:scaleX(-1); }
+  html[dir=ltr] .mirror { transform:none; }
+  html[dir=ltr] .mirrorLtr { transform:scaleX(-1); }
+  .ic16 { width:16px; height:16px; flex:none; }
+  .ic12 { width:12px; height:12px; flex:none; }
+  /* route header */
+  .routeHead { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:-4px; }
+  .routeHead .codes { display:inline-flex; flex-wrap:wrap; align-items:center; gap:4px; }
+  /* layover row */
+  .lay { position:relative; padding:8px 12px; padding-inline-start:40px; min-height:48px; display:flex; flex-direction:column; gap:4px; }
+  .lay::before { content:""; position:absolute; inset-block:0; inset-inline-start:19px; border-inline-start:2px dashed var(--bCtl); }
+  .lay .hg { position:absolute; inset-inline-start:12px; top:10px; background:var(--openRow); padding:0; color:var(--t2); display:grid; place-items:center; width:16px; height:20px; }
+  .lay .alertIc { color:var(--alert); }
+  .linkBtn { color:var(--link); font-weight:500; min-height:48px; display:inline-flex; align-items:center; padding:0 8px; margin:-12px -8px; background:none; border:0; font:inherit; font-size:calc(15px*var(--fs)); }
+  .linkBtn.blocked { color:var(--discFg); }
+  .notice { display:flex; gap:8px; padding:12px; border-radius:12px; background:var(--infoBg); color:var(--infoFg); }
+  .notice svg { flex:none; width:18px; height:18px; margin-top:1px; }
+  .transit { display:flex; flex-direction:column; gap:4px; }
+  .srcLink { color:var(--link); text-decoration:underline; min-height:48px; display:inline-flex; align-items:center; margin:-14px 0; }
+  .stateLabel { font-family:monospace; font-size:11px; color:var(--t3); direction:ltr; display:inline-block; margin:10px 0 0; }
+  .sep { height:1px; background:var(--bSub); margin:6px 0; }
+  /* sheet */
+  .scrim { position:absolute; inset:0; background:var(--scrim); }
+  .sheet { position:absolute; inset-inline:0; bottom:0; background:var(--raised); border-radius:28px 28px 0 0; padding:8px 20px 24px; max-height:90%; overflow:auto; display:flex; flex-direction:column; gap:12px; }
+  body.dark .sheet { border-top:1px solid var(--bSub); }
+  .handle { width:32px; height:4px; border-radius:2px; background:var(--bCtl); opacity:.5; margin:4px auto 4px; }
+  .x { position:absolute; inset-inline-end:4px; top:8px; width:48px; height:48px; display:grid; place-items:center; color:var(--t2); }
+  .radio { display:flex; gap:12px; align-items:center; min-height:56px; border-bottom:1px solid var(--bSub); }
+  .radio:last-child { border-bottom:0; }
+  .dot { width:20px; height:20px; border-radius:50%; border:2px solid var(--bCtl); flex:none; display:grid; place-items:center; }
+  .dot.on { border-color:var(--pBg); } .dot.on::after { content:""; width:10px; height:10px; border-radius:50%; background:var(--pBg); }
+  .spin { width:20px; height:20px; border-radius:50%; border:2px solid var(--bCtl); border-top-color:var(--pBg); flex:none; }
+  /* form */
+  .bar { display:flex; gap:8px; align-items:center; min-height:56px; padding:0 4px; }
+  .fchip { display:inline-flex; align-items:center; min-height:40px; padding:0 14px; border-radius:999px; border:1px solid var(--bCtl); background:var(--surface); color:var(--t1); font-size:calc(15px*var(--fs)); }
+  .fchip.on { background:var(--pBg); border-color:var(--pBg); color:var(--pFg); }
+  .field { min-height:56px; border:1px solid var(--bCtl); border-radius:12px; background:var(--surface); display:flex; align-items:center; gap:8px; padding:0 14px; }
+  .codeTag { background:var(--tag); border-radius:4px; padding:1px 6px; }
+  .formBody { padding:0 16px 96px; display:flex; flex-direction:column; gap:12px; }
+  .formFoot { position:absolute; inset-inline:0; bottom:0; padding:12px 16px 20px; background:var(--canvas); border-top:1px solid var(--bSub); }
+  .btn { min-height:48px; border-radius:999px; border:0; font:inherit; font-size:calc(16px*var(--fs)); font-weight:500;
+    display:flex; align-items:center; justify-content:center; padding:0 20px; width:100%; background:var(--pBg); color:var(--pFg); }
+  .conn { display:flex; flex-direction:column; gap:8px; background:var(--openRow); border-radius:12px; padding:12px; }
+  /* shade */
+  .shade { background:#1A1C22; padding:40px 10px 10px; min-height:860px; }
+  .notif { background:#2B2F38; color:#E3E5EC; border-radius:20px; padding:12px 14px; margin-bottom:6px; font-family:Roboto, system-ui, sans-serif; }
+  .notif .app { display:flex; gap:6px; align-items:center; font-size:12px; color:#A9D2FF; }
+  .notif .nt { font-weight:600; font-size:15px; margin:4px 0 2px; }
+  .notif .nb { font-size:14px; line-height:20px; color:#C7CBD6; }
+  .shadeLabel { color:#A3B3DB; font-size:12px; margin:10px 4px 6px; }
+</style>
+</head>
+<body>
+<div class="panel" role="toolbar" aria-label="הגדרות ההדמיה">
+  <b>ספרינט 7 · קונקשנים</b>
+  <label><input type="checkbox" id="dark"> כהה</label>
+  <label>גופן <select id="fs"><option value="1">100%</option><option value="1.3">130%</option><option value="2">200%</option></select></label>
+  <label>שפה <select id="lang"><option value="he">עברית</option><option value="en">English</option></select></label>
+  <span style="opacity:.75">כל המספרים, השעות, ה-MCT וסטטוסי הכניסה להדגמה בלבד</span>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="next" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="plane" viewBox="0 0 24 24"><path fill="currentColor" d="M2 13l8-1 4-8h2l-2 8 6 1 2-3h2l-1 4 1 4h-2l-2-3-6 1 2 8h-2l-4-8-8-1z"/></symbol>
+  <symbol id="planeUp" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2c.9 0 1.5.9 1.5 2v5.2l7.5 4.4V16l-7.5-2.3v4.9l2.5 1.8V22L12 21l-4 1v-1.6l2.5-1.8v-4.9L3 16v-2.4l7.5-4.4V4c0-1.1.6-2 1.5-2z"/></symbol>
+  <symbol id="hourglass" viewBox="0 0 24 24"><path d="M7 3h10M7 21h10M8 3c0 5 8 6 8 9s-8 4-8 9M16 3c0 5-8 6-8 9s8 4 8 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="clock" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 4v5l3 2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z M12 10v4 M12 17v.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="noentry" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M7 12h10"/></g></symbol>
+  <symbol id="info" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 8v5m0-8.5v.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="row" id="screens"></div>
+
+<script>
+const RLM = '‏';
+const S = {
+  he: {
+    flights:'טיסות', out:'הלוך', ret:'חזור', leg:(i,d)=>`קטע ${i} · ${d}`, rowDate:(dir,d)=>`${dir} · ${d}`,
+    onTime:'בזמן', delayed:'נדחתה', cancelled:'בוטלה', updated:(n)=>`עודכן לפני ${n} דק'`,
+    wait:(t,a)=>`המתנה של ${t} ב-${iso(a)}`, min:(n)=>`${n} דק'`,
+    missed:'ייתכן שלא תספיקו לטיסה הבאה', invalid:'הקונקשן לא בתוקף. פנו לחברת התעופה.',
+    ok:'מספיק', short:'קצר', risky:'מסוכן',
+    mct:(t,a)=>`לפי זמן חיבור מינימלי של ${t} ב-${iso(a)}`,
+    yes:'באותה הזמנה', no:'כרטיסים נפרדים', unknown:'לא ידוע אם הטיסות באותה הזמנה.', change:'שינוי',
+    separate:(p,n)=>`אם ${iso(p)} תתעכב, אין התחייבות להעביר אתכם לטיסה אחרת במקום ${iso(n)}. ייתכן שתצטרכו לאסוף את המטען ולשלוח אותו שוב.`,
+    restrictedTag:'כניסה מוגבלת', bannedTag:'אין כניסה',
+    restricted:'כניסה לישראלים מוגבלת. כללי מעבר עשויים לחול גם בלי לצאת מהשדה. בדקו מול המקור.',
+    banned:'כניסה לישראלים אסורה. כללי מעבר עשויים לחול גם בלי לצאת מהשדה, וייתכן שלא תוכלו לעבור בו בכלל. בדקו מול המקור ומול חברת התעופה לפני הטיסה.',
+    source:'לפרטים במקור', readOnly:'בלי חיבור אפשר רק לצפות. עריכה תחזור כשיהיה חיבור.',
+    context:(p,n)=>`מ-${iso(p)} ל-${iso(n)}`,
+    malaysia:'מלזיה', qatar:'קטר', turkey:'טורקיה',
+    sbTitle:(p)=>`באותה הזמנה עם ${iso(p)}?`,
+    sbBody:'כשהטיסות נקנו יחד בהזמנה אחת, חברת התעופה בדרך כלל אחראית להעביר אתכם הלאה אם הראשונה מתעכבת.',
+    sbYes:'כן, באותה הזמנה', sbNo:'לא, כרטיסים נפרדים', sbUnknown:'לא יודעים',
+    chipYes:'כן', chipNo:'לא', chipUnknown:'לא יודעים',
+    addFlight:'הוספת טיסה', trip:'תאילנד דצמבר 2026', direction:'כיוון', internal:'פנים-יעד',
+    dirAuto:(p)=>`הכיוון נקבע לפי ${iso(p)}, שהטיסה הזו ממשיכה.`,
+    departure:'המראה', arrival:'נחיתה', origin:'שדה המוצא', istTitle:'איסטנבול · נמל התעופה איסטנבול',
+    connection:'קונקשן', continues:(p)=>`ממשיכה את ${iso(p)}`, booking:'פרטי הזמנה', save:'שמירת הטיסה',
+    found:'מילאנו את מה שמצאנו. אפשר לערוך כל שדה.',
+    sheetDir:'הלוך', departureLbl:'המראה',
+    nTitle:(a)=>`הקונקשן ב-${a} בסיכון`,
+    nBody:(w,p,ar,n,d,a)=>`זמן ההמתנה ירד ל-${w}. ${p} נוחתת ב-${ar} ו-${n} ממריאה ב-${d}, שעון ${a}.`,
+    nBodyMissed:(p,ar,n,d,a)=>`ייתכן שלא תספיקו ל-${n}. ${p} נוחתת ב-${ar} ו-${n} ממריאה ב-${d}, שעון ${a}.`,
+    w40:'40 דקות', w65:'שעה ו-5 דקות', app:'האפליקציה', now:'עכשיו',
+    shadeHe:'עברית (עם RLM)', shadeEn:'English',
+  },
+  en: {
+    flights:'Flights', out:'Outbound', ret:'Return', leg:(i,d)=>`Flight ${i} · ${d}`, rowDate:(dir,d)=>`${dir} · ${d}`,
+    onTime:'On time', delayed:'Delayed', cancelled:'Cancelled', updated:(n)=>`Updated ${n} min ago`,
+    wait:(t,a)=>`${t} layover at ${a}`, min:(n)=>`${n} min`,
+    missed:'You may miss your next flight', invalid:'This connection no longer works. Contact your airline.',
+    ok:'Enough time', short:'Tight', risky:'At risk',
+    mct:(t,a)=>`Based on a ${t} minimum connection time at ${a}`,
+    yes:'Same booking', no:'Separate tickets', unknown:'Not sure if both flights are on one booking.', change:'Change',
+    separate:(p,n)=>`If ${p} is late, no one has to rebook you if you miss ${n}. You may need to collect your bags and check them in again.`,
+    restrictedTag:'Restricted entry', bannedTag:'No entry',
+    restricted:"Entry for Israelis is restricted. Transit rules may apply even if you don't leave the airport. Check the source.",
+    banned:"Entry for Israelis is banned. Transit rules may apply even if you don't leave the airport, and you may not be allowed to transit there at all. Check the source and your airline before you fly.",
+    source:'Source details', readOnly:"Offline you can only view. Editing returns when you're online.",
+    context:(p,n)=>`From ${p} to ${n}`,
+    malaysia:'Malaysia', qatar:'Qatar', turkey:'Türkiye',
+    sbTitle:(p)=>`Same booking as ${p}?`,
+    sbBody:'When both flights are on one booking, the airline is usually responsible for getting you onward if the first one is late.',
+    sbYes:'Yes, one booking', sbNo:'No, separate tickets', sbUnknown:'Not sure',
+    chipYes:'Yes', chipNo:'No', chipUnknown:'Not sure',
+    addFlight:'Add a flight', trip:'Thailand December 2026', direction:'Direction', internal:'Within the trip',
+    dirAuto:(p)=>`Direction set from ${p}, which this flight continues.`,
+    departure:'Departure', arrival:'Arrival', origin:'Origin airport', istTitle:'Istanbul · Istanbul Airport',
+    connection:'Connection', continues:(p)=>`Continues ${p}`, booking:'Booking details', save:'Save flight',
+    found:'We filled in what we found. You can edit any field.',
+    sheetDir:'Outbound', departureLbl:'Departure',
+    nTitle:(a)=>`Connection at ${a} at risk`,
+    nBody:(w,p,ar,n,d,a)=>`Your layover is down to ${w}. ${p} lands at ${ar} and ${n} departs at ${d}, ${a} time.`,
+    nBodyMissed:(p,ar,n,d,a)=>`You may miss ${n}. ${p} lands at ${ar} and ${n} departs at ${d}, ${a} time.`,
+    w40:'40 min', w65:'1 hr 5 min', app:'The app', now:'now',
+    shadeHe:'Hebrew (with RLM)', shadeEn:'English',
+  }
+};
+let L = S.he;
+const iso = (s) => `<span class="iso">${s}</span>`;
+const icon = (id, cls='ic16', extra='') => `<svg class="${cls} ${extra}"><use href="#${id}"/></svg>`;
+const next12 = () => icon('next','ic12','mirror t3');
+
+function chip(kind, label){
+  const ic = {ok:'check', short:'clock', risky:'warn', delayed:'clock', ontime:'check', cancelled:'noentry', banned:'noentry', restricted:'warn'}[kind];
+  const cls = kind==='ontime' ? 'c-ok' : 'c-'+kind;
+  return `<span class="chip ${cls}">${icon(ic,'ic12')}${label}</span>`;
+}
+function routeHeader(dir, codes){
+  return `<div class="routeHead" role="heading"><span class="capt t2">${dir} ·</span><span class="codes code">${codes.map(iso).join(next12())}</span></div>`;
+}
+function legRow({top, chips='', num, airline, from, to, dep, arr, plus='', depAlert=false, sched='', extra='', track}){
+  return `<div class="frow">
+    <div class="between"><span class="capt t2">${top}</span><span class="chips">${chips}</span></div>
+    <p class="callout"><span class="code">${iso(num)}</span><span class="t2"> · ${airline}</span></p>
+    <div class="routeLine"><span class="title3 code">${iso(from)}</span><span class="dash"></span>${icon('plane','ic16','mirrorLtr t3')}<span class="dash"></span><span class="title3 code">${iso(to)}</span></div>
+    <div class="times"><span class="num ${depAlert?'al':''}">${iso(dep)}${sched?` <span class="foot t2" style="text-decoration:line-through">${iso(sched)}</span>`:''}</span><span class="num">${iso(arr+(plus?` <span class="capt t2">${plus}</span>`:''))}</span></div>
+    ${extra}
+    <div class="between"><span class="foot t2">${track}</span>${icon('next','ic16','mirror t3')}</div>
+  </div>`;
+}
+function layover(o){
+  const status = o.status;
+  let line1;
+  if (status==='invalid') line1 = `<p class="callout al">${L.invalid}</p>`;
+  else if (status==='missed') line1 = `<div class="between"><p class="callout al">${L.missed}</p>${chip('risky',L.risky)}</div>`;
+  else line1 = `<div class="between"><p class="callout ${o.past?'t2':''}">${L.wait(o.time, o.apt)}</p>${o.past||!o.status?'':chip(status, L[status])}</div>`;
+  const mct = (status==='short'||status==='risky') ? `<p class="foot t2">${L.mct(o.mct, o.apt)}</p>` : '';
+  const ctx = o.context ? `<p class="foot t2">${o.context}</p>` : '';
+  const book = o.booking===undefined ? '' : `<div class="between"><p class="foot ${o.booking==='no'?'strong':'t2'}" ${o.booking==='no'?'style="color:var(--t1)"':''}>${L[o.booking]}</p><button class="linkBtn ${o.offline?'blocked':''}">${L.change}</button></div>`;
+  const sep = o.booking==='no' ? `<div class="notice">${icon('info')}<p class="foot">${L.separate(o.prev, o.next)}</p></div>` : '';
+  const tr = o.transit ? `<div class="transit"><div class="routeLine" style="flex-wrap:wrap">${chip(o.transit.status, o.transit.status==='banned'?L.bannedTag:L.restrictedTag)}<span class="foot t2">${o.transit.country} · ${iso(o.transit.apt)}</span></div><p class="callout">${L[o.transit.status]}</p><a class="foot srcLink">${L.source}</a></div>` : '';
+  const off = o.offline ? `<div class="notice">${icon('info')}<p class="foot">${L.readOnly}</p></div>` : '';
+  const ic = status==='invalid' ? `<span class="hg alertIc">${icon('noentry')}</span>` : `<span class="hg">${icon('hourglass')}</span>`;
+  return `<div class="lay">${ic}${line1}${ctx}${mct}${book}${sep}${tr}${off}</div>`;
+}
+function phone(content, cap){ return `<div class="frame"><p class="cap">${cap}</p><div class="phone">${content}</div></div>`; }
+function cardWrap(inner){
+  return `<div class="scrollable"><div class="card">
+    <p class="title2">${L===S.he?'תאילנד':'Thailand'}</p>
+    <div class="open"><p class="capt t2" role="heading">${L.flights}</p>${inner}</div></div></div>`;
+}
+
+function screens(){
+  const out = [];
+  // 1. card with a 2-leg route and a direct return
+  out.push(phone(cardWrap(`
+    ${routeHeader(L.out, ['TLV','IST','BKK'])}
+    <div>
+    ${legRow({top:L.leg(1,'20.12'), chips:chip('ontime',L.onTime), num:'LY81', airline:L===S.he?'אל על':'El Al', from:'TLV', to:'IST', dep:'23:40', arr:'02:50', plus:'+1', track:L.updated(4)})}
+    ${layover({apt:'IST', time:'2:10', status:'ok', booking:'yes', prev:'LY81', next:'TK68'})}
+    ${legRow({top:L.leg(2,'21.12'), chips:chip('ontime',L.onTime), num:'TK68', airline:'Turkish Airlines', from:'IST', to:'BKK', dep:'05:00', arr:'18:30', track:L.updated(4)})}
+    </div>
+    ${legRow({top:L.rowDate(L.ret,'5.1'), chips:chip('ontime',L.onTime), num:'LY82', airline:L===S.he?'אל על':'El Al', from:'BKK', to:'TLV', dep:'20:05', arr:'00:50', plus:'+1', track:L.updated(12)})}
+  `), '1 · כרטיס: מסלול של שני קטעים (כותרת, "קטע 1/2", שורת המתנה עם מסילה), וטיסת חזור ישירה.'));
+
+  // 2. all layover states
+  const st = (label, html) => `<span class="stateLabel">${label}</span>${html}`;
+  out.push(phone(cardWrap(`
+    ${st('ok + yes', layover({apt:'IST', time:'2:10', status:'ok', booking:'yes', prev:'LY81', next:'TK68'}))}
+    ${st('short + unknown', layover({apt:'IST', time:'1:20', status:'short', mct:L.min(60), booking:'unknown', prev:'LY81', next:'TK68'}))}
+    ${st('risky', layover({apt:'IST', time:L.min(40), status:'risky', mct:L.min(60), booking:'yes', prev:'LY81', next:'TK68'}))}
+    ${st('missed', layover({apt:'IST', status:'missed', booking:'yes', prev:'LY81', next:'TK68'}))}
+    ${st('invalid (leg cancelled)', layover({apt:'IST', status:'invalid', booking:'yes', prev:'LY81', next:'TK68'}))}
+    ${st('ok + no (separate tickets)', layover({apt:'IST', time:'3:05', status:'ok', booking:'no', prev:'LY81', next:'TK68'}))}
+    ${st('transit restricted', layover({apt:'DOH', time:'2:40', status:'ok', booking:'yes', prev:'QR1', next:'QR830', transit:{status:'restricted', country:L.qatar, apt:'DOH'}}))}
+    ${st('transit banned + risky', layover({apt:'KUL', time:L.min(50), status:'risky', mct:'1:15', booking:'unknown', prev:'MH1', next:'MH780', transit:{status:'banned', country:L.malaysia, apt:'KUL'}}))}
+    ${st('offline (change blocked, tapped)', layover({apt:'IST', time:'2:10', status:'ok', booking:'unknown', offline:true, prev:'LY81', next:'TK68'}))}
+    ${st('[proposal] next leg departed', layover({apt:'IST', time:'1:55', past:true, status:'ok', booking:'yes', prev:'LY81', next:'TK68'}))}
+  `), '2 · כל המצבים של שורת ההמתנה. (סטטוס הכניסה של DOH ו-KUL כאן הוא להדגמה בלבד.)'));
+
+  // 3. three-leg route
+  out.push(phone(cardWrap(`
+    ${routeHeader(L.out, ['TLV','ATH','DOH','BKK'])}
+    <div>
+    ${legRow({top:L.leg(1,'20.12'), chips:chip('delayed',L.delayed), num:'A3929', airline:'Aegean', from:'TLV', to:'ATH', dep:'07:25', sched:'06:10', depAlert:true, arr:'10:05', track:L.updated(2)})}
+    ${layover({apt:'ATH', time:'1:15', status:'short', mct:L.min(60), booking:'yes', prev:'A3929', next:'QR204'})}
+    ${legRow({top:L.leg(2,'20.12'), chips:chip('ontime',L.onTime), num:'QR204', airline:'Qatar Airways', from:'ATH', to:'DOH', dep:'11:20', arr:'15:55', track:L.updated(2)})}
+    ${layover({apt:'DOH', time:'4:30', status:'ok', booking:'yes', prev:'QR204', next:'QR830'})}
+    ${legRow({top:L.leg(3,'20.12'), chips:chip('ontime',L.onTime), num:'QR830', airline:'Qatar Airways', from:'DOH', to:'BKK', dep:'20:25', arr:'07:10', plus:'+1', track:L.updated(2)})}
+    </div>
+  `), '3 · מסלול של שלושה קטעים: שתי שורות המתנה. הקטע הראשון נדחה, ולכן ההמתנה ב-ATH "קצר".'));
+
+  // 4. same-booking sheet
+  out.push(phone(cardWrap(`
+    ${routeHeader(L.out, ['TLV','IST','BKK'])}
+    ${layover({apt:'IST', time:'2:10', status:'ok', booking:'no', prev:'LY81', next:'TK68'})}
+  `) + `<div class="scrim"></div>
+    <div class="sheet" role="dialog">
+      <div class="handle"></div><span class="x">${icon('close','ic16')}</span>
+      <p class="title2" style="padding-inline-end:40px">${L.sbTitle('LY81')}</p>
+      <p class="body t2">${L.sbBody}</p>
+      <div role="radiogroup">
+        <div class="radio"><span class="dot"></span><span class="body">${L.sbYes}</span></div>
+        <div class="radio"><span class="dot on"></span><span class="body">${L.sbNo}</span></div>
+        <div class="radio"><span class="dot"></span><span class="body">${L.sbUnknown}</span></div>
+      </div>
+      <span class="stateLabel">busy: ${'<span class="spin" style="display:inline-block;vertical-align:middle"></span>'} in place of the dot on the chosen row</span>
+    </div>`, '4 · "שינוי" בשורת ההמתנה פותח את הגיליון. בחירה שומרת מיד, והגיליון נסגר.'));
+
+  // 5. form step 2 with connection section
+  out.push(phone(`
+    <div class="bar">${icon('back','ic16','mirror')}<div><p class="title3" style="font-weight:600">${L.addFlight}</p><p class="foot t2">${L.trip}</p></div></div>
+    <div class="formBody">
+      <div class="notice">${icon('info')}<p class="foot">${L.found}</p></div>
+      <div><p class="capt t2">${L.direction}</p>
+        <div class="chips" style="margin-top:6px"><span class="fchip on">✓ ${L.out}</span><span class="fchip">${L.ret}</span><span class="fchip">${L.internal}</span></div>
+        <p class="foot t2" style="margin-top:6px">${L.dirAuto('LY81')}</p></div>
+      <p class="title3" style="margin-top:12px">${L.departure}</p>
+      <div><p class="capt t2">${L.origin}</p><div class="field"><span class="body" style="flex:1">${L.istTitle}</span><span class="code codeTag">IST</span>${icon('next','ic16','mirror t2')}</div></div>
+      <p class="foot t2">…</p>
+      <p class="title3" style="margin-top:12px">${L.connection}</p>
+      <div class="conn">
+        <p class="body">${L.continues('LY81')} <span class="code">(${iso('TLV')}${next12()}${iso('IST')})</span></p>
+        <div class="between"><p class="callout">${L.wait('2:10','IST')}</p>${chip('ok',L.ok)}</div>
+        <p class="capt t2">${L.sbTitle('LY81')}</p>
+        <div class="chips" role="radiogroup"><span class="fchip">${L.chipYes}</span><span class="fchip on">✓ ${L.chipNo}</span><span class="fchip">${L.chipUnknown}</span></div>
+        <div class="notice">${icon('info')}<p class="foot">${L.separate('LY81','TK68')}</p></div>
+        <div class="transit"><div class="routeLine" style="flex-wrap:wrap">${chip('restricted',L.restrictedTag)}<span class="foot t2">${L.turkey} · ${iso('IST')}</span></div><p class="callout">${L.restricted}</p><a class="foot srcLink">${L.source}</a></div>
+      </div>
+      <p class="title3" style="margin-top:12px">${L.booking}</p>
+    </div>
+    <div class="formFoot"><button class="btn">${L.save}</button></div>
+  `, '5 · הטופס, שלב 2: הכיוון נקבע לפי LY81, מקטע "קונקשן" עם התשובה "לא", ואזהרת מעבר. (הסטטוס של IST להדגמה בלבד.)'));
+
+  // 6. notification shade
+  const he = S.he, en = S.en;
+  const n = (lang, title, body) => `<div class="notif" dir="${lang==='he'?'rtl':'ltr'}"><div class="app">${icon('planeUp','ic12')} ${lang==='he'?he.app:en.app} · ${lang==='he'?he.now:en.now}</div><div class="nt">${title}</div><div class="nb">${body}</div></div>`;
+  out.push(phone(`<div class="shade">
+    <p class="shadeLabel">${L.shadeHe}</p>
+    ${n('he', RLM+he.nTitle('IST'), RLM+he.nBody(he.w40,'LY81','01:25','TK68','02:05','IST'))}
+    ${n('he', RLM+he.nTitle('IST'), RLM+he.nBodyMissed('LY81','02:20','TK68','02:05','IST'))}
+    ${n('he', RLM+he.nTitle('DOH'), RLM+he.nBody(he.w65,'QR204','23:50','QR830','00:55 ב-21.12','DOH')+' יש עוד שינויים בטיסה.')}
+    <p class="shadeLabel">${L.shadeEn}</p>
+    ${n('en', en.nTitle('IST'), en.nBody(en.w40,'LY81','01:25','TK68','02:05','IST'))}
+    ${n('en', en.nTitle('IST'), en.nBodyMissed('LY81','02:20','TK68','02:05','IST'))}
+  </div>`, '6 · מגירת ההתראות: connection_risk. ההקשה פותחת את FlightSheet של הקטע הבא (TK68).'));
+
+  // 7. flight sheet of the next leg
+  out.push(phone(cardWrap(`
+    ${routeHeader(L.out, ['TLV','IST','BKK'])}
+  `) + `<div class="scrim"></div>
+    <div class="sheet" role="dialog">
+      <div class="handle"></div><span class="x">${icon('close','ic16')}</span>
+      <p class="title2"><span class="code" style="font-size:inherit">${iso('TK68')}</span> · ${L.sheetDir}</p>
+      <p class="callout t2">Turkish Airlines</p>
+      <div class="chips">${chip('ontime',L.onTime)}</div>
+      <p class="foot t2">${L.updated(2)}</p>
+      <p class="capt t2" role="heading">${L.connection}</p>
+      <div style="background:var(--openRow);border-radius:12px">${layover({apt:'IST', time:L.min(40), status:'risky', mct:L.min(60), booking:'yes', prev:'LY81', next:'TK68', context:L.context('LY81','TK68')})}</div>
+      <p class="capt t2">${L.departureLbl}</p>
+      <p class="body">${L.istTitle} · IST</p>
+      <p class="num">${iso('21.12.2026 · 02:05')}</p>
+    </div>`, '7 · FlightSheet של הקטע הבא, כמו שנפתח מההתראה: מקטע "קונקשן" גלוי למעלה.'));
+
+  document.getElementById('screens').innerHTML = out.join('');
+}
+
+function apply(){
+  const lang = document.getElementById('lang').value;
+  L = S[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+  document.body.classList.toggle('dark', document.getElementById('dark').checked);
+  document.documentElement.style.setProperty('--fs', document.getElementById('fs').value);
+  screens();
+}
+['dark','fs','lang'].forEach(id => document.getElementById(id).addEventListener('change', apply));
+apply();
+</script>
+</body>
+</html>
