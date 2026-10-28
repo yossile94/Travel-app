@@ -86,7 +86,8 @@ begin
   -- GoTrue keeps emails in lower case; only a confirmed address, and only one account (Dudi 9).
   select count(*), min(id::text)::uuid into matches, target
     from auth.users
-    where email = lower(trim(p_email)) and email_confirmed_at is not null;
+    where email = lower(trim(p_email)) and email_confirmed_at is not null
+      and is_sso_user = false; -- SAML only; Google users pass. Uses the email index (Dudi).
   if matches <> 1 then
     raise exception 'no such user' using errcode = 'P0002';
   end if;
@@ -130,9 +131,13 @@ grant execute on function public.admin_revoke_role(uuid, text) to authenticated;
 create function public.admin_roles_keep_last_admin()
   returns trigger
   language plpgsql
+  -- Definer: the lock works whoever deletes (the auth service included).
+  security definer
   set search_path = ''
 as $$
 begin
+  -- Two last admins deleting their accounts at once run one after the other (Dudi).
+  lock table public.admin_roles in share row exclusive mode;
   if old.role = 'admin'
      and not exists (
        select 1 from public.admin_roles where role = 'admin' and user_id <> old.user_id
@@ -142,6 +147,7 @@ begin
   return old;
 end;
 $$;
+revoke execute on function public.admin_roles_keep_last_admin() from public, anon, authenticated;
 create trigger admin_roles_keep_last_admin
   before delete on public.admin_roles
   for each row execute function public.admin_roles_keep_last_admin();
@@ -186,9 +192,13 @@ comment on table public.admin_audit_log is
 
 create index admin_audit_log_created on public.admin_audit_log (created_at desc, id desc);
 create index admin_audit_log_entity on public.admin_audit_log (entity, entity_id, created_at desc);
+-- An account deletion (the daily purge too) finds its emails without a scan (Dudi).
+create index admin_audit_log_actor_email on public.admin_audit_log (actor_id) where actor_email is not null;
 
 alter table public.admin_audit_log enable row level security;
 revoke all on public.admin_audit_log from anon, authenticated;
+-- The trigger blocks it anyway; no grant either (Dudi).
+revoke update, delete, truncate on public.admin_audit_log from service_role;
 create policy "admins read the audit log"
   on public.admin_audit_log for select to authenticated
   using ((select public.has_role('admin')));
