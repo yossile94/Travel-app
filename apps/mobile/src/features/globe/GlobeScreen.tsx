@@ -292,8 +292,10 @@ export function GlobeScreen() {
   const resultCount = results?.length ?? 0;
   useEffect(() => {
     const at = discoverTapAt.current;
-    if (at === null || results === null) return;
+    if (at === null) return;
+    // A change that leaves nothing to colour still ends this tap (Dana, sprint 9 note 3).
     discoverTapAt.current = null;
+    if (results === null) return;
     const frame = requestAnimationFrame(() => logDiscover(Date.now() - at, chipCount, resultCount));
     return () => cancelAnimationFrame(frame);
   }, [results, chipCount, resultCount]);
