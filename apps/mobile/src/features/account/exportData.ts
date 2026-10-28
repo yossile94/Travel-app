@@ -87,7 +87,10 @@ export async function buildExport(
       // Sprint 5 AC-3: every flight field the user saved, booking code and seat included.
       'flights(direction, flight_number_input, flight_number, dep_date_local, airline_name, ' +
       'dep_iata, dep_tz, arr_iata, arr_tz, dep_sched, arr_sched, dep_terminal, dep_gate, ' +
-      'arr_terminal, pnr, seat, cabin, same_booking, created_at, updated_at)',
+      'arr_terminal, pnr, seat, cabin, same_booking, created_at, updated_at), ' +
+      // Sprint 8 (Dudi 2): hotels and insurance, booking and policy numbers included.
+      'hotels(name, address_en, address_local, phone, check_in, check_out, booking_ref, created_at, updated_at), ' +
+      'insurance(provider, policy_number, valid_until, emergency_phone, notes, created_at, updated_at)',
     user.id,
     signal,
   );

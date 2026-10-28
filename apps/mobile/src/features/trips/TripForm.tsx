@@ -50,6 +50,10 @@ import {
 import { countryName } from './countryName';
 import { TripFormFlights } from '@/features/flights/TripFormFlights';
 import { useTripFlights } from '@/features/flights/flightsStore';
+import { reminderText } from '@/features/kit/InsuranceSection';
+import { cancelInsuranceReminder, syncInsuranceReminder } from '@/features/kit/insuranceReminder';
+import { hotelsOutside, type Hotel } from '@/features/kit/kitModel';
+import { kitsOf, refreshTripKit, tripKitNow } from '@/features/kit/kitStore';
 
 import { CitiesSection } from './CitiesSection';
 import { TravelersSection } from './TravelersSection';
@@ -57,6 +61,7 @@ import {
   codePointLength,
   defaultTripName,
   formatDate,
+  formatRange,
   fromPgDate,
   toPgDate,
   todayPg,
@@ -90,7 +95,15 @@ export type TripFormResult =
   | { kind: 'created' | 'updated'; trip: Trip }
   | { kind: 'deleted'; trip: Trip; alreadyGone: boolean };
 
-type Notice = 'offline' | 'saveError' | 'gone' | 'consent' | 'deleteOffline' | 'deleteError' | null;
+type Notice =
+  | 'offline'
+  | 'saveError'
+  | 'gone'
+  | 'consent'
+  | 'deleteOffline'
+  | 'deleteError'
+  | 'hotelsOutside'
+  | null;
 
 /** "1,840": Hermes has no Intl, so no toLocaleString. */
 
@@ -160,6 +173,7 @@ export function TripForm({
   /** Set synchronously, so a second tap before the first re-render does nothing (3.4). */
   const working = useRef(false);
   const [notice, setNotice] = useState<Notice>(null);
+  const [outsideHotels, setOutsideHotels] = useState<Hotel[]>([]);
   // D-2: once the updated terms are accepted, the consent notice goes (the user saves again).
   const [authWas, setAuthWas] = useState(auth.status);
   if (authWas !== auth.status) {
@@ -280,9 +294,21 @@ export function TripForm({
       scroll.current?.scrollTo({ y: 0, animated: true });
       return;
     }
+    const fields = tripFields(values);
+    // Sprint 8 design 7: hotels these dates would leave outside, checked here first.
+    const outside = hotelsOutside(
+      tripKitNow(tripId)?.hotels ?? [],
+      fields.startDate,
+      fields.endDate,
+    );
+    if (outside.length) {
+      setOutsideHotels(outside);
+      setNotice('hotelsOutside');
+      AccessibilityInfo.announceForAccessibility(t('tripForm.hotelsOutside'));
+      return;
+    }
     setBusy('save');
     setNotice(null);
-    const fields = tripFields(values);
     const trip: Trip = { id: tripId, countryAdm0: target.country.adm0, ...fields };
     const result = await withTimeout(
       saveTrip(editing ? 'update' : 'create', trip),
@@ -290,7 +316,29 @@ export function TripForm({
     );
     setBusy(null);
     if (result === 'ok') {
+      // Sprint 8 AC-10: (re)schedule the insurance reminder for the new dates, on this device.
+      // A new trip has no insurance; an edited one is checked in memory or the device
+      // copy, and left alone when unknown (Raz review 3).
+      const words = reminderText(t, i18n.language, trip.countryAdm0);
+      if (!editing) void syncInsuranceReminder(trip, false, words);
+      else {
+        void kitsOf([tripId]).then((kits) => {
+          const kit = kits.get(tripId);
+          // Unknown: cancel rather than leave one on the old dates (Raz re-review 1).
+          if (kit) void syncInsuranceReminder(trip, kit.insurance !== null, words);
+          else void cancelInsuranceReminder(tripId);
+        });
+      }
       onDone({ kind: editing ? 'updated' : 'created', trip });
+      return;
+    }
+    if (result === 'hotelsOutside') {
+      // Changed on another device: read the hotels again and list them.
+      await refreshTripKit(tripId);
+      setOutsideHotels(
+        hotelsOutside(tripKitNow(tripId)?.hotels ?? [], fields.startDate, fields.endDate),
+      );
+      setNotice('hotelsOutside');
       return;
     }
     if (result === 'consent') {
@@ -364,7 +412,15 @@ export function TripForm({
               ? t('tripDelete.offline')
               : notice === 'deleteError'
                 ? t('tripDelete.error')
-                : null;
+                : notice === 'hotelsOutside'
+                  ? [
+                      t('tripForm.hotelsOutside'),
+                      ...outsideHotels.map(
+                        (h) =>
+                          `· ${t('tripForm.hotelsOutsideRow', { name: h.name, range: formatRange(h.checkIn, h.checkOut, t) })}`,
+                      ),
+                    ].join(String.fromCharCode(10))
+                  : null;
 
   const titleLength = codePointLength(values.title.trim());
   const notesLength = codePointLength(values.notes.trim());

@@ -11,6 +11,8 @@ import { useEffect, useRef } from 'react';
 
 import { refreshTripOf } from '@/features/flights/flightsStore';
 
+import { reminderTripOf } from '@/features/kit/insuranceReminder';
+
 import { ALERT_TYPES, flightIdOf } from './push';
 
 const HANDLED_KEY = 'push.handledResponseId';
@@ -53,6 +55,7 @@ export function usePushOpen({
   signedIn,
   onOpen,
   onSignedOut,
+  onOpenTrip,
 }: {
   /** The session is settled: signed in with the trips loaded, or signed out. */
   ready: boolean;
@@ -60,11 +63,13 @@ export function usePushOpen({
   onOpen: (flightId: string, text: AlertText) => void;
   /** A tap while signed out: the flight can't be shown (design 4.3). */
   onSignedOut: () => void;
+  /** Sprint 8 design 11.2: a tapped insurance reminder opens its trip. */
+  onOpenTrip?: (tripId: string) => void;
 }): void {
-  const handlers = useRef({ onOpen, onSignedOut, signedIn });
+  const handlers = useRef({ onOpen, onSignedOut, onOpenTrip, signedIn });
   useEffect(() => {
-    handlers.current = { onOpen, onSignedOut, signedIn };
-  }, [onOpen, onSignedOut, signedIn]);
+    handlers.current = { onOpen, onSignedOut, onOpenTrip, signedIn };
+  }, [onOpen, onSignedOut, onOpenTrip, signedIn]);
 
   useEffect(() => {
     if (!ready) return;
@@ -82,6 +87,12 @@ export function usePushOpen({
       }
       await AsyncStorage.setItem(HANDLED_KEY, id).catch(() => {});
       const flightId = flightIdOf(response);
+      const reminderTrip = reminderTripOf(response);
+      if (reminderTrip) {
+        // Signed out or gone: the globe, no card and no message (design 11.2).
+        if (handlers.current.signedIn) handlers.current.onOpenTrip?.(reminderTrip);
+        return;
+      }
       if (!flightId) {
         console.warn('[push] push_open_bad_payload');
         return;

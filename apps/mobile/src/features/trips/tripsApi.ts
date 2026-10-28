@@ -3,6 +3,9 @@
  * with a named result the screens can show; errors are logged with their code
  * only, never the error object (PostgREST's details hold the user's row).
  */
+import { cancelInsuranceReminder } from '@/features/kit/insuranceReminder';
+import { forgetTripKit } from '@/features/kit/kitStore';
+import { removePolicy } from '@/features/kit/policyFile';
 import NetInfo from '@react-native-community/netinfo';
 
 import { supabase } from '@/lib/supabase';
@@ -58,6 +61,8 @@ export type WriteResult =
   | 'consent'
   /** No row matched: deleted on another device (AC-6). */
   | 'gone'
+  /** Sprint 8 AC-1: the new dates would leave a hotel outside the trip. */
+  | 'hotelsOutside'
   | 'error';
 
 export const TRIPS_PAGE_SIZE = 20;
@@ -174,6 +179,7 @@ function writeFailure(step: string, error: unknown): WriteResult {
   // Only the consent gate's own refusal opens the consent screen; a 42501
   // from a missing grant is a bug, not a consent question (ADR-007).
   if (code === '42501' && hint === 'consent_required') return 'consent';
+  if (hint === 'hotels_outside') return 'hotelsOutside';
   logFailure(step, error);
   return 'error';
 }
@@ -213,5 +219,9 @@ export async function deleteTrip(id: string): Promise<WriteResult> {
   if (!(await online())) return 'offline';
   const { data, error } = await supabase.from('trips').delete().eq('id', id).select('id');
   if (error) return writeFailure('delete', error);
+  // Sprint 8 AC-9, AC-10: this device's policy file and the trip's reminder go too.
+  removePolicy(id);
+  void cancelInsuranceReminder(id);
+  void forgetTripKit(id);
   return data && data.length > 0 ? 'ok' : 'gone';
 }

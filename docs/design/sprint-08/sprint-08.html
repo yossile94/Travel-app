@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ספרינט 8: תיק נסיעה (הדמיה)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Tokens from apps/mobile/src/theme/tokens.ts. No new colours. */
+  :root { --fs: 1; }
+  :root, .forceLight {
+    --canvas:#FFFBF5; --surface:#FFFFFF; --raised:#FFFFFF; --openRow:#FBF4E8; --tag:#FBF4E8; --pressed:#FBF4E8;
+    --t1:#121C36; --t2:#4A5573; --t3:#646E8A; --link:#1561BC; --alert:#C81E16;
+    --pBg:#1561BC; --pFg:#FFFFFF; --secBg:#EEF6FF; --secFg:#104C94;
+    --infoBg:#EEF6FF; --infoFg:#104C94; --bSub:#F4E7D0; --bCtl:#7D869E;
+    --okBg:#E8FAF7; --okFg:#0A665D; --activeBar:#0B7F73;
+    --rBg:#FFF2EE; --rFg:#A8381A; --bBg:#C81E16; --bFg:#FFFFFF;
+    --alBg:#C81E16; --alFg:#FFFFFF;
+    --ctaBg:#C8441F; --ctaFg:#FFFFFF;
+    --scrim:rgba(6,11,24,0.48); --discBg:#E9EEFA; --discFg:#646E8A; --skel:#F4E7D0;
+  }
+  body.dark {
+    --canvas:#060B18; --surface:#0B1326; --raised:#121C36; --openRow:#1A2749; --tag:#1A2749; --pressed:#1A2749;
+    --t1:#F3F6FC; --t2:#A3B3DB; --t3:#7487BD; --link:#6FB3FA; --alert:#FF5D52;
+    --pBg:#6FB3FA; --pFg:#060B18; --secBg:#1A2749; --secFg:#A9D2FF;
+    --infoBg:#1A2749; --infoFg:#A9D2FF; --bSub:#1A2749; --bCtl:#7487BD;
+    --okBg:#0D2B2E; --okFg:#8FE3D6; --activeBar:#4FCFBE;
+    --rBg:#1A2749; --rFg:#FF9677; --bBg:#FF5D52; --bFg:#060B18;
+    --alBg:#FF5D52; --alFg:#060B18;
+    --ctaBg:#FF7A57; --ctaFg:#060B18;
+    --scrim:rgba(0,0,0,0.6); --discBg:#1A2749; --discFg:#7487BD; --skel:#1A2749;
+  }
+  /* The driver card is always light (README 6.1): re-declare the light values inside it. */
+  body.dark .forceLight {
+    --canvas:#FFFBF5; --surface:#FFFFFF; --raised:#FFFFFF; --t1:#121C36; --t2:#4A5573; --t3:#646E8A;
+    --secBg:#EEF6FF; --secFg:#104C94; --bSub:#F4E7D0; --bCtl:#7D869E; --pressed:#FBF4E8;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Rubik, system-ui, sans-serif; background:#d9dde6; color:#121C36; }
+  body.dark { background:#1d2230; }
+  .panel { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:16px; align-items:center;
+    padding:10px 16px; background:#121C36; color:#F3F6FC; font-size:14px; }
+  .panel label { display:flex; gap:6px; align-items:center; }
+  .row { display:flex; flex-wrap:wrap; gap:28px; padding:24px; align-items:flex-start; }
+  .frame { width:411px; }
+  .cap { font-size:13px; color:#34477D; margin:0 0 8px; min-height:52px; }
+  body.dark .cap { color:#A3B3DB; }
+  .phone { position:relative; width:411px; min-height:860px; border-radius:28px; overflow:hidden;
+    background:var(--canvas); color:var(--t1); box-shadow:0 8px 30px rgba(18,28,54,.25); }
+  .scrollable { padding:16px 12px 24px; }
+  /* type */
+  .title1 { font-size:calc(28px*var(--fs)); line-height:calc(34px*var(--fs)); font-weight:700; margin:0; }
+  .title2 { font-size:calc(22px*var(--fs)); line-height:calc(28px*var(--fs)); font-weight:600; margin:0; }
+  .title3 { font-size:calc(18px*var(--fs)); line-height:calc(24px*var(--fs)); font-weight:600; margin:0; }
+  .body { font-size:calc(16px*var(--fs)); line-height:calc(24px*var(--fs)); margin:0; }
+  .bodyS { font-size:calc(16px*var(--fs)); line-height:calc(22px*var(--fs)); font-weight:500; margin:0; }
+  .callout { font-size:calc(15px*var(--fs)); line-height:calc(21px*var(--fs)); margin:0; }
+  .foot { font-size:calc(13px*var(--fs)); line-height:calc(18px*var(--fs)); margin:0; }
+  .capt { font-size:calc(12px*var(--fs)); line-height:calc(16px*var(--fs)); font-weight:600; margin:0; }
+  .numLg { font-size:calc(28px*var(--fs)); line-height:calc(32px*var(--fs)); font-weight:500; font-variant-numeric:tabular-nums; margin:0; }
+  .numMd { font-size:calc(17px*var(--fs)); line-height:calc(22px*var(--fs)); font-weight:500; font-variant-numeric:tabular-nums; margin:0; }
+  .iso { unicode-bidi:isolate; direction:ltr; }
+  .ltrBlock { direction:ltr; text-align:left; unicode-bidi:isolate; }
+  .rtlBlock { direction:rtl; text-align:right; unicode-bidi:isolate; }
+  .t2 { color:var(--t2); } .t3 { color:var(--t3); } .lnk { color:var(--link); } .al { color:var(--alert); font-weight:500; }
+  .mirror { transform:scaleX(-1); }
+  html[dir=ltr] .mirror { transform:none; }
+  .ic16 { width:16px; height:16px; flex:none; } .ic12 { width:12px; height:12px; flex:none; }
+  .ic20 { width:20px; height:20px; flex:none; } .ic24 { width:24px; height:24px; flex:none; }
+  .stateLabel { font-family:monospace; font-size:11px; color:var(--t3); direction:ltr; display:block; margin:10px 0 4px; }
+  /* card */
+  .card { background:var(--raised); border-radius:24px; padding:16px; }
+  body.dark .card { border:1px solid var(--bSub); }
+  .open { position:relative; background:var(--openRow); border-radius:12px; padding:12px 10px; margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+  .activeBar { position:absolute; inset-inline-start:0; top:8px; width:3px; height:56px; border-radius:2px; background:var(--activeBar); }
+  .between { display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; }
+  .hstack { display:flex; align-items:center; gap:8px; }
+  .vstack { display:flex; flex-direction:column; gap:6px; }
+  .box { background:var(--surface); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px; border:1px solid transparent; }
+  body.dark .box { border-color:var(--bSub); }
+  .group { background:var(--surface); border-radius:12px; border:1px solid transparent; overflow:hidden; }
+  body.dark .group { border-color:var(--bSub); }
+  .chip { display:inline-flex; gap:4px; align-items:center; border-radius:999px; padding:2px 8px;
+    font-size:calc(12px*var(--fs)); line-height:calc(16px*var(--fs)); font-weight:600; }
+  .c-ok { background:var(--okBg); color:var(--okFg); }
+  .c-risky { background:var(--rBg); color:var(--rFg); }
+  .c-banned { background:var(--bBg); color:var(--bFg); }
+  .dotA { width:6px; height:6px; border-radius:3px; background:var(--activeBar); }
+  /* buttons */
+  .btn { min-height:48px; border-radius:999px; border:0; font:inherit; font-size:calc(16px*var(--fs)); font-weight:500;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:0 20px; }
+  .btn.full { width:100%; }
+  .b-primary { background:var(--pBg); color:var(--pFg); }
+  .b-secondary { background:var(--secBg); color:var(--secFg); }
+  body.dark .b-secondary.outl { border:1px solid var(--bCtl); }
+  .b-text { background:none; color:var(--t1); padding:0 12px; }
+  .b-link { background:none; color:var(--link); padding:0 12px; margin-inline-start:-12px; }
+  .b-blocked { background:var(--discBg) !important; color:var(--discFg) !important; }
+  .b-text.b-blocked, .b-link.b-blocked { background:none !important; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .notice { display:flex; gap:8px; padding:12px; border-radius:12px; background:var(--infoBg); color:var(--infoFg); }
+  .notice svg { flex:none; width:18px; height:18px; margin-top:1px; }
+  /* dial row */
+  .dial { display:flex; align-items:center; gap:12px; padding:8px 12px; min-height:56px; border-bottom:1px solid var(--bSub); }
+  .dial:last-child { border-bottom:0; }
+  .dial.full { min-height:72px; }
+  .dial .txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .dial .num { overflow-wrap:anywhere; }
+  .circ { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; flex:none; }
+  .dial.full .circ { width:48px; height:48px; }
+  .circ.al { background:var(--alBg); color:var(--alFg); }
+  .circ.sec { background:var(--secBg); color:var(--secFg); }
+  .src { padding:4px 12px 10px; border-bottom:1px solid var(--bSub); }
+  .src:last-child { border-bottom:0; }
+  .src a { color:var(--link); text-decoration:underline; }
+  .gTitle { margin:20px 0 8px; }
+  /* fields */
+  .lbl { font-size:calc(12px*var(--fs)); line-height:calc(16px*var(--fs)); font-weight:600; color:var(--t2); margin:0 0 6px; }
+  .field { min-height:56px; border:1px solid var(--bCtl); border-radius:8px; background:var(--surface); display:flex; align-items:center; gap:8px; padding:12px 14px;
+    font-size:calc(16px*var(--fs)); line-height:calc(24px*var(--fs)); }
+  .field.err { border:2px solid var(--alert); }
+  .field.multi { min-height:96px; align-items:flex-start; }
+  .below { display:flex; gap:8px; margin-top:6px; }
+  .below .grow { flex:1; }
+  .errRow { display:flex; gap:6px; color:var(--alert); }
+  .errRow svg { flex:none; width:16px; height:16px; margin-top:1px; }
+  .dates { display:flex; flex-wrap:wrap; gap:12px; }
+  .dates > div { flex:1 1 160px; }
+  .bar { display:flex; gap:8px; align-items:center; min-height:56px; padding:0 4px; }
+  .iconBtn { width:48px; height:48px; display:grid; place-items:center; color:var(--t1); flex:none; }
+  .formBody { padding:0 16px 120px; display:flex; flex-direction:column; gap:16px; }
+  .formFoot { position:absolute; inset-inline:0; bottom:0; padding:12px 16px 20px; background:var(--canvas); border-top:1px solid var(--bSub); display:flex; flex-direction:column; gap:8px; }
+  .fchip { display:inline-flex; align-items:center; gap:4px; min-height:40px; padding:0 14px; border-radius:999px; border:1px solid var(--bCtl); background:var(--surface); color:var(--t1); font-size:calc(15px*var(--fs)); }
+  .fchip.on { background:var(--pBg); border-color:var(--pBg); color:var(--pFg); }
+  /* sheet */
+  .scrim { position:absolute; inset:0; background:var(--scrim); }
+  .sheet { position:absolute; inset-inline:0; bottom:0; background:var(--raised); border-radius:28px 28px 0 0; padding:8px 20px 24px; max-height:92%; overflow:auto; display:flex; flex-direction:column; gap:12px; }
+  body.dark .sheet { border-top:1px solid var(--bSub); }
+  .handle { width:32px; height:4px; border-radius:2px; background:var(--bCtl); opacity:.5; margin:4px auto 4px; }
+  .x { position:absolute; inset-inline-end:4px; top:8px; width:48px; height:48px; display:grid; place-items:center; color:var(--t2); }
+  .hr { height:1px; background:var(--bSub); }
+  .mask { letter-spacing:2px; font-weight:600; }
+  /* driver card */
+  .driver { background:#FFFFFF; color:#121C36; min-height:860px; display:flex; flex-direction:column; }
+  .driver .local { font-weight:500; padding:8px 20px 20px; flex:1; }
+  .driver .lower { padding:16px 20px; border-top:1px solid #F4E7D0; display:flex; flex-direction:column; gap:4px; }
+  .driver .acts { display:flex; flex-wrap:wrap; gap:8px; padding:12px 16px 24px; border-top:1px solid #F4E7D0; }
+  .driver .acts .btn { flex:1 1 110px; padding:0 12px; }
+  /* globe */
+  .globe { position:relative; min-height:860px; background:radial-gradient(circle at 50% 46%, #1F3A68 0 34%, #0A1A3C 34.3% 37%, #2F7BE0 37.2%, #03060F 41%); color:#F3F6FC; }
+  .globe .land { position:absolute; border-radius:40% 55% 45% 60%; background:#2c4c3a; opacity:.9; }
+  .chrome { position:absolute; display:flex; align-items:center; gap:8px; min-height:48px; padding:0 16px; border-radius:999px; background:rgba(255,255,255,0.92); color:#121C36; }
+  body.dark .chrome { background:rgba(18,28,54,0.88); color:#F3F6FC; border:1px solid rgba(163,179,219,0.32); }
+  .sos { position:absolute; display:inline-flex; align-items:center; gap:8px; height:48px; padding:0 16px; border-radius:999px;
+    background:#FF5D52; color:#060B18; font-size:calc(16px*var(--fs)); line-height:calc(22px*var(--fs)); font-weight:500;
+    box-shadow:0 0 0 2px rgba(3,6,15,0.6), 0 2px 6px rgba(0,0,0,.3); max-width:calc(100% - 24px); white-space:nowrap; }
+  .sos b { font-weight:600; letter-spacing:.5px; }
+  .sos .name { overflow:hidden; text-overflow:ellipsis; }
+  .dim { position:absolute; font:11px monospace; color:#FFD9D6; direction:ltr; }
+  .dimLine { position:absolute; border-inline-start:1px dashed #FFD9D6; }
+  /* notification shade */
+  .shade { background:#1A1C22; padding:40px 10px 10px; min-height:860px; }
+  .notif { background:#2B2F38; color:#E3E5EC; border-radius:20px; padding:12px 14px; margin-bottom:6px; font-family:Roboto, system-ui, sans-serif; }
+  .notif .app { display:flex; gap:6px; align-items:center; font-size:12px; color:#A9D2FF; }
+  .notif .nt { font-weight:600; font-size:15px; margin:4px 0 2px; }
+  .notif .nb { font-size:14px; line-height:20px; color:#C7CBD6; }
+  .shadeLabel { color:#A3B3DB; font-size:12px; margin:10px 4px 6px; }
+  .skel { height:72px; border-radius:12px; background:var(--skel); }
+</style>
+</head>
+<body>
+<div class="panel" role="toolbar" aria-label="הגדרות ההדמיה">
+  <b>ספרינט 8 · תיק נסיעה</b>
+  <label><input type="checkbox" id="dark"> כהה</label>
+  <label>גופן <select id="fs"><option value="1">100%</option><option value="1.3">130%</option><option value="2">200%</option></select></label>
+  <label>שפה <select id="lang"><option value="he">עברית</option><option value="en">English</option></select></label>
+  <span style="opacity:.75">כל הטלפונים, הכתובות, השגרירויות, השעות ותאריכי האימות להדגמה בלבד</span>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+  <symbol id="phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="bed" viewBox="0 0 24 24"><path d="M3 7v12M3 13h18v6M21 13v-2a3 3 0 00-3-3h-7v5M7 11.5a1.5 1.5 0 100-.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="car" viewBox="0 0 24 24"><path d="M5 17h14v-5l-2-5H7l-2 5zM5 12h14M7.5 14.5h.01M16.5 14.5h.01M6 17v2M18 17v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="nav" viewBox="0 0 24 24"><path d="M12 2l7 19-7-4-7 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="share" viewBox="0 0 24 24"><path d="M18 5.5a2.5 2.5 0 100 .01M6 12a2.5 2.5 0 100 .01M18 18.5a2.5 2.5 0 100 .01M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8zM14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z M12 10v4 M12 17v.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="noentry" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M7 12h10"/></g></symbol>
+  <symbol id="info" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 8v5m0-8.5v.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="alertc" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 5v5m0 3v.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="cloud" viewBox="0 0 24 24"><path d="M3 3l18 18M7 18h10a4 4 0 001.6-7.7M16 6.5A6 6 0 006.3 9 4.5 4.5 0 007 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="clip" viewBox="0 0 24 24"><path d="M20 11l-8 8a5 5 0 01-7-7l8-8a3.5 3.5 0 015 5l-8 8a2 2 0 01-3-3l7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="suitcase" viewBox="0 0 24 24"><path d="M4 8h16v12H4zM9 8V5h6v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 104.6 11.1L20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="row" id="screens"></div>
+
+<script>
+const RLM = '‏';
+const S = {
+  he: {
+    thailand:'תאילנד', japan:'יפן', malaysia:'מלזיה', bhutan:'בהוטן', brunei:'ברוניי', singapore:'סינגפור', bangkok:'בנגקוק', tokyo:'טוקיו',
+    inTh:'בתאילנד', inJp:'ביפן', inBt:'בבהוטן', inMy:'במלזיה', inBn:'בברוניי',
+    trip:'תאילנד דצמבר 2026', tripDates:'20.12.2026 – 3.1.2027', active:'פעילה',
+    flights:'טיסות', flightsSummary:'2 טיסות · הלוך וחזור',
+    hotels:'מלונות', addHotel:'הוספת מלון', driver:'הצגה לנהג', now:'עכשיו',
+    nights:(n)=> n===1?'לילה אחד':`${n} לילות`,
+    hotelsEmpty:'הכתובת תישמר במכשיר ותהיה זמינה לנהג גם בלי קליטה.',
+    hotelsLimit:'אפשר להוסיף עד 10 מלונות לנסיעה.',
+    insurance:'ביטוח', addIns:'הוספת ביטוח', insEmpty:'מספר מוקד החירום יהיה זמין כאן ובמסך החירום, גם בלי קליטה.',
+    validUntil:(d)=>`בתוקף עד ${d}`, endsEarly:'מסתיים לפני החזרה', callIns:'חיוג למוקד הביטוח', noHotline:'הוסיפו את מספר מוקד החירום של הביטוח',
+    fileOnDevice:'מסמך הפוליסה במכשיר', harel:'הראל',
+    emTitle:(c)=>`חירום ${c}`, police:'משטרה', ambulance:'אמבולנס', fire:'כבאות', tourist:'משטרת תיירים', general:'מספר חירום כללי',
+    ambFire:'אמבולנס וכבאות', all3:'משטרה, אמבולנס וכבאות',
+    allEm:'כל פרטי החירום', embassy:(c)=>`שגרירות ישראל ב${c}`,
+    src:(s,d)=>`<a>${s}</a>${d?` · אומת ב-${d}`:''}`, srcFull:(s,d)=>`מקור: <a>${s}</a>${d?` · אומת ב-${d}`:''}`,
+    readOnly:'בלי חיבור אפשר רק לצפות. עריכה תחזור כשיהיה חיבור.', cached:'מוצג מהשמירה האחרונה · היום, 08:40',
+    edit:'עריכה', dup:'שכפול', del:'מחיקה',
+    // hotel form
+    titleNew:'הוספת מלון', name:'שם המלון', addrEn:'כתובת באנגלית', addrEnHelp:'כמו שהיא מופיעה באישור ההזמנה',
+    addrLocal:'כתובת בשפה המקומית (לא חובה)', addrLocalHelp:'מדביקים מאישור ההזמנה', phone:'טלפון המלון (לא חובה)',
+    phoneHelp:'עם קידומת המדינה, למשל ‎+66 2 123 4567', checkIn:"צ'ק-אין", checkOut:"צ'ק-אאוט",
+    datesHelp:(r)=>`בתוך תאריכי הנסיעה, ${r}`, booking:'פרטי הזמנה', bookingRef:'מספר הזמנה (לא חובה)',
+    bookingPrivacy:'מספר ההזמנה נשמר רק בחשבון שלכם ומוסתר בתצוגה.', saveHotel:'שמירת המלון',
+    errName:'צריך להזין את שם המלון.', errPhone:'מספר טלפון מתחיל ב-+ או ב-00, עם קידומת המדינה, ויש בו 8–15 ספרות.',
+    errOrder:"הצ'ק-אאוט צריך להיות לפחות יום אחרי הצ'ק-אין.", saveOffline:'כדי לשמור מלון צריך חיבור. מה שמילאתם נשאר כאן.',
+    back:'חזרה',
+    // hotel sheet
+    address:'כתובת', phoneLbl:'טלפון', bookingLbl:'מספר הזמנה', show:'הצגה', hide:'הסתרה',
+    navigate:'ניווט', callHotel:'חיוג למלון', call:'חיוג', share:'שיתוף',
+    // insurance form
+    insNew:'הוספת ביטוח', company:'חברת הביטוח', policy:'מספר פוליסה (לא חובה)', policyPrivacy:'מספר הפוליסה נשמר רק בחשבון שלכם ומוסתר בתצוגה.',
+    until:'בתוקף עד (לא חובה)', warnEnds:(d,e)=>`הביטוח מסתיים ב-${d}, לפני החזרה ב-${e}. אפשר לשמור בכל זאת.`,
+    hotline:'מוקד חירום 24/7 בחו"ל (לא חובה)', hotlineHelp:'מופיע בפוליסה או באתר של חברת הביטוח. עם קידומת המדינה.',
+    notes:'הערות כיסוי (לא חובה)', notesHelp:'למשל מה מכוסה ומה לא', saveIns:'שמירת הביטוח',
+    // insurance sheet
+    policyLbl:'מספר פוליסה', notesLbl:'הערות כיסוי', notesDemo:'כולל ספורט אתגרי. השתתפות עצמית 100$.',
+    pf:'מסמך הפוליסה', pfAttach:'צירוף הפוליסה', pfHelp:'PDF או תמונה, עד 10MB. נשמר מוצפן רק במכשיר הזה ולא עולה לשרת.',
+    pfSaving:'שומרים את הקובץ…', pfMeta:'PDF · 1.2MB · צורף ב-28.10.2026', pfDevice:'נמצא רק במכשיר הזה',
+    pfOpen:'פתיחה', pfReplace:'החלפה', pfRemove:'הסרה',
+    pfTooBig:'הקובץ גדול מ-10MB. אפשר לצרף קובץ עד 10MB.', pfType:'אפשר לצרף רק PDF או תמונה.',
+    pfSave:'לא הצלחנו לשמור את הקובץ במכשיר. נסו שוב.', pfNoViewer:'לא מצאנו במכשיר אפליקציה שפותחת את הקובץ.',
+    pfMissing:'הקובץ כבר לא נמצא במכשיר. אפשר לצרף אותו שוב.',
+    // globe
+    search:'לאן טסים?', myTrips:'הנסיעות שלי', sos:'SOS',
+    // sos
+    sosTitle:(c)=>`חירום · ${c}`, activeTrips:'נסיעות פעילות', local:'מספרי חירום מקומיים', mission:'הנציגות הישראלית',
+    yourIns:'הביטוח שלכם', insLine:(c)=>`${c} · מוקד 24/7`, fromPolicy:'מהפוליסה שלכם', backup:'גיבוי: משרד החוץ',
+    mfa:'מוקד החירום של משרד החוץ', mfaSub:'ירושלים · 24/7', emPhone:'טלפון חירום', hours:'שעות קבלה', hoursDemo:"א'–ה' 09:00–12:00",
+    offline:'הפרטים שמורים במכשיר וזמינים גם בלי קליטה.', sources:'מקורות',
+    pending:(c)=>`מספרי החירום ${c} בהשלמה. עד אז, מוקד החירום של משרד החוץ זמין 24/7.`,
+    noMission:'אין נציגות ישראלית במדינה.', noMissionBody:'במקרה חירום פנו ישירות למוקד משרד החוץ.',
+    fromNeighbor:(c,w)=>`משרתת את ${c} מ${w}`, noEntry:'אין כניסה',
+    insNone:'לא הוספתם ביטוח לנסיעה הזו.', insNoHotline:'אין מספר מוקד בפרטי הביטוח.',
+    // country card
+    destination:'יעד', restricted:'כניסה מוגבלת', advisory:'אזהרת מסע: רמה 2, אמצעי זהירות',
+    localTime:'שעה מקומית', currency:'מטבע', baht:'באט תאילנדי', newTrip:'נסיעה חדשה',
+    // sources sheet
+    srcTitle:'מקורות',
+    srcAdv:'אזהרות מסע: המאגר "אזהרות מסע" של gov.il באתר data.gov.il, לפי פרסומי המל"ל ומשרד החוץ. …',
+    srcEm:'מספרי חירום: FCDO Foreign Travel Advice של ממשלת בריטניה (GOV.UK), ברישיון <a>Open Government Licence v3.0</a>. נבדקו ועובדו על ידינו. Contains public sector information licensed under the Open Government Licence v3.0.',
+    srcMis:'נציגויות ישראל ומוקד החירום של משרד החוץ: "חיפוש נציגויות ישראל בעולם" של משרד החוץ, gov.il.',
+    srcMore:'שערי מטבע, טיסות, שדות תעופה, ערים ואקלים (כמו היום)…',
+    // trip form
+    tripEdit:'עריכת נסיעה', tripDatesLbl:'תאריכי הנסיעה', start:'יציאה', end:'חזרה',
+    outsideField:'יש מלון מחוץ לתאריכים האלה.', outside:'אי אפשר לשמור את התאריכים: המלונות האלה יהיו מחוץ לנסיעה. קודם משנים את התאריכים שלהם.',
+    saveTrip:'שמירת הנסיעה',
+    // notif
+    remTitle:'אין ביטוח לנסיעה לתאילנד', remBody:'היציאה בעוד שבוע. אפשר להוסיף את פרטי הביטוח ואת מספר מוקד החירום לתיק.',
+    app:'האפליקציה', nowN:'עכשיו', shadeHe:'עברית (עם RLM)', shadeEn:'English', channel:'ערוץ: תזכורות לנסיעה (trip-reminders)',
+  },
+  en: {
+    thailand:'Thailand', japan:'Japan', malaysia:'Malaysia', bhutan:'Bhutan', brunei:'Brunei', singapore:'Singapore', bangkok:'Bangkok', tokyo:'Tokyo',
+    inTh:'in Thailand', inJp:'in Japan', inBt:'in Bhutan', inMy:'in Malaysia', inBn:'in Brunei',
+    trip:'Thailand December 2026', tripDates:'20.12.2026 – 3.1.2027', active:'Active',
+    flights:'Flights', flightsSummary:'2 flights · outbound and return',
+    hotels:'Hotels', addHotel:'Add a hotel', driver:'Show to driver', now:'Now',
+    nights:(n)=> n===1?'1 night':`${n} nights`,
+    hotelsEmpty:'The address is saved on your phone, so you can show it to a driver even without signal.',
+    hotelsLimit:'You can add up to 10 hotels to a trip.',
+    insurance:'Insurance', addIns:'Add insurance', insEmpty:'Your emergency hotline will be here and on the emergency screen, even without signal.',
+    validUntil:(d)=>`Valid until ${d}`, endsEarly:'Ends before you return', callIns:'Call insurance hotline', noHotline:"Add your insurer's emergency hotline",
+    fileOnDevice:'Policy document on this phone', harel:'Harel',
+    emTitle:(c)=>`Emergency ${c}`, police:'Police', ambulance:'Ambulance', fire:'Fire', tourist:'Tourist police', general:'General emergency number',
+    ambFire:'Ambulance and fire', all3:'Police, ambulance and fire',
+    allEm:'All emergency details', embassy:(c)=>`Embassy of Israel in ${c}`,
+    src:(s,d)=>`<a>${s}</a>${d?` · Verified ${d}`:''}`, srcFull:(s,d)=>`Source: <a>${s}</a>${d?` · Verified ${d}`:''}`,
+    readOnly:"Offline, you can only view. Editing comes back once you're online.", cached:'Showing the last saved copy · today, 08:40',
+    edit:'Edit', dup:'Duplicate', del:'Delete',
+    titleNew:'Add a hotel', name:'Hotel name', addrEn:'Address in English', addrEnHelp:'As it appears on your booking confirmation',
+    addrLocal:'Address in the local language (optional)', addrLocalHelp:'Paste it from your booking confirmation', phone:'Hotel phone (optional)',
+    phoneHelp:'With the country code, e.g. +66 2 123 4567', checkIn:'Check-in', checkOut:'Check-out',
+    datesHelp:(r)=>`Within the trip dates, ${r}`, booking:'Booking details', bookingRef:'Booking number (optional)',
+    bookingPrivacy:'Your booking number is kept only in your account and hidden on screen.', saveHotel:'Save hotel',
+    errName:'Enter the hotel name.', errPhone:'A phone number starts with + or 00, includes the country code and has 8–15 digits.',
+    errOrder:'Check-out must be at least one day after check-in.', saveOffline:'You need a connection to save a hotel. What you entered stays here.',
+    back:'Back',
+    address:'Address', phoneLbl:'Phone', bookingLbl:'Booking number', show:'Show', hide:'Hide',
+    navigate:'Directions', callHotel:'Call hotel', call:'Call', share:'Share',
+    insNew:'Add insurance', company:'Insurance company', policy:'Policy number (optional)', policyPrivacy:'Your policy number is kept only in your account and hidden on screen.',
+    until:'Valid until (optional)', warnEnds:(d,e)=>`Your insurance ends on ${d}, before you return on ${e}. You can still save.`,
+    hotline:'24/7 emergency hotline abroad (optional)', hotlineHelp:"It's on your policy or the insurer's website. Include the country code.",
+    notes:'Coverage notes (optional)', notesHelp:"For example, what is and isn't covered", saveIns:'Save insurance',
+    policyLbl:'Policy number', notesLbl:'Coverage notes', notesDemo:'Includes extreme sports. $100 excess.',
+    pf:'Policy document', pfAttach:'Attach policy', pfHelp:'PDF or image, up to 10 MB. Saved encrypted on this phone only, never uploaded.',
+    pfSaving:'Saving the file…', pfMeta:'PDF · 1.2 MB · added 28.10.2026', pfDevice:'Only on this phone',
+    pfOpen:'Open', pfReplace:'Replace', pfRemove:'Remove',
+    pfTooBig:'That file is over 10 MB. You can attach files up to 10 MB.', pfType:'You can only attach a PDF or an image.',
+    pfSave:"We couldn't save the file on your phone. Try again.", pfNoViewer:'No app on this phone can open this file.',
+    pfMissing:'The file is no longer on this phone. You can attach it again.',
+    search:'Where to?', myTrips:'My trips', sos:'SOS',
+    sosTitle:(c)=>`Emergency · ${c}`, activeTrips:'Active trips', local:'Local emergency numbers', mission:'Israeli mission',
+    yourIns:'Your insurance', insLine:(c)=>`${c} · 24/7 hotline`, fromPolicy:'From your policy', backup:'Backup: Foreign Ministry',
+    mfa:'Foreign Ministry emergency center', mfaSub:'Jerusalem · 24/7', emPhone:'Emergency phone', hours:'Opening hours', hoursDemo:"א'–ה' 09:00–12:00",
+    offline:'These details are saved on your phone and work without signal.', sources:'Sources',
+    pending:(c)=>`Emergency numbers ${c} are still being added. Until then, Israel's Foreign Ministry emergency center is available 24/7.`,
+    noMission:'There is no Israeli mission in this country.', noMissionBody:'In an emergency, contact the Foreign Ministry emergency center directly.',
+    fromNeighbor:(c,w)=>`Serves ${c} from ${w}`, noEntry:'No entry',
+    insNone:"You haven't added insurance to this trip.", insNoHotline:"There's no hotline in your insurance details.",
+    destination:'Destination', restricted:'Restricted entry', advisory:'Travel warning: level 2, take precautions',
+    localTime:'Local time', currency:'Currency', baht:'Thai baht', newTrip:'New trip',
+    srcTitle:'Sources',
+    srcAdv:'Travel warnings: the gov.il "Travel warnings" dataset on data.gov.il, per NSC and Foreign Ministry publications. …',
+    srcEm:'Emergency numbers: FCDO Foreign Travel Advice (GOV.UK), under the <a>Open Government Licence v3.0</a>. Checked and adapted by us. Contains public sector information licensed under the Open Government Licence v3.0.',
+    srcMis:"Israeli missions and the Foreign Ministry emergency center: the Foreign Ministry's \"Israeli missions abroad\" directory, gov.il.",
+    srcMore:'Rates, flights, airports, cities and climate (as today)…',
+    tripEdit:'Edit trip', tripDatesLbl:'Trip dates', start:'Departure', end:'Return',
+    outsideField:'A hotel falls outside these dates.', outside:"You can't save these dates: these hotels would fall outside the trip. Change their dates first.",
+    saveTrip:'Save trip',
+    remTitle:'No insurance for your trip to Thailand', remBody:'You leave in a week. Add your insurance details and emergency hotline to the trip.',
+    app:'The app', nowN:'now', shadeHe:'Hebrew (with RLM)', shadeEn:'English', channel:'Channel: Trip reminders (trip-reminders)',
+  }
+};
+let L = S.he;
+const iso = (s) => `<span class="iso">${s}</span>`;
+const icon = (id, cls='ic16', extra='') => `<svg class="${cls} ${extra}" aria-hidden="true"><use href="#${id}"/></svg>`;
+const phoneFmt = (s) => iso(s);
+const chev = () => icon('chev','ic16','mirror');
+
+function phone(content, cap){ return `<div class="frame"><p class="cap">${cap}</p><div class="phone">${content}</div></div>`; }
+function btn(kind, label, ic, extra=''){ return `<button class="btn b-${kind} ${extra}">${ic?icon(ic,'ic20'):''}${label}</button>`; }
+function notice(text){ return `<div class="notice">${icon('info')}<p class="foot">${text}</p></div>`; }
+function err(text){ return `<div class="errRow">${icon('alertc')}<p class="foot">${text}</p></div>`; }
+function chipWarn(t){ return `<span class="chip c-risky">${icon('warn','ic12')}${t}</span>`; }
+
+function dial({label, num, kind='sec', full=false, sub=''}){
+  const big = full && num.replace(/\D/g,'').length <= 5;
+  return `<div class="dial ${full?'full':''}">
+    <div class="txt"><p class="${full?'bodyS':'callout'}">${label}</p>
+      <p class="${big?'numLg':'numMd'} num">${phoneFmt(num)}</p>${sub?`<p class="foot t2">${sub}</p>`:''}</div>
+    <span class="circ ${kind}">${icon('phone', full?'ic24':'ic20')}</span></div>`;
+}
+function srcLine(s, d, full=false){ return `<div class="src"><p class="foot t2">${full?L.srcFull(s,d):L.src(s,d)}</p></div>`; }
+
+function hotelRow({name, range, n, now=false, offline=false}){
+  return `<div class="box">
+    <div class="between"><div class="hstack">${icon('bed','ic20','t2')}<p class="bodyS ltrBlock" style="display:inline">${name}</p></div>
+    ${now?`<span class="chip c-ok"><span class="dotA"></span>${L.now}</span>`:''}</div>
+    <p class="foot t2" style="padding-inline-start:28px">${iso(range)} · ${L.nights(n)}</p>
+    <div style="padding-inline-start:28px">${btn('secondary', L.driver, 'car', 'outl')}</div></div>`;
+}
+function insRow({until=true, early=false, hotline=true, file=false}){
+  return `<div class="box" style="padding:0">
+    <div style="padding:12px 12px 4px" class="vstack">
+      <div class="hstack">${icon('shield','ic20','t2')}<p class="bodyS">${L.harel}</p></div>
+      ${until?`<div class="hstack" style="padding-inline-start:28px;flex-wrap:wrap"><p class="foot t2">${L.validUntil(iso('1.1.2027'))}</p>${early?chipWarn(L.endsEarly):''}</div>`:''}
+      ${file?`<div class="hstack t2" style="padding-inline-start:28px">${icon('clip','ic16')}<p class="foot">${L.fileOnDevice}</p></div>`:''}
+    </div>
+    ${hotline?`<div style="border-top:1px solid var(--bSub)">${dial({label:L.callIns, num:'+972 39294000'})}</div>`
+      :`<div style="padding:0 12px 8px">${btn('link', L.noHotline, 'plus')}</div>`}
+  </div>`;
+}
+function emergencyCard({country='inTh', pending=false, noMission=false}={}){
+  const local = pending
+    ? `<div style="padding:12px">${notice(L.pending(L[country]))}</div>${dial({label:L.mfa, num:'+972 25303155'})}`
+    : `${dial({label:L.police, num:'191', kind:'al'})}${dial({label:L.ambulance, num:'1669', kind:'al'})}${dial({label:L.fire, num:'199', kind:'al'})}${srcLine('FCDO', iso('12.10.2026'))}`;
+  const mission = noMission
+    ? `<div style="padding:12px" class="vstack"><p class="callout">${L.noMission}</p><p class="callout t2">${L.noMissionBody}</p></div>${pending?'':dial({label:L.mfa, num:'+972 25303155'})}`
+    : `${dial({label:L.embassy(L.bangkok), num:'+66 22049200'})}${srcLine('gov.il', iso('3.10.2026'))}`;
+  return `<p class="capt t2" role="heading">${L.emTitle(L[country])}</p>
+    <div class="group">${local}${mission}</div>
+    <div>${btn('link', L.allEm + ' ' + chev())}</div>`;
+}
+function tripShell(inner, {offline=false}={}){
+  return `<div class="scrollable"><div class="card">
+    <p class="capt t2">${L.destination}</p><p class="title1">${L.thailand}</p>
+    ${offline?`<div class="hstack t3" style="margin-top:8px">${icon('cloud','ic16')}<p class="foot t2">${L.cached}</p></div>`:''}
+    <div class="open"><span class="activeBar"></span>
+      <div style="padding-inline-start:6px" class="vstack"><p class="bodyS">${L.trip}</p><p class="foot t2">${iso(L.tripDates)}</p>
+      <span class="chip c-ok" style="align-self:flex-start"><span class="dotA"></span>${L.active}</span></div>
+      ${inner}
+    </div></div></div>`;
+}
+
+function screens(){
+  const out = [];
+  const tripRange = L.tripDates;
+
+  // 1. trip card, full kit
+  out.push(phone(tripShell(`
+    <p class="capt t2" role="heading">${L.flights}</p><p class="foot t2">${L.flightsSummary} …</p>
+    <p class="capt t2" role="heading">${L.hotels}</p>
+    ${hotelRow({name:'Amari Watergate', range:'20.12 – 24.12', n:4, now:true})}
+    ${hotelRow({name:'Rayavadee Krabi', range:'24.12 – 3.1', n:10})}
+    <div>${btn('link', L.addHotel, 'plus')}</div>
+    <p class="capt t2" role="heading">${L.insurance}</p>
+    ${insRow({file:true})}
+    ${emergencyCard()}
+    <div class="actions">${btn('secondary', L.edit, 'pencil','outl')}${btn('text', L.dup)}${btn('text', L.del, 'trash')}</div>
+  `), '1 · כרטיס הנסיעה: מלונות (ממוינים לפי צ\'ק-אין, "עכשיו" היא הצעה), ביטוח עם חיוג, וכרטיס "חירום בתאילנד". עיגולי החיוג האדומים רק למספרי חירום מקומיים.'));
+
+  // 2. trip card states
+  out.push(phone(tripShell(`
+    <span class="stateLabel">hotels: empty</span>
+    <p class="capt t2" role="heading">${L.hotels}</p>
+    <div>${btn('link', L.addHotel, 'plus')}</div><p class="foot t2">${L.hotelsEmpty}</p>
+    <span class="stateLabel">hotels: loading (after 150ms)</span>
+    <div class="skel"></div>
+    <span class="stateLabel">hotels: 10 (limit)</span>
+    <p class="foot t2">${L.hotelsLimit}</p>
+    <span class="stateLabel">insurance: empty</span>
+    <p class="capt t2" role="heading">${L.insurance}</p>
+    <div>${btn('link', L.addIns, 'plus')}</div><p class="foot t2">${L.insEmpty}</p>
+    <span class="stateLabel">insurance: no hotline + ends before return</span>
+    ${insRow({early:true, hotline:false})}
+    <span class="stateLabel">offline: add blocked (tapped), "show to driver" and dial stay active</span>
+    ${hotelRow({name:'Amari Watergate', range:'20.12 – 24.12', n:4})}
+    <div>${btn('link', L.addHotel, 'plus', 'b-blocked')}</div>
+    ${notice(L.readOnly)}
+  `, {offline:true}), '2 · מצבים בכרטיס: ריק, טעינה, מגבלת 10, ביטוח בלי מוקד ועם תוקף קצר, ובלי רשת.'));
+
+  // 3. hotel form with errors
+  out.push(phone(`
+    <div class="bar"><span class="iconBtn">${icon('back','ic24','mirror')}</span><div><p class="title3">${L.titleNew}</p><p class="foot t2">${L.trip}</p></div></div>
+    <div class="formBody">
+      <div><p class="lbl">${L.name}</p><div class="field err"></div><div class="below">${err(L.errName)}</div></div>
+      <div><p class="lbl">${L.addrEn}</p><div class="field multi ltrBlock" style="justify-content:flex-start">847 Phetchaburi Road, Ratchathewi, Bangkok 10400</div>
+        <div class="below"><p class="foot t2 grow">${L.addrEnHelp}</p></div></div>
+      <div><p class="lbl">${L.addrLocal}</p><div class="field multi ltrBlock" lang="th">847 ถนนเพชรบุรี แขวงถนนพญาไท เขตราชเทวี กรุงเทพมหานคร 10400</div>
+        <div class="below"><p class="foot t2 grow">${L.addrLocalHelp}</p></div></div>
+      <div><p class="lbl">${L.phone}</p><div class="field err ltrBlock">+66 2 653</div><div class="below">${err(L.errPhone)}</div></div>
+      <div class="dates">
+        <div><p class="lbl">${L.checkIn}</p><div class="field between"><span class="iso">24.12.2026</span>${icon('cal','ic20','t2')}</div></div>
+        <div><p class="lbl">${L.checkOut}</p><div class="field err between"><span class="iso">24.12.2026</span>${icon('cal','ic20','t2')}</div></div>
+      </div>
+      ${err(L.errOrder)}
+      <p class="foot t2">${L.datesHelp(iso(tripRange))}</p>
+      <p class="title3" style="margin-top:8px">${L.booking}</p>
+      <div><p class="lbl">${L.bookingRef}</p><div class="field ltrBlock"></div><div class="below"><p class="foot t2 grow">${L.bookingPrivacy}</p></div></div>
+    </div>
+    <div class="formFoot">${notice(L.saveOffline)}<button class="btn full b-primary">${L.saveHotel}</button></div>
+  `, '3 · טופס המלון אחרי ניסיון שמירה: שם ריק, טלפון קצר מדי, וצ\'ק-אאוט באותו יום. הכתובת המקומית (תאית) משמאל לימין לפי התוכן, גם בממשק עברי. מעל הכפתור: ההודעה כשאין רשת.'));
+
+  // 4. hotel sheet
+  out.push(phone(tripShell(`<p class="capt t2">${L.hotels}</p>${hotelRow({name:'Amari Watergate', range:'20.12 – 24.12', n:4})}`) + `
+    <div class="scrim"></div>
+    <div class="sheet" role="dialog">
+      <div class="handle"></div><span class="x">${icon('close','ic20')}</span>
+      <p class="title2 ltrBlock" style="padding-inline-end:40px">Amari Watergate</p>
+      <p class="foot t2">${iso('20.12 – 24.12')} · ${L.nights(4)}</p>
+      <button class="btn full b-primary">${icon('car','ic20')}${L.driver}</button>
+      <div class="actions">${btn('secondary', L.navigate, 'nav','outl')}${btn('secondary', L.callHotel, 'phone','outl')}${btn('secondary', L.share, 'share','outl')}</div>
+      <div class="vstack"><p class="capt t2">${L.address}</p>
+        <p class="body ltrBlock" lang="th">847 ถนนเพชรบุรี แขวงถนนพญาไท เขตราชเทวี กรุงเทพมหานคร 10400</p>
+        <p class="callout t2 ltrBlock">847 Phetchaburi Road, Ratchathewi, Bangkok 10400</p></div>
+      <div class="vstack"><p class="capt t2">${L.phoneLbl}</p><p class="numMd">${iso('+66 26539000')}</p></div>
+      <p class="title3">${L.booking}</p>
+      <div class="between"><div><p class="capt t2">${L.bookingLbl}</p><p class="numMd mask">••••••</p></div>${btn('text', L.show)}</div>
+      <p class="title3">${L.insurance}</p>
+      <div class="group">${dial({label:L.callIns + ' · ' + L.harel, num:'+972 39294000'})}</div>
+      <div class="actions">${btn('secondary', L.edit, 'pencil','outl')}${btn('text', L.del, 'trash')}</div>
+    </div>`, '4 · HotelSheet: "הצגה לנהג" ראשי, הקיצורים, שתי הכתובות, מספר ההזמנה מוסתר, וחיוג לביטוח ("במסך המלון", AC-8). בלי טלפון למלון, "חיוג למלון" לא מופיע.'));
+
+  // 5. driver card x3
+  const driver = (local, dir, lang, name, en, ph, showEn=true, size=40) => `<div class="forceLight"><div class="driver">
+      <div class="bar"><span class="iconBtn" style="color:#121C36">${icon('close','ic24')}</span></div>
+      <div class="local ${dir==='rtl'?'rtlBlock':'ltrBlock'}" lang="${lang}" style="font-size:${size}px;line-height:${size*1.25}px">${local}</div>
+      <div class="lower">
+        <p class="title2 ltrBlock">${name}</p>
+        ${showEn?`<p class="title3 ltrBlock" style="font-weight:400;color:#4A5573">${en}</p>`:''}
+        ${ph?`<p class="numMd ltrBlock">${ph}</p>`:''}
+      </div>
+      <div class="acts">${btn('secondary', L.navigate, 'nav')}${ph?btn('secondary', L.call, 'phone'):''}${btn('secondary', L.share, 'share')}</div>
+    </div></div>`;
+  out.push(phone(driver('847 ถนนเพชรบุรี แขวงถนนพญาไท เขตราชเทวี กรุงเทพมหานคร 10400','ltr','th','Amari Watergate','847 Phetchaburi Road, Ratchathewi, Bangkok 10400','+66 26539000', true, 40),
+    '5א · הכרטיס לנהג, תאית: תמיד בהיר (גם במצב כהה), הכתובת המקומית 44←24 מותאמת לרוחב, משמאל לימין לפי התוכן. המסך לא נכבה. פס הפעולות באזור האגודל.'));
+  out.push(phone(driver('شارع الشيخ محمد بن راشد، وسط مدينة دبي، دبي، الإمارات العربية المتحدة','rtl','ar','Rove Downtown','Sheikh Mohammed bin Rashid Blvd, Downtown Dubai, Dubai, UAE',null, true, 36),
+    '5ב · ערבית: מימין לשמאל לפי התוכן, גם כשהממשק באנגלית. בלי טלפון: שני כפתורים, כל אחד חצי מהרוחב.'));
+  out.push(phone(driver('12 Odos Apollonos, Plaka, Athens 105 57, Greece','ltr','en','Electra Palace','','+30 2103370000', false, 44),
+    '5ג · בלי כתובת מקומית: האנגלית מוצגת בגדול, ולא חוזרת בבלוק שמתחת (AC-3).'));
+
+  // 6. insurance form
+  out.push(phone(`
+    <div class="bar"><span class="iconBtn">${icon('back','ic24','mirror')}</span><div><p class="title3">${L.insNew}</p><p class="foot t2">${L.trip}</p></div></div>
+    <div class="formBody">
+      <div><p class="lbl">${L.company}</p><div class="field">${L.harel}</div></div>
+      <div><p class="lbl">${L.policy}</p><div class="field ltrBlock">HRL-2026-8841</div><div class="below"><p class="foot t2 grow">${L.policyPrivacy}</p></div></div>
+      <div><p class="lbl">${L.until}</p><div class="field between"><span class="iso">1.1.2027</span>${icon('cal','ic20','t2')}</div></div>
+      ${notice(L.warnEnds(iso('1.1.2027'), iso('3.1.2027')))}
+      <div><p class="lbl">${L.hotline}</p><div class="field ltrBlock">+972 3 929 4000</div><div class="below"><p class="foot t2 grow">${L.hotlineHelp}</p></div></div>
+      <div><p class="lbl">${L.notes}</p><div class="field multi"></div><div class="below"><p class="foot t2 grow">${L.notesHelp}</p></div></div>
+    </div>
+    <div class="formFoot"><button class="btn full b-primary">${L.saveIns}</button></div>
+  `, '6 · טופס הביטוח: "בתוקף עד" לפני תאריך החזרה מציג אזהרה (כחולה, לא שגיאה), והשמירה מותרת (AC-7).'));
+
+  // 7. insurance sheet + file states
+  const pfRow = `<div class="hstack" style="align-items:flex-start">${icon('file','ic24','t2')}<div style="flex:1"><p class="callout">${L.pfMeta}</p><p class="foot t2">${L.pfDevice}</p></div>${btn('text', L.pfOpen)}</div>
+    <div class="actions">${btn('text', L.pfReplace)}${btn('text', L.pfRemove)}</div>`;
+  out.push(phone(tripShell(`<p class="capt t2">${L.insurance}</p>${insRow({early:true})}`) + `
+    <div class="scrim"></div>
+    <div class="sheet" role="dialog">
+      <div class="handle"></div><span class="x">${icon('close','ic20')}</span>
+      <p class="title2">${L.harel}</p>
+      <div class="hstack" style="flex-wrap:wrap"><p class="foot t2">${L.validUntil(iso('1.1.2027'))}</p>${chipWarn(L.endsEarly)}</div>
+      <div class="group">${dial({label:L.callIns, num:'+972 39294000'})}</div>
+      <div class="between"><div><p class="capt t2">${L.policyLbl}</p><p class="numMd mask">••••••</p></div>${btn('text', L.show)}</div>
+      <div><p class="capt t2">${L.notesLbl}</p><p class="callout">${L.notesDemo}</p></div>
+      <p class="title3">${L.pf}</p>
+      <span class="stateLabel">no file</span>
+      <div>${btn('secondary', L.pfAttach, 'clip','outl')}</div><p class="foot t2">${L.pfHelp}</p>
+      <span class="stateLabel">saving (busy, sheet stays open)</span>
+      <div><button class="btn b-secondary b-blocked">${L.pfSaving}</button></div>
+      <span class="stateLabel">file attached</span>
+      ${pfRow}
+      <span class="stateLabel">errors (one at a time, above the button)</span>
+      ${notice(L.pfTooBig)}${notice(L.pfType)}${notice(L.pfSave)}${notice(L.pfNoViewer)}${notice(L.pfMissing)}
+      <div class="actions">${btn('secondary', L.edit, 'pencil','outl')}${btn('text', L.del, 'trash')}</div>
+    </div>`, '7 · InsuranceSheet: מספר הפוליסה מוסתר, וכל המצבים של מסמך הפוליסה. הצירוף רק כאן, לא בטופס, ועובד גם בלי רשת.'));
+
+  // 8. globe with SOS
+  out.push(phone(`<div class="globe">
+      <div class="land" style="width:120px;height:90px;top:330px;left:150px"></div>
+      <div class="land" style="width:60px;height:110px;top:420px;left:220px;background:#3b5a3a"></div>
+      <div class="chrome" style="top:52px;inset-inline-start:12px;inset-inline-end:72px">${icon('search','ic20')}<span class="body" style="opacity:.75">${L.search}</span></div>
+      <div class="chrome" style="top:52px;inset-inline-end:12px;width:48px;padding:0;justify-content:center;border-radius:50%">${icon('suitcase','ic20')}</div>
+      <span class="sos" style="bottom:${24+76}px;inset-inline-end:12px">${icon('phone','ic20')}<b>${L.sos}</b><span>·</span><span class="name">${L.thailand}</span></span>
+      <div class="chrome" style="bottom:${24+16}px;left:50%;transform:translateX(-50%)">${icon('suitcase','ic24')}<span class="bodyS">${L.myTrips}</span></div>
+      <span class="dim" style="bottom:${24+76+52}px;inset-inline-end:16px">end: 12 · bottom: insets + 76</span>
+      <span class="dim" style="bottom:${24+16+52}px;left:50%;transform:translateX(-50%)">TripsButton: insets + 16</span>
+      <span class="dim" style="bottom:8px;left:12px">insets.bottom (24)</span>
+    </div>`, '8 · הגלובוס בנסיעה פעילה: "SOS · תאילנד" שורה אחת מעל "הנסיעות שלי", בצד הסוף (שמאל בעברית). תמיד באדום של המצב הכהה, עם מסגרת כהה. מוסתר כשהכרטיס, החיפוש או גיליון פתוחים.'));
+
+  // 9. SOS screen with picker
+  out.push(phone(`<div class="scrollable" style="padding-top:8px">
+      <div class="bar"><span class="iconBtn">${icon('close','ic24')}</span><p class="title2">${L.sosTitle(L.thailand)}</p></div>
+      <p class="capt t2" style="margin:4px 0 6px">${L.activeTrips}</p>
+      <div class="actions" role="radiogroup"><span class="fchip on">✓ ${L.thailand}</span><span class="fchip">${L.japan}</span></div>
+      <p class="title3 gTitle" role="heading">${L.local}</p>
+      <div class="group">${dial({label:L.police, num:'191', kind:'al', full:true})}${dial({label:L.ambulance, num:'1669', kind:'al', full:true})}${dial({label:L.fire, num:'199', kind:'al', full:true})}${dial({label:L.tourist, num:'1155', kind:'al', full:true})}${srcLine('FCDO', iso('12.10.2026'), true)}</div>
+      <p class="title3 gTitle" role="heading">${L.mission}</p>
+      <div class="group">${dial({label:L.embassy(L.bangkok), num:'+66 22049200', full:true})}${dial({label:L.emPhone, num:'+66 818315789', full:true})}
+        <div style="padding:8px 12px" class="vstack"><p class="capt t2">${L.address}</p><p class="callout ltrBlock">Ocean Tower 2, 25th floor, 75 Sukhumvit Soi 19, Bangkok</p>
+        <p class="capt t2">${L.hours}</p><p class="callout rtlBlock">${L.hoursDemo}</p></div>${srcLine('gov.il', iso('3.10.2026'), true)}</div>
+      <p class="title3 gTitle" role="heading">${L.yourIns}</p>
+      <div class="group">${dial({label:L.insLine(L.harel), num:'+972 39294000', full:true, sub:L.fromPolicy})}</div>
+      <p class="title3 gTitle" role="heading">${L.backup}</p>
+      <div class="group">${dial({label:L.mfa, num:'+972 25303155', full:true, sub:L.mfaSub})}${srcLine('gov.il', '', true)}</div>
+      <div class="hstack t2" style="margin-top:16px">${icon('cloud','ic16')}<p class="foot">${L.offline}</p></div>
+      <div>${btn('link', L.sources)}</div>
+      <span class="stateLabel">Japan: ambulance = fire = 119 → one row</span>
+      <div class="group">${dial({label:L.police, num:'110', kind:'al', full:true})}${dial({label:L.ambFire, num:'119', kind:'al', full:true})}${srcLine('FCDO', iso('12.10.2026'), true)}</div>
+      <span class="stateLabel">shared only (e.g. 112) → one row</span>
+      <div class="group">${dial({label:L.all3, num:'112', kind:'al', full:true})}</div>
+    </div>`, '9 · מסך ה-SOS משתי נסיעות פעילות: הבורר למעלה, ואחריו ארבע קבוצות בסדר קבוע. "מקור" ו"אומת ב-" לכל שורה בטבלה. למטה: איחוד מספרים זהים (יפן) ומספר משותף.'));
+
+  // 10. SOS edge cases
+  out.push(phone(`<div class="scrollable" style="padding-top:8px">
+      <span class="stateLabel">"in completion" (Bhutan, demo): MFA moves up</span>
+      <div class="bar"><span class="iconBtn">${icon('close','ic24')}</span><p class="title2">${L.sosTitle(L.bhutan)}</p></div>
+      <p class="title3 gTitle">${L.local}</p>
+      ${notice(L.pending(L.inBt))}
+      <div class="group" style="margin-top:8px">${dial({label:L.mfa, num:'+972 25303155', full:true, sub:L.mfaSub})}${srcLine('gov.il','',true)}</div>
+      <span class="stateLabel">no mission / no entry (Malaysia, demo): MFA inside the group, no separate backup group</span>
+      <div class="bar"><span class="iconBtn">${icon('close','ic24')}</span><p class="title2">${L.sosTitle(L.malaysia)}</p><span class="chip c-banned">${icon('noentry','ic12')}${L.noEntry}</span></div>
+      <p class="title3 gTitle">${L.mission}</p>
+      <div class="group"><div style="padding:12px" class="vstack"><p class="callout">${L.noMission}</p><p class="callout t2">${L.noMissionBody}</p></div>
+        ${dial({label:L.mfa, num:'+972 25303155', full:true, sub:L.mfaSub})}${srcLine('gov.il','',true)}</div>
+      <span class="stateLabel">mission in a neighbouring country (Brunei, demo)</span>
+      <div class="group">${dial({label:L.embassy(L.singapore), num:'+65 68349200', full:true, sub:L.fromNeighbor(L.brunei, L.singapore)})}${srcLine('gov.il', iso('3.10.2026'), true)}</div>
+      <span class="stateLabel">insurance without a hotline</span>
+      <p class="title3 gTitle">${L.yourIns}</p><p class="callout t2">${L.insNoHotline}</p>
+    </div>`, '10 · מקרי קצה: "בהשלמה" (בלי מספר מומצא), "אין נציגות ישראלית במדינה" עם הפניה ישירה למשרד החוץ, נציגות ממדינה שכנה, וביטוח בלי מוקד (בלי כפתור). המדינות כאן להדגמה בלבד.'));
+
+  // 11. signed out
+  out.push(phone(`<div class="scrollable"><div class="card vstack" style="gap:8px">
+      <p class="capt t2">${L.destination}</p><p class="title1">${L.thailand}</p><p class="callout t2 ltrBlock">Thailand</p>
+      <span class="chip c-risky" style="align-self:flex-start">${icon('warn','ic12')}${L.restricted}</span>
+      <p class="foot t2">${L.advisory}</p>
+      <div class="between" style="min-height:48px;border-top:1px solid var(--bSub);border-bottom:1px solid var(--bSub)">
+        <div class="hstack"><span class="al">${icon('phone','ic20')}</span><p class="callout" style="font-weight:500">${L.emTitle(L.inTh)}</p></div>${chev()}</div>
+      <div class="between"><div><p class="capt t2">${L.localTime}</p><p class="numMd">${iso('21:40')}</p></div><div><p class="capt t2">${L.currency}</p><p class="callout">${L.baht}</p></div></div>
+      <button class="btn full" style="background:var(--ctaBg);color:var(--ctaFg)">${icon('plus','ic20')}${L.newTrip}</button>
+    </div>
+    <p class="title2" style="margin:28px 0 0">${L.sosTitle(L.thailand)}</p>
+    <p class="title3 gTitle">${L.local}</p>
+    <div class="group">${dial({label:L.police, num:'191', kind:'al', full:true})}${dial({label:L.ambulance, num:'1669', kind:'al', full:true})}</div>
+    <p class="foot t3" style="margin-top:6px">…</p>
+    <p class="title3 gTitle">${L.backup}</p>
+    <div class="group">${dial({label:L.mfa, num:'+972 25303155', full:true, sub:L.mfaSub})}</div>
+  </div>`, '11 · בלי התחברות: בכרטיס המדינה, אחרי סטטוס הכניסה, השורה "חירום בתאילנד". היא פותחת את מסך ה-SOS מהנתונים הארוזים, בלי קבוצת ביטוח ובלי בורר.'));
+
+  // 12. sources sheet
+  out.push(phone(`<div class="scrollable"><p class="title2">${L.sosTitle(L.thailand)}</p></div>
+    <div class="scrim"></div>
+    <div class="sheet" role="dialog"><div class="handle"></div><span class="x">${icon('close','ic20')}</span>
+      <p class="title2">${L.srcTitle}</p>
+      <p class="body t2">${L.srcAdv}</p>
+      <p class="body" style="outline:2px dashed var(--bCtl);outline-offset:4px">${L.srcEm.replace('<a>','<a class="lnk" style="text-decoration:underline">')}</p>
+      <p class="body" style="outline:2px dashed var(--bCtl);outline-offset:4px">${L.srcMis}</p>
+      <p class="body t2">${L.srcMore}</p>
+    </div>`, '12 · "מקורות" מתוך מסך ה-SOS: אותו SourcesSheet, עם שתי שורות חדשות (מסומנות) אחרי אזהרות המסע. הייחוס ל-FCDO ול-OGL v3.0.'));
+
+  // 13. trip form blocked
+  out.push(phone(`
+    <div class="bar"><span class="iconBtn">${icon('back','ic24','mirror')}</span><p class="title3">${L.tripEdit}</p></div>
+    <div class="formBody">
+      <p class="lbl">${L.tripDatesLbl}</p>
+      <div class="dates">
+        <div><p class="lbl">${L.start}</p><div class="field between"><span class="iso">20.12.2026</span>${icon('cal','ic20','t2')}</div></div>
+        <div><p class="lbl">${L.end}</p><div class="field err between"><span class="iso">28.12.2026</span>${icon('cal','ic20','t2')}</div>${'<div class="below">'+err(L.outsideField)+'</div>'}</div>
+      </div>
+      <p class="foot t3">…</p>
+    </div>
+    <div class="formFoot">
+      <div class="notice">${icon('info')}<div class="vstack"><p class="foot">${L.outside}</p><p class="foot">· <span class="iso">Rayavadee Krabi</span> · ${iso('24.12 – 3.1')}</p></div></div>
+      <button class="btn full b-primary">${L.saveTrip}</button></div>
+  `, '13 · טופס הנסיעה: קיצור תאריך החזרה ל-28.12 משאיר את Rayavadee בחוץ. השמירה נחסמת (גם בשרת), עם רשימת המלונות שצריך לתקן.'));
+
+  // 14. notification
+  const he = S.he, en = S.en;
+  const n = (lang, title, body) => `<div class="notif" dir="${lang==='he'?'rtl':'ltr'}"><div class="app">${icon('bell','ic12')} ${lang==='he'?he.app:en.app} · ${lang==='he'?he.nowN:en.nowN}</div><div class="nt">${title}</div><div class="nb">${body}</div></div>`;
+  out.push(phone(`<div class="shade">
+    <p class="shadeLabel">${L.shadeHe}</p>${n('he', RLM+he.remTitle, RLM+he.remBody)}
+    <p class="shadeLabel">${L.shadeEn}</p>${n('en', en.remTitle, en.remBody)}
+    <p class="shadeLabel">${L.channel}</p>
+  </div>`, '14 · תזכורת הביטוח (AC-10): התראה מקומית, 09:00 בשעון המכשיר, 7 ימים לפני היציאה. בלי שם הנסיעה. ההקשה פותחת את הנסיעה במקטע "ביטוח".'));
+
+  document.getElementById('screens').innerHTML = out.join('');
+}
+
+function apply(){
+  const lang = document.getElementById('lang').value;
+  L = S[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+  document.body.classList.toggle('dark', document.getElementById('dark').checked);
+  document.documentElement.style.setProperty('--fs', document.getElementById('fs').value);
+  screens();
+}
+['dark','fs','lang'].forEach(id => document.getElementById(id).addEventListener('change', apply));
+apply();
+</script>
+</body>
+</html>

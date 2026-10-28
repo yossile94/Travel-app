@@ -315,3 +315,35 @@ export function HourglassIcon({ color, size = 16 }: IconProps) {
     </Svg>
   );
 }
+
+// Sprint 8 design 23.4: objects, not directions, so none is mirrored in RTL.
+function pathIcon(d: string) {
+  return function Icon({ color, size = 24 }: IconProps) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d={d} stroke={color} {...stroke} />
+      </Svg>
+    );
+  };
+}
+
+/** Handset: dial a number. */
+export const PhoneIcon = pathIcon(
+  'M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2',
+);
+/** Bed: a hotel. */
+export const BedIcon = pathIcon(
+  'M3 7v12M3 13h18v6M21 13v-2a3 3 0 00-3-3h-7v5M7 11.5a1.5 1.5 0 100-.01',
+);
+/** Car: "show to driver". */
+export const CarIcon = pathIcon(
+  'M5 17h14v-5l-2-5H7l-2 5zM5 12h14M7.5 14.5h.01M16.5 14.5h.01M6 17v2M18 17v2',
+);
+/** Compass arrow: directions in a maps app. */
+export const NavigateIcon = pathIcon('M12 2l7 19-7-4-7 4z');
+/** Share. */
+export const ShareIcon = pathIcon(
+  'M18 5.5a2.5 2.5 0 100 .01M6 12a2.5 2.5 0 100 .01M18 18.5a2.5 2.5 0 100 .01M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1',
+);
+/** Document: the policy file. */
+export const FileIcon = pathIcon('M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8zM14 3v5h5');

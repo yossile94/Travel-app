@@ -37,6 +37,8 @@ import { useDestination } from '@/features/destination/destinationData';
 import { TripStatusLine } from '@/features/destination/DestinationFields';
 import { FlightsSection } from '@/features/flights/FlightsSection';
 import { tripHasFlights } from '@/features/flights/flightsStore';
+import { tripHasKit } from '@/features/kit/kitStore';
+import { TripKitSections } from '@/features/kit/TripKitSections';
 import { isolateOwn, OuterScrollContext } from '@/features/globe/BoardingPassCard';
 import type { CountryInfo } from '@/features/globe/countryData';
 import { colors, fonts, layout, radius, timing, type ColorScheme } from '@/theme/tokens';
@@ -174,7 +176,11 @@ export function CardTrips({
     const body = t('tripDelete.body', { name: trip.title });
     Alert.alert(
       t('tripDelete.title'),
-      tripHasFlights(trip.id) ? `${body} ${t('tripDelete.bodyFlights')}` : body,
+      tripHasKit(trip.id)
+        ? `${body} ${t('tripDelete.bodyKit')}`
+        : tripHasFlights(trip.id)
+          ? `${body} ${t('tripDelete.bodyFlights')}`
+          : body,
       [
         { text: t('tripDelete.cancel'), style: 'cancel' },
         {
@@ -308,6 +314,13 @@ export function CardTrips({
                   alertText={alertText}
                   onAlertFlightShown={onAlertFlightShown}
                   onTrackedFlightSaved={onTrackedFlightSaved}
+                />
+                {/* Sprint 8 design 2.1: hotels, insurance and emergency after the flights. */}
+                <TripKitSections
+                  trip={trip}
+                  readOnly={readOnly}
+                  colorScheme={colorScheme}
+                  onToast={onToast}
                 />
                 {trip.cities.length > 0 ? (
                   <View

@@ -35,6 +35,7 @@ import {
 } from '@/features/account/accountApi';
 import { requestDeletion } from '@/features/account/deleteAccountApi';
 import { resetFlightsStore } from '@/features/flights/flightsStore';
+import { wipeKitDevice } from '@/features/kit/wipe';
 import { pushKeysOf, unregisterDevice } from '@/features/push/push';
 import { clearTripsCaches } from '@/features/trips/tripsCache';
 import { clearStoredSessions } from '@/lib/secureSessionStorage';
@@ -144,6 +145,11 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** The auth state, or null outside AuthProvider (a component that may render without it). */
+export function useAuthIfAny(): AuthContextValue | null {
+  return useContext(AuthContext);
+}
+
 export function useAuth(): AuthContextValue {
   const value = useContext(AuthContext);
   if (!value) throw new Error('useAuth must be used inside AuthProvider');
@@ -189,6 +195,8 @@ async function localSignOut(): Promise<void> {
     // Sprint 4 AC-13: the offline copy of the trips goes with the session.
     await clearTripsCaches();
     resetFlightsStore();
+    // Sprint 8 AC-9, AC-10: the policy files, their key and the reminders.
+    await wipeKitDevice();
   }
 }
 
@@ -270,6 +278,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Sprint 4 AC-13: a sign-out the user didn't make, or a deletion, clears the trips copy too.
     await clearTripsCaches();
     resetFlightsStore();
+    // Sprint 8 AC-9, AC-10: the policy files, their key and the reminders.
+    await wipeKitDevice();
     if (!userId) return;
     await removeLocalAgreement(userId);
     await removeLocalChoices(userId);

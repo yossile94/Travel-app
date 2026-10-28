@@ -32,7 +32,12 @@ const PROVIDER_DATA_DAYS = 7;
 
 const state = new Map<string, TripFlights>();
 const listeners = new Set<() => void>();
-const notify = () => listeners.forEach((l) => l());
+/** Grows on every change, prefetches included: the SOS button reads again (Raz review 1). */
+let version = 0;
+const notify = () => {
+  version += 1;
+  listeners.forEach((l) => l());
+};
 const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
@@ -192,6 +197,7 @@ export async function prefetchFlights(tripIds: string[]): Promise<void> {
     [...byTrip].map(([tripId, flights]) => ({ tripId, flights })),
     generation,
   );
+  notify();
 }
 
 /** Forgets everything in memory (sign-out; the device copy goes with clearTripsCaches). */
@@ -247,4 +253,31 @@ export function refreshTripOf(flightId: string): void {
   for (const [tripId, t] of state) {
     if (t.flights.some((f) => f.id === flightId)) void refreshTripFlights(tripId);
   }
+}
+
+/**
+ * The flights of trips that may never have been opened (sprint 8 AC-16, Raz
+ * design note 1): memory first, else the device copy prefetchFlights wrote.
+ * No network, so the SOS button knows today's flight on a cold start.
+ */
+export async function flightsForTrips(tripIds: string[]): Promise<Map<string, Flight[]>> {
+  const out = new Map<string, Flight[]>();
+  const missing: string[] = [];
+  for (const id of tripIds) {
+    const s = state.get(id);
+    if (s && s.status === 'ready') out.set(id, s.flights);
+    else missing.push(id);
+  }
+  if (missing.length) {
+    const user = await userId();
+    const cache = user ? await readCache(user) : null;
+    for (const t of cache?.trips ?? [])
+      if (missing.includes(t.tripId)) out.set(t.tripId, t.flights);
+  }
+  return out;
+}
+
+/** Changes whenever flights are read, saved or prefetched (sprint 8 AC-16). */
+export function useFlightsVersion(): number {
+  return useSyncExternalStore(subscribe, () => version);
 }

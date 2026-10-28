@@ -45,7 +45,12 @@ jest.mock('@react-native-community/netinfo', () =>
 // Sprint 6: expo-notifications has no native side in Jest. A small stand-in
 // with the calls the app makes; tests that care override it.
 jest.mock('expo-notifications', () => ({
-  AndroidImportance: { NONE: 0, HIGH: 6 },
+  AndroidImportance: { NONE: 0, DEFAULT: 3, HIGH: 6 },
+  // Sprint 8: the local insurance reminder.
+  SchedulableTriggerInputTypes: { DATE: 'date' },
+  scheduleNotificationAsync: jest.fn(async () => 'id'),
+  cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  getAllScheduledNotificationsAsync: jest.fn(async () => []),
   AndroidNotificationVisibility: { PRIVATE: 2 },
   setNotificationHandler: jest.fn(),
   setNotificationChannelAsync: jest.fn(async () => null),
