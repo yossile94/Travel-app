@@ -65,6 +65,7 @@ import { deleteFlight, lookupFlight, saveFlight, setSameBooking } from './flight
 import { useDestination } from '@/features/destination/destinationData';
 import {
   layoverLabel,
+  layoverWhere,
   StatusChip,
   TransitNotice,
   transitWarning,
@@ -579,7 +580,7 @@ export function FlightScreen({
           // The same words as the card's layover row (design 11.1, Raz re-review 1).
           accessibilityLabel={layoverLabel(
             l,
-            spellCode(c.airport),
+            layoverWhere(c.airport, airports, i18n.language, t),
             next.numberInput || next.number,
             t,
           )}

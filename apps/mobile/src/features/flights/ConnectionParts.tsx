@@ -57,6 +57,20 @@ export function waitA11y(minutes: number, t: T): string {
 }
 
 /** Design 11.1: what TalkBack says for a layover, in the card, the sheet and the form. */
+/** "ב-K U L, בנגקוק" for TalkBack: the one `where` both layover rows pass to layoverLabel. */
+export function layoverWhere(
+  apt: string,
+  airports: Airport[] | null | undefined,
+  lang: string,
+  t: T,
+): string {
+  const airport = airports?.find((a) => a.iata === apt);
+  const city = airport ? (lang === 'he' ? airport.cityHe : airport.cityEn) : null;
+  return city
+    ? t('layover.a11y.where', { apt: spellCode(apt), city })
+    : t('layover.a11y.where', { apt: spellCode(apt), city: '' }).replace(/,\s*$/, '');
+}
+
 export function layoverLabel(l: Layover, where: string, nextNo: string, t: T): string {
   const chip = l.status === 'ok' || l.status === 'short' || l.status === 'risky' ? l.status : null;
   if (l.status === 'invalid') {
@@ -271,11 +285,7 @@ export function LayoverRow({
   const p = colors[colorScheme];
   const l = layover(prev, next, now);
   const apt = prev.arrIata ?? next.depIata;
-  const airport = airports?.find((a) => a.iata === apt);
-  const city = airport ? (i18n.language === 'he' ? airport.cityHe : airport.cityEn) : null;
-  const where = city
-    ? t('layover.a11y.where', { apt: spellCode(apt), city })
-    : t('layover.a11y.where', { apt: spellCode(apt), city: '' }).replace(/,\s*$/, '');
+  const where = layoverWhere(apt, airports, i18n.language, t);
   const answer = sameBooking(next, prev.id);
   const booking = BOOKING[String(answer) as 'true' | 'false' | 'null'];
   const transit = transitWarning(apt, airports, advisories, tripAdm0);
