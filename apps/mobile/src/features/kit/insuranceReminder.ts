@@ -83,7 +83,11 @@ export async function syncInsuranceReminder(
 }
 
 export async function cancelInsuranceReminder(tripId: string): Promise<void> {
-  await Notifications.cancelScheduledNotificationAsync(idOf(tripId)).catch(() => {});
+  try {
+    await Notifications.cancelScheduledNotificationAsync(idOf(tripId));
+  } catch {
+    // Nothing scheduled.
+  }
 }
 
 /**

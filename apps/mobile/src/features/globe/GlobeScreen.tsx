@@ -41,6 +41,7 @@ import { CardTrips } from '@/features/trips/CardTrips';
 import { MyTripsSheet } from '@/features/trips/MyTripsSheet';
 import { TripForm, type TripFormResult, type TripFormTarget } from '@/features/trips/TripForm';
 import { TripsButton } from '@/features/trips/TripsButton';
+import { GlobeSos } from '@/features/emergency/GlobeSos';
 import { useTrips } from '@/features/trips/TripsProvider';
 import { flightTracked, OPEN_TIMEOUT_MS, tripOfFlight } from '@/features/flights/flightsStore';
 import { PushExplainer } from '@/features/push/PushExplainer';
@@ -630,6 +631,10 @@ export function GlobeScreen() {
     signedIn: auth.state.status === 'signedIn',
     onOpen: (id, text) => (tripForm ? setHeldAlert({ id, text }) : void openFromAlert(id, text)),
     onSignedOut: () => showTripToast(t('flight.gone'), true),
+    onOpenTrip: (tripId) => {
+      const trip = trips.cache?.upcoming.find((x) => x.id === tripId);
+      if (trip && !tripForm) openTripFromList(trip);
+    },
   });
 
   // Sprint 6 F-018: the channel, the consent on the server, and the alerts explainer.
@@ -789,6 +794,15 @@ export function GlobeScreen() {
       </View>
     );
   }
+
+  // "My trips" and the SOS button show together (sprint 8 design 14.3, Raz).
+  const tripsButtonVisible =
+    (auth.state.status === 'signedIn' || auth.state.status === 'signedOut') &&
+    !selectedAdm0 &&
+    !searchOpen &&
+    !sheetOpen &&
+    !myTripsOpen &&
+    !tripForm;
 
   return (
     <View style={styles.screen}>
@@ -968,19 +982,15 @@ export function GlobeScreen() {
       )}
 
       <TripsButton
-        visible={
-          (auth.state.status === 'signedIn' || auth.state.status === 'signedOut') &&
-          !selectedAdm0 &&
-          !searchOpen &&
-          !sheetOpen &&
-          !myTripsOpen &&
-          !tripForm
-        }
+        visible={tripsButtonVisible}
         colorScheme={colorScheme}
         reduceMotion={reduceMotion === true}
         bottomInset={insets.bottom}
         onPress={openMyTrips}
       />
+
+      {/* Sprint 8 AC-15: the same condition as "My trips", plus an active trip. */}
+      <GlobeSos visible={tripsButtonVisible} colorScheme={colorScheme} />
 
       <MyTripsSheet
         visible={myTripsOpen}

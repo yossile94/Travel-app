@@ -84,7 +84,7 @@ describe('the country card temperature (sprint 3 AC-10, AC-13)', () => {
     expect(screen.getByTestId('sources-climate')).toHaveTextContent(
       'נתוני אקלים: CRU TS v4.08, Climatic Research Unit, University of East Anglia (Harris, Jones, Osborn), דרך CEDA, רישיון Open Government Licence v3.0. הממוצעים לשנים 1991–2020 חושבו על ידינו.',
     );
-    await fireEvent.press(screen.getByText('Open Government Licence v3.0'));
+    await fireEvent.press(screen.getAllByText('Open Government Licence v3.0')[0]!);
     expect(open).toHaveBeenCalledWith(
       'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
     );

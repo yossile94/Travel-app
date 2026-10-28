@@ -124,6 +124,8 @@ export async function savePolicy(
       reader?.close();
       writer?.close();
       if (tmp.exists) tmp.delete();
+      // The picker's plain copy in the cache goes too, even after a failure (design 10.2).
+      if (source.uri.startsWith(Paths.cache.uri) && input.exists) input.delete();
     } catch {
       // Best effort.
     }

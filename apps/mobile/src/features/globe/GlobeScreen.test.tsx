@@ -180,7 +180,10 @@ const mockAuth = {
   acknowledgeExpiry: jest.fn(),
   recheckConsent: jest.fn(async () => false),
 };
-jest.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => mockAuth }));
+jest.mock('@/features/auth/AuthProvider', () => ({
+  useAuth: () => mockAuth,
+  useAuthIfAny: () => mockAuth,
+}));
 
 // Sprint 2: the screen reads the trips context; these tests are about the globe.
 const mockTrips = {

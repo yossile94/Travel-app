@@ -31,6 +31,7 @@ import Svg, { Line, Path, Rect } from 'react-native-svg';
 
 import { CardTemperature } from '@/features/climate/CardTemperature';
 import { CardRateBlock, CardSafety, CardSources } from '@/features/destination/CardDestination';
+import { SignedOutEmergency } from '@/features/emergency/SignedOutEmergency';
 import { todayPg } from '@/features/trips/tripDates';
 import { colors, fonts, highlightColor, layout, motion, type ColorScheme } from '@/theme/tokens';
 
@@ -319,6 +320,8 @@ export function BoardingPassCard({
                 reduceMotion={reduceMotion}
                 insetsBottom={bottomInset}
               />
+              {/* Sprint 8 AC-17: signed out, emergency from the country card. */}
+              <SignedOutEmergency adm0={country.adm0} colorScheme={colorScheme} />
 
               <View style={styles.fields}>
                 {country.timeZone && <LocalTime country={country} colorScheme={colorScheme} />}

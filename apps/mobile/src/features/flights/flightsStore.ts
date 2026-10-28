@@ -248,3 +248,25 @@ export function refreshTripOf(flightId: string): void {
     if (t.flights.some((f) => f.id === flightId)) void refreshTripFlights(tripId);
   }
 }
+
+/**
+ * The flights of trips that may never have been opened (sprint 8 AC-16, Raz
+ * design note 1): memory first, else the device copy prefetchFlights wrote.
+ * No network, so the SOS button knows today's flight on a cold start.
+ */
+export async function flightsForTrips(tripIds: string[]): Promise<Map<string, Flight[]>> {
+  const out = new Map<string, Flight[]>();
+  const missing: string[] = [];
+  for (const id of tripIds) {
+    const s = state.get(id);
+    if (s && s.status === 'ready') out.set(id, s.flights);
+    else missing.push(id);
+  }
+  if (missing.length) {
+    const user = await userId();
+    const cache = user ? await readCache(user) : null;
+    for (const t of cache?.trips ?? [])
+      if (missing.includes(t.tripId)) out.set(t.tripId, t.flights);
+  }
+  return out;
+}

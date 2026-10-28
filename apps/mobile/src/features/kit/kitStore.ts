@@ -189,3 +189,9 @@ export function resetKitStore(): void {
   again.clear();
   notify();
 }
+
+/** Whether a trip has hotels or insurance as last read (the trip delete dialog, design 21.9). */
+export function tripHasKit(tripId: string): boolean {
+  const s = state.get(tripId);
+  return !!s && (s.hotels.length > 0 || s.insurance !== null);
+}

@@ -23,7 +23,19 @@ export const LICENCES: [string, string][] = [
   ['AeroDataBox', 'https://aerodatabox.com'],
   ['OurAirports', 'https://ourairports.com/data/'],
   ['mwgg/Airports', 'https://github.com/mwgg/Airports'],
+  // Sprint 8 (AC-14, design 21.8): the emergency numbers and the missions dataset.
+  ['FCDO Foreign Travel Advice', 'https://www.gov.uk/foreign-travel-advice'],
+  ['ntz-short', 'https://data.gov.il/dataset/ntz-short'],
 ];
+
+/** The dataset's name and terms as data.gov.il shows them (design 21.8), read on 2026-10-28. */
+const MISSIONS_DATASET = {
+  he: { dataset: 'רשימת נציגויות ישראל בעולם', terms: 'תנאי השימוש של data.gov.il' },
+  en: {
+    dataset: 'רשימת נציגויות ישראל בעולם (List of Israeli missions abroad)',
+    terms: 'the data.gov.il terms of use',
+  },
+};
 
 interface Props {
   visible: boolean;
@@ -34,7 +46,7 @@ interface Props {
 }
 
 export function SourcesSheet({ visible, onClose, ...sheet }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const palette = colors[sheet.colorScheme];
 
   /** A credit line with each licence name it holds as a link; the wording is unchanged. */
@@ -73,6 +85,11 @@ export function SourcesSheet({ visible, onClose, ...sheet }: Props) {
       </Text>
       {credit(t('sources.advisories'), 'sources-advisories')}
       {credit(t('sources.entry'), 'sources-entry')}
+      {credit(t('sources.emergency'), 'sources-emergency')}
+      {credit(
+        t('sources.missions', MISSIONS_DATASET[i18n.language === 'he' ? 'he' : 'en']),
+        'sources-missions',
+      )}
       {credit(t('sources.rates'), 'sources-rates')}
       {credit(t('sources.flights'), 'sources-flights')}
       {credit(t('sources.airports'), 'sources-airports')}
