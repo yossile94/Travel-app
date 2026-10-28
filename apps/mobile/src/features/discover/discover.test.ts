@@ -206,6 +206,32 @@ describe('discovery rules (sprint 9 AC-1 to AC-9)', () => {
     expect(tha?.reasons).toMatchObject({ nsc: 2, entry: 'allowed' });
   });
 
+  it('family and July: a country over 30° at every point is out, as too hot (Dana)', () => {
+    const hot: DiscoverInput = {
+      ...input,
+      countries: [{ adm0: 'GRC', label: [22, 39] }],
+      pointsOf: () => [
+        { temps: Array(12).fill(3150), wet: Array(12).fill(0), city: null },
+        {
+          temps: Array(12).fill(3050),
+          wet: Array(12).fill(0),
+          city: { id: 1, nameHe: 'א', nameEn: 'A', population: 2e5 },
+        },
+      ],
+    };
+    const r = evaluate(hot, hot.countries[0]!, { ...NO_FILTERS, family: true, month: 6 });
+    expect(r).toMatchObject({ match: false, failure: 'tooHot' });
+    expect(discover(hot, { ...NO_FILTERS, family: true, month: 6 })).toEqual([]);
+    // 30° itself is in (12° to 30°, shown degrees).
+    const edge = {
+      ...hot,
+      pointsOf: () => [{ temps: Array(12).fill(3000), wet: null, city: null }],
+    };
+    expect(evaluate(edge, hot.countries[0]!, { ...NO_FILTERS, family: true, month: 6 }).match).toBe(
+      true,
+    );
+  });
+
   it('never Israel, never a banned country, nearest first (AC-6, AC-9)', () => {
     const res = discover(input, { ...NO_FILTERS, near: true });
     expect(res.map((r) => r.adm0)).not.toContain('ISR');

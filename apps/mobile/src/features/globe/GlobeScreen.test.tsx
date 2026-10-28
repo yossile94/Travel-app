@@ -1160,3 +1160,77 @@ describe('family with no advisories copy (sprint 9 AC-10)', () => {
     expect(matched.split(',')).not.toContain('LBN');
   });
 });
+
+describe('discovery: announcement, pages and the advisories date (Dana, sprint 9)', () => {
+  it('two quick changes make one announcement, of the last count, after the pause (design 12.2)', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    await render(<GlobeScreen />);
+    announce.mockClear();
+    await fireEvent.press(screen.getByTestId('discover-chip-near'));
+    await act(async () => jest.advanceTimersByTime(motion.discoverAnnounceDelay / 2));
+    await fireEvent.press(screen.getByTestId('discover-chip-weather'));
+    await fireEvent.press(screen.getByTestId('discover-type-pleasant'));
+    await act(async () => jest.advanceTimersByTime(motion.discoverAnnounceDelay - 1));
+    expect(announce).not.toHaveBeenCalled();
+    await act(async () => jest.advanceTimersByTime(1));
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('discover-count')).toHaveTextContent(announce.mock.calls[0]![0]);
+    expect(announce.mock.calls[0]![0]).toMatch(/מדינות מתאימות|מדינה אחת מתאימה/);
+  });
+
+  it('the list shows 50 rows, and the next 50 at the end (design 8.10)', async () => {
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-weather'));
+    await fireEvent.press(screen.getByTestId('discover-month'));
+    await fireEvent.press(screen.getByTestId('discover-month-4'));
+    await fireEvent.press(screen.getByTestId('discover-type-pleasant'));
+    const total = Number(
+      (
+        screen.getByTestId('globe-discover', { includeHiddenElements: true }).props
+          .accessibilityValue.text as string
+      )
+        .split(',')
+        .filter(Boolean).length,
+    );
+    expect(total).toBeGreaterThan(50);
+    const list = () => screen.getByTestId('discover-list');
+    expect(list().props.data).toHaveLength(50);
+    await act(async () => list().props.onEndReached({ distanceFromEnd: 0 }));
+    expect(list().props.data).toHaveLength(Math.min(100, total));
+  });
+
+  it('family offline says the date of the advisories copy; not from the server (design 8.6)', async () => {
+    mockDestination = {
+      rates: new Map(),
+      from: 'device',
+      advisories: new Map([
+        [
+          'CYP',
+          {
+            adm0: 'CYP',
+            entryStatus: 'allowed',
+            nscLevels: [1],
+            fetchedAt: '2026-10-20T08:00:00Z',
+          },
+        ],
+        [
+          'GRC',
+          {
+            adm0: 'GRC',
+            entryStatus: 'allowed',
+            nscLevels: [1],
+            fetchedAt: '2026-10-26T08:00:00Z',
+          },
+        ],
+      ]),
+    };
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-family'));
+    expect(screen.getByTestId('discover-advisories-as-of')).toHaveTextContent(/26/);
+    await fireEvent.press(screen.getByTestId('discover-clear'));
+    mockDestination = { ...mockDestination, from: 'server' };
+    await render(<GlobeScreen />);
+    await fireEvent.press(screen.getByTestId('discover-chip-family'));
+    expect(screen.queryByTestId('discover-advisories-as-of')).toBeNull();
+  });
+});
