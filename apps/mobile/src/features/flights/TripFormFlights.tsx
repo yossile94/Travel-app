@@ -26,6 +26,7 @@ export function TripFormFlights({
   reduceMotion,
   insetsTop,
   insetsBottom,
+  onFlightSaved,
 }: {
   trip: FlightScreenTrip;
   /** The trip exists on the server (editing): flights can be added. */
@@ -35,6 +36,8 @@ export function TripFormFlights({
   reduceMotion: boolean;
   insetsTop: number;
   insetsBottom: number;
+  /** Sprint 6 design 2.3: the alerts explainer may follow once the form closes. */
+  onFlightSaved?: (flightId: string) => void;
 }) {
   const { t } = useTranslation();
   const p = colors[colorScheme];
@@ -144,9 +147,10 @@ export function TripFormFlights({
           insetsTop={insetsTop}
           insetsBottom={insetsBottom}
           onClose={() => setScreen(null)}
-          onSaved={() => {
+          onSaved={(id) => {
             setScreen(null);
             void refreshTripFlights(trip.id);
+            onFlightSaved?.(id);
           }}
           onDeleted={() => {
             setScreen(null);

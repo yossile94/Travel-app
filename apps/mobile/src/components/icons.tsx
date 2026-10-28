@@ -280,3 +280,25 @@ export function ExternalLinkIcon({ color, size = 20 }: IconProps) {
     </Svg>
   );
 }
+
+/** Sprint 6 design 3.5: the alert's plane, nose up (not mirrored: it points up in both languages). */
+export function PlaneUpIcon({ color, size = 16 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        fill={color}
+        d="M12 2c.9 0 1.5.9 1.5 2v5.2l7.5 4.4V16l-7.5-2.3v4.9l2.5 1.8V22L12 21l-4 1v-1.6l2.5-1.8v-4.9L3 16v-2.4l7.5-4.4V4c0-1.1.6-2 1.5-2z"
+      />
+    </Svg>
+  );
+}
+
+/** Sprint 6 design 6.1: the "flight alerts" row. */
+export function BellIcon({ color, size = 24 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16z" stroke={color} {...stroke} />
+      <Path d="M10 21h4" stroke={color} {...stroke} />
+    </Svg>
+  );
+}

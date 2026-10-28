@@ -1,0 +1,47 @@
+{
+  "$meta.name": "Travel app design tokens - sprint 6 additions",
+  "$meta.version": "0.7.0 (proposed)",
+  "$meta.status": "Draft for Raz. DELTA ONLY on top of 0.6.0: every key below is new; no existing value changes; no new colours. Merge into docs/design/tokens.json and apps/mobile/src/theme/tokens.ts in the same PR that first uses them (docs/design/sprint-06/README.md section 13). Keys starting with '$check.' are contrast documentation only and are not merged into tokens.ts.",
+  "$meta.source": "docs/design/sprint-06/README.md",
+
+  "limits.push.explainerMaxShows": 2,
+  "limits.push.note": "Counted per user per device (AsyncStorage push.explainer.${userId}); every showing counts, however it was closed. At most once per app session. Never shown again after a final OS denial (README 2.2).",
+
+  "timing.push.explainerDelay": 400,
+  "timing.push.launchDelay": 1500,
+  "timing.push.openingToastAfter": 3000,
+  "timing.push.openTimeout": 8000,
+  "timing.push.unregisterTimeout": 3000,
+  "timing.push.note": "explainerDelay: after FlightScreen or ReturnPrompt has closed. launchDelay: after globe ready + trips loaded + no re-consent, only if untouched. openingToastAfter: 'Opening your flight…' toast when locating the flight is slow. openTimeout: whole flightId -> trip lookup, then treated as offline. unregisterTimeout: sign-out waits at most this long for unregister_push_token (README 2.3, 4.1, 4.5, 6.4).",
+
+  "motion.push.previewIn.duration": 300,
+  "motion.push.previewIn.delay": 200,
+  "motion.push.previewIn.translateY": -12,
+  "motion.push.previewIn.easing": "decelerate",
+  "motion.push.previewIn.note": "Proposal (README 10). Reduce motion: shown at rest immediately.",
+
+  "push.android.channelId": "flight-changes",
+  "push.android.channelImportance": "HIGH",
+  "push.android.lockscreenVisibility": "PRIVATE",
+  "push.android.showBadge": false,
+  "push.android.accentColor": "#1561BC",
+  "push.android.accentColorNote": "Same value as color.primitive.sky.600 / color.light.action.primary.bg. Not a new colour.",
+  "push.content.rlm": "U+200F",
+  "push.content.note": "Hebrew title and body are prefixed in code with U+200F so Android lays the paragraph out RTL even when it starts with the flight number. English gets no prefix. Times are HH:mm h23 in the airport's own zone (dep_tz / arr_tz) with its IATA code; the date is appended when the new local date differs from the scheduled one (README 3).",
+
+  "size.notificationIcon.canvas": 24,
+  "size.notificationIcon.liveArea": 20,
+  "size.notificationIcon.exportPx": 96,
+  "size.notificationIcon.path": "M12 2c.9 0 1.5.9 1.5 2v5.2l7.5 4.4V16l-7.5-2.3v4.9l2.5 1.8V22L12 21l-4 1v-1.6l2.5-1.8v-4.9L3 16v-2.4l7.5-4.4V4c0-1.1.6-2 1.5-2z",
+  "size.notificationIcon.note": "White (#FFFFFF), fully opaque, on transparent. Nose up so it needs no RTL mirroring in the status bar. Reused at 16 in the UI as PlaneUpIcon (README 3.5).",
+
+  "color.switch.map": "No new colours. trackColor.false = border.control, trackColor.true = action.primary.bg; thumb on = action.primary.fg (light #FFFFFF, dark #060B18); thumb off = light #FFFFFF, dark text.primary #F3F6FC. React Native Switch, no custom control (README 6.1).",
+
+  "$check.contrast.method": "WCAG 2.x relative luminance, (L1+0.05)/(L2+0.05), on the hex values in tokens.json. Text 4.5:1, graphics 3:1 (1.4.11).",
+  "$check.contrast.switch.trackOn (action.primary.bg on bg.surfaceRaised)": "6.06 light / 7.63 dark",
+  "$check.contrast.switch.trackOff (border.control on bg.surfaceRaised)": "3.64 light / 4.77 dark",
+  "$check.contrast.switch.thumbOn (action.primary.fg on action.primary.bg)": "6.06 light / 8.89 dark",
+  "$check.contrast.switch.thumbOff (thumb on border.control)": "3.64 light / 3.26 dark",
+  "$check.contrast.blockedRow (text.link on bg.surfaceRaised)": "6.06 light / 7.63 dark",
+  "$check.contrast.preview": "All existing pairs: text.primary / text.secondary on bg.surface, text.secondary on bg.tag (6.77 / 7.01), text.link on bg.surface (6.06 / 8.37)."
+}

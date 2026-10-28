@@ -35,6 +35,7 @@ import {
 } from '@/features/account/accountApi';
 import { requestDeletion } from '@/features/account/deleteAccountApi';
 import { resetFlightsStore } from '@/features/flights/flightsStore';
+import { pushKeysOf, unregisterDevice } from '@/features/push/push';
 import { clearTripsCaches } from '@/features/trips/tripsCache';
 import { clearStoredSessions } from '@/lib/secureSessionStorage';
 import { supabase } from '@/lib/supabase';
@@ -272,6 +273,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!userId) return;
     await removeLocalAgreement(userId);
     await removeLocalChoices(userId);
+    // Sprint 6: the alerts explainer count and the consent waiting for the server (Raz review 15).
+    await AsyncStorage.multiRemove(pushKeysOf(userId)).catch(() => {});
   }, []);
 
   /** Read through a function, so TypeScript doesn't narrow it across awaits. */
@@ -445,6 +448,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [waitingForDocuments, settle]);
 
   const signOut = useCallback(async () => {
+    // Sprint 6 (Raz 11): this device stops getting alerts, while the session still holds.
+    await unregisterDevice();
     // Data minimisation (review): nothing of this user stays on the device;
     // the next sign-in reads the consent log again.
     void wipeDevice(userIdNow());

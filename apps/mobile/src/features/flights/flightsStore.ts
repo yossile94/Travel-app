@@ -200,3 +200,51 @@ export function resetFlightsStore(): void {
   again.clear();
   notify();
 }
+
+/** The whole lookup of a tapped alert's flight, then as "offline" (design 4.5). */
+export const OPEN_TIMEOUT_MS = 8000;
+
+/**
+ * The trip of one of the user's flights (sprint 6 AC-5: a tapped alert): from
+ * memory, the device copy, or the server through RLS, in that order. "gone"
+ * also when it is someone else's: the two look the same (design 4.3).
+ */
+export async function tripOfFlight(flightId: string): Promise<string | 'gone' | 'offline'> {
+  for (const [tripId, t] of state) if (t.flights.some((f) => f.id === flightId)) return tripId;
+  const user = await userId();
+  if (!user) return 'gone';
+  const cache = await readCache(user);
+  const cached = cache?.trips.find((t) => t.flights.some((f) => f.id === flightId));
+  if (cached) return cached.tripId;
+  if (!supabase) return 'offline';
+  const read = supabase.from('flights').select('trip_id').eq('id', flightId).maybeSingle();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const answer = await Promise.race([
+    Promise.resolve(read).catch(() => null),
+    new Promise<null>((r) => (timer = setTimeout(() => r(null), OPEN_TIMEOUT_MS))),
+  ]).finally(() => clearTimeout(timer));
+  if (!answer || answer.error) return 'offline';
+  return (answer.data as { trip_id: string } | null)?.trip_id ?? 'gone';
+}
+
+/** Whether a loaded flight is tracked (has a watch); null when not loaded. */
+export function flightTracked(flightId: string): boolean | null {
+  for (const t of state.values()) {
+    const f = t.flights.find((x) => x.id === flightId);
+    if (f) return f.watch !== null;
+  }
+  return null;
+}
+
+/** Whether a loaded flight has this number (the explainer's sample avoids it, design 2.5). */
+export function hasFlightNumber(number: string): boolean {
+  for (const t of state.values()) if (t.flights.some((f) => f.number === number)) return true;
+  return false;
+}
+
+/** An alert arrived while the app was open (AC-5א): its trip only, if it is in memory (Raz review 13). */
+export function refreshTripOf(flightId: string): void {
+  for (const [tripId, t] of state) {
+    if (t.flights.some((f) => f.id === flightId)) void refreshTripFlights(tripId);
+  }
+}

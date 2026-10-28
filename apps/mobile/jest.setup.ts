@@ -41,3 +41,32 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('@react-native-community/netinfo', () =>
   jest.requireActual('@react-native-community/netinfo/jest/netinfo-mock.js'),
 );
+
+// Sprint 6: expo-notifications has no native side in Jest. A small stand-in
+// with the calls the app makes; tests that care override it.
+jest.mock('expo-notifications', () => ({
+  AndroidImportance: { NONE: 0, HIGH: 6 },
+  AndroidNotificationVisibility: { PRIVATE: 2 },
+  setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn(async () => null),
+  getNotificationChannelAsync: jest.fn(async () => ({ importance: 6 })),
+  unregisterForNotificationsAsync: jest.fn(async () => undefined),
+  getPermissionsAsync: jest.fn(async () => ({
+    granted: false,
+    canAskAgain: true,
+    status: 'undetermined',
+  })),
+  requestPermissionsAsync: jest.fn(async () => ({
+    granted: true,
+    canAskAgain: true,
+    status: 'granted',
+  })),
+  getExpoPushTokenAsync: jest.fn(async () => ({
+    type: 'expo',
+    data: 'ExponentPushToken[test-token-123]',
+  })),
+  getLastNotificationResponse: jest.fn(() => null),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addPushTokenListener: jest.fn(() => ({ remove: jest.fn() })),
+}));

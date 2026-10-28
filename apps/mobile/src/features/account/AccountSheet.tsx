@@ -24,6 +24,8 @@ import { DownloadIcon, PencilIcon, ShieldIcon, TrashIcon } from '@/components/ic
 import { initialOf } from '@/features/auth/AccountButton';
 import { useAuth, type AuthUser } from '@/features/auth/AuthProvider';
 import { isolateLtr } from '@/features/globe/BoardingPassCard';
+import { FlightAlertsRow } from '@/features/push/FlightAlertsRow';
+import { unregisterDevice } from '@/features/push/push';
 import { colors, fonts, layout, limits, radius, type ColorScheme } from '@/theme/tokens';
 
 import { codePointLength } from '../trips/tripDates';
@@ -55,6 +57,7 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
   const nameSaving = useRef(false);
   const [pushed, setPushed] = useState<Pushed>(null);
   const [exporting, setExporting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
   const exportAbort = useRef<AbortController | null>(null);
   const editButton = useRef<ViewHandle>(null);
@@ -164,6 +167,7 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
             </View>
 
             <View style={[styles.divider, { backgroundColor: palette.borderSubtle }]} />
+            <FlightAlertsRow userId={user.id} visible={visible} colorScheme={sheet.colorScheme} />
             <ListRow
               icon={(color) => <ShieldIcon color={color} />}
               label={t('account.consents')}
@@ -194,15 +198,22 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
             <View style={[styles.divider, { backgroundColor: palette.borderSubtle }]} />
             <Pressable
               accessibilityRole="button"
+              accessibilityState={{ busy: signingOut, disabled: signingOut }}
+              disabled={signingOut}
               onPress={() => {
-                sheet.onClose();
-                void signOut();
+                // Sprint 6 design 6.4: busy while this device leaves the alerts, 3 s at most.
+                setSigningOut(true);
+                void unregisterDevice().finally(() => {
+                  setSigningOut(false);
+                  sheet.onClose();
+                  void signOut();
+                });
               }}
               style={[styles.secondary, { backgroundColor: palette.secondaryBg }]}
               testID="sign-out"
             >
               <Text style={[styles.secondaryLabel, { color: palette.secondaryFg }]}>
-                {t('account.signOut')}
+                {signingOut ? t('account.signingOut') : t('account.signOut')}
               </Text>
             </Pressable>
           </View>

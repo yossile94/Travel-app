@@ -93,7 +93,22 @@
     "consents": "My consents",
     "export": "Download my data",
     "exportSub": "A JSON file with your account details, trips and consent log.",
-    "delete": "Delete account"
+    "delete": "Delete account",
+    "flightAlerts": {
+      "label": "Flight alerts",
+      "neverAsked": "Not turned on yet.",
+      "on": "On. We'll tell you when a tracked flight changes.",
+      "off": "Off on all your devices.",
+      "blocked": "Blocked in Android settings. Tap to open settings.",
+      "notConnected": "On for your account. This device will connect once you're online.",
+      "blockedA11y": "Flight alerts, blocked",
+      "blockedHint": "Opens Android settings",
+      "saveError": "We couldn't save that. Try again.",
+      "offline": "You need a connection to change this.",
+      "turnedOn": "Flight alerts are on.",
+      "turnedOff": "Flight alerts are off."
+    },
+    "signingOut": "Signing out…"
   },
   "signIn": {
     "title": "Sign in",
@@ -713,5 +728,34 @@
     "formHelp": "Flights are saved right away, separately from \"Save changes\".",
     "newTripHelp": "You can add flights once the trip is saved.",
     "readOnly": "Offline you can only view. Editing comes back when you're online."
+  },
+  "push": {
+    "explainer": {
+      "title": "We'll tell you when your flight changes",
+      "body": "Delays, earlier departures, gate changes, cancellations and diversions. Alerts arrive even when the app is closed.",
+      "privacy": "Alerts show only the flight number and the change. No booking code, no trip name.",
+      "androidNote": "When you tap \"Allow\", Android will ask you to confirm.",
+      "allow": "Allow",
+      "allowing": "One moment…",
+      "later": "Not now",
+      "footnote": "You can change this any time in your account."
+    },
+    "preview": {
+      "example": "Example",
+      "now": "now",
+      "a11y": "Example alert: {{title}}. {{body}}",
+      "title": "{{n}} delayed",
+      "body": "New departure: 01:10, TLV time. Was 23:40."
+    },
+    "allowed": "We'll let you know when your flights change.",
+    "denied": "Alerts are off. You can turn them on in your account.",
+    "blockedOnAllow": "Notifications are blocked in Android settings. You can open them from your account.",
+    "opening": "Opening your flight…",
+    "openOffline": "You need a connection to open this flight.",
+    "fromNotification": "From the alert: {{title}}. {{body}}",
+    "channel": {
+      "name": "Flight changes",
+      "description": "When a flight you're tracking is delayed, moved earlier, changes gate, is cancelled or diverted."
+    }
   }
 }
