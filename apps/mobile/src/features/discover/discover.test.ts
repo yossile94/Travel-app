@@ -153,6 +153,19 @@ describe('discovery rules (sprint 9 AC-1 to AC-9)', () => {
     expect(near.find((r) => r.adm0 === 'CYP')?.reasons.temp).toBeGreaterThan(20);
   });
 
+  it('a copy with no entry value never lets a barred country through (AC-9, device QA)', () => {
+    const blank = new Map<string, Row>([
+      ['SAU', { entryStatus: null, nscLevels: [3] }],
+      ['YEM', { entryStatus: null, nscLevels: [4] }],
+    ]);
+    const hits = discover(
+      { ...input, advisories: blank },
+      { ...NO_FILTERS, month: 11, weatherOn: true, weather: 'hot' },
+    ).map((r) => r.adm0);
+    expect(hits).not.toContain('SAU');
+    expect(hits).not.toContain('YEM');
+  });
+
   it('ties sort by code, so the order is stable (Raz 13)', () => {
     const a = discover(input, { ...NO_FILTERS, near: true }).map((r) => r.adm0);
     const b = discover(

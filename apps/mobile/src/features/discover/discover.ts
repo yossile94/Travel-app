@@ -200,8 +200,10 @@ export function evaluate(
       : { adm0, km, match: true, reasons, cities };
   if (NEVER.has(adm0)) return done('barred');
   const advisory = input.advisories?.get(adm0);
-  // Barred is never highlighted, in any mode (AC-9); with no device copy the bundled list stands in.
-  if (advisory ? advisory.entryStatus === 'banned' : input.banned.has(adm0)) return done('barred');
+  // Barred is never highlighted, in any mode (AC-9). The copy decides only where it
+  // has a value; with no copy, or no value in it, the bundled list stands in.
+  const entry = advisory?.entryStatus ?? null;
+  if (entry === 'banned' || (entry === null && input.banned.has(adm0))) return done('barred');
   if (f.near && reasons.hours > NEAR_HOURS) return done('far');
   if (!f.family && advisory?.entryStatus === 'restricted') reasons.entry = 'restricted';
   if (f.family) {
