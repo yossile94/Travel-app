@@ -126,9 +126,28 @@ describe('climate build (sprint 3 AC-10 to AC-12)', () => {
     }
   });
 
-  it('cities and climate together stay within the 1 MB budget (AC-12)', () => {
+  // Sprint 9 (Raz, D1-D2): wet days and city coordinates raise the budget to
+  // 1.3 MB, within the +300 KB Yossi approved for discovery.
+  it('cities and climate together stay within the 1.3 MB budget (AC-12, sprint 9)', () => {
     const cities = readFileSync(join(dataDir, 'cities.dat'), 'utf8');
     const total = gzipSync(text).length + gzipSync(cities).length;
-    assert.ok(total < 1024 * 1024, `${(total / 1024).toFixed(0)} KB`);
+    assert.ok(total < 1.3 * 1024 * 1024, `${(total / 1024).toFixed(0)} KB`);
+  });
+});
+
+describe('wet days (sprint 9, discovery 5.12)', () => {
+  const wet = Buffer.from(data.wet, 'base64');
+  const slotOf = (adm0) => data.areas[adm0][0];
+  const days = (adm0, month) => wet[slotOf(adm0) * 12 + month];
+
+  it('version 2 carries one byte per slot and month, in whole days', () => {
+    assert.equal(data.version, 2);
+    assert.equal(wet.length, cells.length / 2);
+    for (const v of wet) assert.ok(v <= 31 || v === 255, `${v}`);
+  });
+
+  it('Bangkok is dry in December, wet in September', () => {
+    assert.ok(days('THA', 11) < 4, `${days('THA', 11)}`);
+    assert.ok(days('THA', 8) > 15, `${days('THA', 8)}`);
   });
 });

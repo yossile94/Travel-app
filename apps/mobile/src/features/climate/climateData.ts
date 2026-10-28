@@ -15,6 +15,8 @@ interface ClimateFile {
   format: string;
   scale: number;
   cells: string;
+  /** Version 2 (sprint 9): wet days per slot and month, whole days; 255 none. */
+  wet?: string;
   cities: number[];
   areas: Record<string, [number, number, string, string]>;
 }
@@ -31,6 +33,9 @@ export interface AreaClimate {
 export interface Climate {
   area(adm0: string): AreaClimate | null;
   city(geonameId: number): Normals | null;
+  /** Wet days per month of the area's climate point, or of a city; null when unknown (sprint 9). */
+  areaWet(adm0: string): number[] | null;
+  cityWet(geonameId: number): number[] | null;
 }
 
 const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -78,7 +83,14 @@ export function parseClimate(text: string): Climate {
     id += data.cities[i]!;
     citySlot.set(id, data.cities[i + 1]!);
   }
+  const wet = data.wet ? decodeBase64(data.wet) : null;
+  const wetOf = (slot: number | undefined): number[] | null => {
+    if (!wet || slot === undefined || wet[slot * 12] === 255) return null;
+    return Array.from({ length: 12 }, (_, m) => wet[slot * 12 + m]!);
+  };
   return {
+    areaWet: (adm0) => wetOf(data.areas[adm0]?.[0]),
+    cityWet: (id) => wetOf(citySlot.get(id)),
     area(adm0) {
       const entry = data.areas[adm0];
       if (!entry) return null;

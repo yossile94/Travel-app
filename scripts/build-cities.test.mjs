@@ -123,8 +123,21 @@ describe('city list build (sprint 3 AC-4)', () => {
     assert.equal(areaOf([-24.17, 64], [iceland])?.adm0, 'ISL');
   });
 
-  it('stays small: under 600 KB compressed (the 1 MB budget includes climate)', () => {
+  // Sprint 9 (Raz, D2): the city coordinates add about 128 KB.
+  it('stays small: under 700 KB compressed (the 1.3 MB budget includes climate)', () => {
     const raw = readFileSync(join(root, 'apps', 'mobile', 'assets', 'data', 'cities.dat'));
-    assert.ok(gzipSync(raw).length < 600 * 1024, `${gzipSync(raw).length} bytes`);
+    assert.ok(gzipSync(raw).length < 700 * 1024, `${gzipSync(raw).length} bytes`);
+  });
+});
+
+describe('city points (sprint 9, the city fly-to)', () => {
+  it('every city has a point, in row order: Bangkok', () => {
+    for (const [adm0, list] of Object.entries(data.areas)) {
+      assert.equal(Buffer.from(data.points[adm0], 'base64').length, list.length * 4, adm0);
+    }
+    const i = data.areas.THA.findIndex((c) => c[2] === 'Bangkok');
+    const buf = Buffer.from(data.points.THA, 'base64');
+    assert.ok(Math.abs(buf.readInt16LE(i * 4) / 100 - 100.5) < 0.2);
+    assert.ok(Math.abs(buf.readInt16LE(i * 4 + 2) / 100 - 13.75) < 0.2);
   });
 });

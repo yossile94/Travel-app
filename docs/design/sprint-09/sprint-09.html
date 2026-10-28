@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ספרינט 9: חיפוש השראה (הדמיה)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Tokens from apps/mobile/src/theme/tokens.ts + tokens-0.10.0.proposed.json. No new hex values. */
+  :root { --fs: 1; }
+  :root {
+    --canvas:#FFFBF5; --surface:#FFFFFF; --raised:#FFFFFF; --tag:#FBF4E8; --pressed:#FBF4E8;
+    --t1:#121C36; --t2:#4A5573; --t3:#646E8A; --link:#1561BC; --alert:#C81E16; --accent:#A8381A;
+    --pBg:#1561BC; --pFg:#FFFFFF; --secBg:#EEF6FF; --secFg:#104C94;
+    --infoBg:#EEF6FF; --infoFg:#104C94; --bSub:#F4E7D0; --bCtl:#7D869E;
+    --discBg:#E9EEFA; --discFg:#646E8A; --skel:#F4E7D0; --scrim:rgba(6,11,24,0.48);
+    --chromeBg:rgba(255,255,255,0.92); --chromeFg:#121C36; --chromeBorder:rgba(18,28,54,0.08);
+    --swatch:#9B6BEA; --toastBg:#121C36; --toastFg:#F3F6FC;
+  }
+  body.dark {
+    --canvas:#060B18; --surface:#0B1326; --raised:#121C36; --tag:#1A2749; --pressed:#1A2749;
+    --t1:#F3F6FC; --t2:#A3B3DB; --t3:#7487BD; --link:#6FB3FA; --alert:#FF5D52; --accent:#FF7A57;
+    --pBg:#6FB3FA; --pFg:#060B18; --secBg:#1A2749; --secFg:#A9D2FF;
+    --infoBg:#1A2749; --infoFg:#A9D2FF; --bSub:#1A2749; --bCtl:#7487BD;
+    --discBg:#1A2749; --discFg:#7487BD; --skel:#1A2749; --scrim:rgba(0,0,0,0.6);
+    --chromeBg:rgba(18,28,54,0.88); --chromeFg:#F3F6FC; --chromeBorder:rgba(163,179,219,0.32);
+    --swatch:#B896F5;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Rubik, system-ui, sans-serif; background:#d9dde6; color:#121C36; }
+  body.dark { background:#1d2230; }
+  .panelBar { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:16px; align-items:center;
+    padding:10px 16px; background:#121C36; color:#F3F6FC; font-size:14px; }
+  .panelBar label { display:flex; gap:6px; align-items:center; }
+  .row { display:flex; flex-wrap:wrap; gap:28px; padding:24px; align-items:flex-start; }
+  .frame { width:411px; }
+  .cap { font-size:13px; color:#34477D; margin:0 0 8px; min-height:52px; }
+  body.dark .cap { color:#A3B3DB; }
+  .phone { position:relative; width:411px; height:860px; border-radius:28px; overflow:hidden;
+    background:#03060F; color:var(--t1); box-shadow:0 8px 30px rgba(18,28,54,.25); }
+  .phone.plain { background:var(--canvas); }
+  /* type */
+  .title2 { font-size:calc(22px*var(--fs)); line-height:calc(28px*var(--fs)); font-weight:600; margin:0; }
+  .title3 { font-size:calc(18px*var(--fs)); line-height:calc(24px*var(--fs)); font-weight:600; margin:0; }
+  .body { font-size:calc(16px*var(--fs)); line-height:calc(24px*var(--fs)); margin:0; }
+  .bodyS { font-size:calc(16px*var(--fs)); line-height:calc(22px*var(--fs)); font-weight:500; margin:0; }
+  .callout { font-size:calc(15px*var(--fs)); line-height:calc(21px*var(--fs)); margin:0; }
+  .foot { font-size:calc(13px*var(--fs)); line-height:calc(18px*var(--fs)); margin:0; }
+  .capt { font-size:calc(12px*var(--fs)); line-height:calc(16px*var(--fs)); font-weight:600; margin:0; }
+  .numMd { font-size:calc(17px*var(--fs)); line-height:calc(22px*var(--fs)); font-weight:500; font-variant-numeric:tabular-nums; margin:0; }
+  .title1 { font-size:calc(28px*var(--fs)); line-height:calc(34px*var(--fs)); font-weight:700; margin:0; }
+  .iso { unicode-bidi:isolate; direction:ltr; }
+  .t2 { color:var(--t2); } .t3 { color:var(--t3); }
+  .ic16 { width:16px; height:16px; flex:none; } .ic20 { width:20px; height:20px; flex:none; } .ic24 { width:24px; height:24px; flex:none; }
+  .hstack { display:flex; align-items:center; gap:8px; }
+  .vstack { display:flex; flex-direction:column; gap:6px; }
+  .between { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .stateLabel { font-family:monospace; font-size:11px; color:#FFD9D6; direction:ltr; display:block; }
+  .stateLabelDark { font-family:monospace; font-size:11px; color:var(--t3); direction:ltr; display:block; margin:10px 0 4px; }
+  /* globe */
+  .globeSvg { position:absolute; inset:0; }
+  .chromeBtn { position:absolute; top:52px; width:48px; height:48px; border-radius:50%; display:grid; place-items:center;
+    background:var(--chromeBg); color:var(--chromeFg); border:1px solid var(--chromeBorder); }
+  .searchField { position:absolute; top:52px; inset-inline:12px; height:48px; border-radius:999px; display:flex; align-items:center; gap:4px;
+    background:var(--raised); color:var(--t1); border:2px solid #1F78DB; padding:0 4px; }
+  /* chips on the globe */
+  .chipRow { position:absolute; inset-inline:0; display:flex; gap:8px; padding:0 12px; overflow:hidden; white-space:nowrap; }
+  .gchip { display:inline-flex; align-items:center; gap:6px; height:calc(40px*min(var(--fs),1.6)); padding:0 14px; border-radius:999px; flex:none;
+    font-size:calc(15px*min(var(--fs),1.6)); line-height:calc(20px*min(var(--fs),1.6)); font-weight:500;
+    background:var(--chromeBg); color:var(--chromeFg); border:1px solid var(--chromeBorder); }
+  body:not(.dark) .gchip { box-shadow:0 2px 6px rgba(0,0,0,.25); }
+  .gchip.on { background:#6FB3FA; color:#060B18; border-color:#6FB3FA; }
+  .gchip.off-dis { background:var(--discBg); color:var(--discFg); }
+  /* panel (non-modal) */
+  .dpanel { position:absolute; inset-inline:0; bottom:0; background:var(--raised); border-radius:28px 28px 0 0; padding:0 0 24px;
+    display:flex; flex-direction:column; overflow:hidden; }
+  body.dark .dpanel { border-top:1px solid var(--bSub); }
+  .handle { width:32px; height:4px; border-radius:2px; background:var(--bCtl); opacity:.6; margin:10px auto 6px; }
+  .dhead { padding:0 8px 8px 16px; }
+  html[dir=rtl] .dhead { padding:0 16px 8px 8px; }
+  .swatch { width:10px; height:10px; border-radius:50%; background:var(--swatch); flex:none; }
+  .drow { display:flex; gap:12px; padding:10px 16px; min-height:64px; border-top:1px solid var(--bSub); align-items:flex-start; }
+  .drow .sw { margin-top:calc(7px*var(--fs)); }
+  .drow .txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .drow .hrs { flex:none; color:var(--t2); font-variant-numeric:tabular-nums; }
+  .btnText { min-height:48px; display:inline-flex; align-items:center; padding:0 12px; color:var(--t1); font-weight:500; font-size:calc(16px*var(--fs)); }
+  .btn { min-height:48px; border-radius:999px; border:0; font:inherit; font-size:calc(16px*var(--fs)); font-weight:500;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:0 20px; }
+  .b-secondary { background:var(--secBg); color:var(--secFg); }
+  body.dark .b-secondary { border:1px solid var(--bCtl); }
+  .disc { padding:12px 16px 0; border-top:1px solid var(--bSub); }
+  .skel { height:48px; border-radius:12px; background:var(--skel); margin:8px 16px; }
+  .notice { display:flex; gap:8px; padding:12px; border-radius:12px; background:var(--infoBg); color:var(--infoFg); }
+  /* sheet (modal) */
+  .scrim { position:absolute; inset:0; background:var(--scrim); }
+  .sheet { position:absolute; inset-inline:0; bottom:0; background:var(--raised); border-radius:28px 28px 0 0; padding:8px 16px 24px; display:flex; flex-direction:column; gap:12px; }
+  body.dark .sheet { border-top:1px solid var(--bSub); }
+  .x { position:absolute; inset-inline-end:8px; top:8px; width:48px; height:48px; display:grid; place-items:center; color:var(--t1); }
+  .monthGrid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  body.big .monthGrid { grid-template-columns:repeat(2,1fr); }
+  .mcell { min-height:48px; border-radius:12px; border:1px solid var(--bCtl); display:flex; align-items:center; justify-content:center; gap:6px; font-size:calc(15px*var(--fs)); }
+  .mcell.on { background:var(--pBg); color:var(--pFg); border-color:var(--pBg); }
+  /* country card */
+  .card { position:absolute; inset-inline:12px; bottom:36px; background:var(--raised); border-radius:24px; padding:16px; display:flex; flex-direction:column; gap:8px; }
+  body.dark .card { border:1px solid rgba(163,179,219,0.16); }
+  .strip { width:40px; height:4px; border-radius:2px; background:#FF7A57; }
+  .why { display:flex; flex-wrap:wrap; gap:6px; }
+  .wchip { display:inline-flex; align-items:center; border-radius:999px; padding:3px 8px; background:var(--tag); color:var(--t1);
+    font-size:calc(12px*var(--fs)); line-height:calc(16px*var(--fs)); font-weight:600; }
+  .toast { position:absolute; inset-inline:16px; padding:12px 16px; border-radius:12px; background:var(--toastBg); color:var(--toastFg); font-size:calc(14px*var(--fs)); line-height:calc(20px*var(--fs)); }
+  .dim { position:absolute; font:11px monospace; color:#FFD9D6; direction:ltr; }
+  .legend { padding:16px; color:var(--t1); background:var(--canvas); }
+  .legend table { border-collapse:collapse; width:100%; font-size:12px; }
+  .legend td { padding:4px; border-bottom:1px solid var(--bSub); vertical-align:middle; }
+</style>
+</head>
+<body>
+<div class="panelBar" role="toolbar" aria-label="הגדרות ההדמיה">
+  <b>ספרינט 9 · חיפוש השראה</b>
+  <label><input type="checkbox" id="dark"> כהה</label>
+  <label>גופן <select id="fs"><option value="1">100%</option><option value="1.3">130%</option><option value="2">200%</option></select></label>
+  <label>שפה <select id="lang"><option value="he">עברית</option><option value="en">English</option></select></label>
+  <span style="opacity:.75">מדינות, טמפרטורות, ימי גשם, רמות אזהרה ושעות טיסה להדגמה בלבד. הגלובוס סכמטי.</span>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+  <symbol id="search" viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 104.6 11.1L20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="person" viewBox="0 0 24 24"><path d="M12 4a4 4 0 100 8 4 4 0 000-8zM4 21a8 8 0 0116 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="people" viewBox="0 0 24 24"><path d="M9 5a3 3 0 100 6 3 3 0 000-6zM3 20a6 6 0 0112 0M16 6.5a2.5 2.5 0 110 5M17 14.5a5 5 0 014 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="sun" viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="plane" viewBox="0 0 24 24"><path d="M12 2c1 0 1.5 1 1.5 2v5l7 4v2l-7-2v4l2 1.5V20l-3.5-1L8.5 20v-1.5l2-1.5v-4l-7 2v-2l7-4V4c0-1 .5-2 1.5-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="cloud" viewBox="0 0 24 24"><path d="M3 3l18 18M7 18h10a4 4 0 001.6-7.7M16 6.5A6 6 0 006.3 9 4.5 4.5 0 007 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="row" id="screens"></div>
+
+<script>
+const S = {
+  he: {
+    chips:'חיפוש השראה', family:'מתאים למשפחות', weather:'לפי חודש ומזג אוויר', near:'קרוב לישראל',
+    m:['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'],
+    hot:'חם ושמשי, לים', pleasant:'נעים לטיולים', cool:'קריר', winter:'חורף ושלג',
+    count:(n)=> n===1?'מדינה אחת מתאימה':`${n} מדינות מתאימות`, none:'אין מדינות שמתאימות לכל התנאים',
+    emptyHint:'נסו להסיר תנאי או לבחור חודש אחר.', without:(c,n)=>`בלי "${c}" · ${n} מדינות`,
+    clear:'נקה', loading:'מחפשים…', climateErr:'לא הצלחנו לטעון את נתוני מזג האוויר', retry:'נסו שוב',
+    chooseType:'בחרו סוג מזג אוויר', chooseTypeBody:'החודש נבחר. כדי לצבוע מדינות, בחרו גם סוג מזג אוויר.',
+    asOf:(d)=>`אזהרות המסע מעודכנות ל-${d}`,
+    disclaimer:'ההתאמה מחושבת לפי אזהרות המסע, הכניסה לישראלים ומזג האוויר. לפני הנסיעה כדאי לבדוק גם חיסונים והמלצות בריאות.',
+    winterNote:'קר, ויש סיכוי לשלג. אין לנו נתוני שלג, ולכן אין הבטחה.',
+    level:(n)=>`אזהרה רמה ${n}`, allowed:'כניסה מותרת', restricted:'כניסה מוגבלת',
+    temp:(t,m)=>`${t} ב${m}`, tempCity:(c,t,m)=>`${c} ${t} ב${m}`, rain:(n)=> n===0?'בלי ימי גשם': n===1?'יום גשם אחד':`${n} ימי גשם`, coast:'חוף ים',
+    cities:(l)=>`ערים: ${l}`,
+    h:(x)=> x===0.5?'כחצי שעה': x===1?'כשעה': x===1.5?'כשעה וחצי': x===2?'כשעתיים': x===2.5?'כשעתיים וחצי': (x%1? `כ-${Math.floor(x)} שעות וחצי` : `כ-${x} שעות`),
+    monthTitle:'באיזה חודש?', monthSub:'לפי ממוצע של 30 שנה (1991–2020)',
+    whyTitle:'למה מתאים', notTitle:'לא מתאים לחיפוש', noClimate:'אין לנו נתוני אקלים למדינה הזו',
+    familyUnavailable:'כדי לסנן למשפחות צריך את אזהרות המסע, והן עוד לא ירדו למכשיר. זה יעבוד כשיהיה חיבור.',
+    destination:'יעד', dailyAvg:(m)=>`ממוצע יומי ב${m}`, searchPh:'חיפוש מדינה או עיר',
+    c:{CYP:'קפריסין',GRC:'יוון',JOR:'ירדן',EGY:'מצרים',TUR:'טורקיה',ITA:'איטליה',THA:'תאילנד',USA:'ארצות הברית',IND:'הודו',VNM:'וייטנאם',MEX:'מקסיקו',BRA:'ברזיל',PRT:'פורטוגל',ESP:'ספרד',MLT:'מלטה',FIN:'פינלנד',NOR:'נורווגיה',KIR:'קיריבטי',TUV:'טובאלו',UAE:'איחוד האמירויות'},
+    city:{HER:'הרקליון',MIA:'מיאמי',HNL:'הונולולו',SJU:'סן חואן',GOA:'פנג׳ים',CUN:'קנקון',BLR:'בנגלור'},
+  },
+  en: {
+    chips:'Find a destination', family:'Family-friendly', weather:'By month & weather', near:'Close to Israel',
+    m:['January','February','March','April','May','June','July','August','September','October','November','December'],
+    hot:'Hot & sunny, beach', pleasant:'Pleasant for touring', cool:'Cool', winter:'Winter & snow',
+    count:(n)=> n===1?'1 country matches':`${n} countries match`, none:'No countries match all the conditions',
+    emptyHint:'Try removing a condition or choosing another month.', without:(c,n)=>`Without "${c}" · ${n} countries`,
+    clear:'Clear', loading:'Searching…', climateErr:"We couldn't load the weather data", retry:'Try again',
+    chooseType:'Choose a type of weather', chooseTypeBody:'The month is set. To highlight countries, choose a type of weather too.',
+    asOf:(d)=>`Travel advisories as of ${d}`,
+    disclaimer:'Matches are based on travel advisories, entry for Israelis and the weather. Before you travel, also check vaccinations and health advice.',
+    winterNote:'Cold, with a chance of snow. We have no snow data, so no promises.',
+    level:(n)=>`Advisory level ${n}`, allowed:'Entry allowed', restricted:'Entry restricted',
+    temp:(t,m)=>`${t} in ${m}`, tempCity:(c,t,m)=>`${c} ${t} in ${m}`, rain:(n)=> n===0?'No rainy days': n===1?'1 rainy day':`${n} rainy days`, coast:'Coastline',
+    cities:(l)=>`Cities: ${l}`,
+    h:(x)=> x===0.5?'about 30 min': x===1?'about 1 hour':`about ${x} hours`,
+    monthTitle:'Which month?', monthSub:'Based on 30-year averages (1991–2020)',
+    whyTitle:'Why it matches', notTitle:"Doesn't match your search", noClimate:'We have no climate data for this country',
+    familyUnavailable:"Family-friendly needs the travel advisories, and they haven't been downloaded yet. It will work once you're online.",
+    destination:'Destination', dailyAvg:(m)=>`Daily average in ${m}`, searchPh:'Search for a country or city',
+    c:{CYP:'Cyprus',GRC:'Greece',JOR:'Jordan',EGY:'Egypt',TUR:'Türkiye',ITA:'Italy',THA:'Thailand',USA:'United States',IND:'India',VNM:'Vietnam',MEX:'Mexico',BRA:'Brazil',PRT:'Portugal',ESP:'Spain',MLT:'Malta',FIN:'Finland',NOR:'Norway',KIR:'Kiribati',TUV:'Tuvalu',UAE:'United Arab Emirates'},
+    city:{HER:'Heraklion',MIA:'Miami',HNL:'Honolulu',SJU:'San Juan',GOA:'Panaji',CUN:'Cancún',BLR:'Bengaluru'},
+  }
+};
+let L = S.he;
+const icon = (id, cls='ic16', extra='') => `<svg class="${cls} ${extra}" aria-hidden="true"><use href="#${id}"/></svg>`;
+const iso = (s) => `<span class="iso">${s}</span>`;
+const deg = (n) => iso((n<0?'−'+(-n):n)+'°');
+const phone = (inner, cap, plain=false) => `<div class="frame"><p class="cap">${cap}</p><div class="phone${plain?' plain':''}">${inner}</div></div>`;
+
+/* ---------- schematic globe ----------
+   Shapes are not geography: they demonstrate colours, order and dimming. */
+const LANDS = [
+  {id:'A', d:'M120 330 q40 -40 90 -20 q30 20 10 60 q-30 40 -80 30 q-40 -20 -20 -70z'},
+  {id:'B', d:'M215 300 q50 -20 80 10 q20 40 -20 60 q-40 10 -60 -20 q-10 -30 0 -50z'},
+  {id:'C', d:'M180 420 q50 -10 70 30 q10 60 -40 90 q-50 10 -60 -50 q-5 -50 30 -70z'},
+  {id:'D', d:'M270 400 q40 0 50 40 q0 40 -40 50 q-30 0 -30 -40 q0 -40 20 -50z'},
+  {id:'E', d:'M95 440 q30 -10 50 20 q10 40 -20 60 q-30 0 -40 -30 q-5 -30 10 -50z'},
+  {id:'F', d:'M150 250 q60 -30 120 -10 q20 20 -10 40 q-60 20 -110 0 q-20 -15 0 -30z'},
+];
+const SMALL = [{id:'s1', x:250, y:380}, {id:'s2', x:160, y:400}];
+function globeSvg({match=[], dimOn=false, selected=null, trips=[], smallMatch=[], offline=false, pin=null, desert=false, cityZoom=false}={}){
+  const ocean = offline ? '#0A1A3C' : '#0D3A70';
+  const landFill = offline ? '#1F3A68' : (desert ? '#D9BE90' : '#3b5a3a');
+  const lands = LANDS.map(l => {
+    const isSel = l.id===selected, isM = match.includes(l.id) && !isSel, isT = trips.includes(l.id) && !dimOn && !isSel;
+    let g = `<path d="${l.d}" fill="${landFill}" stroke="rgba(243,246,252,0.42)" stroke-width="0.8"/>`;
+    if (isT) g += `<path d="${l.d}" fill="#4FCFBE" fill-opacity="0.22" stroke="#03060F" stroke-opacity="0.7" stroke-width="3.6"/><path d="${l.d}" fill="none" stroke="#4FCFBE" stroke-width="1.2"/>`;
+    if (dimOn && !isM && !isSel) g += `<path d="${l.d}" fill="#03060F" fill-opacity="0.55"/>`;
+    if (isM) g += `<path d="${l.d}" fill="#B896F5" fill-opacity="0.35" stroke="#03060F" stroke-opacity="0.7" stroke-width="3.6"/><path d="${l.d}" fill="none" stroke="#B896F5" stroke-width="1.4"/>`;
+    if (isSel) g += `<path d="${l.d}" fill="#FF7A57" fill-opacity="0.3" stroke="#FF7A57" stroke-width="8" stroke-opacity="0.35"/><path d="${l.d}" fill="none" stroke="#03060F" stroke-opacity="0.6" stroke-width="3"/><path d="${l.d}" fill="none" stroke="#F3F6FC" stroke-width="1.6"/>`;
+    return g;
+  }).join('');
+  const rings = SMALL.map(s => smallMatch.includes(s.id)
+    ? `<circle cx="${s.x}" cy="${s.y}" r="7" fill="none" stroke="#03060F" stroke-opacity="0.6" stroke-width="4"/><circle cx="${s.x}" cy="${s.y}" r="7" fill="none" stroke="#B896F5" stroke-width="2"/>` : '').join('');
+  const pinG = pin ? `<circle cx="${pin[0]}" cy="${pin[1]}" r="6" fill="none" stroke="#03060F" stroke-opacity="0.6" stroke-width="8"/><circle cx="${pin[0]}" cy="${pin[1]}" r="6" fill="#F3F6FC" stroke="#FF7A57" stroke-width="3"/>` : '';
+  const sphere = cityZoom
+    ? `<rect width="411" height="860" fill="${ocean}"/>`
+    : `<rect width="411" height="860" fill="#03060F"/><circle cx="205" cy="390" r="200" fill="#2F7BE0" opacity=".35"/><circle cx="205" cy="390" r="190" fill="${ocean}"/>`;
+  return `<svg class="globeSvg" viewBox="0 0 411 860" aria-hidden="true">${sphere}
+    <clipPath id="clip${Math.random().toString(36).slice(2,7)}"><circle cx="205" cy="390" r="190"/></clipPath>
+    <g>${lands}${rings}${pinG}</g></svg>`;
+}
+
+/* ---------- chrome, chips, refine ---------- */
+const chromeRow = () => `<span class="chromeBtn" style="inset-inline-start:12px">${icon('search','ic24')}</span>
+  <span class="chromeBtn" style="inset-inline-end:12px">${icon('person','ic24')}</span>`;
+function gchip(label, ic, state){ // state: off | on | dis
+  const lead = state==='on' ? icon('check') : state==='dis' ? icon('cloud') : icon(ic);
+  return `<span class="gchip ${state==='on'?'on':state==='dis'?'off-dis':''}" role="button" aria-pressed="${state==='on'}">${lead}${label}</span>`;
+}
+function chips({family='off', weather='off', near='off', top=108}={}){
+  return `<div class="chipRow" style="top:${top}px" role="toolbar" aria-label="${L.chips}">
+    ${gchip(L.family,'people',family)}${gchip(L.weather,'sun',weather)}${gchip(L.near,'plane',near)}</div>`;
+}
+function refine({month=11, type=null, showTypes=false, top=156}={}){
+  const t = (k)=> `<span class="gchip ${type===k?'on':''}">${type===k?icon('check'):''}${L[k]}</span>`;
+  return `<div class="chipRow" style="top:${top}px">
+    <span class="gchip">${icon('cal')}${L.m[month]}${icon('down')}</span>
+    ${showTypes ? t('hot')+t('pleasant')+t('cool')+t('winter') : ''}</div>`;
+}
+
+/* ---------- panel ---------- */
+function drow({c, reasons, cities, hrs}){
+  return `<div class="drow" role="button"><span class="swatch sw"></span>
+    <div class="txt"><p class="bodyS">${L.c[c]}</p><p class="foot t2">${reasons.join(' · ')}</p>${cities?`<p class="foot t2">${L.cities(cities)}</p>`:''}</div>
+    <p class="callout hrs">${L.h(hrs)}</p></div>`;
+}
+function panel({count, rows='', extra='', height=420, collapsed=false, swatch=true, title=null, footer=true}){
+  const head = `<div class="handle" role="button" aria-label="handle"></div>
+    <div class="dhead"><div class="between"><div class="hstack">${swatch?'<span class="swatch"></span>':''}<p class="title3" role="heading">${title ?? L.count(count)}</p></div><span class="btnText">${L.clear}</span></div>${extra}</div>`;
+  if (collapsed) return `<div class="dpanel" style="height:${72+24}px">${head}</div>`;
+  return `<div class="dpanel" style="height:${height}px">${head}<div style="overflow:hidden;flex:1">${rows}${footer?`<div class="disc"><p class="foot t2">${L.disclaimer}</p></div>`:''}</div></div>`;
+}
+
+function screens(){
+  const out = [];
+  const M = L.m;
+
+  // 1. idle globe with chips
+  out.push(phone(`${globeSvg({trips:['B']})}${chromeRow()}${chips()}
+    <span class="dim" style="top:100px;inset-inline-start:16px">chips: insets.top + 108 · h40 + hitSlop 4 = 48</span>
+    <span class="dim" style="top:160px;inset-inline-start:16px">toast/banner → insets.top + 164 (212 with 2nd row)</span>
+    <span class="dim" style="top:60px;left:150px">chrome row: insets.top + 52</span>`,
+    '1 · הגלובוס במנוחה: שלושה צ\'יפים מתחת לשורת ה-chrome, גוללים אופקית (השלישי נחתך בקצה בכוונה). הנסיעות בטורקיז כרגיל.'));
+
+  // 2. family + December
+  out.push(phone(`${globeSvg({match:['A','B','E'], dimOn:true, trips:['B'], smallMatch:['s1']})}${chromeRow()}
+    ${chips({family:'on'})}${refine({month:11})}
+    ${panel({count:9, height:430, rows:
+      drow({c:'CYP', reasons:[L.level(1), L.allowed, L.temp(deg(15), M[11])], hrs:1}) +
+      drow({c:'GRC', reasons:[L.level(1), L.allowed, L.tempCity(L.city.HER, deg(13), M[11])], hrs:2}) +
+      drow({c:'ITA', reasons:[L.level(1), L.allowed, L.temp(deg(13), M[11])], hrs:3.5}) +
+      drow({c:'PRT', reasons:[L.level(1), L.allowed, L.temp(deg(14), M[11])], hrs:5.5})})}`,
+    '2 · "מתאים למשפחות" + דצמבר: המתאימות בסגול, השאר מעומעמות (גם B, שיש בה נסיעה: הנסיעות כבויות במצב השראה). מדינה קטנה מתאימה מקבלת טבעת סגולה. ביוון ההתאמה הגיעה מעיר, ולכן "הרקליון 13°".'));
+
+  // 3. weather Dec hot, big country with cities
+  out.push(phone(`${globeSvg({match:['C','D'], dimOn:true})}${chromeRow()}
+    ${chips({weather:'on'})}${refine({month:11, type:'hot', showTypes:true})}
+    ${panel({count:14, height:440, rows:
+      drow({c:'IND', reasons:[L.tempCity(L.city.GOA, deg(28), M[11]), L.rain(0), L.coast], cities:`${L.city.GOA}, ${L.city.BLR}`, hrs:5.5}) +
+      drow({c:'THA', reasons:[L.temp(deg(27), M[11]), L.rain(2), L.coast], hrs:9}) +
+      drow({c:'VNM', reasons:[L.temp(deg(26), M[11]), L.rain(6), L.coast], hrs:9.5}) +
+      drow({c:'USA', reasons:[L.tempCity(L.city.HNL, deg(24), M[11]), L.rain(8), L.coast], cities:`${L.city.HNL}, ${L.city.SJU}`, hrs:12})})}`,
+    '3 · "דצמבר" + "חם ושמשי, לים": שורת הסוגים מופיעה רק עם צ\'יפ מזג האוויר. מדינה גדולה שנקודת האקלים שלה לא מתאימה: הטמפרטורה של העיר הראשונה עם שמה, ושורת "ערים" (עד 3, ‏100 אלף ומעלה). ימי גשם וחוף רק עם "חם" / "נעים".'));
+
+  // 4. month sheet
+  const cells = M.map((m,i)=> `<span class="mcell ${i===10?'on':''}" role="radio" aria-checked="${i===10}">${i===10?icon('check'):''}${m}</span>`).join('');
+  out.push(phone(`${globeSvg({match:['A','B'], dimOn:true})}${chromeRow()}${chips({family:'on'})}${refine({month:10})}
+    <div class="scrim"></div>
+    <div class="sheet" role="dialog"><div class="handle"></div><span class="x">${icon('close','ic20')}</span>
+      <p class="title2" role="heading">${L.monthTitle}</p><p class="foot t2">${L.monthSub}</p>
+      <div class="monthGrid" role="radiogroup">${cells}</div></div>`,
+    '4 · בורר החודש: אחד לכל הצ\'יפים, ברירת המחדל היא החודש הבא (נובמבר). רשת 3×4 (שתי עמודות ב-200%), בלי שנה. הקשה בוחרת וסוגרת.'));
+
+  // 5. near + collapsed panel
+  out.push(phone(`${globeSvg({match:['A','B','F'], dimOn:true, smallMatch:['s1','s2']})}${chromeRow()}${chips({near:'on'})}
+    ${panel({count:23, collapsed:true})}
+    <span class="dim" style="bottom:100px;left:16px">collapsed: peek 72 + insets.bottom · camera paddingBottom follows</span>`,
+    '5 · "קרוב לישראל" לבד: אין שורה שנייה (אין חודש). הפאנל מוקטן לכותרת, והגלובוס מתמרכז בשטח הגלוי. הקשה על הידית או על הכותרת פותחת.'));
+
+  // 6. empty
+  out.push(phone(`${globeSvg({})}${chromeRow()}${chips({family:'on', weather:'on', near:'on'})}${refine({month:6, type:'winter', showTypes:true})}
+    ${panel({swatch:false, title:L.none, height:420, extra:`<p class="foot t2" style="margin-top:4px">${L.winterNote}</p>`, rows:
+      `<div style="padding:12px 16px" class="vstack"><p class="body t2">${L.emptyHint}</p>
+        <span class="stateLabelDark">[proposal] remove one condition</span>
+        <span class="btn b-secondary">${L.without(L.near, 6)}</span>
+        <span class="btn b-secondary">${L.without(L.family, 4)}</span></div>`})}`,
+    '6 · אין תוצאות: הכותרת והמשפט חובה. הגלובוס לא מתעמעם (גלובוס כולו כהה נראה כמו תקלה). [הצעה] כפתור "בלי X" לכל תנאי, עם מספר המדינות שיתקבלו. מתחת לכותרת: שורת השלג של "חורף ושלג".'));
+
+  // 7. card from list: why it matches + not matching
+  out.push(phone(`${globeSvg({match:['C','D'], dimOn:true, selected:'C'})}
+    <div class="card" style="bottom:auto;top:300px">
+      <div class="strip"></div><p class="capt t2">${L.destination}</p><p class="title1">${L.c.THA}</p><p class="callout t2 iso" style="text-align:start">Thailand</p>
+      <p class="capt t2" role="heading" style="margin-top:4px">${L.whyTitle}</p>
+      <div class="why"><span class="wchip">${L.level(1)}</span><span class="wchip">${L.allowed}</span><span class="wchip">${L.temp(deg(27), M[11])}</span><span class="wchip">${L.rain(2)}</span><span class="wchip">${L.coast}</span><span class="wchip">${L.h(9)}</span></div>
+      <p class="foot t3">… CardSafety · time · currency · temperature …</p>
+      <span class="stateLabelDark">a country with no climate value (weather chip on)</span>
+      <p class="capt t2" role="heading">${L.notTitle}</p><p class="callout t2">${L.noClimate}</p>
+    </div>`,
+    '7 · כרטיס מתוך הרשימה: "למה מתאים" אחרי השם באנגלית, לפני מצב הכניסה. צ\'יפים ניטרליים (לא ירוקים: "רמה 2" בירוק היה נקרא "בטוח"). הצ\'יפים והפאנל מוסתרים כשהכרטיס פתוח. למטה: מדינה בלי ערך אקלים מציגה את הסיבה.'));
+
+  // 8. city fly-to: Miami
+  out.push(phone(`${globeSvg({selected:'C', pin:[205,470], cityZoom:true})}
+    <span class="dim" style="top:440px;left:220px">city pin · zoom 5.5</span>
+    <div class="card" style="top:560px;bottom:auto">
+      <div class="strip"></div><p class="capt t2">${L.destination}</p><p class="title2">${L.c.USA}</p>
+      <div class="between"><div><p class="capt t2">${L.dailyAvg(M[9])}</p><p class="numMd">${deg(28)}</p><p class="capt t2" style="font-weight:400">${L.city.MIA}</p></div></div>
+    </div>`,
+    '8 · "מיאמי" מהחיפוש: המצלמה עפה לעיר (לא לנקודת התווית של ארה"ב), בזום עיר קבוע. פין זמני: עיגול לבן עם קו כתום. בכרטיס: הטמפרטורה של מיאמי עם שמה. הפין נעלם ב"נקה", בחיפוש חדש ובסגירת הכרטיס. בלי רשת: רק הגבולות והפין.'));
+
+  // 9. offline
+  out.push(phone(`${globeSvg({match:['A','B'], dimOn:true, offline:true})}${chromeRow()}${chips({family:'on'})}${refine({month:11})}
+    ${panel({count:9, height:300, extra:`<div class="hstack t2" style="margin-top:4px">${icon('cloud')}<p class="foot">${L.asOf(iso('12.10.2026'))}</p></div>`, rows:
+      drow({c:'CYP', reasons:[L.level(1), L.allowed, L.temp(deg(15), M[11])], hrs:1})})}
+    <span class="stateLabel" style="position:absolute;top:220px;inset-inline-start:16px">no advisories copy at all:</span>
+    ${chips({family:'dis', top:240})}
+    <div class="toast" style="top:296px">${L.familyUnavailable}</div>`,
+    '9 · בלי רשת: עם עותק, "משפחות" עובד ומציג את תאריך העדכון (ה-fetchedAt החדש ביותר). בלי עותק בכלל (באמצע, להמחשה): הצ\'יפ מושבת עם ענן, והקשה מציגה הסבר. מזג אוויר ומרחק תמיד עובדים, ו"אסורה" נשמרת מהרשימה הארוזה. בלי לוויין: יבשה כחולה.'));
+
+  // 10. weather w/o type, loading, error
+  out.push(phone(`${globeSvg({})}${chromeRow()}${chips({weather:'on'})}${refine({month:11, showTypes:true})}
+    ${panel({swatch:false, title:L.chooseType, height:470, footer:false, rows:
+      `<div style="padding:4px 16px 12px"><p class="body t2">${L.chooseTypeBody}</p></div>
+       <div style="border-top:1px solid var(--bSub);padding:0 16px"><span class="stateLabelDark">loading (after 150ms): header "${L.loading}"</span></div>
+       <div class="skel"></div><div class="skel"></div>
+       <div style="padding:0 16px"><span class="stateLabelDark">climate file failed</span>
+       <p class="bodyS">${L.climateErr}</p><span class="btnText" style="margin-inline-start:-12px;color:var(--link)">${L.retry}</span></div>`})}`,
+    '10 · "לפי חודש ומזג אוויר" בלי סוג: לא מסנן כלום (רז), ולכן אין צביעה, והפאנל מבקש לבחור סוג. למטה: שלד טעינה ושגיאת קובץ האקלים.'));
+
+  // 11. search open with chips
+  out.push(phone(`${globeSvg({})}<div class="scrim" style="top:108px;background:rgba(3,6,15,0.40)"></div>
+    <div class="searchField">${icon('back','ic24')}<span class="body t3" style="flex:1">${L.searchPh}</span></div>
+    ${chips({})}
+    <span class="dim" style="top:170px;left:16px">query empty: chips stay · typing: chips hide, results take this place</span>`,
+    '11 · החיפוש פתוח והשדה ריק: הצ\'יפים נשארים מתחת לשדה. ברגע שמקלידים הם נעלמים, ורשימת התוצאות של החיפוש תופסת את מקומם. הקשה על צ\'יפ סוגרת את החיפוש.'));
+
+  // 12. colour sheet
+  const sw = (bg, label, sub) => `<tr><td style="width:56px"><svg width="48" height="28"><rect width="48" height="28" fill="${bg}"/><rect x="8" y="6" width="32" height="16" fill="#B896F5" fill-opacity=".35" stroke="#03060F" stroke-opacity=".7" stroke-width="3.6"/><rect x="8" y="6" width="32" height="16" fill="none" stroke="#B896F5" stroke-width="1.4"/></svg></td><td>${label}</td><td class="iso">${sub}</td></tr>`;
+  out.push(phone(`<div style="position:absolute;inset:0 0 430px 0">${globeSvg({match:['A','D'], dimOn:true, selected:'B', smallMatch:['s1']})}</div>
+    <div class="legend" style="position:absolute;inset:430px 0 0 0;overflow:auto">
+      <p class="title3">Globe layers</p>
+      <table>
+        <tr><td><svg width="48" height="16"><rect width="48" height="16" fill="#FF7A57" fill-opacity=".3" stroke="#F3F6FC" stroke-width="1.6"/></svg></td><td>Selection</td><td class="iso">#FF7A57 + white outline</td></tr>
+        <tr><td><svg width="48" height="16"><rect width="48" height="16" fill="#4FCFBE" fill-opacity=".22" stroke="#4FCFBE" stroke-width="1.2"/></svg></td><td>My trips (off in discovery)</td><td class="iso">#4FCFBE · 1.13:1 vs violet</td></tr>
+        <tr><td><svg width="48" height="16"><rect width="48" height="16" fill="#B896F5" fill-opacity=".35" stroke="#B896F5" stroke-width="1.4"/></svg></td><td>Discovery</td><td class="iso">#B896F5 = region.urban (dark)</td></tr>
+        <tr><td><svg width="48" height="16"><rect width="48" height="16" fill="#3b5a3a"/><rect width="48" height="16" fill="#03060F" fill-opacity=".55"/></svg></td><td>Dim</td><td class="iso">#03060F · 0.55</td></tr>
+        ${sw('#0D3A70','on ocean','4.70:1')}
+        ${sw('#D9BE90','on desert (underlay carries it)','~6.4:1 underlay')}
+        ${sw('#1F3A68','offline, no satellite','4.72:1')}
+        ${sw('#E8EEF5','on ice','underlay')}
+      </table>
+      <p class="foot t2" style="margin-top:8px">Order: trips &lt; dim &lt; discovery &lt; rings &lt; selection &lt; city pin &lt; next-trip pin</p>
+    </div>`,
+    '12 · דף צבעים: בחירה (כתום עם קו לבן), נסיעות (טורקיז, כבויות במצב השראה) והשראה (סגול). הסגול עם בסיס כהה על אוקיינוס, מדבר, קרח ובלי לוויין. למעלה: מדינה נבחרת (B) בתוך מצב השראה, עם הבחירה מעל הכול.', true));
+
+  document.getElementById('screens').innerHTML = out.join('');
+}
+
+function apply(){
+  const lang = document.getElementById('lang').value;
+  L = S[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+  document.body.classList.toggle('dark', document.getElementById('dark').checked);
+  const fs = document.getElementById('fs').value;
+  document.documentElement.style.setProperty('--fs', fs);
+  document.body.classList.toggle('big', Number(fs) > 1.5);
+  screens();
+}
+['dark','fs','lang'].forEach(id => document.getElementById(id).addEventListener('change', apply));
+apply();
+</script>
+</body>
+</html>
