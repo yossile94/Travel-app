@@ -10,6 +10,8 @@
  *     months before the expiry; a moment already past is not scheduled.
  *
  * Never asks for permission: without it nothing is scheduled (AC-12).
+ * The trips checked are the provider's upcoming list: up to 50 (CACHE_UPCOMING_MAX),
+ * enough in practice; a 51st trip waits for one of these to end (Raz review).
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';

@@ -84,7 +84,12 @@ async function holders(): Promise<readonly Holder[]> {
 /** The trips provider's upcoming trips, after each load (TripsProvider). */
 export function passportTripsLoaded(next: readonly AlertTrip[]): Promise<void> {
   trips = next;
-  return queue(async () => check(await holders()));
+  // The 9/6/3 reminders too: a permission granted later, or a new language (Raz review, important 5).
+  return queue(async () => {
+    const list = await holders();
+    await check(list);
+    await syncExpiryReminders(list, texts());
+  });
 }
 
 let unsubscribe: (() => void) | null = null;

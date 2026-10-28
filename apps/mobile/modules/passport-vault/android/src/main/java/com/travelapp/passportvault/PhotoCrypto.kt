@@ -2,6 +2,7 @@ package com.travelapp.passportvault
 
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import java.nio.ByteBuffer
 import java.security.KeyFactory
@@ -41,6 +42,21 @@ object PhotoCrypto {
   private val oaep = OAEPParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT)
 
   private fun keyStore(): KeyStore = KeyStore.getInstance(KEYSTORE).apply { load(null) }
+
+  /**
+   * False when the pair exists but the system invalidated it (the lock screen
+   * was removed and set again). Initialising the cipher asks for no
+   * authentication; only using it does (Raz review, important 1).
+   */
+  fun keyUsable(): Boolean {
+    if (!hasKey()) return true
+    return try {
+      unwrapCipher()
+      true
+    } catch (e: KeyPermanentlyInvalidatedException) {
+      false
+    }
+  }
 
   /** The wrapping pair, made once; needs a secure lock screen to exist. */
   private fun ensureKeyPair() {

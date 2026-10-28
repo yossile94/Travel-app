@@ -45,7 +45,8 @@ export default async function AuditPage({
   const { before, after } = await searchParams;
   const cursor = (v: string | undefined) => {
     const [at, id] = (v ?? '').split('_');
-    return at && /^\d+$/.test(id ?? '') ? { at, id: Number(id) } : null;
+    const iso = /^\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})$/;
+    return at && iso.test(at) && /^\d+$/.test(id ?? '') ? { at, id: Number(id) } : null;
   };
   const older = cursor(before);
   const newer = cursor(after);

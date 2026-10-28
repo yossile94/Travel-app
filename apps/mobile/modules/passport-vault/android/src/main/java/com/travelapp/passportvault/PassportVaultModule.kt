@@ -126,8 +126,43 @@ class PassportVaultModule : Module() {
     }
   }
 
+  /** Every photo and the key: what can no longer be opened goes, nothing else. */
+  private fun dropAllPhotos(): Boolean {
+    val had = dir().listFiles()?.isNotEmpty() == true
+    dir().listFiles()?.forEach { it.delete() }
+    PhotoCrypto.deleteKey()
+    return had
+  }
+
+  /** The camera's and the picker's copies in the cache (AC-2): never kept past a session. */
+  private fun clearCaptures() {
+    for (name in listOf("Camera", "ImagePicker")) {
+      File(context.cacheDir, name).listFiles()?.forEach { it.deleteRecursively() }
+    }
+  }
+
   override fun definition() = ModuleDefinition {
     Name("PassportVault")
+
+    /**
+     * Raz review, important 1-2: run when the wallet opens. No lock: the photos
+     * and key go. A key the system invalidated: the photos it wrapped go and a
+     * fresh pair is made on the next save. "reset" tells JS to update its records.
+     */
+    AsyncFunction("reconcile") {
+      val secure = isDeviceSecure()
+      val reset = when {
+        !secure -> dropAllPhotos()
+        !PhotoCrypto.keyUsable() -> dropAllPhotos()
+        else -> false
+      }
+      mapOf("secure" to secure, "reset" to reset)
+    }
+
+    AsyncFunction("clearCaptures") {
+      clearCaptures()
+      Unit
+    }
 
     AsyncFunction("isDeviceSecure") { isDeviceSecure() }
 
@@ -155,6 +190,8 @@ class PassportVaultModule : Module() {
         val source = cacheFile(uri) ?: throw IllegalArgumentException("not a cache file")
         try {
           if (!isDeviceSecure()) throw IllegalStateException("noLock")
+          // A pair the system invalidated would wrap photos no one can open.
+          if (!PhotoCrypto.keyUsable()) dropAllPhotos()
           val sealed = PhotoCrypto.encrypt(shrink(source))
           val target = photoFile(holderId)
           val tmp = File(target.parentFile, "${target.name}.tmp")
@@ -198,7 +235,12 @@ class PassportVaultModule : Module() {
       val unlocked = authenticate(cipher, prompt).getOrElse {
         return@Coroutine mapOf("ok" to false, "error" to (it.message ?: "failed"))
       }
-      val jpeg = withContext(Dispatchers.IO) { PhotoCrypto.decrypt(file.readBytes(), unlocked) }
+      // A damaged file or a tag that doesn't match is a failure the screen can say (Raz, important 6).
+      val jpeg = try {
+        withContext(Dispatchers.IO) { PhotoCrypto.decrypt(file.readBytes(), unlocked) }
+      } catch (e: Exception) {
+        return@Coroutine mapOf("ok" to false, "error" to "failed")
+      }
       mapOf("ok" to true, "base64" to Base64.encodeToString(jpeg, Base64.NO_WRAP))
     }
 

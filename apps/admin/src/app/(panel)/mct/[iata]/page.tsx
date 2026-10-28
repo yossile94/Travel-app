@@ -55,6 +55,7 @@ export default async function MctEditPage({ params }: { params: Promise<{ iata: 
           rejected: t('serverRejected'),
           denied: t('denied'),
           exists: t('mct.err.exists'),
+          notFound: t('mct.notFound'),
           summaryOne: t('errorSummary.one'),
           summaryMany: t('errorSummary.many'),
           errIata: t('mct.err.iata'),

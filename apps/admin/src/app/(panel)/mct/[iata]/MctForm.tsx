@@ -24,6 +24,7 @@ type Text = Record<
   | 'rejected'
   | 'denied'
   | 'exists'
+  | 'notFound'
   | 'summaryOne'
   | 'summaryMany'
   | 'errIata'
@@ -82,11 +83,13 @@ export function MctForm({ isNew, initial, text }: { isNew: boolean; initial: For
         ? text.rejected
         : result.error === 'exists'
           ? text.exists
-          : result.error === 'denied'
-            ? text.denied
-            : result.error === 'rejected'
-              ? text.rejected
-              : text.saveError,
+          : result.error === 'notFound'
+            ? text.notFound
+            : result.error === 'denied'
+              ? text.denied
+              : result.error === 'rejected'
+                ? text.rejected
+                : text.saveError,
     );
     summary.current?.focus();
   };

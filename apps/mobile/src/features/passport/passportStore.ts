@@ -86,6 +86,8 @@ function changed(holders: Holder[]) {
 /** Saves one holder (new or not); the index follows. */
 export async function saveHolder(h: Holder): Promise<void> {
   if (!safeHolderId(h.id)) throw new Error('bad id');
+  // A save before the first read would publish a partial list (Raz review).
+  if (state.status !== 'ready') await loadPassports();
   const stored = {
     name: h.isMe ? '' : h.name.trim(),
     expiry: h.expiry,
@@ -110,6 +112,32 @@ export async function deleteHolder(id: string): Promise<void> {
   const ids = await readIndex();
   await SecureStore.setItemAsync(INDEX, JSON.stringify(ids.filter((x) => x !== id)));
   changed(state.holders.filter((x) => x.id !== id));
+}
+
+/**
+ * Design 5, 11 (D5; Raz review, important 1-2): when the wallet opens. With no
+ * screen lock the photos, their key and the 4 digits go; with a key the system
+ * invalidated, the photos go. Every holder's record follows. "dropped" asks
+ * the screen for its one-time explanation.
+ */
+export async function reconcileVault(
+  /** The vault already dropped the photos (opening one found the key gone). */
+  alreadyDropped = false,
+): Promise<'none' | 'noLock' | 'invalidated'> {
+  if (state.status !== 'ready') await loadPassports();
+  if (state.status !== 'ready') return 'none';
+  const { secure, reset: dropped } = await vault
+    .reconcile()
+    .catch(() => ({ secure: true, reset: false }));
+  const reset = dropped || alreadyDropped;
+  // Lock in place and the key usable: nothing changed.
+  if (secure && !reset) return 'none';
+  const stale = state.holders.filter((h) => h.hasPhoto || (!secure && h.last4));
+  if (!stale.length && !reset) return 'none';
+  for (const h of stale) {
+    await saveHolder({ ...h, hasPhoto: false, last4: secure ? h.last4 : null });
+  }
+  return secure ? 'invalidated' : 'noLock';
 }
 
 /** Sign-out and account deletion (AC-6, design 2.1): everything, then the keys. */

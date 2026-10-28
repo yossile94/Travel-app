@@ -39,6 +39,15 @@ describe('passport isolation (D8)', () => {
     );
   }, 60_000);
 
+  it('refuses globalThis.fetch and axios too (Raz review)', async () => {
+    expect(
+      await lint("export const y = () => globalThis.fetch('https://example.test');\n"),
+    ).toContain('no-restricted-properties');
+    expect(await lint("import axios from 'axios';\nexport const z = axios;\n")).toContain(
+      'no-restricted-imports',
+    );
+  }, 60_000);
+
   it('lets a plain file through', async () => {
     expect(await lint('export const x = 1;\n')).toEqual([]);
   }, 60_000);

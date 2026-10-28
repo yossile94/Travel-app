@@ -26,6 +26,7 @@ export type SaveResult =
         | 'rejected'
         | 'failed'
         | 'exists'
+        | 'notFound'
         | 'noUser'
         | 'has'
         | 'lastAdmin'
@@ -80,7 +81,15 @@ export async function saveMctAction(form: MctForm, isNew: boolean): Promise<Save
       .eq('iata', row.iata)
       .select('iata');
     if (error) return fromCode(error.code);
-    if (!data?.length) return { ok: false, error: 'denied' };
+    if (!data?.length) {
+      // No row back: the airport isn't there, or RLS hid it from this person.
+      const { data: seen } = await supabase
+        .from('min_connection_times')
+        .select('iata')
+        .eq('iata', row.iata)
+        .maybeSingle();
+      return { ok: false, error: seen ? 'denied' : 'notFound' };
+    }
   }
   revalidatePath('/mct');
   return { ok: true };
@@ -108,6 +117,9 @@ export async function grantRoleAction(email: string, role: Role): Promise<SaveRe
 
 export async function revokeRoleAction(userId: string, role: Role): Promise<SaveResult> {
   const access = await requireAccess('admin');
+  if (!/^[0-9a-f-]{36}$/i.test(userId) || !(ROLES as readonly string[]).includes(role)) {
+    return { ok: false, error: 'rejected' };
+  }
   if (userId === access.userId) return { ok: false, error: 'self' };
   const supabase = await serverClient();
   const { error } = await supabase.rpc('admin_revoke_role', { p_user: userId, p_role: role });

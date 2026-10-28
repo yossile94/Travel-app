@@ -15,6 +15,13 @@ export type OpenError = 'cancelled' | 'failed' | 'invalidated' | 'missing' | 'no
 
 interface NativeVault {
   isDeviceSecure(): Promise<boolean>;
+  /**
+   * Raz review (important 1-2): no lock, or a key the system invalidated,
+   * drops every photo and the key; reset says some were dropped.
+   */
+  reconcile(): Promise<{ secure: boolean; reset: boolean }>;
+  /** AC-2: the camera's and the picker's cache copies, left by a crash or a kill. */
+  clearCaptures(): Promise<void>;
   /** On-device text recognition of a picked or captured image (D7). */
   recognize(uri: string): Promise<string>;
   /** Shrinks, encrypts and stores the photo, then deletes the source file (AC-2). */
@@ -38,6 +45,8 @@ const missing = () => Promise.reject(new Error('PassportVault is not in this bui
 /** The vault, or a stand-in that refuses everything when the module isn't built in. */
 export const vault: NativeVault = native ?? {
   isDeviceSecure: () => Promise.resolve(false),
+  reconcile: () => Promise.resolve({ secure: false, reset: false }),
+  clearCaptures: () => Promise.resolve(),
   recognize: missing,
   savePhoto: missing,
   discard: () => Promise.resolve(),

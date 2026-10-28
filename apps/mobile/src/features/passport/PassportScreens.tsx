@@ -50,7 +50,14 @@ import {
   type Holder,
   type HolderError,
 } from './passportModel';
-import { deleteHolder, loadPassports, saveHolder, usePassports } from './passportStore';
+import {
+  deleteHolder,
+  loadPassports,
+  passportsSnapshot,
+  reconcileVault,
+  saveHolder,
+  usePassports,
+} from './passportStore';
 import { isolateLtr, isolateOwn, numDate, spaced } from './passportText';
 import { PhotoViewer } from './PhotoViewer';
 import { vault } from './vault';
@@ -186,6 +193,21 @@ export function PassportsScreen({
   const p = colors[base.colorScheme];
   const { status, holders } = usePassports();
   const [open, setOpen] = useState<OpenPassport | null>(initialOpen ?? null);
+  const [dropped, setDropped] = useState<'noLock' | 'invalidated' | null>(null);
+
+  // Raz review (important 1-2): a lock removed, or a key the system dropped,
+  // is noticed here, without opening a photo; the explanation shows once.
+  useEffect(() => {
+    let alive = true;
+    const check = () =>
+      void reconcileVault().then((kind) => alive && kind !== 'none' && setDropped(kind));
+    check();
+    const sub = AppState.addEventListener('change', (s) => s === 'active' && check());
+    return () => {
+      alive = false;
+      sub.remove();
+    };
+  }, []);
   const [showAll, setShowAll] = useState(false);
 
   const me = holders.find((h) => h.isMe) ?? null;
@@ -342,6 +364,30 @@ export function PassportsScreen({
           </>
         )}
       </Shell>
+      <BottomSheet
+        visible={dropped !== null && !open}
+        colorScheme={base.colorScheme}
+        reduceMotion={false}
+        insetsBottom={base.insetsBottom}
+        onClose={() => setDropped(null)}
+        testID="passport-key-invalidated"
+      >
+        <View style={styles.gap}>
+          <Text style={[styles.title2, { color: p.textPrimary }]} accessibilityRole="header">
+            {t('passport.keyGone.title')}
+          </Text>
+          <Text style={[styles.body, { color: p.textPrimary }]}>
+            {dropped === 'noLock' ? t('passport.keyGone.bodyNoLock') : t('passport.keyGone.body')}
+          </Text>
+          <Button
+            kind="text"
+            label={t('passport.keyGone.later')}
+            onPress={() => setDropped(null)}
+            colorScheme={base.colorScheme}
+            testID="passport-key-invalidated-later"
+          />
+        </View>
+      </BottomSheet>
       {open ? (
         <PassportScreen
           open={open}
@@ -526,15 +572,18 @@ export function PassportScreen({
     if (result.ok) return setViewer(result.base64);
     if (result.error === 'cancelled') return;
     if (result.error === 'invalidated' || result.error === 'missing' || result.error === 'noLock') {
-      // Design 11: the photo can't be read any more; it goes, with the digits if the lock went.
-      const next = holderNow({
-        hasPhoto: false,
-        ...(result.error === 'noLock' ? { last4: null } : {}),
-      });
-      await vault.deletePhoto(id).catch(() => {});
-      await saveHolder(next).catch(() => {});
-      setSaved(next);
-      if (result.error === 'missing') return onToast(t('passport.fileGone'));
+      // Design 11: the photo can't be read any more. A lost key or lock took every
+      // photo, so every record follows (Raz review); a missing file is this one only.
+      if (result.error === 'missing') {
+        const next = holderNow({ hasPhoto: false });
+        await saveHolder(next).catch(() => {});
+        setSaved(next);
+        return onToast(t('passport.fileGone'));
+      }
+      await reconcileVault(true).catch(() => 'none');
+      const mine = passportsSnapshot().holders.find((h) => h.id === id);
+      if (mine) setSaved(mine);
+      if (result.error === 'noLock') setValues((v) => ({ ...v, last4: '' }));
       return setKeyGone(true);
     }
     onToast(t('viewer.authFailed'));

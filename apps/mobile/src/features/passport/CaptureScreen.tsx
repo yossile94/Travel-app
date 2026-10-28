@@ -157,9 +157,11 @@ export function CaptureScreen({
     if (cameraUp) AccessibilityInfo.announceForAccessibility(t('capture.opened'));
   }, [cameraUp, t]);
 
-  const pickFromGallery = async () => {
+  const pickFromGallery = async (afterDiscard = false) => {
     const uri = await pickImage();
     if (uri) setPhase({ kind: 'reading', uri });
+    // The previous photo is gone already: nothing left to confirm (Raz review).
+    else if (afterDiscard) finish({ kind: 'cancelled' });
   };
 
   const shoot = async () => {
@@ -179,7 +181,7 @@ export function CaptureScreen({
 
   const retake = async (uri: string) => {
     await vault.discard(uri).catch(() => {});
-    if (start.kind === 'picked') return void pickFromGallery();
+    if (start.kind === 'picked') return void pickFromGallery(true);
     setPhase(null);
   };
 

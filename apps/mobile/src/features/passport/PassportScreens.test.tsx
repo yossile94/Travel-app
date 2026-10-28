@@ -45,6 +45,8 @@ jest.mock('./vault', () => {
     SecureWindow: View,
     vault: {
       isDeviceSecure: jest.fn(async () => mockSecure.value),
+      reconcile: jest.fn(async () => ({ secure: mockSecure.value, reset: false })),
+      clearCaptures: jest.fn(async () => undefined),
       recognize: jest.fn(),
       savePhoto: jest.fn(async () => undefined),
       discard: jest.fn(async () => undefined),
@@ -190,6 +192,37 @@ describe('the screens (design 3, 4, 5)', () => {
     expect(screen.queryByTestId('passport-notice')).toBeNull();
   });
 
+  it('a lock removed later drops the photo and the 4 digits for everyone, and says so once (D5, Raz)', async () => {
+    await saveHolder({
+      id: 'me',
+      isMe: true,
+      name: '',
+      expiry: '2029-01-01',
+      last4: '1234',
+      hasPhoto: true,
+    });
+    await saveHolder({
+      id: '0f0e0d0c-0000-4000-8000-0000000000cc',
+      isMe: false,
+      name: 'Noa',
+      expiry: null,
+      last4: '9876',
+      hasPhoto: true,
+    });
+    mockSecure.value = false;
+    await render(
+      <PassportsScreen {...base} suggestions={[]} onToast={jest.fn()} onBack={jest.fn()} />,
+    );
+    await flush();
+    expect(
+      screen.getByText('הנעילה במכשיר הוסרה, ולכן הצילום ו-4 הספרות נמחקו. תאריך התפוגה נשמר.'),
+    ).toBeOnTheScreen();
+    for (const key of ['passport.h.me', 'passport.h.0f0e0d0c-0000-4000-8000-0000000000cc']) {
+      expect(JSON.parse(mockStore.get(key)!)).toMatchObject({ hasPhoto: false, last4: null });
+    }
+    expect(JSON.parse(mockStore.get('passport.h.me')!).expiry).toBe('2029-01-01');
+  });
+
   it('delete asks first, then removes (AC-6)', async () => {
     const spy = jest.spyOn(Alert, 'alert');
     await saveHolder({
@@ -238,7 +271,7 @@ describe('the screens (design 3, 4, 5)', () => {
       'me',
       expect.objectContaining({ title: 'פתיחת צילום הדרכון' }),
     );
-    expect(vault.deletePhoto).toHaveBeenCalledWith('me');
+    expect(vault.reconcile).toHaveBeenCalled();
     expect(screen.getByText('הצילום כבר לא זמין')).toBeOnTheScreen();
     expect(JSON.parse(mockStore.get('passport.h.me')!)).toMatchObject({
       hasPhoto: false,

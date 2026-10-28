@@ -26,6 +26,7 @@ const passportIsolation = {
             name: 'expo-notifications',
             message: 'Notifications live in features/passportAlerts (D8).',
           },
+          { name: 'axios', message: 'The passport module never uses the network (D8).' },
         ],
         patterns: [
           {
@@ -33,6 +34,19 @@ const passportIsolation = {
             message: 'The passport module never reaches the server (D8).',
           },
         ],
+      },
+    ],
+    'no-restricted-properties': [
+      'error',
+      {
+        object: 'globalThis',
+        property: 'fetch',
+        message: 'The passport module never uses the network (D8).',
+      },
+      {
+        object: 'window',
+        property: 'fetch',
+        message: 'The passport module never uses the network (D8).',
       },
     ],
     'no-restricted-globals': [
