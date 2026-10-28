@@ -23,6 +23,8 @@ jest.mock('./TripsProvider', () => ({ useTrips: () => mockTrips }));
 // Flights have their own tests (src/features/flights); here the row only hosts them.
 jest.mock('@/features/flights/FlightsSection', () => ({ FlightsSection: () => null }));
 jest.mock('@/features/kit/TripKitSections', () => ({ TripKitSections: () => null }));
+// Sprint 10: the passport banners have tests of their own (PassportBanners.test.tsx).
+jest.mock('@/features/kit/PassportBanners', () => ({ PassportBanners: () => null }));
 const mockList = {
   status: 'ready',
   upcoming: [] as Trip[],

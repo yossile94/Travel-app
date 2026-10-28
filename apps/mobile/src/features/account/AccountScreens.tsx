@@ -504,6 +504,8 @@ export function DeleteAccountScreen({
                 t('deleteAccount.deletedAccount'),
                 t('deleteAccount.deletedTrips'),
                 t('deleteAccount.deletedDevice'),
+                // Sprint 10 design 2.1.
+                t('deleteAccount.deletedPassports'),
               ].map(bullet)}
             </View>
             <View style={[styles.card, styles.padded, { backgroundColor: palette.surface }]}>

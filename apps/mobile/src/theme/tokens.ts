@@ -55,6 +55,9 @@ export const colors = {
     advisoryEmpty: '#7D869E',
     // Sprint 9 (design 8.2): the list dot that ties a row to the globe colour.
     discoverSwatch: '#9B6BEA',
+    // Sprint 10 (design 6.3): the red passport banner, from tokens.json status.alert.
+    alertSubtleBg: '#FFF0EF',
+    alertSubtleFg: '#A0170F',
   },
   dark: {
     surfaceRaised: '#121C36',
@@ -102,6 +105,8 @@ export const colors = {
     advisory4: '#FF5D52',
     advisoryEmpty: '#7487BD',
     discoverSwatch: '#B896F5',
+    alertSubtleBg: '#3A1414',
+    alertSubtleFg: '#FF8A80',
   },
 } as const;
 

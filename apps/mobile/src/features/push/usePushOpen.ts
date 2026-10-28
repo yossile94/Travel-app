@@ -12,6 +12,7 @@ import { useEffect, useRef } from 'react';
 import { refreshTripOf } from '@/features/flights/flightsStore';
 
 import { reminderTripOf } from '@/features/kit/insuranceReminder';
+import { passportOpenOf } from '@/features/passportAlerts/passportAlerts';
 
 import { ALERT_TYPES, flightIdOf } from './push';
 
@@ -56,6 +57,7 @@ export function usePushOpen({
   onOpen,
   onSignedOut,
   onOpenTrip,
+  onOpenPassports,
 }: {
   /** The session is settled: signed in with the trips loaded, or signed out. */
   ready: boolean;
@@ -65,11 +67,13 @@ export function usePushOpen({
   onSignedOut: () => void;
   /** Sprint 8 design 11.2: a tapped insurance reminder opens its trip. */
   onOpenTrip?: (tripId: string) => void;
+  /** Sprint 10 design 7.3: a passport reminder opens "My passports". */
+  onOpenPassports?: () => void;
 }): void {
-  const handlers = useRef({ onOpen, onSignedOut, onOpenTrip, signedIn });
+  const handlers = useRef({ onOpen, onSignedOut, onOpenTrip, onOpenPassports, signedIn });
   useEffect(() => {
-    handlers.current = { onOpen, onSignedOut, onOpenTrip, signedIn };
-  }, [onOpen, onSignedOut, onOpenTrip, signedIn]);
+    handlers.current = { onOpen, onSignedOut, onOpenTrip, onOpenPassports, signedIn };
+  }, [onOpen, onSignedOut, onOpenTrip, onOpenPassports, signedIn]);
 
   useEffect(() => {
     if (!ready) return;
@@ -91,6 +95,14 @@ export function usePushOpen({
       if (reminderTrip) {
         // Signed out or gone: the globe, no card and no message (design 11.2).
         if (handlers.current.signedIn) handlers.current.onOpenTrip?.(reminderTrip);
+        return;
+      }
+      // Sprint 10 design 7.3: a passport alert opens its trip, or the wallet; signed out: nothing.
+      const passport = passportOpenOf(response);
+      if (passport) {
+        if (!handlers.current.signedIn) return;
+        if (passport.type === 'trip') handlers.current.onOpenTrip?.(passport.tripId);
+        else handlers.current.onOpenPassports?.();
         return;
       }
       if (!flightId) {

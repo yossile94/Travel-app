@@ -352,3 +352,15 @@ export const FileIcon = pathIcon('M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 0
 export const SunIcon = pathIcon(
   'M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
 );
+
+// Sprint 10 design 33.4: objects, not mirrored in RTL.
+/** Passport: "My passports". */
+export const PassportIcon = pathIcon(
+  'M6 3h11a1 1 0 011 1v16a1 1 0 01-1 1H6zM12 8.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM9.5 17h5',
+);
+/** Camera: take the photo. */
+export const CameraIcon = pathIcon('M4 8h3l1.5-2h7L17 8h3v11H4zM12 10.5a3 3 0 100 6 3 3 0 000-6z');
+/** Picture: from the gallery. */
+export const ImageIcon = pathIcon('M4 5h16v14H4zM4 16l5-5 4 4 2-2 5 5M15.5 8.5h.01');
+/** Lock: kept encrypted, opens with authentication. */
+export const LockIcon = pathIcon('M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 017 0v3');
