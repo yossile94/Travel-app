@@ -56,7 +56,6 @@ export function waitA11y(minutes: number, t: T): string {
   return m === 0 ? hours : t('layover.a11y.join', { h: hours, m: mins });
 }
 
-/** Design 11.1: what TalkBack says for a layover, in the card, the sheet and the form. */
 /** "ב-K U L, בנגקוק" for TalkBack: the one `where` both layover rows pass to layoverLabel. */
 export function layoverWhere(
   apt: string,
@@ -71,6 +70,7 @@ export function layoverWhere(
     : t('layover.a11y.where', { apt: spellCode(apt), city: '' }).replace(/,\s*$/, '');
 }
 
+/** Design 11.1: what TalkBack says for a layover, in the card, the sheet and the form. */
 export function layoverLabel(l: Layover, where: string, nextNo: string, t: T): string {
   const chip = l.status === 'ok' || l.status === 'short' || l.status === 'risky' ? l.status : null;
   if (l.status === 'invalid') {
