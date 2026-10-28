@@ -117,7 +117,13 @@ export function hoursOf(raw) {
   const parts = String(raw ?? '')
     .split(/\s{2,}/)
     .map((p) => p.trim().replace(/^(\w{3}) - \1\b/, '$1'))
-    .filter(Boolean);
+    .filter(Boolean)
+    // A part that doesn't start with a day continues the one before ("0900  -1200").
+    .reduce((all, p) => {
+      if (all.length && DAYS.indexOf(p.slice(0, 3)) < 0) all[all.length - 1] += ` ${p}`;
+      else all.push(p);
+      return all;
+    }, []);
   if (!parts.length) return null;
   const day = (p) => DAYS.indexOf(p.slice(0, 3));
   return [...parts].sort((a, b) => day(a) - day(b)).join(' · ');
