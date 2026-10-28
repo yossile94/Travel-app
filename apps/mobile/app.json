@@ -63,9 +63,30 @@
       ],
       "expo-asset",
       "@react-native-google-signin/google-signin",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": false
+        }
+      ],
       "@react-native-community/datetimepicker",
-      "expo-sharing"
+      "expo-sharing",
+      "./plugins/withPassportBackupRules",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "כדי לצלם את עמוד הפרטים של הדרכון. הצילום נשמר רק במכשיר.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

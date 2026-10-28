@@ -1,0 +1,6 @@
+{
+  "name": "passport-vault",
+  "version": "0.11.0",
+  "private": true,
+  "description": "Sprint 10 (ADR-015): the passport photo's on-device vault — envelope encryption, BiometricPrompt, FLAG_SECURE window, bundled ML Kit OCR."
+}
