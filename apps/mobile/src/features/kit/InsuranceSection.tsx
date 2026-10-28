@@ -439,6 +439,8 @@ export function InsuranceSection({
         insetsBottom={insets.bottom}
         onClose={() => {
           setSheet(false);
+          // The decrypted viewing copy goes with the sheet too (Raz re-review 2).
+          clearViews();
           setHasFile(policyMeta(trip.id) !== null);
         }}
         maxHeight={640}

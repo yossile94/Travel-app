@@ -51,7 +51,7 @@ import { countryName } from './countryName';
 import { TripFormFlights } from '@/features/flights/TripFormFlights';
 import { useTripFlights } from '@/features/flights/flightsStore';
 import { reminderText } from '@/features/kit/InsuranceSection';
-import { syncInsuranceReminder } from '@/features/kit/insuranceReminder';
+import { cancelInsuranceReminder, syncInsuranceReminder } from '@/features/kit/insuranceReminder';
 import { hotelsOutside, type Hotel } from '@/features/kit/kitModel';
 import { kitsOf, refreshTripKit, tripKitNow } from '@/features/kit/kitStore';
 
@@ -324,7 +324,9 @@ export function TripForm({
       else {
         void kitsOf([tripId]).then((kits) => {
           const kit = kits.get(tripId);
+          // Unknown: cancel rather than leave one on the old dates (Raz re-review 1).
           if (kit) void syncInsuranceReminder(trip, kit.insurance !== null, words);
+          else void cancelInsuranceReminder(tripId);
         });
       }
       onDone({ kind: editing ? 'updated' : 'created', trip });
