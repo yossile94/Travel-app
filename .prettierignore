@@ -16,3 +16,5 @@ coverage/
 supabase/functions/deno.lock
 # Local git worktrees (each has its own generated files).
 .worktrees/
+apps/admin/src/app/tokens.css
+apps/admin/.next
