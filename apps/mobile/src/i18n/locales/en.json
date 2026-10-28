@@ -966,7 +966,8 @@
     "saved": "Insurance saved",
     "saveOffline": "You need a connection to save insurance. What you entered stays here.",
     "saveError": "We couldn't save your insurance. Try again.",
-    "exists": "Insurance was already added to this trip from another device. Close and reopen to edit it."
+    "exists": "Insurance was already added to this trip from another device. Close and reopen to edit it.",
+    "loadError": "We couldn't load your insurance details."
   },
   "policyFile": {
     "title": "Policy document",

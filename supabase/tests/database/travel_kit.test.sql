@@ -5,12 +5,13 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(40);
 
 insert into auth.users (id, email)
 values
   ('00000000-0000-4000-8000-00000000008a', 'a8@example.test'),
-  ('00000000-0000-4000-8000-00000000008b', 'b8@example.test');
+  ('00000000-0000-4000-8000-00000000008b', 'b8@example.test'),
+  ('00000000-0000-4000-8000-00000000008c', 'c8@example.test');
 
 create function pg_temp.sign_in(user_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', user_id, 'role', 'authenticated')::text, true);
@@ -176,6 +177,41 @@ select is(
   public.save_insurance('10000000-0000-4000-8000-00000000008a', '{"provider": "x"}'),
   'gone', 'another user''s trip is "gone"'
 );
+reset role;
+
+-- ---------------------------------------------------------------- Dudi's review (3)
+-- (a) No consent: no hotel and no insurance (the gate, as in save_flight).
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000008c');
+select throws_ok(
+  $$select public.save_hotel('30000000-0000-4000-8000-0000000000c1', '10000000-0000-4000-8000-00000000008a', pg_temp.hotel(1, 2))$$,
+  '42501', 'consent to the current documents is required', 'without consent, no hotel'
+);
+select throws_ok(
+  $$select public.save_insurance('10000000-0000-4000-8000-00000000008a', '{"provider": "x"}')$$,
+  '42501', 'consent to the current documents is required', 'without consent, no insurance'
+);
+reset role;
+
+-- (b) Another user reusing a hotel's id on their own trip: refused, the row untouched.
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000008b');
+select throws_ok(
+  $$select public.save_hotel('30000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-00000000008b', pg_temp.hotel(1, 2, '{"name": "Taken"}'))$$,
+  '23505', 'hotel id already in use', 'a reused hotel id is refused'
+);
+-- (c, d) Not theirs to delete or read.
+select is(public.delete_insurance('10000000-0000-4000-8000-00000000008a'), 'gone', 'another user cannot delete the insurance');
+select is((select count(*)::integer from public.insurance), 0, 'another user reads no insurance');
+reset role;
+select is((select name from public.hotels where id = '30000000-0000-4000-8000-000000000002'), 'Riva Surya', 'the owner''s hotel is unchanged');
+
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000008a');
+-- (e) A retried create with dates that leave a hotel outside is refused too.
+select throws_ok(
+  $$select public.save_trip('create', '10000000-0000-4000-8000-00000000008a', 'THA', 'תאילנד', date '2027-01-12', date '2027-01-26', null, '[]', '[]')$$,
+  '23514', 'hotels outside the trip dates', 'a retried create cannot leave a hotel outside'
+);
+select is(public.delete_insurance('10000000-0000-4000-8000-00000000008a'), 'ok', 'the owner deletes the insurance');
+select is(public.delete_insurance('10000000-0000-4000-8000-00000000008a'), 'gone', 'twice: gone');
 reset role;
 
 -- A trip's deletion takes its hotels and insurance (AC-6).

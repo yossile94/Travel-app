@@ -1,6 +1,6 @@
 import '@/i18n';
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { Flight } from '@/features/flights/flightModel';
@@ -34,8 +34,10 @@ const jpn = {
 const mockTrips = { cache: { upcoming: [tha, jpn] }, today: '2026-12-21', changes: 0 };
 jest.mock('@/features/trips/TripsProvider', () => ({ useTrips: () => mockTrips }));
 const mockFlights = new Map<string, Flight[]>();
+const mockVersion = { n: 0 };
 jest.mock('@/features/flights/flightsStore', () => ({
   flightsForTrips: jest.fn(async () => mockFlights),
+  useFlightsVersion: () => mockVersion.n,
 }));
 jest.mock('@/features/kit/kitStore', () => ({ kitsOf: jest.fn(async () => new Map()) }));
 
@@ -60,7 +62,7 @@ describe('SosScreen (AC-12 to AC-14)', () => {
   it('Thailand: local numbers with their source, the Bangkok embassy, insurance, the backup', async () => {
     await sos();
     expect(screen.getByTestId('sos-screen').props.accessibilityValue).toEqual({ text: 'THA' });
-    expect(screen.getByTestId('sos-local-police')).toBeTruthy();
+    expect(screen.getByTestId('sos-local-general')).toBeTruthy();
     expect(screen.getByTestId('sos-local-source')).toBeTruthy();
     expect(screen.getByText(/שגרירות ישראל בבנגקוק/)).toBeTruthy();
     expect(screen.getByText('לא הוספתם ביטוח לנסיעה הזו.')).toBeTruthy();
@@ -133,6 +135,33 @@ describe('the SOS button (AC-15, AC-16)', () => {
     expect(screen.getByTestId('sos-trip-jpn')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('sos-trip-tha'));
     expect(screen.getByTestId('sos-screen').props.accessibilityValue).toEqual({ text: 'THA' });
+  });
+
+  it('flights prefetched after mount move the button (Raz review 1)', async () => {
+    jest.useFakeTimers({
+      now: new Date('2026-12-21T12:00:00Z'),
+      doNotFake: ['setTimeout', 'setImmediate', 'nextTick'],
+    });
+    const view = await render(wrap(<GlobeSos visible colorScheme="light" />));
+    expect((await screen.findByTestId('sos-button')).props.accessibilityValue).toEqual({
+      text: 'JPN',
+    });
+    mockFlights.set('tha', [
+      {
+        id: 'f',
+        tripId: 'tha',
+        depDateLocal: '2026-12-21',
+        depSched: '2026-12-21T00:00:00Z',
+        arrSched: '2026-12-21T01:00:00Z',
+        watch: null,
+      } as Flight,
+    ]);
+    mockVersion.n += 1;
+    await view.rerender(wrap(<GlobeSos visible colorScheme="light" />));
+    await waitFor(() =>
+      expect(screen.getByTestId('sos-button').props.accessibilityValue).toEqual({ text: 'THA' }),
+    );
+    jest.useRealTimers();
   });
 
   it('hidden with "My trips"', async () => {

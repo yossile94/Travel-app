@@ -226,7 +226,7 @@ export function HotelsSection({
         <Text style={[styles.footnote, { color: p.textSecondary }]} testID="card-hotel-add-limit">
           {t('hotels.limit')}
         </Text>
-      ) : status !== 'loading' || sorted.length > 0 ? (
+      ) : status === 'ready' ? (
         <Button
           kind="link"
           label={t('hotels.add')}

@@ -240,8 +240,8 @@
       "addressHe": "EMBASSY 01 B.P. 1877, ABIDJAN 01",
       "addressEn": "EMBASSY 01 B.P. 1877, ABIDJAN 01",
       "hoursHe": "ב'-ה' 08:00-16:30 ו' 08:00-14:00",
-      "hoursEn": "Mon - Thu 08:00 16:30 Fri 08:00 14:00",
-      "phone": null,
+      "hoursEn": "Mon - Thu 08:00 16:30 · Fri 08:00 14:00",
+      "phone": "+2250769717644",
       "covers": ["CIV", "BFA", "BEN", "TGO"],
       "sourceUrl": "https://embassies.gov.il/abidjan"
     },
@@ -400,7 +400,7 @@
       "addressHe": "EMBASSY 2 PALACE GREEN LONDON W 8 4QB",
       "addressEn": "EMBASSY 2 PALACE GREEN LONDON W 8 4QB",
       "hoursHe": "ב'-ה' 09:30-12:30 ו' 09:30-12:00",
-      "hoursEn": "Fri - Fri 09:30 12:00 Mon - Thu 09:30 12:30",
+      "hoursEn": "Mon - Thu 09:30 12:30 · Fri 09:30 12:00",
       "phone": "+442079579500",
       "covers": ["GBR"],
       "sourceUrl": "https://embassies.gov.il/london"
@@ -455,7 +455,7 @@
     },
     {
       "id": 38,
-      "adm0": "CHN",
+      "adm0": "HKG",
       "kind": "consulate",
       "nameHe": "קונסוליה כללית הונג-קונג",
       "nameEn": "Consulate General, Hong-Kong",
@@ -466,7 +466,7 @@
       "hoursHe": "ב'-ו' 09:00-12:00",
       "hoursEn": "Mon - Fri 09:00 12:00",
       "phone": "+85228217500",
-      "covers": ["CHN"],
+      "covers": ["HKG", "MAC"],
       "sourceUrl": "https://embassies.gov.il/hong-kong"
     },
     {
@@ -544,7 +544,7 @@
       "addressHe": "EMBASSY BISHOP ROAD NAIROBI P.O. BOX 30354 NAIROBI 00100 KENYA",
       "addressEn": "EMBASSY BISHOP ROAD NAIROBI P.O. BOX 30354 NAIROBI 00100 KENYA",
       "hoursHe": "ב'-ה' 09:00-13:00 ו' 09:00-12:00",
-      "hoursEn": "Mon - Thu 09:00 13:00 Fri 09:00 12:00",
+      "hoursEn": "Mon - Thu 09:00 13:00 · Fri 09:00 12:00",
       "phone": "+254204927500",
       "covers": ["KEN", "UGA", "SYC", "MWI", "TZA"],
       "sourceUrl": "https://embassies.gov.il/nairobi"
@@ -672,7 +672,7 @@
       "addressHe": "EMBASSY CALLE: ANDRES REYES 437, SAN ISIDRO CENTRO EMPRESARIAL PLATINUM PLAZA 2 PISO 13 LIMA, PERU",
       "addressEn": "EMBASSY CALLE: ANDRES REYES 437, SAN ISIDRO CENTRO EMPRESARIAL PLATINUM PLAZA 2 PISO 13 LIMA, PERU",
       "hoursHe": "ב'-ה' 09:00-12:30 ו' 09:00-11:30",
-      "hoursEn": "Mon - Thu 09:00 12:30 Fri 09:00 11:30",
+      "hoursEn": "Mon - Thu 09:00 12:30 · Fri 09:00 11:30",
       "phone": "+5114180500",
       "covers": ["PER", "BOL"],
       "sourceUrl": "https://embassies.gov.il/lima"
@@ -768,7 +768,7 @@
       "addressHe": "EMBASSY 428 KINGS HIGHWAY PRETORA SOUTH AFRICA 0081",
       "addressEn": "EMBASSY 428 KINGS HIGHWAY PRETORA SOUTH AFRICA 0081",
       "hoursHe": "ב'-ה' 09:00-13:00 ו' 09:00-12:00",
-      "hoursEn": "Fri - Fri 09:00 12:00 Mon - Thu 09:00 13:00",
+      "hoursEn": "Mon - Thu 09:00 13:00 · Fri 09:00 12:00",
       "phone": "+27124703500",
       "covers": ["ZAF", "SWZ", "LSO", "MUS", "MDG", "NAM"],
       "sourceUrl": "https://embassies.gov.il/pretoria"
@@ -800,8 +800,8 @@
       "addressHe": "EMBASSY STRANDVAGEN 58 11523 STOCKHOLM SWEDEN",
       "addressEn": "EMBASSY STRANDVAGEN 58 11523 STOCKHOLM SWEDEN",
       "hoursHe": "ב'-ה' 09:30-12:30 ו' 11:00-12:30",
-      "hoursEn": "Mon - Thu 09:30 12:30 Fri 11:00 12:30",
-      "phone": "+4646852806500",
+      "hoursEn": "Mon - Thu 09:30 12:30 · Fri 11:00 12:30",
+      "phone": "+46852806500",
       "covers": ["SWE"],
       "sourceUrl": "https://embassies.gov.il/stockholm"
     },
@@ -848,7 +848,7 @@
       "addressHe": "EMBASSY KOC KULELERI, ESKISEHIR YOLU, A-1 BLOK 29.KAT SOGUTOZU ANKARA TURKEY",
       "addressEn": "EMBASSY KOC KULELERI, ESKISEHIR YOLU, A-1 BLOK 29.KAT SOGUTOZU ANKARA TURKEY",
       "hoursHe": "ב'-ה' 10:00-13:00 ו' 10:00-12:30",
-      "hoursEn": "Mon - Thu 10:00 13:00 Fri 10:00 12:30",
+      "hoursEn": "Mon - Thu 10:00 13:00 · Fri 10:00 12:30",
       "phone": "+903124597500",
       "covers": ["TUR"],
       "sourceUrl": "https://ankara.mfa.gov.il"
@@ -864,7 +864,7 @@
       "addressHe": "CONSULATE GENERAL BUYUKDERE CAD. YAPI KREDI PLAZA BLOCK C. KAT:7 LEVENT 80620 ISTANBUL",
       "addressEn": "CONSULATE GENERAL BUYUKDERE CAD. YAPI KREDI PLAZA BLOCK C. KAT:7 LEVENT 80620 ISTANBUL",
       "hoursHe": "ב'-ה' 10:00-13:00 ו' 10:00-12:30",
-      "hoursEn": "Mon - Thu 10:00 13:00 Fri 10:00 12:30",
+      "hoursEn": "Mon - Thu 10:00 13:00 · Fri 10:00 12:30",
       "phone": "+902123176500",
       "covers": ["TUR"],
       "sourceUrl": "https://embassies.gov.il/istanbul"
@@ -944,7 +944,7 @@
       "addressHe": "CONSULATE GENERAL 500 W. MADISON ST. CITIGROUP CENTER, SUITE 3100 CHICAGO, IL 60661 U.S.A",
       "addressEn": "CONSULATE GENERAL 500 W. MADISON ST. CITIGROUP CENTER, SUITE 3100 CHICAGO, IL 60661 U.S.A",
       "hoursHe": "ב'-ה' 09:30-12:30 ו' 09:30-12:00",
-      "hoursEn": "Mon - Thu 09:30 12:30 Fri 09:30 12:00",
+      "hoursEn": "Mon - Thu 09:30 12:30 · Fri 09:30 12:00",
       "phone": "+13123808800",
       "covers": ["USA"],
       "sourceUrl": "https://chicago.mfa.gov.il"
@@ -1232,7 +1232,7 @@
       "addressHe": "EMBASSY PARTIZANSKY PROSPEKT 6A MINSK-220033",
       "addressEn": "EMBASSY PARTIZANSKY PROSPEKT 6A MINSK-220033",
       "hoursHe": "ב'-ה' 10:00-14:00 ו' 10:00-13:00",
-      "hoursEn": "Mon - Thu 10:00 14:00 Fri 10:00 13:00",
+      "hoursEn": "Mon - Thu 10:00 14:00 · Fri 10:00 13:00",
       "phone": "+375173302500",
       "covers": ["BLR"],
       "sourceUrl": "https://embassies.gov.il/minsk"
@@ -1248,8 +1248,8 @@
       "addressHe": "No. 49 Hai Ba Trung Street Cua Nam Ward Hanoi City Vietnam",
       "addressEn": "No. 49 Hai Ba Trung Street Cua Nam Ward Hanoi City Vietnam",
       "hoursHe": "ב'-ו' 09:00-12:00 ב'-ה' 13:00-14:00",
-      "hoursEn": "Mon - Fri 09:00 12:00 Mon - Thu 13:00 14:00",
-      "phone": "+84842437187500",
+      "hoursEn": "Mon - Fri 09:00 12:00 · Mon - Thu 13:00 14:00",
+      "phone": "+842437187500",
       "covers": ["VNM", "LAO"],
       "sourceUrl": "https://embassies.gov.il/hanoi"
     },
@@ -1344,7 +1344,7 @@
       "addressHe": "EMBASSY 47 MAYSALOUN ST. RABIYA P.O.BOX 950866 AMMAN 11195 - JORDAN",
       "addressEn": "EMBASSY 47 MAYSALOUN ST. RABIYA P.O.BOX 950866 AMMAN 11195 - JORDAN",
       "hoursHe": "א'-ה' 09:00-13:00 א'-ה' 14:00-16:00",
-      "hoursEn": "Sun - Thu 09:00 13:00 Sun - Thu 14:00 16:00",
+      "hoursEn": "Sun - Thu 09:00 13:00 · Sun - Thu 14:00 16:00",
       "phone": "+96265503500",
       "covers": ["JOR"],
       "sourceUrl": "https://embassies.gov.il/jordan/en"
@@ -1376,7 +1376,7 @@
       "addressHe": "EMBASSY 3 PLACE DE LINDEPENDANCE B.P. 2096 DAKAR",
       "addressEn": "EMBASSY 3 PLACE DE LINDEPENDANCE B.P. 2096 DAKAR",
       "hoursHe": "ב'-ה' 09:00-16:00 ו' 09:00-12:30",
-      "hoursEn": "Fri - Fri 09:00 12:30 Mon - Thu 09:00 16:00",
+      "hoursEn": "Mon - Thu 09:00 16:00 · Fri 09:00 12:30",
       "phone": "+221338237965",
       "covers": ["SEN", "GNB", "GMB", "SLE", "CPV", "GIN", "TCD"],
       "sourceUrl": "https://embassies.gov.il/dakar"
@@ -1440,7 +1440,7 @@
       "addressHe": "EMBASSY 12 MARY SLESSOR, OFF UDO UDOMA STREET ASOKORO ABUJA",
       "addressEn": "EMBASSY 12 MARY SLESSOR, OFF UDO UDOMA STREET ASOKORO ABUJA",
       "hoursHe": "ב'-ה' 10:00-13:00 ו' 10:00-12:00",
-      "hoursEn": "Fri - Fri 10:00 12:00 Mon - Thu 10:00 13:00",
+      "hoursEn": "Mon - Thu 10:00 13:00 · Fri 10:00 12:00",
       "phone": "+23494605500",
       "covers": ["NGA"],
       "sourceUrl": "https://embassies.gov.il/abuja"
@@ -1488,7 +1488,7 @@
       "addressHe": "Embassy of Israel Mukhtar Auezov St.8 \"Asia business Center\" floor 11 Astana 01000 Kazakhstan",
       "addressEn": "Embassy of Israel Mukhtar Auezov St.8 \"Asia business Center\" floor 11 Astana 01000 Kazakhstan",
       "hoursHe": "ב'-ה' 10:00-13:00 ו' 09:00-12:00",
-      "hoursEn": "Fri - Fri 09:00 12:00 Mon - Thu 10:00 13:00",
+      "hoursEn": "Mon - Thu 10:00 13:00 · Fri 09:00 12:00",
       "phone": "+77172703400",
       "covers": ["KAZ", "KGZ"],
       "sourceUrl": "https://embassies.gov.il/astana"
@@ -1552,7 +1552,7 @@
       "addressHe": "CONSULATE GENERAL OF THE STATE ISRAEL BARER STR. 19 MUNICH 80333",
       "addressEn": "CONSULATE GENERAL OF THE STATE ISRAEL BARER STR. 19 MUNICH 80333",
       "hoursHe": "ב'-ה' 09:30-12:30 ו' 09:30-11:30",
-      "hoursEn": "Mon - Thu 09:30 12:30 Fri 09:30 11:30",
+      "hoursEn": "Mon - Thu 09:30 12:30 · Fri 09:30 11:30",
       "phone": "+4989543486500",
       "covers": ["DEU"],
       "sourceUrl": "https://embassies.gov.il/munchen"
@@ -1648,7 +1648,7 @@
       "addressHe": "Embassy of Israel Etihad towers office tower No 3 ABU DHABI U.A.E",
       "addressEn": "Embassy of Israel Etihad towers office tower No 3 ABU DHABI U.A.E",
       "hoursHe": "ב'-ה' 0900 -1200",
-      "hoursEn": "Mon - Thu 0900 1200",
+      "hoursEn": "1200 · Mon - Thu 0900",
       "phone": "+97122455811",
       "covers": ["ARE"],
       "sourceUrl": "https://embassies.gov.il/abu_dhab"
@@ -1799,8 +1799,8 @@
       "touristPolice": null,
       "shared": null,
       "numbersStatus": "pending",
-      "missionStatus": "none",
-      "sourceUrl": "https://data.gov.il/dataset/ntz-short",
+      "missionStatus": "pending",
+      "sourceUrl": null,
       "verifiedAt": null
     },
     {
@@ -2375,8 +2375,8 @@
       "touristPolice": null,
       "shared": null,
       "numbersStatus": "pending",
-      "missionStatus": "none",
-      "sourceUrl": "https://data.gov.il/dataset/ntz-short",
+      "missionStatus": "pending",
+      "sourceUrl": null,
       "verifiedAt": null
     },
     {

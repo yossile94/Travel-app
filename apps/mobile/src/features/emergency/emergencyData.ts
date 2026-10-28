@@ -138,7 +138,9 @@ export function loadEmergency(): Promise<void> {
   loading ??= (async () => {
     try {
       const text = await AsyncStorage.getItem(KEY);
-      if (text) publish(JSON.parse(text) as EmergencyData);
+      const stored = text ? (JSON.parse(text) as EmergencyData) : null;
+      // An app update may ship newer data than an old device copy (Raz review 9).
+      if (stored && stored.missionsReadOn >= current.missionsReadOn) publish(stored);
     } catch {
       // A broken copy: the bundle stays.
     }
@@ -188,7 +190,8 @@ export function emergencyRows(
   c: Pick<CountryEmergency, RowKey | 'shared'>,
 ): { keys: (RowKey | 'general')[]; number: string }[] {
   const rows: { keys: (RowKey | 'general')[]; number: string }[] = [];
-  const own = (['police', 'ambulance', 'fire'] as const).filter((k) => c[k]);
+  // A service on the shared number is that row, not a second one (Thailand: 191, Dudi 8).
+  const own = (['police', 'ambulance', 'fire'] as const).filter((k) => c[k] && c[k] !== c.shared);
   if (c.shared && own.length === 0)
     return [{ keys: ['police', 'ambulance', 'fire'], number: c.shared }];
   if (c.shared) rows.push({ keys: ['general'], number: c.shared });

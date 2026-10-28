@@ -32,7 +32,12 @@ const PROVIDER_DATA_DAYS = 7;
 
 const state = new Map<string, TripFlights>();
 const listeners = new Set<() => void>();
-const notify = () => listeners.forEach((l) => l());
+/** Grows on every change, prefetches included: the SOS button reads again (Raz review 1). */
+let version = 0;
+const notify = () => {
+  version += 1;
+  listeners.forEach((l) => l());
+};
 const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
@@ -192,6 +197,7 @@ export async function prefetchFlights(tripIds: string[]): Promise<void> {
     [...byTrip].map(([tripId, flights]) => ({ tripId, flights })),
     generation,
   );
+  notify();
 }
 
 /** Forgets everything in memory (sign-out; the device copy goes with clearTripsCaches). */
@@ -269,4 +275,9 @@ export async function flightsForTrips(tripIds: string[]): Promise<Map<string, Fl
       if (missing.includes(t.tripId)) out.set(t.tripId, t.flights);
   }
   return out;
+}
+
+/** Changes whenever flights are read, saved or prefetched (sprint 8 AC-16). */
+export function useFlightsVersion(): number {
+  return useSyncExternalStore(subscribe, () => version);
 }

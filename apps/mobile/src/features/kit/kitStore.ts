@@ -111,6 +111,8 @@ export function refreshTripKit(tripId: string): Promise<void> {
   const run = (async () => {
     const result = await loadKit([tripId]);
     const user = await userId();
+    // Signed out while reading: nothing of that user comes back into memory (Raz review 4).
+    if (tripsCacheGeneration() !== generation) return;
     if (result.ok) {
       const [entry] = split(result.value, [tripId]);
       state.set(tripId, { ...entry!, status: 'ready', fromCache: false });
@@ -138,7 +140,7 @@ export function refreshTripKit(tripId: string): Promise<void> {
     notify();
   })().finally(() => {
     inFlight.delete(tripId);
-    if (again.delete(tripId)) void refreshTripKit(tripId);
+    if (again.delete(tripId) && tripsCacheGeneration() === generation) void refreshTripKit(tripId);
   });
   inFlight.set(tripId, run);
   return run;

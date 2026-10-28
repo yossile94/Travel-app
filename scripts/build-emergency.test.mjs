@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-import { buildMissions, DATASET_URL, normalizeTel, sourceOf } from './build-emergency.mjs';
+import { buildMissions, DATASET_URL, hoursOf, normalizeTel, sourceOf } from './build-emergency.mjs';
 
 test('phones become E.164; the first of two; nothing when unreadable', () => {
   assert.equal(normalizeTel('00-54-11-37244500'), '+541137244500');
@@ -62,7 +62,11 @@ test('rows of one mission become one mission covering every country; the first i
   assert.equal(missions.length, 1, 'the UN delegation is not a consular mission');
   assert.deepEqual(missions[0].covers, ['CMR', 'GAB']);
   assert.equal(missions[0].adm0, 'CMR');
-  assert.deepEqual(without, ['ARM'], 'a non-resident row means no mission there');
+  assert.deepEqual(
+    without,
+    [],
+    'non-resident: served from elsewhere, so unknown, not "no mission"',
+  );
 });
 
 test('the two lists must line up by row', () => {
@@ -102,4 +106,17 @@ test('the bundled file: every checked row cites a source; no mission only from t
     data.missions.find((m) => m.covers.includes('THA')),
     'Thailand has a mission',
   );
+});
+
+test('a country code written twice fails the build unless fixed by hand', () => {
+  assert.throws(() => normalizeTel('00-33-33-123456789'), /twice/);
+  assert.equal(normalizeTel('00-46-46-852806500'), '+46852806500');
+});
+
+test('opening hours: one-day ranges collapse, days in order', () => {
+  assert.equal(
+    hoursOf('Fri - Fri 09:30 12:00  Mon - Thu 09:30 12:30'),
+    'Mon - Thu 09:30 12:30 · Fri 09:30 12:00',
+  );
+  assert.equal(hoursOf(''), null);
 });

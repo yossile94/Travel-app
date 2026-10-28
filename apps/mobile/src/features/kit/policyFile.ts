@@ -73,7 +73,7 @@ export type SaveResult = 'ok' | 'tooBig' | 'type' | 'error';
  * Encrypts the picked file into place. A failure leaves the previous file,
  * if any, untouched: the new one is written aside and moved in at the end.
  */
-export async function savePolicy(
+async function encryptPolicy(
   tripId: string,
   source: { uri: string; mimeType?: string; size?: number },
   today: string,
@@ -124,20 +124,41 @@ export async function savePolicy(
       reader?.close();
       writer?.close();
       if (tmp.exists) tmp.delete();
-      // The picker's plain copy in the cache goes too, even after a failure (design 10.2).
-      if (source.uri.startsWith(Paths.cache.uri) && input.exists) input.delete();
     } catch {
       // Best effort.
     }
   }
 }
 
-function clearViews(): void {
+/** The decrypted viewing copy (Raz review 2b: on every return to the app, and at launch). */
+export function clearViews(): void {
   try {
     const v = viewDir();
     if (v.exists) v.delete();
   } catch {
     // Best effort: the system clears the cache too.
+  }
+}
+
+/**
+ * Encrypts the picked file into place; the picker's plain copy in the cache
+ * is deleted on every outcome, refusals included (AC-9, Raz review 2a).
+ */
+export async function savePolicy(
+  tripId: string,
+  source: { uri: string; mimeType?: string; size?: number },
+  today: string,
+  onProgress?: (fraction: number) => void,
+): Promise<SaveResult> {
+  try {
+    return await encryptPolicy(tripId, source, today, onProgress);
+  } finally {
+    try {
+      const picked = new File(source.uri);
+      if (source.uri.startsWith(Paths.cache.uri) && picked.exists) picked.delete();
+    } catch {
+      // Best effort.
+    }
   }
 }
 
@@ -218,18 +239,4 @@ export async function wipePolicies(): Promise<void> {
   }
   clearViews();
   await SecureStore.deleteItemAsync(KEY_NAME).catch(() => {});
-}
-
-/** Trips with a file on this device, so files of deleted trips can be removed. */
-export function policyTrips(): string[] {
-  try {
-    if (!dir().exists) return [];
-    return dir()
-      .list()
-      .map((e) => e.name)
-      .filter((n) => n.endsWith('.json'))
-      .map((n) => n.slice(0, -5));
-  } catch {
-    return [];
-  }
 }

@@ -613,13 +613,13 @@ const styles = StyleSheet.create({
   },
   content: { padding: 16, gap: 16 },
   chip: {
-    minHeight: 40,
+    minHeight: layout.touchTargetMin,
     paddingHorizontal: 14,
     borderRadius: radius.pill,
     borderWidth: 1,
     justifyContent: 'center',
   },
-  source: { minHeight: 32, justifyContent: 'center' },
+  source: { minHeight: layout.touchTargetMin, justifyContent: 'center' },
   sos: {
     position: 'absolute',
     end: 12,

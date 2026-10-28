@@ -51,7 +51,11 @@ create table public.missions (
   phone text constraint missions_phone_check check (phone ~ '^\+[1-9][0-9]{7,14}$'),
   emergency_phone text constraint missions_emergency_phone_check check (emergency_phone ~ '^\+[1-9][0-9]{7,14}$'),
   -- The countries it serves, the host first.
-  covers text[] not null constraint missions_covers_check check (cardinality(covers) between 1 and 20),
+  covers text[] not null constraint missions_covers_check check (
+    cardinality(covers) between 1 and 20
+    and covers[1] = adm0
+    and array_to_string(covers, ',') ~ '^[A-Z0-9]{3}(,[A-Z0-9]{3})*$'
+  ),
   source_url text not null constraint missions_source_check check (source_url ~ '^https://'),
   verified_at date not null
 );

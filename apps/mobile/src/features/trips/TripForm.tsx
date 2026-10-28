@@ -53,7 +53,7 @@ import { useTripFlights } from '@/features/flights/flightsStore';
 import { reminderText } from '@/features/kit/InsuranceSection';
 import { syncInsuranceReminder } from '@/features/kit/insuranceReminder';
 import { hotelsOutside, type Hotel } from '@/features/kit/kitModel';
-import { refreshTripKit, tripKitNow } from '@/features/kit/kitStore';
+import { kitsOf, refreshTripKit, tripKitNow } from '@/features/kit/kitStore';
 
 import { CitiesSection } from './CitiesSection';
 import { TravelersSection } from './TravelersSection';
@@ -317,11 +317,16 @@ export function TripForm({
     setBusy(null);
     if (result === 'ok') {
       // Sprint 8 AC-10: (re)schedule the insurance reminder for the new dates, on this device.
-      void syncInsuranceReminder(
-        trip,
-        !!tripKitNow(tripId)?.insurance,
-        reminderText(t, i18n.language, trip.countryAdm0),
-      );
+      // A new trip has no insurance; an edited one is checked in memory or the device
+      // copy, and left alone when unknown (Raz review 3).
+      const words = reminderText(t, i18n.language, trip.countryAdm0);
+      if (!editing) void syncInsuranceReminder(trip, false, words);
+      else {
+        void kitsOf([tripId]).then((kits) => {
+          const kit = kits.get(tripId);
+          if (kit) void syncInsuranceReminder(trip, kit.insurance !== null, words);
+        });
+      }
       onDone({ kind: editing ? 'updated' : 'created', trip });
       return;
     }

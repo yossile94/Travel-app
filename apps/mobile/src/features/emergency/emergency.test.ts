@@ -36,6 +36,15 @@ describe('emergency rows (design 12.2)', () => {
       number: '112',
     });
   });
+  it('a service on the shared number is not shown twice (Thailand: 191, Dudi 8)', () => {
+    expect(emergencyRows({ police: '191', ambulance: '1669', fire: '199', shared: '191' })).toEqual(
+      [
+        { keys: ['general'], number: '191' },
+        { keys: ['ambulance'], number: '1669' },
+        { keys: ['fire'], number: '199' },
+      ],
+    );
+  });
   it('joins labels in Hebrew and English', () => {
     expect(joinLabels(['משטרה', 'אמבולנס', 'כבאות'], 'he')).toBe('משטרה, אמבולנס וכבאות');
     expect(joinLabels(['Police', 'Ambulance', 'Fire'], 'en')).toBe('Police, ambulance and fire');

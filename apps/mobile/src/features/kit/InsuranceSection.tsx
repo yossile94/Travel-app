@@ -46,7 +46,7 @@ import { endsEarly, type Insurance } from './kitModel';
 import { refreshTripKit } from './kitStore';
 import { DialRow, SecretRow, SectionTitle, styles } from './kitUi';
 import {
-  MAX_BYTES,
+  clearViews,
   openPolicy,
   policyMeta,
   removePolicy,
@@ -85,10 +85,11 @@ function PolicyFile({ tripId, colorScheme }: { tripId: string; colorScheme: Colo
 
   // The decrypted viewing copy goes when the app comes back (design 10.2).
   useEffect(() => {
-    const sub = AppState.addEventListener(
-      'change',
-      (s) => s === 'active' && setMeta(policyMeta(tripId)),
-    );
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s !== 'active') return;
+      clearViews();
+      setMeta(policyMeta(tripId));
+    });
     return () => sub.remove();
   }, [tripId]);
 
@@ -100,7 +101,6 @@ function PolicyFile({ tripId, colorScheme }: { tripId: string; colorScheme: Colo
     });
     if (picked.canceled || !picked.assets[0]) return;
     const asset = picked.assets[0];
-    if ((asset.size ?? 0) > MAX_BYTES) return setError(t('policyFile.err.tooBig'));
     setSaving(0);
     setSlow(false);
     slowTimer.current = setTimeout(() => setSlow(true), PROGRESS_AFTER_MS);
@@ -265,7 +265,8 @@ export function InsuranceSection({
   const [blocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
   const guard = (action: () => void) => () => (offline ? setBlocked(true) : action());
-  const hasFile = insurance ? policyMeta(trip.id) !== null : false;
+  // Read once, and again when the sheet closes: not a file check on every render (Raz review 8).
+  const [hasFile, setHasFile] = useState(() => policyMeta(trip.id) !== null);
   const early = insurance ? endsEarly(insurance.validUntil, trip.endDate) : false;
 
   const remove = () =>
@@ -282,6 +283,7 @@ export function InsuranceSection({
             if (result === 'ok' || result === 'gone') {
               // AC-9: the file goes with it; AC-10: the reminder may come back.
               removePolicy(trip.id);
+              setHasFile(false);
               void syncInsuranceReminder(
                 trip,
                 false,
@@ -364,7 +366,24 @@ export function InsuranceSection({
             />
           )}
         </View>
-      ) : status === 'loading' ? null : (
+      ) : status === 'loading' ? null : status === 'error' ? (
+        // Not known: "add" could overwrite a policy that wasn't read (Raz review 6).
+        <View style={styles.rowLine}>
+          <Text
+            style={[styles.footnote, styles.grow, { color: p.textSecondary }]}
+            testID="card-insurance-error"
+          >
+            {t('insurance.loadError')}
+          </Text>
+          <Button
+            kind="text"
+            label={t('flights.retry')}
+            onPress={() => void refreshTripKit(trip.id)}
+            colorScheme={colorScheme}
+            testID="card-insurance-retry"
+          />
+        </View>
+      ) : (
         <>
           <Button
             kind="link"
@@ -418,7 +437,10 @@ export function InsuranceSection({
         colorScheme={colorScheme}
         reduceMotion={reduceMotion}
         insetsBottom={insets.bottom}
-        onClose={() => setSheet(false)}
+        onClose={() => {
+          setSheet(false);
+          setHasFile(policyMeta(trip.id) !== null);
+        }}
         maxHeight={640}
         testID="insurance-sheet"
       >

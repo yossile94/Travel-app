@@ -50,9 +50,10 @@ export function SourcesSheet({ visible, onClose, ...sheet }: Props) {
   const palette = colors[sheet.colorScheme];
 
   /** A credit line with each licence name it holds as a link; the wording is unchanged. */
-  const credit = (text: string, testID: string) => {
+  const credit = (text: string, testID: string, skip: string[] = []) => {
     const parts: (string | [string, string])[] = [text];
     for (const [name, url] of LICENCES) {
+      if (skip.includes(name)) continue;
       const at = parts.findIndex((p) => typeof p === 'string' && p.includes(name));
       if (at < 0) continue;
       const [before, ...rest] = (parts[at] as string).split(name);
@@ -89,6 +90,8 @@ export function SourcesSheet({ visible, onClose, ...sheet }: Props) {
       {credit(
         t('sources.missions', MISSIONS_DATASET[i18n.language === 'he' ? 'he' : 'en']),
         'sources-missions',
+        // Its own dataset link, not the warnings dataset's (Raz review).
+        ['data.gov.il'],
       )}
       {credit(t('sources.rates'), 'sources-rates')}
       {credit(t('sources.flights'), 'sources-flights')}

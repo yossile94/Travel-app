@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Flight } from '@/features/flights/flightModel';
-import { flightsForTrips } from '@/features/flights/flightsStore';
+import { flightsForTrips, useFlightsVersion } from '@/features/flights/flightsStore';
 import type { Insurance } from '@/features/kit/kitModel';
 import { kitsOf } from '@/features/kit/kitStore';
 import { useTrips } from '@/features/trips/TripsProvider';
@@ -29,6 +29,7 @@ export function GlobeSos({ visible, colorScheme }: { visible: boolean; colorSche
   const [flights, setFlights] = useState<Map<string, Flight[]>>(new Map());
   const [insurance, setInsurance] = useState<Map<string, Insurance | null>>(new Map());
   const [open, setOpen] = useState(false);
+  const flightsVersion = useFlightsVersion();
 
   useEffect(() => {
     if (!ids) return;
@@ -41,7 +42,7 @@ export function GlobeSos({ visible, colorScheme }: { visible: boolean; colorSche
     return () => {
       live = false;
     };
-  }, [ids, trips.changes, open]);
+  }, [ids, trips.changes, open, flightsVersion]);
 
   const target = sosTarget(active, (id) => flights.get(id) ?? [], trips.today);
   if (!target) return null;

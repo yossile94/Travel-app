@@ -68,7 +68,18 @@ export const NAME_TO_ADM0 = {
 export const PHONE_FIXES = {
   // "00-886-886-227579692": the country code twice.
   '00-886-886-227579692': '+886227579692',
+  // The same doubling in Stockholm and Hanoi (Dudi review 1).
+  '00-46-46-852806500': '+46852806500',
+  '00-84-84-2437187500': '+842437187500',
+  // Côte d'Ivoire numbers have 10 digits since 2021.
+  '00-225-225-0769717644': '+2250769717644',
 };
+
+/**
+ * Missions whose host the dataset files under the sovereign: the Hong Kong
+ * consulate serves Hong Kong and Macau, not all of China (Dudi review 7).
+ */
+export const HOSTS = { 'Hong-Kong': ['HKG', 'MAC'] };
 
 const decode = (s) =>
   String(s ?? '')
@@ -84,6 +95,11 @@ export function normalizeTel(raw) {
   const text = decode(raw);
   if (!text) return null;
   if (PHONE_FIXES[text]) return PHONE_FIXES[text];
+  // "00-46-46-…": the country code twice. Still valid E.164, so only a hand fix will do.
+  const groups = text.split('-');
+  if (groups[0] === '00' && groups[1] && groups[1] === groups[2]) {
+    throw new Error(`Country code twice, add it to PHONE_FIXES: ${text}`);
+  }
   const first = text.split(/\s{1,}(?=00|\+)|,|;/)[0].split('/')[0];
   const digits = first.replace(/[^0-9+]/g, '');
   const e164 = digits.startsWith('+')
@@ -92,6 +108,19 @@ export function normalizeTel(raw) {
       ? `+${digits.slice(2)}`
       : null;
   return e164 && /^\+[1-9][0-9]{7,14}$/.test(e164) ? e164 : null;
+}
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** "Fri - Fri 09:30 12:00  Mon - Thu 09:30 12:30" → "Mon - Thu 09:30 12:30 · Fri 09:30 12:00" (Dudi review 7). */
+export function hoursOf(raw) {
+  const parts = String(raw ?? '')
+    .split(/\s{2,}/)
+    .map((p) => p.trim().replace(/^(\w{3}) - \1\b/, '$1'))
+    .filter(Boolean);
+  if (!parts.length) return null;
+  const day = (p) => DAYS.indexOf(p.slice(0, 3));
+  return [...parts].sort((a, b) => day(a) - day(b)).join(' · ');
 }
 
 const KIND = {
@@ -126,8 +155,9 @@ export function buildMissions(en, he, adm0Of) {
     const kind = KIND[decode(r.maamad_a)];
     if (decode(r.maamad_a) === 'Delegation') return;
     if (!kind) {
-      // "Non Resident", or a row with no mission type (Qatar): no mission there.
-      without.add(adm0);
+      // A row with no mission type (Qatar, the ministry's own number): no mission there.
+      // "Non Resident" usually means served from elsewhere: unknown, so 'pending' (Dudi review 6).
+      if (decode(r.maamad_a) !== 'Non Resident') without.add(adm0);
       return;
     }
     const g = groups.get(r.k_ntz) ?? { rows: [] };
@@ -136,10 +166,11 @@ export function buildMissions(en, he, adm0Of) {
   });
   const missions = [...groups.entries()].map(([k, g]) => {
     const host = g.rows[0];
-    const covers = [...new Set(g.rows.map((x) => x.adm0))];
+    const own = HOSTS[decode(host.en.shem_ntz_a)];
+    const covers = own ?? [...new Set(g.rows.map((x) => x.adm0))];
     return {
       id: Number(k),
-      adm0: host.adm0,
+      adm0: own?.[0] ?? host.adm0,
       kind: host.kind,
       nameHe: `${decode(host.he.maamad)} ${decode(host.he.shem_ntz)}`.trim(),
       nameEn: `${decode(host.en.maamad_a)}, ${decode(host.en.shem_ntz_a)}`,
@@ -148,7 +179,7 @@ export function buildMissions(en, he, adm0Of) {
       addressHe: decode(host.he.Address) || null,
       addressEn: decode(host.en.Addrs) || null,
       hoursHe: decode(host.he.Kabala) || null,
-      hoursEn: decode(host.en.Kabala) || null,
+      hoursEn: hoursOf(host.en.Kabala),
       phone: normalizeTel(host.en.tel),
       covers,
       sourceUrl: sourceOf(host.en.Atar),
