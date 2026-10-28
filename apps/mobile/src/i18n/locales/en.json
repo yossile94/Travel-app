@@ -34,7 +34,9 @@
       "citiesA11y": "Cities in order: {{list}}",
       "duplicate": "Duplicate"
     },
-    "rate": "Exchange rate"
+    "rate": "Exchange rate",
+    "emergency": "Emergency in {{inCountry}}",
+    "emergencyHint": "Opens emergency numbers and the Israeli mission"
   },
   "timeDifference": {
     "same": "Same as Israel",
@@ -242,7 +244,10 @@
     "travelerAdded": "Added {{name}} to travelers",
     "travelerRemoved": "Removed {{name}} from travelers",
     "duplicated": "This is a copy of “{{name}}”, without the dates.",
-    "duplicatedNoFlights": "We duplicated \"{{name}}\". Flights weren't copied."
+    "duplicatedNoFlights": "We duplicated \"{{name}}\". Flights weren't copied.",
+    "hotelsOutside": "You can't save these dates: these hotels would fall outside the trip. Change their dates first.",
+    "hotelsOutsideField": "A hotel falls outside these dates.",
+    "hotelsOutsideRow": "{{name}} · {{range}}"
   },
   "months": {
     "1": "January",
@@ -317,7 +322,8 @@
     "alreadyGone": "This trip was already deleted on another device",
     "offline": "You're offline. Deleting a trip needs a connection.",
     "error": "Couldn't delete the trip. Try again.",
-    "bodyFlights": "Its flights will be deleted too."
+    "bodyFlights": "Its flights will be deleted too.",
+    "bodyKit": "Its flights, hotels and insurance details will be deleted too, along with the policy document on this phone."
   },
   "nameEdit": {
     "title": "Change name",
@@ -403,7 +409,9 @@
     "entry": "Entry on an Israeli passport: collected and checked by us against the source shown for each destination.",
     "rates": "Exchange rates: Bank of Israel (representative rate) for the dollar and the currencies it publishes. Other currencies: Rates By Exchange Rate API, from which we calculated the rate against the shekel. For illustration only; the rate at a bank or exchange office will differ.",
     "flights": "Flight data: AeroDataBox. Your booking code isn't sent to them.",
-    "airports": "Airports: OurAirports (public domain), with time zones from mwgg/Airports (MIT licence)."
+    "airports": "Airports: OurAirports (public domain), with time zones from mwgg/Airports (MIT licence).",
+    "emergency": "Emergency numbers: FCDO Foreign Travel Advice (GOV.UK), under the Open Government Licence v3.0. Checked and adapted by us. Contains public sector information licensed under the Open Government Licence v3.0.",
+    "missions": "Israeli missions: the Foreign Ministry's \"{{dataset}}\" dataset (ntz-short) on data.gov.il, under {{terms}}. Foreign Ministry emergency center: gov.il."
   },
   "temp": {
     "value": "⁦{{n}}°⁩",
@@ -831,5 +839,223 @@
     "restricted": "Entry for Israelis is restricted. Transit rules may apply even if you don't leave the airport. Check the source.",
     "banned": "Entry for Israelis is banned. Transit rules may apply even if you don't leave the airport, and you may not be allowed to transit there at all. Check the source and your airline before you fly.",
     "sourceHint": "Opens in your browser"
+  },
+  "hotels": {
+    "title": "Hotels",
+    "add": "Add a hotel",
+    "emptyHelp": "The address is saved on your phone, so you can show it to a driver even without signal.",
+    "limit": "You can add up to 10 hotels to a trip.",
+    "loadError": "We couldn't load your hotels.",
+    "nightOne": "1 night",
+    "nights": "{{n}} nights",
+    "rowDates": "{{range}} · {{nights}}",
+    "rowA11y": "{{name}}, check-in {{in}}, check-out {{out}}, {{nights}}",
+    "rowHint": "Opens the hotel details",
+    "now": "Now",
+    "driver": "Show to driver",
+    "driverA11y": "Show {{name}}'s address to a driver",
+    "driverHint": "Opens full screen"
+  },
+  "hotel": {
+    "titleNew": "Add a hotel",
+    "titleEdit": "Edit hotel",
+    "name": "Hotel name",
+    "addressEn": "Address in English",
+    "addressEnHelp": "As it appears on your booking confirmation",
+    "addressLocal": "Address in the local language (optional)",
+    "addressLocalHelp": "Paste it from your booking confirmation",
+    "phone": "Hotel phone (optional)",
+    "phoneHelp": "With the country code, e.g. +66 2 123 4567",
+    "checkIn": "Check-in",
+    "checkOut": "Check-out",
+    "datesHelp": "Within the trip dates, {{range}}",
+    "booking": "Booking details",
+    "bookingRef": "Booking number (optional)",
+    "bookingPrivacy": "Your booking number is kept only in your account and hidden on screen.",
+    "save": "Save hotel",
+    "saving": "Saving…",
+    "saved": "Hotel {{name}} saved",
+    "err": {
+      "name": "Enter the hotel name.",
+      "addressEn": "Enter the address in English.",
+      "checkIn": "Choose a check-in date.",
+      "checkOut": "Choose a check-out date.",
+      "outsideTrip": "The date must be within the trip dates, {{range}}.",
+      "order": "Check-out must be at least one day after check-in.",
+      "bookingRef": "A booking number is up to 40 characters."
+    },
+    "saveOffline": "You need a connection to save a hotel. What you entered stays here.",
+    "saveError": "We couldn't save the hotel. Try again.",
+    "datesChanged": "The trip dates changed on another device. Choose dates within {{range}}.",
+    "gone": "This hotel no longer exists.",
+    "address": "Address",
+    "phoneLabel": "Phone",
+    "bookingLabel": "Booking number",
+    "bookingHidden": "Booking number, hidden",
+    "bookingShow": "Show booking number",
+    "bookingHide": "Hide booking number",
+    "navigate": "Directions",
+    "navigateA11y": "Directions to {{name}}",
+    "call": "Call hotel",
+    "callShort": "Call",
+    "share": "Share",
+    "shareA11y": "Share the address",
+    "insurance": "Insurance",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete {{name}}?",
+    "deleteBody": "You can add it again any time.",
+    "deleteConfirm": "Delete",
+    "deleted": "Hotel deleted",
+    "deleteOffline": "You need a connection to delete."
+  },
+  "form": {
+    "err": {
+      "tooLong": "Up to {{max}} characters."
+    }
+  },
+  "phone": {
+    "err": "A phone number starts with + or 00, includes the country code and has 8–15 digits."
+  },
+  "app": {
+    "noHandler": "We couldn't find an app on your phone to open this."
+  },
+  "driver": {
+    "close": "Close",
+    "localA11y": "Address in the local language"
+  },
+  "insurance": {
+    "title": "Insurance",
+    "add": "Add insurance",
+    "emptyHelp": "Your emergency hotline will be here and on the emergency screen, even without signal.",
+    "validUntil": "Valid until {{date}}",
+    "endsEarly": "Ends before you return",
+    "endsEarlyA11y": "Your insurance ends on {{date}}, before you return on {{end}}",
+    "call": "Call insurance hotline",
+    "callA11y": "Call insurance hotline, {{company}}, {{number}}",
+    "noHotline": "Add your insurer's emergency hotline",
+    "fileOnDevice": "Policy document on this phone",
+    "rowA11y": "Insurance: {{company}}{{until}}{{warn}}",
+    "rowHint": "Opens the insurance details",
+    "policyLabel": "Policy number",
+    "policyHidden": "Policy number, hidden",
+    "policyShow": "Show policy number",
+    "policyHide": "Hide policy number",
+    "notesLabel": "Coverage notes",
+    "deleteTitle": "Delete insurance details?",
+    "deleteBody": "The policy document on this phone will be deleted too.",
+    "deleted": "Insurance details deleted",
+    "titleNew": "Add insurance",
+    "titleEdit": "Edit insurance",
+    "company": "Insurance company",
+    "policy": "Policy number (optional)",
+    "policyPrivacy": "Your policy number is kept only in your account and hidden on screen.",
+    "until": "Valid until (optional)",
+    "hotline": "24/7 emergency hotline abroad (optional)",
+    "hotlineHelp": "It's on your policy or the insurer's website. Include the country code.",
+    "notes": "Coverage notes (optional)",
+    "notesHelp": "For example, what is and isn't covered",
+    "warn": {
+      "endsEarly": "Your insurance ends on {{date}}, before you return on {{end}}. You can still save."
+    },
+    "err": {
+      "company": "Enter the insurance company.",
+      "policy": "A policy number is up to 40 characters."
+    },
+    "save": "Save insurance",
+    "saved": "Insurance saved",
+    "saveOffline": "You need a connection to save insurance. What you entered stays here.",
+    "saveError": "We couldn't save your insurance. Try again.",
+    "exists": "Insurance was already added to this trip from another device. Close and reopen to edit it."
+  },
+  "policyFile": {
+    "title": "Policy document",
+    "attach": "Attach policy",
+    "help": "PDF or image, up to 10 MB. Saved encrypted on this phone only, never uploaded.",
+    "saving": "Saving the file…",
+    "savingProgress": "Saving the file… {{n}}%",
+    "saved": "Policy attached",
+    "meta": "{{kind}} · {{size}} · added {{date}}",
+    "size": "{{n}} MB",
+    "thisDevice": "Only on this phone",
+    "open": "Open",
+    "openA11y": "Open the policy document",
+    "openHint": "Opens in another app",
+    "replace": "Replace",
+    "remove": "Remove",
+    "removeTitle": "Remove the policy document from this phone?",
+    "removeBody": "Your insurance details stay.",
+    "err": {
+      "tooBig": "That file is over 10 MB. You can attach files up to 10 MB.",
+      "type": "You can only attach a PDF or an image.",
+      "save": "We couldn't save the file on your phone. Try again.",
+      "noViewer": "No app on this phone can open this file.",
+      "missing": "The file is no longer on this phone. You can attach it again.",
+      "open": "We couldn't open the file. Try again."
+    },
+    "kindPdf": "PDF",
+    "kindImage": "Image"
+  },
+  "emergency": {
+    "title": "Emergency in {{inCountry}}",
+    "police": "Police",
+    "ambulance": "Ambulance",
+    "fire": "Fire",
+    "touristPolice": "Tourist police",
+    "general": "General emergency number",
+    "all": "All emergency details",
+    "pending": "Emergency numbers for {{inCountry}} are still being added. Until then, Israel's Foreign Ministry emergency center is available 24/7.",
+    "noMission": "There is no Israeli mission in this country.",
+    "noMissionBody": "In an emergency, contact the Foreign Ministry emergency center directly.",
+    "missionPending": "Mission details for {{inCountry}} are still being added. Meanwhile, contact the Foreign Ministry emergency center.",
+    "mission": {
+      "embassy": "Embassy of Israel in {{city}}",
+      "consulate": "Consulate of Israel in {{city}}",
+      "office": "Israeli mission in {{city}}",
+      "fromNeighbor": "Serves {{country}} from {{where}}",
+      "emergencyPhone": "Emergency phone",
+      "address": "Address",
+      "hours": "Opening hours"
+    },
+    "mfa": "Foreign Ministry emergency center",
+    "mfaSub": "Jerusalem · 24/7",
+    "source": "Source: {{source}}",
+    "verified": "Verified {{date}}",
+    "sourceA11y": "Source: {{source}}, verified {{date}}",
+    "sourceHint": "Opens in your browser",
+    "dialA11y": "{{label}}, {{number}}. Call",
+    "dialHint": "Opens the dialer",
+    "joinLast": "{{a}} and {{b}}",
+    "joinComma": "{{a}}, {{b}}"
+  },
+  "sos": {
+    "title": "Emergency · {{country}}",
+    "close": "Close",
+    "trips": "Active trips",
+    "switched": "Showing emergency details for {{country}}",
+    "local": "Local emergency numbers",
+    "mission": "Israeli mission",
+    "insurance": "Your insurance",
+    "insuranceLine": "{{company}} · 24/7 hotline",
+    "fromPolicy": "From your policy",
+    "insuranceNone": "You haven't added insurance to this trip.",
+    "insuranceNoHotline": "There's no hotline in your insurance details.",
+    "backup": "Backup: Foreign Ministry",
+    "offline": "These details are saved on your phone and work without signal.",
+    "sources": "Sources",
+    "button": "SOS · {{country}}",
+    "buttonA11y": "Emergency in {{inCountry}}: emergency numbers and the Israeli mission"
+  },
+  "reminder": {
+    "insurance": {
+      "title": "No insurance for your trip to {{toCountry}}",
+      "body": "You leave in a week. Add your insurance details and emergency hotline to the trip."
+    }
+  },
+  "channel": {
+    "reminders": {
+      "name": "Trip reminders",
+      "description": "A reminder when something important is missing from a trip, like insurance."
+    }
   }
 }

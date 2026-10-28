@@ -19,6 +19,8 @@ import {
 
 import { useAuth } from '@/features/auth/AuthProvider';
 import { prefetchFlights } from '@/features/flights/flightsStore';
+import { pruneInsuranceReminders } from '@/features/kit/insuranceReminder';
+import { kitsOf, prefetchKit } from '@/features/kit/kitStore';
 
 import { loadTripCountries, loadTripPage, type Trip } from './tripsApi';
 import {
@@ -164,6 +166,16 @@ export function TripsProvider({ children }: { children: ReactNode }) {
         void saveTripsCache(saved, generation);
         // Sprint 5 (Raz 6): the upcoming trips' flights join the offline copy.
         void prefetchFlights(saved.upcoming.map((trip) => trip.id));
+        // Sprint 8: and their hotels and insurance; then reminders of trips now
+        // insured, or gone from a complete list, are cancelled (design 11.3).
+        const ids = saved.upcoming.map((trip) => trip.id);
+        void prefetchKit(ids).then(async () => {
+          const kits = await kitsOf(ids);
+          await pruneInsuranceReminders(
+            new Map(ids.map((id) => [id, { insured: !!kits.get(id)?.insurance }])),
+            !saved.full,
+          );
+        });
       }
     }
   }, []);
