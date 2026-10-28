@@ -531,7 +531,8 @@ export function FlightScreen({
     const other = c.prevId === id ? next : prev;
     const otherNo = other.numberInput || other.number;
     const l = layover(prev, next, now);
-    const arrow = i18n.language === 'he' ? ' ‹ ' : ' › ';
+    // ← and → are not bidi-mirrored, so each draws as written; ‹ › flip in RTL.
+    const arrow = i18n.language === 'he' ? ' ← ' : ' → ';
     const route = [prev.depIata, c.airport, next.arrIata ?? '—'].map(isolateLtr).join(arrow);
     const touched = other.id in answers;
     const answer = touched ? answers[other.id]! : editing ? answerOf(next, prev.id) : undefined;

@@ -801,7 +801,8 @@
       "join": "{{h}} {{m}}",
       "where": "at {{apt}}, {{city}}",
       "risky": "At risk, less than the {{time}} minimum connection time",
-      "connectionAt": "Connection {{where}}"
+      "connectionAt": "Connection {{where}}",
+      "waitAt": "{{time}} layover {{where}}"
     },
     "announce": {
       "risky": "Connection at {{apt}} at risk: {{time}} layover.",

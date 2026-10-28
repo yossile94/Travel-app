@@ -72,7 +72,7 @@ export function layoverLabel(l: Layover, where: string, nextNo: string, t: T): s
       : chip
         ? ` ${t(`layover.status.${chip}`)}.`
         : '';
-  return `${t('layover.wait', { time: waitA11y(l.minutes, t), apt: where })}.${status}`;
+  return `${t('layover.a11y.waitAt', { time: waitA11y(l.minutes, t), where })}.${status}`;
 }
 
 export interface TransitWarning {

@@ -801,7 +801,8 @@
       "join": "{{h}} ו-{{m}}",
       "where": "ב-{{apt}}, {{city}}",
       "risky": "מסוכן, פחות מזמן החיבור המינימלי של {{time}}",
-      "connectionAt": "קונקשן {{where}}"
+      "connectionAt": "קונקשן {{where}}",
+      "waitAt": "המתנה של {{time}} {{where}}"
     },
     "announce": {
       "risky": "הקונקשן ב-{{apt}} בסיכון: המתנה של {{time}}.",
