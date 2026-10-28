@@ -6,6 +6,9 @@
 --     tables, written by a trigger only; never updated or deleted.
 --   country_advisories: editors write only entry_* and passport_validity_months.
 --   min_connection_times: editors insert and update.
+-- Neither table has a delete for anyone but migrations, on purpose (Raz,
+-- design approval: no MCT row deletion). The log keeps no one's email after
+-- their account is deleted (Dudi 7; ADR-015).
 
 -- ------------------------------------------------------------------ roles
 create table public.admin_roles (
@@ -16,6 +19,7 @@ create table public.admin_roles (
   created_at timestamptz not null default now(),
   primary key (user_id, role)
 );
+create index admin_roles_granted_by on public.admin_roles (granted_by);
 
 comment on table public.admin_roles is
   'Admin panel roles (sprint 10 F-027). Written by admin_grant_role / admin_revoke_role only.';
@@ -37,7 +41,7 @@ as $$
       where r.user_id = (select auth.uid()) and r.role in (p_role, 'admin')
     );
 $$;
-revoke execute on function public.has_role(text) from public;
+revoke execute on function public.has_role(text) from public, anon;
 grant execute on function public.has_role(text) to authenticated;
 
 -- The caller's own roles, for the panel's screens. Empty without AAL2.
@@ -55,7 +59,7 @@ as $$
       '{}'::text[])
     else '{}'::text[] end;
 $$;
-revoke execute on function public.my_roles() from public;
+revoke execute on function public.my_roles() from public, anon;
 grant execute on function public.my_roles() to authenticated;
 
 create policy "admins read roles"
@@ -72,12 +76,18 @@ create function public.admin_grant_role(p_email text, p_role text)
 as $$
 declare
   target uuid;
+  matches integer;
 begin
+  -- The lock first: an admin removed a moment ago can't still act (Dudi 8).
+  lock table public.admin_roles in share row exclusive mode;
   if not public.has_role('admin') then
     raise exception 'not allowed' using errcode = '42501';
   end if;
-  select id into target from auth.users where lower(email) = lower(trim(p_email));
-  if target is null then
+  -- GoTrue keeps emails in lower case; only a confirmed address, and only one account (Dudi 9).
+  select count(*), min(id::text)::uuid into matches, target
+    from auth.users
+    where email = lower(trim(p_email)) and email_confirmed_at is not null;
+  if matches <> 1 then
     raise exception 'no such user' using errcode = 'P0002';
   end if;
   if target = (select auth.uid()) then
@@ -98,23 +108,43 @@ create function public.admin_revoke_role(p_user uuid, p_role text)
   set search_path = ''
 as $$
 begin
+  -- The lock first, then the check: two admins removing each other run one
+  -- after the other, and the second is no longer an admin (Dudi 8).
+  lock table public.admin_roles in share row exclusive mode;
   if not public.has_role('admin') then
     raise exception 'not allowed' using errcode = '42501';
   end if;
   if p_user = (select auth.uid()) then
     raise exception 'cannot change own role' using errcode = '42501';
   end if;
-  -- The last admin stays (D12). The lock serialises two admins removing each other.
-  lock table public.admin_roles in share row exclusive mode;
-  if p_role = 'admin'
-     and (select count(*) from public.admin_roles where role = 'admin' and user_id <> p_user) = 0 then
-    raise exception 'last admin' using errcode = '23514';
-  end if;
+  -- The last admin is kept by admin_roles_keep_last_admin.
   delete from public.admin_roles where user_id = p_user and role = p_role;
 end;
 $$;
 revoke execute on function public.admin_revoke_role(uuid, text) from public, anon;
 grant execute on function public.admin_revoke_role(uuid, text) to authenticated;
+
+-- The last admin stays, whoever deletes (D12): the function, or the cascade
+-- of an account deletion (Dudi 6). That account can't be deleted until another
+-- admin exists.
+create function public.admin_roles_keep_last_admin()
+  returns trigger
+  language plpgsql
+  set search_path = ''
+as $$
+begin
+  if old.role = 'admin'
+     and not exists (
+       select 1 from public.admin_roles where role = 'admin' and user_id <> old.user_id
+     ) then
+    raise exception 'last admin' using errcode = '23514';
+  end if;
+  return old;
+end;
+$$;
+create trigger admin_roles_keep_last_admin
+  before delete on public.admin_roles
+  for each row execute function public.admin_roles_keep_last_admin();
 
 -- The admins and their emails, for the roles screen (admin only).
 create function public.admin_role_list()
@@ -171,12 +201,40 @@ create function public.admin_audit_log_frozen()
   set search_path = ''
 as $$
 begin
+  -- The one exception (Dudi 7): admin_audit_forget clears a deleted
+  -- account's email, and changes nothing else.
+  if tg_op = 'UPDATE'
+     and current_setting('app.audit_forget', true) = 'on'
+     and new.actor_email is null
+     and (to_jsonb(new) - 'actor_email') = (to_jsonb(old) - 'actor_email') then
+    return new;
+  end if;
   raise exception 'the audit log is append-only' using errcode = '42501';
 end;
 $$;
 create trigger admin_audit_log_frozen
   before update or delete on public.admin_audit_log
   for each row execute function public.admin_audit_log_frozen();
+-- An account deleted: its email leaves the log; the id stays as a pseudonym.
+create function public.admin_audit_forget()
+  returns trigger
+  language plpgsql
+  security definer
+  set search_path = ''
+as $$
+begin
+  perform set_config('app.audit_forget', 'on', true);
+  update public.admin_audit_log set actor_email = null
+    where actor_id = old.id and actor_email is not null;
+  perform set_config('app.audit_forget', 'off', true);
+  return old;
+end;
+$$;
+revoke execute on function public.admin_audit_forget() from public, anon, authenticated;
+create trigger admin_audit_forget
+  after delete on auth.users
+  for each row execute function public.admin_audit_forget();
+
 create trigger admin_audit_log_no_truncate
   before truncate on public.admin_audit_log
   for each statement execute function public.admin_audit_log_frozen();
@@ -196,7 +254,8 @@ declare
   new_row jsonb := case when tg_op in ('INSERT', 'UPDATE') then to_jsonb(new) end;
   changed jsonb;
 begin
-  if actor is null then
+  -- The daily jobs (no person) aren't logged; a role is, whoever removes it (Dudi 6).
+  if actor is null and tg_table_name <> 'admin_roles' then
     return null;
   end if;
   select coalesce(jsonb_object_agg(k, jsonb_build_object('old', old_row -> k, 'new', new_row -> k)), '{}')
@@ -247,6 +306,9 @@ grant update (entry_status, entry_note, entry_source_url, entry_verified_at, pas
   on public.country_advisories to authenticated;
 
 -- ------------------------------------------------------------------- MCT
+comment on table public.min_connection_times is
+  'Minimum connection times with a public source (sprint 7). Read by all; content editors insert and update in the admin panel (sprint 10); no deletes.';
+
 create policy "editors insert connection times"
   on public.min_connection_times for insert to authenticated
   with check ((select public.has_role('content_editor')));
@@ -265,7 +327,12 @@ create function public.touch_updated_at()
   set search_path = ''
 as $$
 begin
-  new.updated_at := now();
+  -- A save with nothing changed changes nothing, and logs nothing (Dudi 5).
+  if (to_jsonb(new) - 'updated_at') is distinct from (to_jsonb(old) - 'updated_at') then
+    new.updated_at := now();
+  else
+    new.updated_at := old.updated_at;
+  end if;
   return new;
 end;
 $$;
