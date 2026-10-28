@@ -230,7 +230,9 @@ export async function registerDevice(
     return true;
   } catch (error) {
     // Offline, or Expo's servers: the next launch tries again.
-    console.warn('[push] token unavailable', (error as Error)?.name ?? 'no name');
+    // The name and the module's code only: the message may carry device details.
+    const e = error as { name?: string; code?: unknown };
+    console.warn('[push] token unavailable', e?.name ?? 'no name', String(e?.code ?? 'no code'));
     return false;
   }
 }
