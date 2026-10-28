@@ -205,10 +205,11 @@ export async function forgetTripKit(tripId: string): Promise<void> {
   const user = await userId();
   if (!user) return;
   const generation = tripsCacheGeneration();
-  const cache = await readCache(user);
-  if (!cache || !cache.trips.some((t) => t.tripId === tripId)) return;
+  // Read inside the chain, as writeCache does: no write in between is lost (Dana re-check).
   writes = writes
     .then(async () => {
+      const cache = await readCache(user);
+      if (!cache || !cache.trips.some((t) => t.tripId === tripId)) return;
       if (tripsCacheGeneration() !== generation) return;
       await secureSessionStorage.setItem(
         keyOf(user),
