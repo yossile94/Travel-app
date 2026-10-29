@@ -2,13 +2,16 @@
  * Sprint 11 AC-6 (design 5.2, 6; D3, D4): a trip's saved places. Read from
  * the server and kept for the session; written only through save_place and
  * unsave_place, never optimistically. A save keeps a snapshot of the name and
- * the point, so a place hidden later still shows and navigates. Logs carry a
+ * the point, so a place hidden later still shows and navigates. Offline, the
+ * list is the encrypted device copy, read only (AC-13, Raz ח2). Logs carry a
  * code only.
  */
 import NetInfo from '@react-native-community/netinfo';
 import { randomUUID } from 'expo-crypto';
 import { useEffect, useSyncExternalStore } from 'react';
 
+import { readTripCopy, writeTripCopy } from '@/features/trips/tripCopies';
+import { tripsCacheGeneration } from '@/features/trips/tripsCache';
 import { supabase } from '@/lib/supabase';
 
 import type { Place } from './placesModel';
@@ -23,7 +26,7 @@ export interface SavedPlace {
 
 export type SavedState =
   | { status: 'loading' }
-  | { status: 'ready'; places: SavedPlace[] }
+  | { status: 'ready'; places: SavedPlace[]; fromCache: boolean }
   | { status: 'failed'; offline: boolean };
 
 export type SaveResult = 'ok' | 'offline' | 'consent' | 'gone' | 'limit' | 'error';
@@ -45,16 +48,26 @@ const online = async () => (await NetInfo.fetch()).isConnected !== false;
 /** The trip's saved places, newest first (design 6; at most 100, no paging). */
 export async function loadSaved(tripId: string): Promise<void> {
   if (!supabase) return;
+  // A sign-out or deletion while this runs: nothing comes back (Raz ח3).
+  const startedIn = tripsCacheGeneration();
+  const current = () => tripsCacheGeneration() === startedIn;
   if (!states.has(tripId)) {
     states.set(tripId, { status: 'loading' });
     notify();
   }
-  if (!(await online())) {
-    if (states.get(tripId)?.status !== 'ready')
-      states.set(tripId, { status: 'failed', offline: true });
+  const fallBack = async (offline: boolean) => {
+    if (states.get(tripId)?.status === 'ready') return notify();
+    const copy = await readTripCopy<{ places: SavedPlace[] }>('saved', tripId);
+    if (!current()) return;
+    states.set(
+      tripId,
+      copy
+        ? { status: 'ready', places: copy.places, fromCache: true }
+        : { status: 'failed', offline },
+    );
     notify();
-    return;
-  }
+  };
+  if (!(await online())) return fallBack(true);
   const { data, error } = await supabase
     .from('trip_saved_places')
     .select('place_ref, name, lat, lng, created_at')
@@ -63,22 +76,19 @@ export async function loadSaved(tripId: string): Promise<void> {
     .limit(100);
   if (error) {
     log('load saved', error);
-    if (states.get(tripId)?.status !== 'ready')
-      states.set(tripId, { status: 'failed', offline: false });
-    notify();
-    return;
+    return fallBack(false);
   }
-  states.set(tripId, {
-    status: 'ready',
-    places: data.map((r) => ({
-      ref: r.place_ref as string,
-      name: r.name as string,
-      lat: r.lat as number,
-      lng: r.lng as number,
-      createdAt: r.created_at as string,
-    })),
-  });
+  if (!current()) return;
+  const places = data.map((r) => ({
+    ref: r.place_ref as string,
+    name: r.name as string,
+    lat: r.lat as number,
+    lng: r.lng as number,
+    createdAt: r.created_at as string,
+  }));
+  states.set(tripId, { status: 'ready', places, fromCache: false });
   notify();
+  await writeTripCopy('saved', tripId, { places }, startedIn);
 }
 
 async function call(step: string, fn: string, args: Record<string, unknown>): Promise<SaveResult> {
@@ -134,7 +144,7 @@ export async function unsavePlace(tripId: string, ref: string): Promise<SaveResu
   if (result === 'ok' || result === 'gone') {
     const state = states.get(tripId);
     if (state?.status === 'ready') {
-      states.set(tripId, { status: 'ready', places: state.places.filter((p) => p.ref !== ref) });
+      states.set(tripId, { ...state, places: state.places.filter((p) => p.ref !== ref) });
       notify();
     }
     return 'ok';

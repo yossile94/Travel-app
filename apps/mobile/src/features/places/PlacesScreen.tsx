@@ -6,6 +6,7 @@
  * the hotel's point is sent anywhere (D20, ADR-016 2).
  */
 import NetInfo from '@react-native-community/netinfo';
+import * as Crypto from 'expo-crypto';
 import { StatusBar } from 'expo-status-bar';
 import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +30,9 @@ import { BackIcon, CloudOffIcon, NavigateIcon, SearchIcon } from '@/components/i
 import { dottedDate } from '@/features/destination/DestinationFields';
 import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import { countryByAdm0 } from '@/features/globe/countryData';
+import { dayHeading } from '@/features/itinerary/dayText';
+import { DAY_MAX } from '@/features/itinerary/itineraryModel';
+import { saveItem, useBoard } from '@/features/itinerary/itineraryStore';
 import { useTripKit } from '@/features/kit/kitStore';
 import { cityAreas, cityPoint } from '@/features/trips/citiesData';
 import { CitySearchScreen } from '@/features/trips/CitiesSection';
@@ -132,6 +136,7 @@ export function PlacesScreen({
   const saved = useSaved(tripId);
   const kit = useTripKit(tripId);
   const memoryKey = `${adm0}:${tripId ?? '-'}`;
+  const [addingToDay, setAddingToDay] = useState<SavedPlace | null>(null);
 
   const [tab, setTab] = useState<Tab>(initialTab);
   const [category, setCategory] = useState<PlaceCategory | 'all'>('all');
@@ -185,32 +190,37 @@ export function PlacesScreen({
     () => new Set(saved.status === 'ready' ? saved.places.map((s) => s.ref) : []),
     [saved],
   );
-  const hotelPoint = useMemo(() => {
+  // Plain expressions: the React Compiler memoizes them by their inputs (Raz ח5:
+  // no suppressed hook rule, so the Compiler runs on this screen).
+  const cityAt = cityPointOf(selected);
+  const cityLng = cityAt ? cityAt[0] : null;
+  const cityLat = cityAt ? cityAt[1] : null;
+  const typed = selected?.kind === 'typed';
+  const hotelPoint = (() => {
     const withPoint = hotels.filter((h) => h.point);
-    if (selected?.kind === 'city') {
-      const at = cityPoint(selected.id);
-      // Raz 12: the hotel within 15 km of the picked city, the nearest.
-      const near = at
-        ? withPoint
-            .map((h) => ({ h, km: distanceKm(at, h.point!) }))
-            .filter((x) => x.km <= CITY_RADIUS_KM)
-            .sort((a, b) => a.km - b.km)[0]?.h
-        : null;
-      if (near) return { point: near.point!, name: near.name };
+    if (cityLng !== null && cityLat !== null) {
+      // Raz 12: the hotel within 15 km of the picked city, the nearest; none
+      // there, the city itself (AC-5, Raz review 10), never a far hotel.
+      const near = withPoint
+        .map((h) => ({ h, km: distanceKm([cityLng, cityLat], h.point!) }))
+        .filter((x) => x.km <= CITY_RADIUS_KM)
+        .sort((a, b) => a.km - b.km)[0]?.h;
+      return near ? { point: near.point!, name: near.name } : null;
     }
     const first = withPoint[0];
     return first ? { point: first.point!, name: first.name } : null;
-  }, [hotels, selected]);
-  const inScope: ShownPlace[] = useMemo(() => {
+  })();
+  const inScope: ShownPlace[] = (() => {
+    const city: [number, number] | null =
+      cityLng !== null && cityLat !== null ? [cityLng, cityLat] : null;
     if (tab === 'hotel') {
-      const from = hotelPoint?.point ?? cityPointOf(selected);
+      const from = hotelPoint?.point ?? city;
       return from ? placesNear(list, from, radiusKm) : [];
     }
-    if (selected?.kind === 'typed') return [];
-    return placesInCity(list, selected?.kind === 'city' ? cityPoint(selected.id) : null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list, tab, selected?.key, hotelPoint, radiusKm]);
-  const filtered = useMemo(() => byCategory(inScope, category), [inScope, category]);
+    if (typed) return [];
+    return placesInCity(list, city);
+  })();
+  const filtered = byCategory(inScope, category);
 
   const toggleSave = async (place: Place) => {
     if (!tripId || busy) return;
@@ -375,6 +385,11 @@ export function PlacesScreen({
             colorScheme={colorScheme}
             insetsBottom={insetsBottom}
             onNavigate={(s) => navigate(s)}
+            onMenu={(s) =>
+              (saved.status === 'ready' && saved.fromCache) || online === false
+                ? onToast(t('offline.readOnlyHint'))
+                : setAddingToDay(s)
+            }
             onRemove={(s) =>
               void unsavePlace(tripId!, s.ref).then((r) =>
                 onToast(r === 'ok' ? t('places.unsaved') : t('places.saveError')),
@@ -536,6 +551,18 @@ export function PlacesScreen({
             onClose={() => setOpened(null)}
             onSave={() => void toggleSave(opened.place)}
             onNavigate={navigate}
+            onToast={onToast}
+          />
+        ) : null}
+
+        {addingToDay && trip && tripId ? (
+          <AddToDaySheet
+            place={addingToDay}
+            trip={trip}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsBottom={insetsBottom}
+            onClose={() => setAddingToDay(null)}
             onToast={onToast}
           />
         ) : null}
@@ -874,6 +901,7 @@ function SavedList({
   colorScheme,
   insetsBottom,
   onNavigate,
+  onMenu,
   onRemove,
 }: {
   saved: SavedPlace[] | null;
@@ -881,6 +909,7 @@ function SavedList({
   colorScheme: ColorScheme;
   insetsBottom: number;
   onNavigate: (s: SavedPlace) => void;
+  onMenu: (s: SavedPlace) => void;
   onRemove: (s: SavedPlace) => void;
 }) {
   const { t } = useTranslation();
@@ -939,9 +968,121 @@ function SavedList({
           >
             <BookmarkIcon color={p.primary} filled />
           </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('places.addToDayA11y', { name: item.name })}
+            onPress={() => onMenu(item)}
+            style={styles.iconButton}
+            testID={`saved-menu-${item.ref}`}
+          >
+            <Text style={[styles.more, { color: p.textSecondary }]}>⋮</Text>
+          </Pressable>
         </View>
       )}
     />
+  );
+}
+
+/** "YYYY-MM-DD" days from start to end, both included. */
+function tripDays(start: string, end: string): string[] {
+  const out: string[] = [];
+  for (let d = new Date(`${start}T12:00:00Z`); out.length < 366; d.setUTCDate(d.getUTCDate() + 1)) {
+    const day = d.toISOString().slice(0, 10);
+    if (day > end) break;
+    out.push(day);
+  }
+  return out;
+}
+
+/**
+ * Design 6 (AC-6; Raz ח4): a saved place to a day of the board, at the end of
+ * the day, with its name and no time. A full day (30) is shown and disabled.
+ */
+function AddToDaySheet({
+  place,
+  trip,
+  colorScheme,
+  reduceMotion,
+  insetsBottom,
+  onClose,
+  onToast,
+}: {
+  place: SavedPlace;
+  trip: Trip;
+  colorScheme: ColorScheme;
+  reduceMotion: boolean;
+  insetsBottom: number;
+  onClose: () => void;
+  onToast: (text: string) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const p = colors[colorScheme];
+  const board = useBoard(trip.id);
+  const [busy, setBusy] = useState(false);
+  const counts = new Map<string, number>();
+  if (board.status === 'ready')
+    for (const item of board.items) counts.set(item.day, (counts.get(item.day) ?? 0) + 1);
+  const add = async (day: string, n: number) => {
+    setBusy(true);
+    const result = await saveItem(trip.id, Crypto.randomUUID(), {
+      day,
+      time: null,
+      title: place.name,
+      note: null,
+      placeRef: place.ref,
+      placeName: place.name,
+      lat: place.lat,
+      lng: place.lng,
+    });
+    setBusy(false);
+    if (result === 'ok') {
+      onToast(t('places.addedToDay', { n }));
+      onClose();
+    } else if (result === 'limit') onToast(t('itinerary.dayLimit'));
+    else if (result === 'offline') onToast(t('offline.readOnlyHint'));
+    else onToast(t('places.saveError'));
+  };
+  return (
+    <BottomSheet
+      visible
+      colorScheme={colorScheme}
+      reduceMotion={reduceMotion}
+      insetsBottom={insetsBottom}
+      onClose={onClose}
+      maxHeight={640}
+      testID="add-to-day"
+    >
+      <Text style={[styles.title2, { color: p.textPrimary }]} accessibilityRole="header">
+        {t('places.addToDay')}
+      </Text>
+      <Text style={[styles.footnote, { color: p.textSecondary }]}>{isolateOwn(place.name)}</Text>
+      <ScrollView>
+        {tripDays(trip.startDate, trip.endDate).map((day, i) => {
+          const full = (counts.get(day) ?? 0) >= DAY_MAX;
+          const disabled = busy || full || board.status === 'loading';
+          return (
+            <Pressable
+              key={day}
+              accessibilityRole="button"
+              accessibilityState={{ disabled }}
+              disabled={disabled}
+              onPress={() => void add(day, i + 1)}
+              style={({ pressed }) => [
+                styles.menuRow,
+                { borderBottomColor: p.borderSubtle },
+                pressed && { backgroundColor: p.pressed },
+              ]}
+              testID={`add-to-day-${day}`}
+            >
+              <Text style={[styles.body, { color: disabled ? p.textTertiary : p.textPrimary }]}>
+                {dayHeading(t, i18n.language, i + 1, day)}
+                {full ? ` · ${t('itinerary.menu.full')}` : ''}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </BottomSheet>
   );
 }
 
@@ -1150,6 +1291,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  more: { fontSize: 24, lineHeight: 28 },
+  menuRow: {
+    minHeight: layout.listRowMin,
+    justifyContent: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   loading: { marginTop: 32 },
   emptyBox: { padding: 24, gap: 8, alignItems: 'center' },
   empty: { padding: 24, textAlign: 'center' },

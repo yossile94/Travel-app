@@ -3,14 +3,14 @@
  * the server and on the device. Reads from itinerary_items; writes only
  * through the RPCs (consent gate, limits, the trip's lock), never
  * optimistically — each write reads the trip's items again. Offline, the
- * board shows the encrypted device copy, read only. The copy shares the trips
- * cache's prefix, so every way out (sign-out, deletion) removes it too.
+ * board shows the encrypted device copy, read only (tripCopies).
  * Logs carry a code only, never a title or a note.
  */
 import NetInfo from '@react-native-community/netinfo';
 import { useEffect, useSyncExternalStore } from 'react';
 
-import { secureSessionStorage } from '@/lib/secureSessionStorage';
+import { forgetCachedTrips, readTripCopy, writeTripCopy } from '@/features/trips/tripCopies';
+import { tripsCacheGeneration } from '@/features/trips/tripsCache';
 import { supabase } from '@/lib/supabase';
 
 import type { Item } from './itineraryModel';
@@ -24,13 +24,9 @@ export type BoardWrite = 'ok' | 'offline' | 'consent' | 'gone' | 'limit' | 'day'
 
 /** design 11.2: 15 s, then as offline. */
 const WRITE_TIMEOUT_MS = 15_000;
-/** Raz ח5: the active trip and the next 5 keep a copy. */
-export const CACHED_TRIPS = 6;
-
 const states = new Map<string, BoardState>();
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());
-const cacheKey = (tripId: string) => `trips-cache.itinerary.${tripId}`;
 
 function log(step: string, error: unknown): void {
   const code = (error as { code?: unknown } | null)?.code;
@@ -54,30 +50,18 @@ const fromRow = (r: Record<string, unknown>): Item => ({
   sortOrder: r.sort_order as number,
 });
 
-async function readCopy(tripId: string): Promise<{ items: Item[]; savedAt: string } | null> {
-  try {
-    const text = await secureSessionStorage.getItem(cacheKey(tripId));
-    return text ? (JSON.parse(text) as { items: Item[]; savedAt: string }) : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Whether this trip keeps a device copy (the active one and the next 5). */
-const keepCopy = new Set<string>();
-export function setCachedTrips(tripIds: readonly string[]) {
-  keepCopy.clear();
-  for (const id of tripIds.slice(0, CACHED_TRIPS)) keepCopy.add(id);
-}
-
 /** The trip's items: the server's, or the device copy offline (read only). */
 export async function loadBoard(tripId: string): Promise<void> {
+  // A sign-out or deletion while this runs: nothing comes back (Raz ח3).
+  const startedIn = tripsCacheGeneration();
+  const current = () => tripsCacheGeneration() === startedIn;
   if (!states.has(tripId)) {
     states.set(tripId, { status: 'loading' });
     notify();
   }
   const fallBack = async (offline: boolean) => {
-    const copy = await readCopy(tripId);
+    const copy = await readTripCopy<{ items: Item[]; savedAt: string }>('itinerary', tripId);
+    if (!current()) return;
     states.set(
       tripId,
       copy
@@ -100,15 +84,12 @@ export async function loadBoard(tripId: string): Promise<void> {
     log('load', error);
     return fallBack(false);
   }
+  if (!current()) return;
   const items = data.map(fromRow);
   const savedAt = new Date().toISOString();
   states.set(tripId, { status: 'ready', items, fromCache: false, savedAt });
   notify();
-  if (keepCopy.has(tripId)) {
-    await secureSessionStorage
-      .setItem(cacheKey(tripId), JSON.stringify({ items, savedAt }))
-      .catch((e: unknown) => console.warn('[itinerary] cache write failed', (e as Error)?.name));
-  }
+  await writeTripCopy('itinerary', tripId, { items, savedAt }, startedIn);
 }
 
 async function rpc<T>(
@@ -252,6 +233,6 @@ export function useBoard(tripId: string | null): BoardState {
 /** Sign-out and deletion: the memory goes (the device copies go with the trips cache). */
 export function clearBoards() {
   states.clear();
-  keepCopy.clear();
+  forgetCachedTrips();
   notify();
 }

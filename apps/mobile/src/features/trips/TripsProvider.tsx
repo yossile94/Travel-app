@@ -22,7 +22,7 @@ import { prefetchFlights } from '@/features/flights/flightsStore';
 import { pruneInsuranceReminders } from '@/features/kit/insuranceReminder';
 import { kitsOf, prefetchKit } from '@/features/kit/kitStore';
 import { passportTripsLoaded } from '@/features/passportAlerts/passportRunner';
-import { setCachedTrips } from '@/features/itinerary/itineraryStore';
+import { setCachedTrips } from '@/features/trips/tripCopies';
 import { prefetchPlaces } from '@/features/places/placesData';
 
 import { loadTripCountries, loadTripPage, type Trip } from './tripsApi';

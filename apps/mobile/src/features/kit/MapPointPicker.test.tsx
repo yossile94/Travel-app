@@ -6,16 +6,7 @@ import '@/i18n';
 
 import { MapPointPicker, parseCoordinates, pointText, roundPoint } from './MapPointPicker';
 
-jest.mock('@rnmapbox/maps', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const React = jest.requireActual<typeof import('react')>('react');
-  return {
-    MapView: ({ children }: { children: React.ReactNode }) => (
-      <View testID="mock-map">{children}</View>
-    ),
-    Camera: React.forwardRef(() => null),
-  };
-});
+// @rnmapbox/maps: the shared stand-in in jest.setup.ts.
 
 describe('typed coordinates (the way without dragging)', () => {
   it.each([
