@@ -4,22 +4,20 @@
  * status line in a trip's open row. Data from destinationData (ADR-008).
  */
 import NetInfo from '@react-native-community/netinfo';
-import type { TFunction } from 'i18next';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { BottomSheet } from '@/components/BottomSheet';
-import { Button, type TextInputHandle } from '@/components/fields';
+import { Button } from '@/components/fields';
 import {
-  CalculatorIcon,
-  ChevronEndIcon,
   CloudOffIcon,
   ExternalLinkIcon,
+  HourglassIcon,
   NoEntryIcon,
   WarningIcon,
 } from '@/components/icons';
-import { colors, fonts, motion, radius, type ColorScheme } from '@/theme/tokens';
+import { colors, fonts, radius, type ColorScheme } from '@/theme/tokens';
 
 import type { Advisory, EntryStatus } from './destinationData';
 import {
@@ -44,7 +42,7 @@ export function dottedDate(iso: string): string {
 }
 
 /** An advisory checked over 30 days ago, by the device clock (design 6.3). */
-function checkedLongAgo(fetchedAt: string, now = Date.now()): boolean {
+export function checkedLongAgo(fetchedAt: string, now = Date.now()): boolean {
   return now - Date.parse(fetchedAt) > 30 * DAY;
 }
 
@@ -70,10 +68,12 @@ export function EntryTag({
   status,
   colorScheme,
   onPress,
+  testID,
 }: {
   status: EntryStatus | null;
   colorScheme: ColorScheme;
   onPress?: () => void;
+  testID?: string;
 }) {
   const { t } = useTranslation();
   const palette = colors[colorScheme];
@@ -88,7 +88,11 @@ export function EntryTag({
     </View>
   );
   if (!onPress) {
-    return <View importantForAccessibility="no-hide-descendants">{body}</View>;
+    return (
+      <View importantForAccessibility="no-hide-descendants" testID={testID}>
+        {body}
+      </View>
+    );
   }
   return (
     <Pressable
@@ -146,153 +150,6 @@ export function AdvisoryBar({
           ]}
         />
       ))}
-    </View>
-  );
-}
-
-/** "רמה 2 · איום מזדמן" / "עד רמה 4 · איום גבוה". */
-function levelText(state: Extract<AdvisoryState, { kind: 'level' }>, t: TFunction) {
-  const word = t(`advisory.word.${state.level}`);
-  return t(state.mixed ? 'advisory.levelUpTo' : 'advisory.level', { n: state.level, word });
-}
-
-export function CardAdvisory({
-  advisory,
-  loading,
-  failed,
-  offline,
-  colorScheme,
-  onOpen,
-}: {
-  advisory: Advisory | null | undefined;
-  loading: boolean;
-  failed: boolean;
-  offline: boolean;
-  colorScheme: ColorScheme;
-  onOpen: () => void;
-}) {
-  const { t } = useTranslation();
-  const palette = colors[colorScheme];
-  const showSkeleton = useDelayed(loading, 150);
-  let content: ReactNode;
-  let tappable = false;
-  let a11y = '';
-  if (loading) {
-    content = showSkeleton ? <Skeleton widths={[57, 140]} colorScheme={colorScheme} /> : null;
-  } else if (failed && !advisory) {
-    const text = t(offline ? 'advisory.firstOffline' : 'advisory.error');
-    content = <Muted text={text} offline={offline} colorScheme={colorScheme} />;
-    a11y = text;
-  } else {
-    const state = advisoryState(advisory);
-    if (state.kind === 'level') {
-      tappable = true;
-      const alert = state.level === 4;
-      content = (
-        <View style={styles.advisoryLine}>
-          <AdvisoryBar level={state.level} size="card" colorScheme={colorScheme} />
-          <Text
-            style={[
-              styles.callout,
-              { color: alert ? palette.textAlert : palette.textPrimary },
-              alert && styles.strong,
-            ]}
-          >
-            {levelText(state, t)}
-          </Text>
-        </View>
-      );
-      a11y = t('advisory.rowA11y', {
-        level: t(state.mixed ? 'advisory.levelOfUpTo' : 'advisory.levelOf', { n: state.level }),
-        word: t(`advisory.word.${state.level}`),
-      });
-      if (state.mixed) a11y += `, ${t('advisory.mixed')}`;
-    } else if (state.kind === 'unrecognized') {
-      tappable = true;
-      content = (
-        <Text style={[styles.callout, { color: palette.textPrimary }]}>
-          {t('advisory.unrecognized')}
-        </Text>
-      );
-      a11y = `${t('advisory.label')}: ${t('advisory.unrecognized')}`;
-    } else if (state.kind === 'noNsc') {
-      // The sheet still has the Foreign Ministry's text, when there is one.
-      tappable = Boolean(advisory?.mfaText);
-      content = (
-        <Text style={[styles.callout, { color: palette.textPrimary }]}>{t('advisory.noNsc')}</Text>
-      );
-      a11y = `${t('advisory.label')}: ${t('advisory.noNsc')}`;
-    } else {
-      content = (
-        <View>
-          <Text style={[styles.callout, { color: palette.textSecondary }]}>
-            {t('advisory.pending')}
-          </Text>
-          <Text style={[styles.footnote, { color: palette.textTertiary }]}>
-            {t('advisory.pendingNote')}
-          </Text>
-        </View>
-      );
-      a11y = `${t('advisory.label')}: ${t('advisory.pending')}. ${t('advisory.pendingNote')}`;
-    }
-  }
-  const state = advisoryState(advisory);
-  const fetched = advisory?.fetchedAt ?? null;
-  const stale = fetched !== null && checkedLongAgo(fetched);
-  // The row reads its check date too (design 6.3, QA S4 #7).
-  const rowA11y =
-    a11y && fetched && state.kind !== 'pending'
-      ? `${a11y}, ${t('advisory.checked', { date: dottedDate(fetched) })}`
-      : a11y;
-  const rowMain = (
-    <View style={styles.rowMain}>
-      {content}
-      {state.kind === 'level' && state.mixed ? (
-        <Text style={[styles.footnote, { color: palette.textSecondary }]}>
-          {t('advisory.mixed')}
-        </Text>
-      ) : null}
-    </View>
-  );
-  return (
-    <View style={styles.block} testID="card-advisory">
-      <Text
-        style={[styles.caption, { color: palette.textSecondary }]}
-        importantForAccessibility="no"
-      >
-        {t('advisory.label')}
-      </Text>
-      {tappable ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={rowA11y || undefined}
-          accessibilityHint={t('advisory.rowHint')}
-          onPress={onOpen}
-          style={({ pressed }) => [styles.row, pressed && { backgroundColor: palette.pressed }]}
-          testID="card-advisory-row"
-        >
-          {rowMain}
-          <ChevronEndIcon color={palette.textTertiary} />
-        </Pressable>
-      ) : (
-        // Not a control: TalkBack reads the words, not "disabled" (Raz, S4-m6).
-        <View
-          accessible
-          accessibilityLabel={rowA11y || undefined}
-          style={styles.row}
-          testID="card-advisory-row"
-        >
-          {rowMain}
-        </View>
-      )}
-      {fetched && state.kind !== 'pending' ? (
-        <View style={styles.updatedLine}>
-          <Text style={[styles.footnote, { color: palette.textSecondary }]}>
-            {t('advisory.checked', { date: dottedDate(fetched) })}
-          </Text>
-          {stale ? <StaleTag colorScheme={colorScheme} /> : null}
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -402,11 +259,20 @@ function OfficialText({
   );
 }
 
-/** "כניסה ואזהרות מסע" (design 7): the entry part, the NSC part, the texts, the source. */
+/**
+ * "כניסה ואזהרות מסע" (design 7): the entry part, the NSC part, the texts, the
+ * source. Since the country card fix (6.1) it is the only place with the threat
+ * level, opened from the "Safety" tile in any state, so it says loading, error
+ * and offline itself instead of reading them as "pending".
+ */
 export function TravelInfoSheet({
   visible,
   countryName,
   advisory,
+  loading = false,
+  failed = false,
+  offline = false,
+  stale = false,
   colorScheme,
   reduceMotion,
   insetsBottom,
@@ -415,6 +281,13 @@ export function TravelInfoSheet({
   visible: boolean;
   countryName: string;
   advisory: Advisory | null | undefined;
+  /** No data yet. */
+  loading?: boolean;
+  /** No data, and the read failed. */
+  failed?: boolean;
+  offline?: boolean;
+  /** From the saved copy offline, or checked over 30 days ago. */
+  stale?: boolean;
   colorScheme: ColorScheme;
   reduceMotion: boolean;
   insetsBottom: number;
@@ -422,6 +295,41 @@ export function TravelInfoSheet({
 }) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
+  const showSkeleton = useDelayed(visible && loading, 150);
+  if (loading || failed) {
+    return (
+      <BottomSheet
+        visible={visible}
+        colorScheme={colorScheme}
+        reduceMotion={reduceMotion}
+        insetsBottom={insetsBottom}
+        onClose={onClose}
+        maxHeight={640}
+        testID="travel-info-sheet"
+      >
+        <Text style={[styles.title2, { color: palette.textPrimary }]} accessibilityRole="header">
+          {t('advisory.sheetTitle')}
+        </Text>
+        <Text style={[styles.callout, { color: palette.textSecondary }]}>{countryName}</Text>
+        <View style={styles.section}>
+          {loading ? (
+            showSkeleton ? (
+              <Skeleton widths={[57, 140]} colorScheme={colorScheme} />
+            ) : null
+          ) : (
+            <Muted
+              text={t(offline ? 'advisory.firstOffline' : 'advisory.error')}
+              offline={offline}
+              colorScheme={colorScheme}
+            />
+          )}
+        </View>
+        <Text style={[styles.footnote, styles.disclaimer, { color: palette.textSecondary }]}>
+          {t('advisory.disclaimer')}
+        </Text>
+      </BottomSheet>
+    );
+  }
   const state = advisoryState(advisory);
   const entry = advisory?.entryStatus ?? null;
   const official = advisory?.nscUrl ?? advisory?.mfaUrl ?? null;
@@ -523,6 +431,14 @@ export function TravelInfoSheet({
               {t('advisory.checked', { date: dottedDate(advisory.fetchedAt) })}
             </Text>
           ) : null}
+          {stale ? (
+            <View style={styles.advisoryLine} testID="travel-info-stale">
+              <HourglassIcon color={palette.textSecondary} size={14} />
+              <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+                {t('common.maybeStale')}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {state.kind !== 'pending' && (advisory?.nscText || advisory?.mfaText) ? (
@@ -573,6 +489,9 @@ export function TravelInfoSheet({
         <Text style={[styles.footnote, styles.disclaimer, { color: palette.textSecondary }]}>
           {t('advisory.disclaimer')}
         </Text>
+        <Text style={[styles.footnote, styles.source, { color: palette.textSecondary }]}>
+          {t('sources.advisories')}
+        </Text>
       </ScrollView>
     </BottomSheet>
   );
@@ -608,91 +527,25 @@ function Attribution({
   );
 }
 
-export function CardRate({
-  currency,
-  currencyName,
-  rate,
-  loading,
-  failed,
-  offline,
-  colorScheme,
-  onOpen,
-}: {
-  currency: string;
-  currencyName: string;
-  rate: Rate | null | undefined;
-  loading: boolean;
-  failed: boolean;
-  offline: boolean;
-  colorScheme: ColorScheme;
-  onOpen: (rate: Rate) => void;
-}) {
-  const { t } = useTranslation();
-  const palette = colors[colorScheme];
-  const showSkeleton = useDelayed(loading, 150);
-  // ILS: no block at all (AC-1א).
-  if (currency === 'ILS') return null;
-  let body: ReactNode;
-  if (loading) {
-    body = showSkeleton ? <Skeleton widths={[180, 96]} colorScheme={colorScheme} /> : null;
-  } else if (!rate) {
-    const key = failed ? (offline ? 'rate.firstOffline' : 'rate.error') : 'rate.none';
-    body = <Muted text={t(key)} offline={failed && offline} colorScheme={colorScheme} />;
-  } else {
-    const line = rateLine(rate)!;
-    const unit = Number(line.amount.split(' ')[0]!.replace(/,/g, ''));
-    const ilsNumber = line.ils.split(' ')[0];
-    const usdNumber = line.usd?.split(' ')[0];
-    const a11y =
-      currency === 'USD'
-        ? t('rate.rowA11yUsd', { ils: ilsNumber })
-        : t(unit === 1 ? 'rate.rowA11yOne' : 'rate.rowA11yMany', {
-            units: line.amount.split(' ')[0],
-            currency: currencyName,
-            ils: ilsNumber,
-            usd: usdNumber,
-          });
-    body = (
-      <View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={a11y}
-          accessibilityHint={t('rate.rowHint')}
-          onPress={() => onOpen(rate)}
-          style={({ pressed }) => [styles.row, pressed && { backgroundColor: palette.pressed }]}
-          testID="card-rate-row"
-        >
-          <Text style={[styles.numeric, styles.rowMain, { color: palette.textPrimary }]}>
-            {ltr(rateLineText(line))}
-          </Text>
-          <CalculatorIcon color={palette.textSecondary} />
-        </Pressable>
-        <View style={styles.updatedLine}>
-          <Text style={[styles.footnote, { color: palette.textSecondary }]}>
-            {t('rate.updated', { date: dottedDate(rate.fetchedAt) })}
-          </Text>
-          {isStale(rate.fetchedAt) ? <StaleTag colorScheme={colorScheme} /> : null}
-        </View>
-        <Attribution source={rate.source} colorScheme={colorScheme} />
-      </View>
-    );
-  }
-  return (
-    <View style={styles.block} testID="card-rate">
-      <Text style={[styles.caption, { color: palette.textSecondary }]}>{t('card.rate')}</Text>
-      {body}
-    </View>
-  );
-}
-
 type Field = 'local' | 'ils' | 'usd';
 
-/** The calculator (design 4): the last edited field drives the others. */
+/**
+ * The currency sheet (design 4; country card fix 6.3): the currency, its rate
+ * with its date and source, and the calculator, where the last edited field
+ * drives the others. It opens with or without a rate. The rate is taken when
+ * the sheet opens (or when the first one arrives) and kept until it closes, so
+ * a refresh behind it never resets what is typed (Raz). No autofocus: the
+ * keyboard would hide the rate and its source (Raz Q4).
+ */
 export function CalculatorSheet({
   visible,
-  rate,
+  rate: liveRate,
+  loading = false,
+  failed = false,
+  offline = false,
   usdIls,
   currencyName,
+  currencyLine,
   colorScheme,
   reduceMotion,
   insetsBottom,
@@ -700,8 +553,13 @@ export function CalculatorSheet({
 }: {
   visible: boolean;
   rate: Rate | null;
+  loading?: boolean;
+  failed?: boolean;
+  offline?: boolean;
   usdIls: number | null;
   currencyName: string;
+  /** "באט תאילנדי · ฿ · THB", under the title. */
+  currencyLine?: string;
   colorScheme: ColorScheme;
   reduceMotion: boolean;
   insetsBottom: number;
@@ -709,17 +567,15 @@ export function CalculatorSheet({
 }) {
   const { t } = useTranslation();
   const palette = colors[colorScheme];
-  // autoFocus inside the opening sheet doesn't raise the Android keyboard:
-  // focus the local field once the sheet has slid in (design 4.1, QA S4 #3).
-  const localInput = useRef<TextInputHandle>(null);
-  useEffect(() => {
-    if (!visible) return;
-    const timer = setTimeout(
-      () => localInput.current?.focus(),
-      (reduceMotion ? motion.short : motion.sheet) + 50,
-    );
-    return () => clearTimeout(timer);
-  }, [visible, reduceMotion]);
+  const [rate, setRate] = useState<Rate | null>(null);
+  const [wasVisible, setWasVisible] = useState(false);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    setRate(visible ? liveRate : null);
+  } else if (visible && !rate && liveRate) {
+    setRate(liveRate);
+  }
+  const showSkeleton = useDelayed(visible && !rate && loading, 150);
   const line = rate ? rateLine(rate) : null;
   const unit = line ? line.amount.split(' ')[0]!.replace(/,/g, '') : '1';
   const [source, setSource] = useState<{ field: Field; text: string }>({
@@ -737,7 +593,40 @@ export function CalculatorSheet({
       setInvalid(false);
     }
   }
-  if (!rate || !line) return null;
+  const head = (
+    <>
+      <Text style={[styles.title2, { color: palette.textPrimary }]} accessibilityRole="header">
+        {t('card.moneySheetTitle')}
+      </Text>
+      {currencyLine ? (
+        <Text style={[styles.callout, { color: palette.textSecondary }]}>{currencyLine}</Text>
+      ) : null}
+    </>
+  );
+  if (!rate || !line) {
+    const muted = loading
+      ? null
+      : t(failed ? (offline ? 'rate.firstOffline' : 'rate.error') : 'rate.none');
+    return (
+      <BottomSheet
+        visible={visible}
+        colorScheme={colorScheme}
+        reduceMotion={reduceMotion}
+        insetsBottom={insetsBottom}
+        onClose={onClose}
+        testID="calculator-sheet"
+      >
+        {head}
+        <View style={styles.section}>
+          {muted ? (
+            <Muted text={muted} offline={failed && offline} colorScheme={colorScheme} />
+          ) : showSkeleton ? (
+            <Skeleton widths={[180, 96]} colorScheme={colorScheme} />
+          ) : null}
+        </View>
+      </BottomSheet>
+    );
+  }
   const isUsd = rate.currency === 'USD';
   const usdToIls = usdIls ?? rate.rateToIls / rate.rateToUsd;
 
@@ -785,12 +674,18 @@ export function CalculatorSheet({
       testID="calculator-sheet"
     >
       <ScrollView keyboardShouldPersistTaps="handled">
-        <Text style={[styles.title2, { color: palette.textPrimary }]} accessibilityRole="header">
-          {t('calc.title')}
-        </Text>
-        <Text style={[styles.callout, { color: palette.textSecondary }]}>
+        {head}
+        <Text style={[styles.numeric, { color: palette.textPrimary }]} testID="money-sheet-rate">
           {ltr(rateLineText(line))}
         </Text>
+        <View style={styles.updatedLine}>
+          <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+            {t('rate.updated', { date: dottedDate(rate.fetchedAt) })}
+          </Text>
+          {isStale(rate.fetchedAt) ? <StaleTag colorScheme={colorScheme} /> : null}
+        </View>
+        <Attribution source={rate.source} colorScheme={colorScheme} />
+        <View style={[styles.rule, { backgroundColor: palette.borderSubtle }]} />
         {fields.map(({ field, label, name, unitLabel }) => (
           <View key={field} style={styles.calcField}>
             <Text
@@ -812,7 +707,6 @@ export function CalculatorSheet({
                 keyboardType="decimal-pad"
                 autoCorrect={false}
                 selectTextOnFocus
-                ref={field === 'local' ? localInput : undefined}
                 style={[styles.calcText, { color: palette.textPrimary }]}
                 testID={`calc-${field}`}
               />
@@ -832,13 +726,6 @@ export function CalculatorSheet({
         <Text style={[styles.footnote, styles.disclaimer, { color: palette.textSecondary }]}>
           {t('calc.disclaimer')}
         </Text>
-        <View style={styles.updatedLine}>
-          <Text style={[styles.footnote, { color: palette.textSecondary }]}>
-            {t('rate.updated', { date: dottedDate(rate.fetchedAt) })}
-          </Text>
-          {isStale(rate.fetchedAt) ? <StaleTag colorScheme={colorScheme} /> : null}
-        </View>
-        <Attribution source={rate.source} colorScheme={colorScheme} />
       </ScrollView>
     </BottomSheet>
   );
@@ -978,6 +865,8 @@ const styles = StyleSheet.create({
   attr: { minHeight: 48, marginVertical: -15, textAlignVertical: 'center' },
   rtl: { writingDirection: 'rtl', textAlign: 'right' },
   disclaimer: { marginTop: 16 },
+  source: { marginTop: 8 },
+  rule: { height: StyleSheet.hairlineWidth, marginTop: 16 },
   calcField: { marginTop: 12, gap: 4 },
   calcInput: {
     minHeight: 56,

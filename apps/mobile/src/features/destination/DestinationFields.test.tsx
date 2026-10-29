@@ -1,16 +1,12 @@
 import i18n from '@/i18n';
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet, TextInput } from 'react-native';
-
-import { colors } from '@/theme/tokens';
+import { TextInput } from 'react-native';
 
 import type { Advisory } from './destinationData';
 import {
   advisoryState,
   CalculatorSheet,
-  CardAdvisory,
-  CardRate,
   EntryTag,
   TravelInfoSheet,
   TripStatusLine,
@@ -47,9 +43,6 @@ const rate = (over: Partial<Rate> = {}): Rate => ({
   ...over,
 });
 
-const colorOf = (element: { props: { style?: unknown } }) =>
-  (StyleSheet.flatten(element.props.style as never) as { color?: string }).color;
-
 describe('advisoryState (AC-7)', () => {
   it('names each state', async () => {
     expect(advisoryState(undefined)).toEqual({ kind: 'pending' });
@@ -74,113 +67,128 @@ describe('advisoryState (AC-7)', () => {
   });
 });
 
-describe('CardAdvisory', () => {
-  const show = (over: Partial<Parameters<typeof CardAdvisory>[0]>) =>
+describe('the Safety sheet states (country card fix 6.1)', () => {
+  const sheet = (over: Partial<Parameters<typeof TravelInfoSheet>[0]>) =>
     render(
-      <CardAdvisory
+      <TravelInfoSheet
+        visible
+        countryName="יוון"
         advisory={advisory()}
-        loading={false}
-        failed={false}
-        offline={false}
         colorScheme="light"
-        onOpen={jest.fn()}
+        reduceMotion
+        insetsBottom={0}
+        onClose={jest.fn()}
         {...over}
       />,
     );
 
-  it('red only at level 4', async () => {
-    await show({ advisory: advisory({ nscLevel: 4, nscLevels: [4] }) });
-    const four = screen.getByText(t('advisory.level', { n: 4, word: t('advisory.word.4') }));
-    expect(colorOf(four)).toBe(colors.light.textAlert);
-    await screen.unmount();
-    await show({ advisory: advisory({ nscLevel: 3, nscLevels: [3] }) });
-    const three = screen.getByText(t('advisory.level', { n: 3, word: t('advisory.word.3') }));
-    expect(colorOf(three)).toBe(colors.light.textPrimary);
+  it('the threat level is here, with its check date', async () => {
+    await sheet({ advisory: advisory({ nscLevel: 4, nscLevels: [4] }) });
+    expect(screen.getByTestId('advisory-bar-4', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByText(t('advisory.levelOf', { n: 4 }))).toBeTruthy();
+    expect(screen.queryByTestId('travel-info-stale')).toBeNull();
   });
 
-  it('"may be out of date" after 30 days', async () => {
-    await show({ advisory: advisory({ fetchedAt: daysAgo(31) }) });
-    expect(screen.getByText(t('common.maybeStale'))).toBeTruthy();
-    await screen.unmount();
-    await show({ advisory: advisory({ fetchedAt: daysAgo(29) }) });
-    expect(screen.queryByText(t('common.maybeStale'))).toBeNull();
-  });
-
-  it('first launch: offline or failed, each with its own words', async () => {
-    await show({ advisory: undefined, failed: true, offline: true });
+  it('first offline launch and an online error say so, never "pending"', async () => {
+    await sheet({ advisory: undefined, failed: true, offline: true });
     expect(screen.getByText(t('advisory.firstOffline'))).toBeTruthy();
+    expect(screen.queryByText(t('advisory.pendingSheet'))).toBeNull();
     await screen.unmount();
-    await show({ advisory: undefined, failed: true, offline: false });
+    await sheet({ advisory: undefined, failed: true, offline: false });
     expect(screen.getByText(t('advisory.error'))).toBeTruthy();
+    expect(screen.queryByText(t('advisory.pendingSheet'))).toBeNull();
   });
 
-  it('a row with nothing to open is not a button (Raz, S4-m6)', async () => {
-    await show({ advisory: undefined });
-    expect(screen.getByText(t('advisory.pending'))).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
+  it('while loading, no level and no "pending"', async () => {
+    await sheet({ advisory: undefined, loading: true });
+    expect(screen.queryByText(t('advisory.pendingSheet'))).toBeNull();
+    expect(screen.queryByTestId('advisory-bar-2')).toBeNull();
   });
 
-  it('a level opens the sheet', async () => {
-    const onOpen = jest.fn();
-    await show({ onOpen });
-    await fireEvent.press(screen.getByRole('button'));
-    expect(onOpen).toHaveBeenCalled();
+  it('stale data says it may be out of date', async () => {
+    await sheet({ stale: true });
+    expect(screen.getByTestId('travel-info-stale')).toBeTruthy();
   });
 });
 
-describe('CardRate (AC-1א, AC-4)', () => {
-  const show = (over: Partial<Parameters<typeof CardRate>[0]>) =>
+describe('the currency sheet without a rate (country card fix 6.3)', () => {
+  const sheet = (over: Partial<Parameters<typeof CalculatorSheet>[0]>) =>
     render(
-      <CardRate
-        currency="EUR"
+      <CalculatorSheet
+        visible
+        rate={null}
+        usdIls={3.6}
         currencyName="אירו"
-        rate={rate()}
-        loading={false}
-        failed={false}
-        offline={false}
         colorScheme="light"
-        onOpen={jest.fn()}
+        reduceMotion
+        insetsBottom={0}
+        onClose={jest.fn()}
         {...over}
       />,
     );
 
-  it('no block for ILS', async () => {
-    await show({ currency: 'ILS', rate: undefined });
-    expect(screen.queryByTestId('card-rate')).toBeNull();
-  });
-
-  it('USD: only the shekels', async () => {
-    await show({ currency: 'USD', rate: rate({ currency: 'USD', rateToIls: 3.7, rateToUsd: 1 }) });
-    expect(screen.getByRole('button').props.accessibilityLabel).toBe(
-      t('rate.rowA11yUsd', { ils: '3.7' }),
-    );
-  });
-
-  it('no rate: none, first offline, or failed', async () => {
-    await show({ rate: undefined });
+  it('opens anyway: none, first offline, or failed', async () => {
+    await sheet({});
     expect(screen.getByText(t('rate.none'))).toBeTruthy();
+    expect(screen.queryByTestId('calc-local')).toBeNull();
     await screen.unmount();
-    await show({ rate: undefined, failed: true, offline: true });
+    await sheet({ failed: true, offline: true });
     expect(screen.getByText(t('rate.firstOffline'))).toBeTruthy();
     await screen.unmount();
-    await show({ rate: undefined, failed: true, offline: false });
+    await sheet({ failed: true, offline: false });
     expect(screen.getByText(t('rate.error'))).toBeTruthy();
   });
 
-  it('a rate over 3 days old may be out of date', async () => {
-    await show({ rate: rate({ fetchedAt: daysAgo(4) }) });
+  it('shows the rate, its date and its source, stale after 3 days', async () => {
+    await sheet({ rate: rate({ fetchedAt: daysAgo(4), source: 'erapi' }) });
+    expect(screen.getByTestId('money-sheet-rate')).toBeTruthy();
     expect(screen.getByText(t('common.maybeStale'))).toBeTruthy();
+    expect(screen.getByTestId('rate-attribution')).toBeTruthy();
     await screen.unmount();
-    await show({ rate: rate({ fetchedAt: daysAgo(2) }) });
+    await sheet({ rate: rate({ fetchedAt: daysAgo(2), source: 'boi' }) });
     expect(screen.queryByText(t('common.maybeStale'))).toBeNull();
+    expect(screen.getByText(t('rate.attrBoi'))).toBeTruthy();
   });
 
-  it('credits each source', async () => {
-    await show({ rate: rate({ source: 'boi' }) });
-    expect(screen.getByText(t('rate.attrBoi'))).toBeTruthy();
-    await screen.unmount();
-    await show({ rate: rate({ source: 'erapi' }) });
-    expect(screen.getByTestId('rate-attribution')).toBeTruthy();
+  it('keeps the rate it opened with while open: a refresh never resets the typing (Raz)', async () => {
+    const props = {
+      visible: true,
+      usdIls: 3.6,
+      currencyName: 'אירו',
+      colorScheme: 'light' as const,
+      reduceMotion: true,
+      insetsBottom: 0,
+      onClose: jest.fn(),
+    };
+    await render(<CalculatorSheet {...props} rate={rate()} />);
+    await fireEvent.changeText(screen.getByTestId('calc-local'), '10');
+    await screen.rerender(
+      <CalculatorSheet {...props} rate={rate({ rateToIls: 5, fetchedAt: daysAgo(0) })} />,
+    );
+    expect(screen.getByTestId('calc-local').props.value).toBe('10');
+    expect(screen.getByTestId('calc-ils').props.value).toBe('40.00');
+    // The next opening takes the new rate.
+    await screen.rerender(
+      <CalculatorSheet {...props} visible={false} rate={rate({ rateToIls: 5 })} />,
+    );
+    await screen.rerender(<CalculatorSheet {...props} rate={rate({ rateToIls: 5 })} />);
+    expect(screen.getByTestId('calc-ils').props.value).toBe('5.00');
+  });
+
+  it('takes the first rate that arrives while open after loading', async () => {
+    const props = {
+      visible: true,
+      usdIls: 3.6,
+      currencyName: 'אירו',
+      colorScheme: 'light' as const,
+      reduceMotion: true,
+      insetsBottom: 0,
+      onClose: jest.fn(),
+    };
+    await render(<CalculatorSheet {...props} rate={null} loading />);
+    expect(screen.queryByTestId('calc-local')).toBeNull();
+    await screen.rerender(<CalculatorSheet {...props} rate={rate()} />);
+    expect(screen.getByTestId('calc-local').props.value).toBe('1');
   });
 });
 
@@ -283,7 +291,7 @@ describe('TravelInfoSheet texts (QA S4 #4)', () => {
 });
 
 describe('focus and labels (QA S4 #3, #7)', () => {
-  it('focuses the local field once the calculator has slid in', async () => {
+  it('no autofocus: the keyboard would hide the rate and its source (Raz Q4)', async () => {
     jest.useFakeTimers();
     try {
       const focus = jest.spyOn(TextInput.prototype, 'focus');
@@ -299,33 +307,19 @@ describe('focus and labels (QA S4 #3, #7)', () => {
           onClose={jest.fn()}
         />,
       );
-      expect(focus).not.toHaveBeenCalled();
       await act(async () => {
         jest.advanceTimersByTime(1000);
       });
-      expect(focus).toHaveBeenCalled();
+      expect(focus).not.toHaveBeenCalled();
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('the advisory row and the trip line say the full level', async () => {
+  it('the trip line says the full level (the one place on the card besides the sheet)', async () => {
     await render(
-      <>
-        <CardAdvisory
-          advisory={advisory({ nscLevel: 4, nscLevels: [4] })}
-          loading={false}
-          failed={false}
-          offline={false}
-          colorScheme="light"
-          onOpen={jest.fn()}
-        />
-        <TripStatusLine advisory={advisory({ nscLevel: 4, nscLevels: [4] })} colorScheme="light" />
-      </>,
+      <TripStatusLine advisory={advisory({ nscLevel: 4, nscLevels: [4] })} colorScheme="light" />,
     );
-    const row = screen.getByTestId('card-advisory-row').props.accessibilityLabel as string;
-    expect(row).toContain(t('advisory.levelOf', { n: 4 }));
-    expect(row).toContain(t('advisory.checked', { date: '' }).trim().slice(0, 4));
     const line = screen.getByTestId('trip-status-line').props.accessibilityLabel as string;
     expect(line).toContain(t('advisory.levelOf', { n: 4 }));
     expect(line).toContain(t('advisory.word.4'));

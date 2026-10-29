@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  AccessibilityInfo,
   I18nManager,
   Platform,
   Pressable,
@@ -29,18 +30,19 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Line, Path, Rect } from 'react-native-svg';
 
-import { CardTemperature } from '@/features/climate/CardTemperature';
-import { CardRateBlock, CardSafety, CardSources } from '@/features/destination/CardDestination';
-import { SignedOutEmergency } from '@/features/emergency/SignedOutEmergency';
+import {
+  CardEntryLine,
+  CardSafetySheet,
+  CardSources,
+  useSafety,
+} from '@/features/destination/CardDestination';
 import { todayPg } from '@/features/trips/tripDates';
 import { colors, fonts, highlightColor, layout, motion, type ColorScheme } from '@/theme/tokens';
 
 import { boardingPassPath } from './boardingPassPath';
+import { CardTiles } from './CardTiles';
 import type { CountryInfo } from './countryData';
-import { describeDifference, differenceFromIsrael, formatClock, zonedClock } from './localTime';
 import { SplitFlap } from './SplitFlap';
-import { timeDifferenceText } from './timeDifferenceText';
-import { useMinuteClock } from './useMinuteClock';
 
 const STUB_WIDTH = 108;
 const NOTCH_RADIUS = 11;
@@ -129,7 +131,23 @@ export function BoardingPassCard({
 }: Props) {
   const { t } = useTranslation();
   const { fontScale, height: windowHeight } = useWindowDimensions();
+  // The header (the names beside the stub): the first tear line (fix 3).
   const [passHeight, setPassHeight] = useState(0);
+  // The tiles' strip under it; the coupon starts below both (Raz Q1).
+  const [stripHeight, setStripHeight] = useState(0);
+  const couponTop = passHeight + stripHeight;
+  const measured = passHeight > 0 && stripHeight > 0;
+  const safety = useSafety(country.adm0);
+  const [safetyFrom, setSafetyFrom] = useState<'entry' | 'tile' | null>(null);
+  const entryRef = useRef<ComponentRef<typeof Pressable>>(null);
+  const safetyTileRef = useRef<ComponentRef<typeof Pressable>>(null);
+  const closeSafety = () => {
+    const from = safetyFrom;
+    setSafetyFrom(null);
+    // Focus goes back to whichever opened it (6).
+    const node = (from === 'entry' ? entryRef : safetyTileRef).current;
+    if (node) AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
+  };
   // Design 1.2: the coupon's "shown from last save" line, when it shows, is part
   // of its fixed parts too (Raz, S4-M2).
   const [noticeHeight, setNoticeHeight] = useState(0);
@@ -138,7 +156,7 @@ export function BoardingPassCard({
     windowHeight -
     (topInset + layout.overlayTop + layout.touchTargetMin) -
     (bottomInset + CARD_GAP) -
-    passHeight -
+    couponTop -
     COUPON_CHROME -
     noticeHeight;
   const [nameEnWidth, setNameEnWidth] = useState(0);
@@ -151,14 +169,14 @@ export function BoardingPassCard({
     windowHeight -
     (topInset + layout.overlayTop + layout.touchTargetMin) -
     (bottomInset + CARD_GAP);
-  const scrollMode = coupon !== undefined && passHeight > 0 && maxListHeight < layout.tripRowMin;
+  const scrollMode = coupon !== undefined && measured && maxListHeight < layout.tripRowMin;
   const [content, setContent] = useState({ width: 0, height: 0 });
   const outerRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const [nearEnd, setNearEnd] = useState(0);
   const scrollToRow = useCallback(
     (y: number) =>
-      outerRef.current?.scrollTo({ y: Math.max(0, passHeight + y - 16), animated: !reduceMotion }),
-    [passHeight, reduceMotion],
+      outerRef.current?.scrollTo({ y: Math.max(0, couponTop + y - 16), animated: !reduceMotion }),
+    [couponTop, reduceMotion],
   );
   const outer = useMemo<OuterScroll | undefined>(
     () => (scrollMode ? { nearEnd, scrollToRow } : undefined),
@@ -239,7 +257,7 @@ export function BoardingPassCard({
                   cornerRadius: CORNER_RADIUS,
                   notchX,
                   notchRadius: NOTCH_RADIUS,
-                  couponY: coupon && passHeight > 0 ? passHeight : undefined,
+                  tearYs: measured ? (coupon ? [passHeight, couponTop] : [passHeight]) : [],
                 })}
                 fill={palette.surfaceRaised}
                 stroke={dark ? 'rgba(163,179,219,0.16)' : 'transparent'}
@@ -248,28 +266,30 @@ export function BoardingPassCard({
                 x1={notchX}
                 y1={NOTCH_RADIUS + 4}
                 x2={notchX}
-                y2={coupon && passHeight > 0 ? passHeight - 4 : content.height - NOTCH_RADIUS - 4}
+                y2={measured ? passHeight - 4 : content.height - NOTCH_RADIUS - 4}
                 stroke={dark ? 'rgba(244,231,208,0.22)' : 'rgba(18,28,54,0.22)'}
                 strokeWidth={2}
                 strokeDasharray="6 5"
               />
-              {coupon && passHeight > 0 ? (
+              {(measured ? (coupon ? [passHeight, couponTop] : [passHeight]) : []).map((y) => (
                 <Line
+                  key={y}
                   x1={NOTCH_RADIUS + 4}
-                  y1={passHeight}
+                  y1={y}
                   x2={content.width - NOTCH_RADIUS - 4}
-                  y2={passHeight}
+                  y2={y}
                   stroke={dark ? 'rgba(244,231,208,0.22)' : 'rgba(18,28,54,0.22)'}
                   strokeWidth={2}
                   strokeDasharray="6 5"
                 />
-              ) : null}
+              ))}
             </Svg>
           )}
 
           <View
             style={styles.row}
             onLayout={(event) => setPassHeight(event.nativeEvent.layout.height)}
+            testID="card-header"
           >
             <View style={styles.main}>
               <View style={[styles.strip, { backgroundColor: highlightColor }]} />
@@ -319,55 +339,15 @@ export function BoardingPassCard({
                   </Text>
                 </View>
               </View>
+              {/* Fix 4.2: banned or restricted entry only; no threat level on the card (Yossi). */}
+              <CardEntryLine
+                ref={entryRef}
+                country={country}
+                advisory={safety.advisory}
+                colorScheme={colorScheme}
+                onOpen={() => setSafetyFrom('entry')}
+              />
               {match}
-              {/* Sprint 4 design 1.1: can I enter, how safe is it, before the time and money. */}
-              <CardSafety
-                country={country}
-                colorScheme={colorScheme}
-                reduceMotion={reduceMotion}
-                insetsBottom={bottomInset}
-              />
-              {/* Sprint 8 AC-17: signed out, emergency from the country card. */}
-              <SignedOutEmergency adm0={country.adm0} colorScheme={colorScheme} />
-
-              <View style={styles.fields}>
-                {country.timeZone && <LocalTime country={country} colorScheme={colorScheme} />}
-                {country.currency && (
-                  <View testID="card-currency">
-                    <Text style={[styles.label, { color: palette.textSecondary }]}>
-                      {t('card.currency')}
-                    </Text>
-                    <Text style={[styles.value, { color: palette.textPrimary }]}>
-                      {country.currency.nameHe}
-                    </Text>
-                    <Text style={[styles.sub, { color: palette.textSecondary }]}>
-                      {isolateLtr(
-                        country.currency.symbol === country.currency.code
-                          ? country.currency.code
-                          : `${isolateOwn(country.currency.symbol)} · ${country.currency.code}`,
-                      )}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              {/* Sprint 4 design 1.1: the rate under the fields, then the temperature, then "Sources". */}
-              <CardRateBlock
-                country={country}
-                colorScheme={colorScheme}
-                reduceMotion={reduceMotion}
-                insetsBottom={bottomInset}
-              />
-              <CardTemperature
-                adm0={country.adm0}
-                colorScheme={colorScheme}
-                today={today}
-                city={city}
-              />
-              <CardSources
-                colorScheme={colorScheme}
-                reduceMotion={reduceMotion}
-                insetsBottom={bottomInset}
-              />
             </View>
 
             <View style={styles.stub}>
@@ -395,11 +375,44 @@ export function BoardingPassCard({
             </View>
           </View>
 
+          <View
+            style={styles.tiles}
+            onLayout={(event) => setStripHeight(event.nativeEvent.layout.height)}
+            testID="card-strip"
+          >
+            <CardTiles
+              country={country}
+              safety={safety}
+              colorScheme={colorScheme}
+              reduceMotion={reduceMotion}
+              insetsBottom={bottomInset}
+              today={today}
+              city={city}
+              onOpenSafety={() => setSafetyFrom('tile')}
+              safetyRef={safetyTileRef}
+            />
+            <CardSources
+              colorScheme={colorScheme}
+              reduceMotion={reduceMotion}
+              insetsBottom={bottomInset}
+            />
+          </View>
+
           <OuterScrollContext.Provider value={outer}>
             {coupon ? coupon(scrollMode ? Infinity : maxListHeight, setNoticeHeight) : null}
           </OuterScrollContext.Provider>
         </View>
       </ScrollView>
+
+      <CardSafetySheet
+        country={country}
+        safety={safety}
+        visible={safetyFrom !== null}
+        colorScheme={colorScheme}
+        reduceMotion={reduceMotion}
+        insetsBottom={bottomInset}
+        onClose={closeSafety}
+      />
 
       <Pressable
         onPress={onClose}
@@ -444,37 +457,6 @@ export function isolateLtr(text: string): string {
  */
 export function isolateOwn(text: string): string {
   return `⁨${text}⁩`;
-}
-
-function LocalTime({ country, colorScheme }: { country: CountryInfo; colorScheme: ColorScheme }) {
-  const { t } = useTranslation();
-  const palette = colors[colorScheme];
-  const now = useMinuteClock();
-  const timeZone = country.timeZone!;
-
-  // A runtime that formats dates unexpectedly must hide the field, not crash
-  // the screen (same rule as missing data, AC-4).
-  let clock: string;
-  let difference: string;
-  try {
-    clock = formatClock(zonedClock(timeZone, now));
-    difference = timeDifferenceText(t, describeDifference(differenceFromIsrael(timeZone, now)));
-  } catch (error) {
-    console.warn(`[globe] could not compute local time for ${timeZone}`, error);
-    return null;
-  }
-
-  return (
-    <View testID="card-time">
-      <Text style={[styles.label, { color: palette.textSecondary }]}>
-        {country.city ? t('card.localTimeIn', { city: country.city }) : t('card.localTime')}
-      </Text>
-      <Text style={[styles.clock, { color: palette.textPrimary }]}>{isolateLtr(clock)}</Text>
-      <Text style={[styles.sub, { color: palette.textSecondary }]} testID="card-time-difference">
-        {difference}
-      </Text>
-    </View>
-  );
 }
 
 const styles = StyleSheet.create({
@@ -522,11 +504,8 @@ const styles = StyleSheet.create({
     textAlign: I18nManager.isRTL ? 'right' : 'left',
     writingDirection: 'ltr',
   },
-  // At 130% font scale the currency drops to its own line rather than squeezing the time.
-  fields: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginTop: 12 },
-  clock: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 26, fontVariant: ['tabular-nums'] },
-  value: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 20, textAlign: 'left' },
-  sub: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, textAlign: 'left' },
+  // Fix 5.3: full width under the header, its own tear line above it.
+  tiles: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 },
   // The close button sits at the end of the title row; long names wrap before it.
   clearOfClose: { paddingEnd: layout.touchTargetMin },
   barcode: { marginTop: 'auto' },

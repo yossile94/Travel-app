@@ -3,9 +3,10 @@ import '@/i18n';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 
-import { CardSources } from '@/features/destination/CardDestination';
+import { CardSources, type SafetyState } from '@/features/destination/CardDestination';
+import { CardTiles } from '@/features/globe/CardTiles';
+import { countryByAdm0 } from '@/features/globe/countryData';
 
-import { CardTemperature } from './CardTemperature';
 import { parseClimate, type ClimateState } from './climateData';
 import { TripTemperature } from './TripTemperature';
 
@@ -25,8 +26,26 @@ const LRI = String.fromCodePoint(0x2066);
 const PDI = String.fromCodePoint(0x2069);
 const MINUS = String.fromCodePoint(0x2212);
 const strip = (s: string) => s.replace(new RegExp(`[${LRI}${PDI}]`, 'g'), '');
+const safety: SafetyState = {
+  advisory: undefined,
+  loading: false,
+  failed: false,
+  offline: false,
+  stale: false,
+  badge: null,
+};
 const card = (adm0: string, today = '2026-10-26') => (
-  <CardTemperature adm0={adm0} colorScheme="light" today={today} />
+  <CardTiles
+    country={countryByAdm0(adm0)!}
+    safety={safety}
+    colorScheme="light"
+    reduceMotion
+    insetsBottom={0}
+    today={today}
+    city={null}
+    onOpenSafety={jest.fn()}
+    safetyRef={{ current: null }}
+  />
 );
 
 beforeEach(() => {
@@ -35,41 +54,43 @@ beforeEach(() => {
 });
 afterEach(() => jest.useRealTimers());
 
-describe('the country card temperature (sprint 3 AC-10, AC-13)', () => {
-  it("shows this month's daily average at the area's city, read as one group", async () => {
+describe('the country card temperature (sprint 3 AC-10, AC-13; fix 5.1, 6.4)', () => {
+  it("shows this month's daily average on its tile, and the city in its sheet", async () => {
     await render(card('THA'));
+    const value = screen.getByTestId('card-tile-climate-value').props.children as string;
+    expect(strip(value)).toMatch(/^\d+°$/);
+    expect(screen.getByTestId('card-tile-climate').props.accessibilityLabel).toMatch(
+      /^ממוצע יומי באוקטובר: \d+ מעלות, בנגקוק$/,
+    );
+    await fireEvent.press(screen.getByTestId('card-tile-climate'));
     expect(screen.getByText('ממוצע יומי באוקטובר')).toBeOnTheScreen();
-    expect(strip(screen.getByTestId('card-temp-value').props.children as string)).toMatch(/^\d+°$/);
-    expect(screen.getByTestId('card-temp-city').props.children).toBe('בנגקוק');
-    const group = screen.getByLabelText(/^ממוצע יומי באוקטובר: \d+ מעלות, בנגקוק$/);
-    expect(group).toBeOnTheScreen();
+    expect(screen.getByTestId('climate-sheet-city')).toHaveTextContent('בנגקוק');
+    expect(screen.getByText('ממוצע רב-שנתי (1991–2020), לא תחזית.')).toBeOnTheScreen();
   });
 
   it('a negative value keeps its minus sign, in an isolate', async () => {
     await render(card('RUS', '2026-01-10'));
-    expect(screen.getByText('ממוצע יומי בינואר')).toBeOnTheScreen();
-    const value = screen.getByTestId('card-temp-value').props.children as string;
+    const value = screen.getByTestId('card-tile-climate-value').props.children as string;
     expect(value.startsWith(`${LRI}${MINUS}`)).toBe(true);
     expect(value.endsWith(`°${PDI}`)).toBe(true);
   });
 
   it('is hidden where there is no value', async () => {
     await render(card('ATA'));
-    expect(screen.queryByTestId('card-temp')).toBeNull();
+    expect(screen.queryByTestId('card-tile-climate')).toBeNull();
   });
 
   it('is hidden when the file failed, and shows a skeleton only after 150 ms', async () => {
     mockState = { status: 'failed' };
     const { rerender } = await render(card('THA'));
-    expect(screen.queryByTestId('card-temp')).toBeNull();
+    expect(screen.queryByTestId('card-tile-climate')).toBeNull();
     mockState = { status: 'loading', showSkeleton: false };
     await rerender(card('THA'));
-    expect(screen.queryByTestId('card-temp-skeleton')).toBeNull();
+    expect(screen.queryByTestId('card-tile-climate-skeleton')).toBeNull();
     mockState = { status: 'loading', showSkeleton: true };
     await rerender(card('THA'));
-    // Hidden from the screen reader: nothing is read until the value is there.
     expect(
-      screen.getByTestId('card-temp-skeleton', { includeHiddenElements: true }),
+      screen.getByTestId('card-tile-climate-skeleton', { includeHiddenElements: true }),
     ).toBeOnTheScreen();
   });
 

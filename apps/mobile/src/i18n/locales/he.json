@@ -13,7 +13,6 @@
     "destination": "יעד",
     "localTime": "שעה מקומית",
     "localTimeIn": "שעה מקומית · {{city}}",
-    "currency": "מטבע",
     "close": "סגירה",
     "code": "קוד המדינה {{code}}",
     "trips": {
@@ -34,9 +33,27 @@
       "citiesA11y": "ערים לפי הסדר: {{list}}",
       "duplicate": "שכפול"
     },
-    "rate": "שער חליפין",
     "emergency": "חירום {{inCountry}}",
-    "emergencyHint": "פותח מספרי חירום ונציגות"
+    "emergencyHint": "פותח מספרי חירום ונציגות",
+    "tile": {
+      "safety": "בטיחות",
+      "time": "שעה",
+      "money": "מטבע",
+      "climate": "טמפרטורה",
+      "emergency": "חירום",
+      "safetyA11y": "בטיחות: כניסה ואזהרות מסע",
+      "safetyHint": "פותח רמת איום, כניסה ומקור",
+      "hint": "פותח פרטים",
+      "timeA11y": "{{label}}: {{clock}}, {{difference}}",
+      "moneyA11y": "מטבע: {{name}}",
+      "moneyIls": "מטבע: {{name}}, {{symbol}}",
+      "moneyLoading": "השער נטען",
+      "updated": "עודכן ב-{{date}}"
+    },
+    "timeSheetTitle": "שעה מקומית",
+    "moneySheetTitle": "מטבע ושער חליפין",
+    "climateSheetTitle": "טמפרטורה",
+    "climateNotForecast": "ממוצע רב-שנתי (1991–2020), לא תחזית."
   },
   "timeDifference": {
     "same": "כמו בישראל",
@@ -485,7 +502,6 @@
     "maybeStale": "ייתכן שלא מעודכן"
   },
   "calc": {
-    "title": "מחשבון מטבע",
     "ils": "שקל חדש · ILS",
     "usd": "דולר אמריקאי · USD",
     "local": "{{name}} · {{code}}",
@@ -512,7 +528,6 @@
   "advisory": {
     "label": "אזהרת מסע של המל\"ל",
     "level": "רמה {{n}} · {{word}}",
-    "levelUpTo": "עד רמה {{n}} · {{word}}",
     "levelOf": "רמה {{n}} מתוך 4",
     "levelOfUpTo": "עד רמה {{n}} מתוך 4",
     "mixed": "הרמה משתנה לפי אזור",
@@ -537,7 +552,6 @@
     "checked": "נבדק ב-{{date}}",
     "firstOffline": "אזהרות המסע יוצגו כשיהיה חיבור",
     "error": "לא הצלחנו לטעון את אזהרת המסע",
-    "rowA11y": "אזהרת מסע של המל\"ל: {{level}}, {{word}}",
     "rowHint": "פותח פרטים ומקור",
     "sheetTitle": "כניסה ואזהרות מסע",
     "body": {
