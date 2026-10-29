@@ -1408,7 +1408,8 @@
     "emptySaved": "You haven't saved places for this trip yet. Tap Save next to a place to save it.",
     "offlineNoCopy": "You need a connection to see the places the first time. After that they're kept on this device.",
     "loadError": "We couldn't load the places.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "kitSavedHelp": "Save places to add them to days in your itinerary."
   },
   "itinerary": {
     "kitTitle": "Itinerary",

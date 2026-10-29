@@ -74,6 +74,8 @@ export interface PlacesScreenProps {
   insetsBottom: number;
   onClose: () => void;
   onToast: (text: string) => void;
+  /** Design 2.4: the kit's second row opens "שמורים". */
+  initialTab?: 'city' | 'saved';
 }
 
 /** The country's bundled cities, largest first; empty while loading or for none. */
@@ -117,6 +119,7 @@ export function PlacesScreen({
   insetsBottom,
   onClose,
   onToast,
+  initialTab = 'city',
 }: PlacesScreenProps) {
   const { t, i18n } = useTranslation();
   const p = colors[colorScheme];
@@ -130,7 +133,7 @@ export function PlacesScreen({
   const kit = useTripKit(tripId);
   const memoryKey = `${adm0}:${tripId ?? '-'}`;
 
-  const [tab, setTab] = useState<Tab>('city');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [category, setCategory] = useState<PlaceCategory | 'all'>('all');
   const [radiusKm, setRadiusKm] = useState<number>(3);
   const [shown, setShown] = useState(PAGE_SIZE);
