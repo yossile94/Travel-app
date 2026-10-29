@@ -938,7 +938,14 @@
     "deleteBody": "You can add it again any time.",
     "deleteConfirm": "Delete",
     "deleted": "Hotel deleted",
-    "deleteOffline": "You need a connection to delete."
+    "deleteOffline": "You need a connection to delete.",
+    "point": "Location on map (optional)",
+    "pointNone": "Not chosen",
+    "pointSet": "Point chosen",
+    "pointChoose": "Choose on map",
+    "pointChange": "Change",
+    "pointRemove": "Remove",
+    "pointHelp": "To see places near the hotel. No address search: move the map until the pin is on the hotel."
   },
   "form": {
     "err": {
@@ -1553,5 +1560,20 @@
     "tropical": "On hot days we didn't plan outdoor activities between 12:00 and 15:00.",
     "closeResult": "Close the summary",
     "airportTitle": "Leave for the airport"
+  },
+  "mapPoint": {
+    "title": "Hotel location",
+    "help": "Move the map until the pin is on the hotel.",
+    "choose": "Choose this point",
+    "north": "Move north",
+    "south": "Move south",
+    "east": "Move east",
+    "west": "Move west",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "mapA11y": "Map. The pin is at {{point}}. Use the actions to move it.",
+    "typePlaceholder": "Enter coordinates, e.g. 13.7563, 100.5018",
+    "typeA11y": "Enter coordinates",
+    "typeError": "Enter a latitude and a longitude, e.g. 13.7563, 100.5018."
   }
 }

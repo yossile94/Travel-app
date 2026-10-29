@@ -31,6 +31,8 @@ import {
   numRange,
 } from './kitModel';
 import { alignFor } from './DriverCard';
+import { MapPointPicker, pointText } from './MapPointPicker';
+import { countryByAdm0 } from '@/features/globe/countryData';
 import { FormShell, styles } from './kitUi';
 
 export interface KitTrip {
@@ -90,6 +92,9 @@ export function HotelScreen({
   const [id] = useState(() => hotel?.id ?? Crypto.randomUUID());
   const [initial] = useState(() => formOf(hotel, hotelDefaults(hotels, trip)));
   const [values, setValues] = useState(initial);
+  // Sprint 11 D9 (design 8.1): the point on the map, saved with the hotel.
+  const [point, setPoint] = useState<[number, number] | null>(hotel?.point ?? null);
+  const [picking, setPicking] = useState(false);
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<'offline' | 'limit' | 'dates' | 'gone' | 'error' | null>(
@@ -132,7 +137,9 @@ export function HotelScreen({
     });
   };
 
-  const changed = JSON.stringify(values) !== JSON.stringify(initial);
+  const changed =
+    JSON.stringify(values) !== JSON.stringify(initial) ||
+    JSON.stringify(point) !== JSON.stringify(hotel?.point ?? null);
   const back = () => {
     if (busy) return;
     if (!changed) return onClose();
@@ -153,9 +160,10 @@ export function HotelScreen({
     }
     setBusy(true);
     setNotice(null);
-    let result = await saveHotel(id, trip.id, hotelPayload(values));
+    const payload = { ...hotelPayload(values), lat: point?.[1] ?? null, lng: point?.[0] ?? null };
+    let result = await saveHotel(id, trip.id, payload);
     if (result === 'consent' && (await recheckConsent())) {
-      result = await saveHotel(id, trip.id, hotelPayload(values));
+      result = await saveHotel(id, trip.id, payload);
     }
     setBusy(false);
     if (result === 'ok') {
@@ -303,6 +311,46 @@ export function HotelScreen({
           {t('hotel.datesHelp', { range })}
         </Text>
       </View>
+      <View style={{ gap: 8 }} testID="hotel-point">
+        <Text style={[styles.footnote, { color: p.textSecondary }]}>{t('hotel.point')}</Text>
+        <Text style={[styles.footnote, { color: p.textPrimary }]} testID="hotel-point-value">
+          {point ? `${t('hotel.pointSet')} · ${pointText(point)}` : t('hotel.pointNone')}
+        </Text>
+        <Button
+          kind="secondary"
+          label={t(point ? 'hotel.pointChange' : 'hotel.pointChoose')}
+          onPress={() => setPicking(true)}
+          colorScheme={colorScheme}
+          testID="hotel-point-choose"
+        />
+        {point ? (
+          <Button
+            kind="text"
+            label={t('hotel.pointRemove')}
+            onPress={() => setPoint(null)}
+            colorScheme={colorScheme}
+            testID="hotel-point-remove"
+          />
+        ) : null}
+        <Text style={[styles.footnote, { color: p.textSecondary }]}>{t('hotel.pointHelp')}</Text>
+      </View>
+      {picking ? (
+        <MapPointPicker
+          start={
+            point
+              ? { point, zoom: 16 }
+              : { point: countryByAdm0(trip.countryAdm0)?.label ?? [0, 20], zoom: 6 }
+          }
+          colorScheme={colorScheme}
+          insetsTop={insetsTop}
+          insetsBottom={insetsBottom}
+          onClose={() => setPicking(false)}
+          onPick={(picked) => {
+            setPicking(false);
+            setPoint(picked);
+          }}
+        />
+      ) : null}
       <Text style={[styles.title3, { color: p.textPrimary }]} accessibilityRole="header">
         {t('hotel.booking')}
       </Text>
