@@ -566,37 +566,6 @@ export function SosButton({
   );
 }
 
-/** Design 15: signed out, the country card's row into the SOS screen (AC-17). */
-export function CardEmergencyLink({
-  adm0,
-  colorScheme,
-  onPress,
-}: {
-  adm0: string;
-  colorScheme: ColorScheme;
-  onPress: () => void;
-}) {
-  const { t, i18n } = useTranslation();
-  const p = colors[colorScheme];
-  if (adm0 === 'ISR') return null;
-  const words = countryWords(nameOf(adm0, i18n.language), i18n.language);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityHint={t('card.emergencyHint')}
-      onPress={onPress}
-      style={({ pressed }) => [styles.link, pressed && { backgroundColor: p.pressed }]}
-      testID="card-emergency-link"
-    >
-      <PhoneIcon color={p.textAlert} size={20} />
-      <Text style={[kit.callout, kit.grow, { color: p.textPrimary }]}>
-        {t('card.emergency', words)}
-      </Text>
-      <ChevronEndIcon color={p.textTertiary} size={16} />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   bar: {

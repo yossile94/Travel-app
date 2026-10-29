@@ -331,6 +331,12 @@ function pathIcon(d: string) {
 export const PhoneIcon = pathIcon(
   'M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2',
 );
+/** A banknote: the currency tile (country card fix 12.2). */
+export const BanknoteIcon = pathIcon(
+  'M3 7h18v10H3zM12 9.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM6.5 12h.01M17.5 12h.01',
+);
+/** A thermometer: the temperature tile, an average, not the weather now (12.2). */
+export const ThermometerIcon = pathIcon('M10 13.8V5a2 2 0 114 0v8.8a4 4 0 11-4 0zM12 9v6.5');
 /** Bed: a hotel. */
 export const BedIcon = pathIcon(
   'M3 7v12M3 13h18v6M21 13v-2a3 3 0 00-3-3h-7v5M7 11.5a1.5 1.5 0 100-.01',

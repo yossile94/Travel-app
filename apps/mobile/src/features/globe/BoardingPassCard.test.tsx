@@ -40,23 +40,34 @@ describe('BoardingPassCard', () => {
     expect(screen.getByText('Thailand')).toBeOnTheScreen();
   });
 
-  it('shows the live local time and the difference from Israel (AC-4)', async () => {
+  it('shows the live local time on its tile, and the difference in its sheet (AC-4, fix 6.2)', async () => {
     await renderCard('THA');
     expect(screen.getByText(isolateLtr('00:53'))).toBeOnTheScreen();
-    expect(screen.getByText('4 שעות יותר מבישראל')).toBeOnTheScreen();
+    expect(screen.getByTestId('card-tile-time').props.accessibilityLabel).toBe(
+      'שעה מקומית: 00:53, 4 שעות יותר מבישראל',
+    );
+    await fireEvent.press(screen.getByTestId('card-tile-time'));
+    expect(screen.getByTestId('time-sheet-difference')).toHaveTextContent('4 שעות יותר מבישראל');
   });
 
   it('names the city when a country spans several time zones', async () => {
     await renderCard('USA');
-    expect(screen.getByText('שעה מקומית · וושינגטון')).toBeOnTheScreen();
     expect(screen.getByText(isolateLtr('13:53'))).toBeOnTheScreen();
-    expect(screen.getByText('7 שעות פחות מבישראל')).toBeOnTheScreen();
+    expect(screen.getByTestId('card-tile-time').props.accessibilityLabel).toBe(
+      'שעה מקומית · וושינגטון: 13:53, 7 שעות פחות מבישראל',
+    );
   });
 
-  it('shows the currency with its Hebrew name, symbol and code (AC-4)', async () => {
+  it('shows the currency code on its tile, and its Hebrew name, symbol and code in the sheet (AC-4)', async () => {
     await renderCard('THA');
-    expect(screen.getByText('בהט תאילנדי')).toBeOnTheScreen();
-    expect(screen.getByText(isolateLtr(`${isolateOwn('฿')} · THB`))).toBeOnTheScreen();
+    expect(screen.getByText(isolateLtr('THB'))).toBeOnTheScreen();
+    expect(screen.getByTestId('card-tile-money').props.accessibilityLabel).toMatch(
+      /^מטבע: בהט תאילנדי/,
+    );
+    await fireEvent.press(screen.getByTestId('card-tile-money'));
+    expect(
+      screen.getByText(`בהט תאילנדי · ${isolateLtr(`${isolateOwn('฿')} · THB`)}`),
+    ).toBeOnTheScreen();
   });
 
   it('fades in with reduced motion, even though Reanimated would skip it (AC-6)', async () => {
@@ -70,7 +81,10 @@ describe('BoardingPassCard', () => {
 
   it('shows the local symbol where English has none, in its own direction', async () => {
     await renderCard('BHR');
-    expect(screen.getByText(isolateLtr(`${isolateOwn('د.ب.')} · BHD`))).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('card-tile-money'));
+    const symbol = isolateLtr(`${isolateOwn('د.ب.')} · BHD`);
+    const name = countryByAdm0('BHR')!.currency!.nameHe;
+    expect(screen.getByText(`${name} · ${symbol}`)).toBeOnTheScreen();
   });
 
   it('shows the code alone where there is no other symbol (Switzerland)', async () => {
@@ -139,8 +153,10 @@ describe('BoardingPassCard', () => {
   it('hides time and currency where there are none (Antarctica)', async () => {
     await renderCard('ATA');
     expect(screen.getByText('אנטארקטיקה')).toBeOnTheScreen();
-    expect(screen.queryByTestId('card-time')).toBeNull();
-    expect(screen.queryByTestId('card-currency')).toBeNull();
+    expect(screen.queryByTestId('card-tile-time')).toBeNull();
+    expect(screen.queryByTestId('card-tile-money')).toBeNull();
+    // Safety is always there outside Israel (fix 5.1).
+    expect(screen.getByTestId('card-tile-safety')).toBeOnTheScreen();
   });
 
   it('ticks over exactly on the minute', async () => {
@@ -169,8 +185,8 @@ describe('BoardingPassCard', () => {
       />,
     );
     expect(screen.getByText('תאילנד')).toBeOnTheScreen();
-    expect(screen.queryByTestId('card-time')).toBeNull();
-    expect(screen.getByTestId('card-currency')).toBeOnTheScreen();
+    expect(screen.queryByTestId('card-tile-time')).toBeNull();
+    expect(screen.getByTestId('card-tile-money')).toBeOnTheScreen();
     warn.mockRestore();
   });
 
@@ -185,7 +201,38 @@ describe('BoardingPassCard', () => {
       />,
     );
     expect(screen.getByText('יוון')).toBeOnTheScreen();
-    expect(screen.getByText('כמו בישראל')).toBeOnTheScreen();
+    expect(screen.getByTestId('card-tile-time').props.accessibilityLabel).toMatch(/כמו בישראל$/);
+  });
+
+  it("the coupon's room is measured from its top: the header plus the strip (fix AC-6, Raz Q1)", async () => {
+    const coupon = jest.fn((_max: number) => null);
+    await render(
+      <BoardingPassCard
+        country={countryByAdm0('THA')!}
+        colorScheme="light"
+        reduceMotion
+        bottomInset={0}
+        topInset={0}
+        onClose={jest.fn()}
+        coupon={coupon}
+      />,
+    );
+    const layout = (height: number) => ({
+      nativeEvent: { layout: { x: 0, y: 0, width: 360, height } },
+    });
+    await fireEvent(screen.getByTestId('card-header'), 'layout', layout(150));
+    await fireEvent(screen.getByTestId('card-strip'), 'layout', layout(110));
+    const withStrip = coupon.mock.calls.at(-1)![0];
+    await fireEvent(screen.getByTestId('card-strip'), 'layout', layout(220));
+    // A strip 110 taller leaves the list 110 less: the strip counts (not just the header).
+    expect(withStrip - coupon.mock.calls.at(-1)![0]).toBe(110);
+  });
+
+  it('no tile shows a threat level, and the old warning row is gone (fix AC-2)', async () => {
+    await renderCard('THA');
+    expect(screen.queryByTestId('card-advisory')).toBeNull();
+    expect(screen.queryByTestId('card-advisory-row')).toBeNull();
+    expect(screen.getByTestId('card-tile-safety').props.accessibilityLabel).not.toMatch(/רמה/);
   });
 
   it('exposes the country code to screen readers, not the flipping letters', async () => {

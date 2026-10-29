@@ -1,21 +1,26 @@
 appId: com.travelapp.companion
-name: Territories keep their own clock; no data means no field (AC-4)
-tags: [sprint-0, ac-4]
+name: Territories keep their own clock; no data means no tile (AC-4; fix AC-3)
+tags: [sprint-0, ac-4, fix-country-card]
 ---
 - launchApp:
     clearState: true
 
-# Christmas Island shares Australia's code but not its clock.
+# Christmas Island shares Australia's code but not its clock: its name is in the time sheet.
 - openLink: travelapp://?lng=105.6726&lat=-10.4908&zoom=5
 - waitForAnimationToEnd
 - tapOn:
     point: 50%,50%
 - extendedWaitUntil:
-    visible: 'שעה מקומית · אי חג המולד'
+    visible:
+      id: card-tile-time
     timeout: 4000
+- tapOn:
+    id: card-tile-time
+- assertVisible: 'אי חג המולד'
+- back
 - back
 
-# Antarctica: no local time or currency.
+# Antarctica: no local time or currency; Safety alone, 112 wide.
 - openLink: travelapp://?lng=35.8855&lat=-79.8432&zoom=2
 - waitForAnimationToEnd
 - tapOn:
@@ -23,7 +28,9 @@ tags: [sprint-0, ac-4]
 - extendedWaitUntil:
     visible: אנטארקטיקה
     timeout: 4000
+- assertVisible:
+    id: card-tile-safety
 - assertNotVisible:
-    id: card-time
+    id: card-tile-time
 - assertNotVisible:
-    id: card-currency
+    id: card-tile-money
