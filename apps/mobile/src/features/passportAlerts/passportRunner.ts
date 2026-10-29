@@ -5,7 +5,7 @@
  * against the passports, and a holders change plans the reminders again.
  */
 import i18n from '@/i18n';
-import { loadDestination } from '@/features/destination/destinationData';
+import { cachedDestination, loadDestination } from '@/features/destination/destinationData';
 import { countryByAdm0 } from '@/features/globe/countryData';
 import { countryWords } from '@/features/kit/hebrewPrefix';
 import {
@@ -60,9 +60,10 @@ function texts(): PassportTexts {
   };
 }
 
-async function check(holders: readonly Holder[]) {
+/** network: only with a trips load; a save in the wallet reads the cached copy (Dana bug 1). */
+async function check(holders: readonly Holder[], network: boolean) {
   if (!trips) return;
-  const destination = await loadDestination().catch(() => null);
+  const destination = await (network ? loadDestination() : cachedDestination()).catch(() => null);
   const monthsOf = (adm0: string) => destination?.advisories.get(adm0)?.passportValidityMonths;
   await checkTripPassports(trips, holders, monthsOf, parentOf, texts());
 }
@@ -87,7 +88,7 @@ export function passportTripsLoaded(next: readonly AlertTrip[]): Promise<void> {
   // The 9/6/3 reminders too: a permission granted later, or a new language (Raz review, important 5).
   return queue(async () => {
     const list = await holders();
-    await check(list);
+    await check(list, true);
     await syncExpiryReminders(list, texts());
   });
 }
@@ -98,7 +99,7 @@ let unsubscribe: (() => void) | null = null;
 export function startPassportAlerts(): void {
   unsubscribe ??= onPassportsChanged((list) => {
     void queue(async () => {
-      await check(list);
+      await check(list, false);
       await syncExpiryReminders(list, texts());
     });
   });

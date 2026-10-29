@@ -85,6 +85,13 @@ jest.mock('@/features/trips/tripsCache', () => ({
   clearTripsCaches: jest.fn(async () => {}),
 }));
 const tripsCache = jest.requireMock<Record<string, jest.Mock>>('@/features/trips/tripsCache');
+// Sprint 10 AC-6 (Dana): the passports go with a sign-out and a deletion.
+jest.mock('@/features/passportAlerts/passportRunner', () => ({
+  wipePassportDevice: jest.fn(async () => {}),
+}));
+const passportRunner = jest.requireMock<Record<string, jest.Mock>>(
+  '@/features/passportAlerts/passportRunner',
+);
 
 const googleUser = {
   id: 'user-1',
@@ -305,6 +312,7 @@ describe('AuthProvider (sprint 1 F-003a)', () => {
     expect(result.current.notice).toEqual({ kind: 'signedOut' });
     // The offline copy of the trips goes too (sprint 4 AC-13).
     expect(tripsCache.clearTripsCaches).toHaveBeenCalled();
+    expect(passportRunner.wipePassportDevice).toHaveBeenCalled();
   });
 
   it('removes the stored session even when supabase-js returns early (QA D-1, AC-8)', async () => {
@@ -545,6 +553,7 @@ describe('AuthProvider: account (sprint 2 F-004, F-005)', () => {
     expect(result.current.notice).toEqual({ kind: 'deleted' });
     expect(result.current.displayName).toBeNull();
     expect(tripsCache.clearTripsCaches).toHaveBeenCalled();
+    expect(passportRunner.wipePassportDevice).toHaveBeenCalled();
   });
 
   it('a defined refusal leaves the user signed in, and nothing is wiped', async () => {

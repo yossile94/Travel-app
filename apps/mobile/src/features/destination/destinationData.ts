@@ -155,6 +155,16 @@ export function loadDestination(): Promise<Destination | null> {
   return loading;
 }
 
+/**
+ * What this session or the device already has, without a server read: the
+ * passport wallet may not reach the network (sprint 10, Dana bug 1).
+ */
+export async function cachedDestination(): Promise<Destination | null> {
+  if (current) return current;
+  const device = await readDevice();
+  return device ? fromStored(device, 'device') : null;
+}
+
 /** For tests. */
 export function resetDestination() {
   current = null;

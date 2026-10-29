@@ -25,6 +25,12 @@ jest.mock('./tripsCache', () => ({
 }));
 jest.mock('@/features/flights/flightsStore', () => ({ prefetchFlights: jest.fn(async () => {}) }));
 const tripsCache = jest.requireMock<Record<string, jest.Mock>>('./tripsCache');
+jest.mock('@/features/passportAlerts/passportRunner', () => ({
+  passportTripsLoaded: jest.fn(async () => {}),
+}));
+const passportRunner = jest.requireMock<Record<string, jest.Mock>>(
+  '@/features/passportAlerts/passportRunner',
+);
 /** The pin's query (sprint 3 AC-7). */
 let mockNext: unknown = { ok: true, value: { trips: [] } };
 
@@ -186,5 +192,21 @@ describe('TripsProvider offline (sprint 4 F-015)', () => {
     const second = tripsCache.saveTripsCache!.mock.calls[1]![0];
     expect(second.full).toBe(true);
     expect(second.upcoming).toHaveLength(50);
+  });
+
+  it('past trips failing still checks the upcoming ones against the passports (Dana bug 4)', async () => {
+    jest
+      .requireMock<Record<string, jest.Mock>>('./tripsApi')
+      .loadTripPage!.mockImplementation(async ({ section }: { section: string }) =>
+        section === 'past' ? { ok: false, error: 'offline' } : mockNext,
+      );
+    mockNext = { ok: true, value: { trips: [{ id: 'trip-1', countryAdm0: 'THA' }] } };
+    const { result } = await renderHook(() => useTrips(), { wrapper });
+    await act(async () => result.current.start());
+    await answer(0, ['THA']);
+    expect(tripsCache.saveTripsCache).not.toHaveBeenCalled();
+    expect(passportRunner.passportTripsLoaded).toHaveBeenCalledWith([
+      { id: 'trip-1', countryAdm0: 'THA' },
+    ]);
   });
 });

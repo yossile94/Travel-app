@@ -180,7 +180,14 @@ export async function checkTripPassports(
     }).catch(() => {});
     sent.push(trip.id);
   }
-  // Trips not in this list (over, deleted, not loaded) keep no record.
+  // Trips not in this list (over, deleted) keep no record, and their shown
+  // notification goes too (Dana bug 3).
+  const listed = new Set(trips.map((t) => t.id));
+  for (const tripId of Object.keys(notified)) {
+    if (!listed.has(tripId)) {
+      await Notifications.dismissNotificationAsync(`${TRIP_PREFIX}${tripId}`).catch(() => {});
+    }
+  }
   await AsyncStorage.setItem(NOTIFIED_KEY, JSON.stringify(next)).catch(() => {});
   return sent;
 }

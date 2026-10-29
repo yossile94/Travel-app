@@ -101,3 +101,14 @@ export function isEmail(value: string): boolean {
 
 export const ROLES = ['admin', 'content_editor', 'support', 'moderator'] as const;
 export type Role = (typeof ROLES)[number];
+
+/**
+ * Where a form may send the browser back to: a path on this site only. No
+ * other host ("//x", "/\x"), no scheme, no control characters (Dana bug 5).
+ */
+export function safeBackPath(value: unknown): string {
+  const back = typeof value === 'string' ? value : '';
+  if (back.length > 512 || !back.startsWith('/')) return '/';
+  if (/[\u0000-\u001f\u007f\\]/.test(back) || back[1] === '/') return '/';
+  return back;
+}

@@ -182,6 +182,9 @@ export function TripsProvider({ children }: { children: ReactNode }) {
           );
         });
       }
+    } else if (next.ok && currentUser.current === forUser) {
+      // Past trips failed: the upcoming ones are still checked (Dana bug 4).
+      void passportTripsLoaded(next.value.trips.slice(0, CACHE_UPCOMING_MAX));
     }
   }, []);
   // A new day changes which trip is next (design 3.4).
