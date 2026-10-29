@@ -503,6 +503,7 @@ export function DeleteAccountScreen({
               {[
                 t('deleteAccount.deletedAccount'),
                 t('deleteAccount.deletedTrips'),
+                t('deleteAccount.itinerary'),
                 t('deleteAccount.deletedDevice'),
                 // Sprint 10 design 2.1.
                 t('deleteAccount.deletedPassports'),
