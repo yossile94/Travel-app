@@ -6,9 +6,20 @@ const manifest = (attrs = {}) => ({
 
 describe('withPassportBackupRules (sprint 10 D6)', () => {
   it('excludes the passport folder from backup and from device transfer', () => {
-    expect(backupXml).toContain('<exclude domain="file" path="passport/"/>');
-    const both = extractionXml.match(/<exclude domain="file" path="passport\/"\/>/g);
+    expect(backupXml).toContain(
+      '<exclude domain="file" path="passport/" tools:ignore="FullBackupContent"/>',
+    );
+    const both = extractionXml.match(
+      /<exclude domain="file" path="passport\/" tools:ignore="FullBackupContent"\/>/g,
+    );
     expect(both).toHaveLength(2);
+    // Release lint (FullBackupContent): the guard is ignored on its own line, so the namespace is declared.
+    expect(backupXml).toContain(
+      '<full-backup-content xmlns:tools="http://schemas.android.com/tools">',
+    );
+    expect(extractionXml).toContain(
+      '<data-extraction-rules xmlns:tools="http://schemas.android.com/tools">',
+    );
     expect(extractionXml.indexOf('<cloud-backup>')).toBeLessThan(
       extractionXml.indexOf('<device-transfer>'),
     );
