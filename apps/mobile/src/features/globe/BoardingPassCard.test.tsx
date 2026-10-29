@@ -230,6 +230,7 @@ describe('BoardingPassCard', () => {
 
   it('Trips mode: a fade, then the compact header and no strip; its old height no longer counts (Raz 2)', async () => {
     const coupon = jest.fn((_max: number, _notice: unknown, _mode: boolean) => null);
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
     const props = {
       country: countryByAdm0('THA')!,
       colorScheme: 'light' as const,
@@ -256,8 +257,11 @@ describe('BoardingPassCard', () => {
     expect(screen.queryByTestId('card-tiles')).toBeNull();
     expect(screen.queryByTestId('card-name-en')).toBeNull();
     expect(screen.getByTestId('card-trips-mode')).toBeOnTheScreen();
+    await fireEvent(screen.getByTestId('card-trips-mode'), 'layout', layout(600));
     await fireEvent(screen.getByTestId('card-header-compact'), 'layout', layout(96));
     const [trips, , mode] = coupon.mock.calls.at(-1)!;
+    // One tear line under the compact header, not two at the same height (seen on the A73).
+    expect(JSON.stringify(errors.mock.calls)).not.toMatch(/same key/);
     expect(mode).toBe(true);
     expect(trips - destination).toBe(150 + 212 - 96);
     await act(async () => jest.advanceTimersByTime(motion.cardTripsModeFade));
@@ -267,6 +271,7 @@ describe('BoardingPassCard', () => {
     await rerender(<BoardingPassCard {...props} tripsMode onExitTripsMode={onExit} />);
     await fireEvent.press(screen.getByTestId('card-destination-details'));
     expect(onExit).toHaveBeenCalled();
+    errors.mockRestore();
   });
 
   it('a card that opens in Trips mode starts there, with no fade (5)', async () => {

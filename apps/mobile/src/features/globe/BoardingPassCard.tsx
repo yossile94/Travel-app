@@ -280,6 +280,8 @@ export function BoardingPassCard({
   const notchX = I18nManager.isRTL ? STUB_WIDTH : content.width - STUB_WIDTH;
   // Fix my-trips-space 2: the trips keep the card at its full height.
   const fullHeight = shown && coupon !== undefined && !scrollMode;
+  // The tear lines: under the header and above the coupon; in Trips mode one, under the compact header (3.1).
+  const tears = measured ? (coupon && !shown ? [passHeight, couponTop] : [passHeight]) : [];
 
   return (
     <Animated.View
@@ -316,7 +318,7 @@ export function BoardingPassCard({
                   cornerRadius: CORNER_RADIUS,
                   notchX,
                   notchRadius: NOTCH_RADIUS,
-                  tearYs: measured ? (coupon ? [passHeight, couponTop] : [passHeight]) : [],
+                  tearYs: tears,
                 })}
                 fill={palette.surfaceRaised}
                 stroke={dark ? 'rgba(163,179,219,0.16)' : 'transparent'}
@@ -330,7 +332,7 @@ export function BoardingPassCard({
                 strokeWidth={2}
                 strokeDasharray="6 5"
               />
-              {(measured ? (coupon ? [passHeight, couponTop] : [passHeight]) : []).map((y) => (
+              {tears.map((y) => (
                 <Line
                   key={y}
                   x1={NOTCH_RADIUS + 4}
