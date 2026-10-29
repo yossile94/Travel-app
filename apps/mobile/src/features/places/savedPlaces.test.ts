@@ -149,10 +149,11 @@ describe('save and remove (AC-6)', () => {
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
-  it('removing what is already gone is fine, and the list drops it', async () => {
+  it('removing what is already gone is fine; the list and its copy are read again', async () => {
     const result = await saved('t1');
     await waitFor(() => expect(result.current.status).toBe('ready'));
     mockRpc.mockResolvedValue({ data: 'gone', error: null });
+    mockSelect.answer = { data: [], error: null };
     expect(await unsavePlace('t1', 'wd:Q873769')).toBe('ok');
     await waitFor(() => expect(result.current).toMatchObject({ places: [] }));
   });

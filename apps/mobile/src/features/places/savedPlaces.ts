@@ -147,6 +147,8 @@ export async function unsavePlace(tripId: string, ref: string): Promise<SaveResu
       states.set(tripId, { ...state, places: state.places.filter((p) => p.ref !== ref) });
       notify();
     }
+    // The device copy follows too (Raz re-review 1).
+    await loadSaved(tripId);
     return 'ok';
   }
   return result;

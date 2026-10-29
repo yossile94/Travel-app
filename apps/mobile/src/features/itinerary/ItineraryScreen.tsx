@@ -396,7 +396,13 @@ export function ItineraryScreen({
             onDelete={() => {
               setMenu(null);
               confirmDelete(t, trip.id, menu.item, menu.day ? menu.day.index : null, (r) =>
-                onToast(r === 'ok' ? t('activity.deleted') : t('activity.saveError')),
+                onToast(
+                  r === 'ok'
+                    ? t('activity.deleted')
+                    : r === 'offline'
+                      ? t('offline.readOnlyHint')
+                      : t('activity.saveError'),
+                ),
               );
             }}
           />

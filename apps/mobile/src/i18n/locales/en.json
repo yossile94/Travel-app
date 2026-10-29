@@ -1379,6 +1379,7 @@
     "fromHotel": "{{distance}} from the hotel, as the crow flies",
     "radius": "Radius",
     "near": "Near {{name}}",
+    "hotelFar": "No hotel near {{city}}. Distances are from the city centre.",
     "hotelNoPoint": "Choose the hotel's location on the map to see places near it.",
     "hotelNoPointNoCity": "Choose the hotel's location on the map to see places near it. Meanwhile, you can see places by city in the \"In the city\" tab.",
     "save": "Save to trip",

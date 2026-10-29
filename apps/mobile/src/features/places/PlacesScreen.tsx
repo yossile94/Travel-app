@@ -32,6 +32,7 @@ import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import { countryByAdm0 } from '@/features/globe/countryData';
 import { dayHeading } from '@/features/itinerary/dayText';
 import { DAY_MAX } from '@/features/itinerary/itineraryModel';
+import { tripDays } from '@/features/itinerary/planner';
 import { saveItem, useBoard } from '@/features/itinerary/itineraryStore';
 import { useTripKit } from '@/features/kit/kitStore';
 import { cityAreas, cityPoint } from '@/features/trips/citiesData';
@@ -210,11 +211,15 @@ export function PlacesScreen({
     const first = withPoint[0];
     return first ? { point: first.point!, name: first.name } : null;
   })();
+  // AC-5 (Raz re-review 4): no city picked and no hotel point, the trip's first listed city.
+  const firstTripCity = trip?.cities.find((c) => c.geonameId !== null && cityPoint(c.geonameId));
+  const tripCityAt = firstTripCity ? cityPoint(firstTripCity.geonameId!) : null;
+  const hotelFar = cityLng !== null && !hotelPoint && hotels.some((h) => h.point);
   const inScope: ShownPlace[] = (() => {
     const city: [number, number] | null =
       cityLng !== null && cityLat !== null ? [cityLng, cityLat] : null;
     if (tab === 'hotel') {
-      const from = hotelPoint?.point ?? city;
+      const from = hotelPoint?.point ?? city ?? tripCityAt;
       return from ? placesNear(list, from, radiusKm) : [];
     }
     if (typed) return [];
@@ -441,11 +446,15 @@ export function PlacesScreen({
                   </Text>
                 ) : (
                   <InlineNotice
-                    text={t(
-                      selected?.kind === 'city'
-                        ? 'places.hotelNoPoint'
-                        : 'places.hotelNoPointNoCity',
-                    )}
+                    text={
+                      hotelFar
+                        ? t('places.hotelFar', { city: cityName(selected) ?? '' })
+                        : t(
+                            selected?.kind === 'city' || tripCityAt
+                              ? 'places.hotelNoPoint'
+                              : 'places.hotelNoPointNoCity',
+                          )
+                    }
                     colorScheme={colorScheme}
                   />
                 )}
@@ -981,17 +990,6 @@ function SavedList({
       )}
     />
   );
-}
-
-/** "YYYY-MM-DD" days from start to end, both included. */
-function tripDays(start: string, end: string): string[] {
-  const out: string[] = [];
-  for (let d = new Date(`${start}T12:00:00Z`); out.length < 366; d.setUTCDate(d.getUTCDate() + 1)) {
-    const day = d.toISOString().slice(0, 10);
-    if (day > end) break;
-    out.push(day);
-  }
-  return out;
 }
 
 /**
