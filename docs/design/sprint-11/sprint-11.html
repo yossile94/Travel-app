@@ -240,7 +240,11 @@
   <symbol id="pencil" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16zM14 6l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
   <symbol id="search" viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 104.6 11.1L20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="cloudOff" viewBox="0 0 24 24"><path d="M3 3l18 18M8 8a5 5 0 00-1 9.9h10M17.7 13.2A4 4 0 0014 8.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="bed" viewBox="0 0 24 24"><path d="M3 18V7M3 14h18v4M21 14v-3a3 3 0 00-3-3h-7v6M7 11h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="note" viewBox="0 0 24 24"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="thermo" viewBox="0 0 24 24"><path d="M10 4a2 2 0 014 0v9.5a4 4 0 11-4 0zM12 10v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="phoneIc" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="bed"viewBox="0 0 24 24"><path d="M3 18V7M3 14h18v4M21 14v-3a3 3 0 00-3-3h-7v6M7 11h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
 
@@ -343,16 +347,41 @@ function streetMap(){
 function phones(){
   const out = [];
 
-  // 1a. country card with "What to see"
-  out.push(phone(`<div class="card"><div class="strip"></div><p class="capt t2">${T('יעד','Destination')}</p>
-      <p class="title2" style="font-size:calc(28px*var(--fs));line-height:1.2">${country()}</p><p class="callout t2 iso">Thailand</p>
+  // 1a. country card with "What to see" (update 29.10, Raz): order Safety, time, money, temperature,
+  // What to see, emergency (signed out only). Layout per the fix's 5.3 formula on A73 (W = 355):
+  // signed in 5 tiles = 1 row at 100%, 3+2 at 130%; signed out 6 tiles = 3+3 at both; a list from 1.6.
+  const fsNow = Number(document.getElementById('fs').value);
+  const cardStrip = (signedOut) => {
+    const tiles = [
+      ['shield', null, T('בטיחות','Safety')],
+      ['clock', iso('21:40'), T('שעה','Time')],
+      ['note', 'THB', T('מטבע','Money')],
+      ['thermo', iso('27°'), T('טמפרטורה','Temp.')],
+      ['pin', null, T('מה לראות','What to see'), 'places'],
+      ...(signedOut ? [['phoneIc', null, T('חירום','Emergency'), 'sos']] : []),
+    ];
+    if (fsNow >= 1.6) {
+      return `<div class="list" aria-label="card-tiles · list">${tiles.map(([ic,v,l,k])=>`<div class="lrow" style="border-top:1px solid var(--bSub);${k==='places'?'outline:2px solid var(--pBg);outline-offset:-2px;border-radius:8px':''}"><span class="${k==='sos'?'':'t2'}" style="${k==='sos'?'color:var(--alert)':''}">${icon(ic,'ic24')}</span><p class="body grow">${l}</p>${v?`<p class="bodyS num">${v}</p>`:''}<span class="t2">${icon('chev','ic20','flipRtl')}</span></div>`).join('')}</div>`;
+    }
+    const cols = (signedOut || fsNow >= 1.3) ? 3 : 5;
+    return `<div aria-label="card-tiles · tiles" style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:8px">
+      ${tiles.map(([ic,v,l,k])=>`<div style="min-width:0;min-height:76px;border-radius:12px;background:var(--tag);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:10px 4px;${k==='places'?'outline:2px solid var(--pBg);outline-offset:1px':''}">
+        <span style="${k==='sos'?'color:var(--alert)':''}">${icon(ic,'ic24')}</span>
+        <p class="foot num" style="font-weight:500;min-height:calc(18px*var(--fs))">${v||''}</p>
+        <p class="capt t2" style="text-align:center">${l}</p></div>`).join('')}</div>`;
+  };
+  const countryCard = (signedOut) => `<div class="card"><div class="strip"></div><p class="capt t2">${T('יעד','Destination')}</p>
+      <p class="title2" style="font-size:calc(28px*min(var(--fs),1.6));line-height:1.2">${country()}</p><p class="callout t2 iso">Thailand</p>
       <div style="height:1px;border-top:2px dashed var(--bSub);margin:4px -16px"></div>
-      <div class="hstack" style="gap:8px;align-items:stretch">
-        ${[['clock',iso('21:40'),T('שעה','Time')],['info','THB',T('מטבע','Money')],['info',iso('27°'),T('טמפרטורה','Temp.')],['warn','',T('בטיחות','Safety')],['pin','',T('מה לראות','What to see')]].map(([ic,v,l],i)=>`<div style="flex:1;min-width:0;min-height:76px;border-radius:12px;background:var(--tag);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 2px;${i===4?'outline:2px solid var(--pBg);outline-offset:1px':''}">${icon(ic,'ic24')}${v?`<p class="foot num" style="font-weight:500">${v}</p>`:''}<p class="capt t2" style="text-align:center">${l}</p></div>`).join('')}</div>
-      <span class="newMark">29.10: CardTile "What to see" (fix/country-card), not a CardPlacesLink row</span>
-      <p class="foot link" style="text-decoration:underline;align-self:flex-end">${T('מקורות','Sources')}</p></div>`,
-    T('1א · עדכון 29.10: כרטיס המדינה אחרי התיקון הדחוף (fix/country-card). "מה לראות" הוא אייקון ברצועה, לא שורה. האייקונים כאן סכמטיים, והסדר ברצועה (כולל "בטיחות") נקבע באישור של רז לתיקון. ההקשה פותחת את PlacesScreen עם בורר הערים.',
-      '1a · Update 29.10: the country card after the urgent fix (fix/country-card). What to see is a tile in the strip, not a row. Icons here are schematic; the strip order (incl. Safety) is set in Raz\'s review of the fix. Tapping opens PlacesScreen with the city picker.')));
+      ${cardStrip(signedOut)}
+      <span class="newMark">29.10 (Raz): card-tile-places after temperature, before emergency. Empty value line, fixed height (like Safety)</span>
+      <p class="foot link" style="text-decoration:underline;align-self:flex-end">${T('מקורות','Sources')}</p></div>`;
+  out.push(phone(countryCard(false),
+    T('1א · עדכון 29.10 (רז): מחובר. הסדר ברצועה: בטיחות, שעה, מטבע, טמפרטורה, מה לראות. 5 אייקונים: שורה אחת ב-100%, ‏3 + 2 ב-130%, ורשימה מ-160%. "מה לראות" מוצג תמיד מחוץ לישראל, עם שורת ערך ריקה בגובה קבוע, כמו "בטיחות". האייקונים סכמטיים.',
+      '1a · Update 29.10 (Raz): signed in. Strip order: Safety, time, money, temperature, What to see. 5 tiles: one row at 100%, 3+2 at 130%, a list from 160%. What to see always shows outside Israel, with an empty fixed-height value line like Safety. Icons are schematic.')));
+  out.push(phone(countryCard(true),
+    T('1א2 · עדכון 29.10 (רז): בלי התחברות. "חירום" אחרון, אחרי "מה לראות". 6 אייקונים: ‏3 + 3 גם ב-100% וגם ב-130% (השורה השנייה מוסיפה כ-80dp), ורשימה מ-160%. סדר הפוקוס: טמפרטורה ← מה לראות ← חירום.',
+      '1a2 · Update 29.10 (Raz): signed out. Emergency last, after What to see. 6 tiles: 3+3 at both 100% and 130% (the second row adds about 80dp), a list from 160%. Focus order: temperature → What to see → emergency.')));
 
   // 1b. trip kit sections
   out.push(phone(`<div class="card" style="gap:8px"><div class="strip"></div><p class="capt t2">${T('נסיעות','Trips')}</p>

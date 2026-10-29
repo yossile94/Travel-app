@@ -158,10 +158,6 @@
   .inputWrap { display: flex; align-items: center; min-height: 56px; border: 1px solid var(--control); border-radius: 12px; padding: 0 12px; background: var(--surface); margin-top: 4px; }
   .inputWrap input { flex: 1; border: 0; outline: 0; background: transparent; color: var(--t1); font: inherit; font-size: calc(17px * var(--s)); font-weight: 500; direction: ltr; text-align: right; min-width: 0; }
   .appbar { display: flex; align-items: center; gap: 4px; min-height: 56px; padding: 32px 8px 0 16px; }
-  .cityChips { display: flex; gap: 8px; overflow-x: auto; padding: 8px 16px 12px; border-bottom: 1px solid var(--border); }
-  .cchip { flex: none; height: 40px; margin: 4px 0; padding: 0 14px; border-radius: 999px; border: 1px solid var(--control); display: inline-flex; align-items: center; gap: 6px; font-size: calc(14px * var(--s)); font-weight: 500; white-space: nowrap; }
-  .cchip.on { background: var(--chipOnBg); color: var(--chipOnFg); border-color: transparent; }
-  .placeholder { margin: 16px; padding: 24px 16px; border: 2px dashed var(--border); border-radius: 16px; text-align: center; }
   .note { font-size: 12px; background: #FFF2EE; color: #7F2A14; border-radius: 8px; padding: 6px 10px; margin-top: 6px; max-width: 411px; font-weight: 400; }
   body.dark .note { background: #3A1414; color: #FFBBA5; }
 </style>
@@ -403,18 +399,6 @@ function travelSheet(c) {
     <p class="footnote" style="margin-top:16px">המידע מבוסס על פרסומי המל"ל ומשרד החוץ, ואינו מחליף בדיקה במקור הרשמי</p>
     <p class="footnote" style="margin-top:8px"><span style="background:#C4F1EA;color:#084F48;border-radius:4px;padding:0 4px">חדש</span> אזהרות מסע: המאגר "אזהרות מסע" של gov.il באתר data.gov.il, לפי פרסומי המל"ל ומשרד החוץ. הרמה בסרגל זוהתה על ידינו מתוך הטקסט.</p>`);
 }
-function placesEntry(c, withTrip) {
-  const chips = withTrip
-    ? [['בנגקוק', true], ["צ'יאנג מאי"], ['קוסמוי'], ['בכל המדינה']]
-    : [['בכל המדינה', true], ...c.cities.slice(0, 5).map((x) => [x])];
-  return `<div class="appbar"><span class="x" role="button" aria-label="חזרה" style="margin:0">${ic('back', 24)}</span><p class="title2" style="margin:0;font-size:calc(20px*min(var(--s),1.6))" role="heading">מה לראות ב${c.he}</p></div>
-    <p class="caption" style="padding:0 16px">${withTrip ? 'הערים של "חופשה משפחתית"' : 'ערים גדולות'}</p>
-    <div class="cityChips" role="radiogroup" aria-label="עיר">
-      ${chips.map(([n, on]) => `<span class="cchip ${on ? 'on' : ''}" role="radio" aria-checked="${on ? 'true' : 'false'}">${n}</span>`).join('')}
-      <span class="cchip" role="button">${ic('search', 16)}עיר אחרת</span>
-    </div>
-    <div class="placeholder"><p class="body strong">התוכן לפי העיר שנבחרה</p><p class="footnote" style="margin-top:4px">העיצוב המלא של "מה לראות" יגיע בהמשך. כאן רק הכניסה ובורר העיר (README 6.5).</p></div>`;
-}
 
 // ---------------------------------------------------------------- screens
 function phone(inner, opts = {}) {
@@ -451,8 +435,6 @@ function render() {
       fig('after', '10א · מטבע בלי רשת', 'התקנה ראשונה: הראש, וההודעה. בלי שדות.', phone(afterCard(t, { offlineFirst: true }) + moneySheet(t, { offlineFirst: true }))),
       fig('after', '11 · טמפרטורה', '"ממוצע רב-שנתי, לא תחזית", ושורת המקור.', phone(afterCard(t) + climateSheet(t))),
       fig('after', '12 · כניסה ואזהרות מסע', 'הגיליון הקיים, משורת הסטטוס. תוספת אחת: שורת המקור בסוף.', phone(afterCard(t) + travelSheet(t))),
-      fig('after', '13 · מה לראות, עם נסיעה', 'בורר עיר בראש המסך: הערים של הנסיעה, "בכל המדינה", "עיר אחרת". ברירת המחדל: העיר של הלילה.', phone(placesEntry(t, true), { app: true })),
-      fig('after', '14 · מה לראות, בלי נסיעה', '"בכל המדינה" ראשון ונבחר, ואחריו 5 הערים הגדולות ו"עיר אחרת" (חיפוש ברשימה הארוזה).', phone(placesEntry(t, false), { app: true })),
     ]);
 }
 
