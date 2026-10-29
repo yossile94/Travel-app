@@ -135,6 +135,17 @@ describe('places (AC-16)', () => {
     expect(r.days.find((d) => d.day === '2027-01-06')?.kind).toBe('empty');
   });
 
+  it('D23: a night in a city with no places nearby stays empty, never filled from far away', () => {
+    const r = planTrip({
+      ...base,
+      nightPoint: () => [102.8, 16.4],
+      arrival: null,
+      departure: null,
+    });
+    expect(r.items).toEqual([]);
+    expect(r.days.every((d) => d.kind === 'empty')).toBe(true);
+  });
+
   it('tropical: the 15:30 slot takes an indoor place, outdoor ones go morning and evening', () => {
     const mixed = [
       place('wd:Q1', 90, bangkok, 'nature'),

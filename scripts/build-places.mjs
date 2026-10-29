@@ -45,6 +45,8 @@ export const CLASSES = [
   ['attraction', ['Q570116']], // tourist attraction
 ];
 export const AREA_MAX = 60;
+/** D22: what the app pages through for one country; the build fails above it. */
+export const COUNTRY_MAX = 1500;
 export const CITY_MAX = 20;
 export const CITY_RADIUS_KM = 15;
 const NAME_MAX = 120;
@@ -144,6 +146,13 @@ export function selectPlaces(adm0, answers, cities) {
   return [...kept.values()].sort((a, b) => b.links - a.links || a.qid.localeCompare(b.qid));
 }
 
+/** D22: one country's rows, or a failed build when there are more than the app pages through. */
+export function withinCap(adm0, rows) {
+  if (rows.length > COUNTRY_MAX)
+    throw new Error(`${adm0}: ${rows.length} places, over ${COUNTRY_MAX}`);
+  return rows;
+}
+
 const q = (v) => (v === null || v === undefined ? 'null' : `'${String(v).replace(/'/g, "''")}'`);
 
 export function render(rows, sha) {
@@ -240,7 +249,7 @@ async function main() {
       hash.update(text);
       answers[group] = JSON.parse(text).results.bindings;
     }
-    rows.push(...selectPlaces(adm0, answers, cities[adm0] ?? []));
+    rows.push(...withinCap(adm0, selectPlaces(adm0, answers, cities[adm0] ?? [])));
   }
   const sha = hash.digest('hex');
   writeFileSync(OUTPUT, render(rows, sha));

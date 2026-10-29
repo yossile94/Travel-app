@@ -2,7 +2,17 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { AREA_MAX, CITY_MAX, cleanName, km, point, render, selectPlaces } from './build-places.mjs';
+import {
+  AREA_MAX,
+  CITY_MAX,
+  COUNTRY_MAX,
+  cleanName,
+  km,
+  point,
+  render,
+  selectPlaces,
+  withinCap,
+} from './build-places.mjs';
 
 const item = (qid, links, [lon, lat], en = `Place ${qid}`, he = undefined) => ({
   item: { value: `http://www.wikidata.org/entity/${qid}` },
@@ -30,6 +40,21 @@ describe('places (sprint 11 D10)', () => {
     const rows = selectPlaces('THA', { attraction: [...far, ...near] }, [[100.5, 13.75]]);
     assert.equal(rows.length, AREA_MAX + CITY_MAX);
     assert.equal(rows.filter((r) => r.qid >= 'Q500' && r.qid.length === 4).length, CITY_MAX);
+  });
+
+  it('every bundled city gets its places, not only the 5 largest (D18)', () => {
+    const far = Array.from({ length: 80 }, (_, i) => item(`Q${100 + i}`, 1000 - i, [30, 60]));
+    const cities = Array.from({ length: 7 }, (_, i) => [10 + i, 50]);
+    const small = cities.map(([lon, lat], i) => item(`Q${900 + i}`, 1, [lon, lat]));
+    const rows = selectPlaces('DEU', { culture: [...far, ...small] }, cities);
+    assert.equal(rows.length, AREA_MAX + 7);
+    assert.ok(rows.some((r) => r.qid === 'Q906'));
+  });
+
+  it('a country over the cap fails the build (D22)', () => {
+    const rows = Array.from({ length: COUNTRY_MAX + 1 }, () => ({}));
+    assert.throws(() => withinCap('DEU', rows), /DEU: 1501 places, over 1500/);
+    assert.equal(withinCap('THA', rows.slice(1)).length, COUNTRY_MAX);
   });
 
   it('no name and no point: dropped; a Hebrew-only name is used for English too', () => {
