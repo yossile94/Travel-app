@@ -206,7 +206,7 @@
 </head>
 <body>
 <div class="panelBar" role="toolbar" aria-label="הגדרות ההדמיה">
-  <b>ספרינט 11 · מה לראות ומסלול</b>
+  <b>ספרינט 11 · מה לראות ומסלול · עדכון 29.10 (לפי עיר)</b>
   <label><input type="checkbox" id="dark"> כהה (טלפון)</label>
   <label>גופן <select id="fs"><option value="1">100%</option><option value="1.3">130%</option><option value="2">200%</option></select></label>
   <label>שפה <select id="lang"><option value="he">עברית</option><option value="en">English</option></select></label>
@@ -278,10 +278,26 @@ const cat = {
 const curatedTag = () => `<span class="chip c-info">${T('מומלץ לישראלים','Curated for Israelis')}</span>`;
 const autoTag = () => `<span class="chip c-tag">${icon('wand','ic12')}${T('אוטומטי','Auto')}</span>`;
 
-function tabs(active, {cities=true, hotel=true, saved=12}={}){
-  const t = (k, label) => `<span class="tab${k===active?' on':''}" role="tab">${label}</span>`;
-  return `<div class="tabs" role="tablist">${t('country',T('במדינה','Country'))}${cities?t('bkk',T('בנגקוק','Bangkok'))+t('cnx',T("צ'אנג מאי",'Chiang Mai')):''}${hotel?t('hotel',T('ליד המלון','Near the hotel')):''}${t('saved',`${T('שמורים','Saved')} ${iso(saved)}`)}</div>`;
+/* Update 29.10: three fixed tabs under the city picker ("In the city" / "Near the hotel" / "Saved"). */
+function tabs(active, {hotel=true, saved=12}={}){
+  const t = (k, label) => `<span class="tab${k===active?' on':''}" role="tab" style="flex:1;justify-content:center">${label}</span>`;
+  return `<div class="tabs" role="tablist">${t('city',T('בעיר','In the city'))}${hotel?t('hotel',T('ליד המלון','Near the hotel')):''}${t('saved',`${T('שמורים','Saved')} ${iso(saved)}`)}</div>`;
 }
+/* Update 29.10: CityPicker. Trip cities in order (or the 5 largest without a trip), an extra city from search,
+   "Other city", and "Whole country" always last. */
+const CITY = {
+  bkk:()=>T('בנגקוק','Bangkok'), cnx:()=>T("צ'אנג מאי",'Chiang Mai'), kos:()=>T('קוסמוי','Koh Samui'),
+  hkt:()=>T('פוקט','Phuket'), pty:()=>T('פטאיה','Pattaya'), hdy:()=>T('האט יאי','Hat Yai'),
+  nma:()=>T('נקון ראצ\'סימה','Nakhon Ratchasima'), pai:()=>T('פאי','Pai'), kbi:()=>T('קרבי','Krabi'),
+};
+function cityPicker(active, list, {extra=null, label=true}={}){
+  const c = (k, lbl, opt={}) => `<span class="pchip${k===active?' on':''}" role="${opt.btn?'button':'radio'}">${k===active?icon('check'):''}${opt.ic?icon(opt.ic):''}${lbl}${opt.manual?` <span class="t3" style="font-size:.85em">· ${T('בהקלדה','typed')}</span>`:''}</span>`;
+  return `<div style="padding-top:4px">${label?`<p class="flabel" style="padding:0 16px">${T('עיר','City')} <span class="newMark">29.10</span></p>`:''}
+    <div class="hscroll" role="radiogroup" style="padding-bottom:8px">${list.map(([k,opt])=>c(k, CITY[k](), opt||{})).join('')}${extra?c(extra, CITY[extra]()):''}${c('other', T('עיר אחרת','Other city'), {btn:true, ic:'search'})}${c('all', T('בכל המדינה','Whole country'))}</div></div>`;
+}
+const tripCities = [['bkk'],['cnx'],['kos',{manual:true}]];
+const largest = [['bkk'],['nma'],['hdy'],['hkt'],['pty']];
+const scope = (text) => `<p class="foot t2" style="padding:0 16px">${text}</p>`;
 function chips(active){
   const list = [['all',T('הכול','All')],['attractions',cat.attractions()],['nature',cat.nature()],['culture',cat.culture()],['families',cat.families()],['food',cat.food()],['shopping',cat.shopping()]];
   return `<div class="hscroll" style="padding-top:12px">${list.map(([k,l])=>`<span class="pchip${k===active?' on':''}" role="radio">${k===active?icon('check'):''}${l}</span>`).join('')}</div>`;
@@ -330,14 +346,13 @@ function phones(){
   // 1a. country card with "What to see"
   out.push(phone(`<div class="card"><div class="strip"></div><p class="capt t2">${T('יעד','Destination')}</p>
       <p class="title2" style="font-size:calc(28px*var(--fs));line-height:1.2">${country()}</p><p class="callout t2 iso">Thailand</p>
-      <div class="wrap"><span class="chip c-ok">${T('כניסה מותרת','Entry allowed')}</span><span class="chip c-tag">${T('אזהרה רמה 1','Advisory level 1')}</span></div>
-      <div class="between"><div><p class="capt t2">${T('שעה מקומית','Local time')}</p><p class="bodyS num">${iso('21:40')}</p></div><div><p class="capt t2">${T('מטבע','Currency')}</p><p class="bodyS">${T('באט','Baht')}</p></div></div>
-      <div class="boxed"><p class="capt t2">${T('טמפרטורה','Temperature')}</p><p class="bodyS">${iso('27°')} ${T('בדצמבר','in December')}</p></div>
-      <div class="boxed" style="padding:0"><div class="lrow"><span class="t2">${icon('pin','ic24')}</span><div class="grow"><p class="body">${T('מה לראות בתאילנד','What to see in Thailand')}</p><p class="foot t2">${T('מקומות מובילים לפי קטגוריה','Top places by category')}</p></div><span class="t2">${icon('chev','ic20','flipRtl')}</span></div></div>
-      <span class="newMark">new: CardPlacesLink (after CardTemperature, before CardSources)</span>
-      <p class="foot link" style="text-decoration:underline">${T('מקורות','Sources')}</p></div>`,
-    T('1א · כרטיס המדינה: "מה לראות ב…" אחרי הטמפרטורה ולפני "מקורות". ListRow עם MapPinIcon. מוצג גם בלי התחברות, בלי מספר מקומות.',
-      '1a · Country card: "What to see in…" after the temperature, before Sources. Shown signed out too, without a count.')));
+      <div style="height:1px;border-top:2px dashed var(--bSub);margin:4px -16px"></div>
+      <div class="hstack" style="gap:8px;align-items:stretch">
+        ${[['clock',iso('21:40'),T('שעה','Time')],['info','THB',T('מטבע','Money')],['info',iso('27°'),T('טמפרטורה','Temp.')],['warn','',T('בטיחות','Safety')],['pin','',T('מה לראות','What to see')]].map(([ic,v,l],i)=>`<div style="flex:1;min-width:0;min-height:76px;border-radius:12px;background:var(--tag);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 2px;${i===4?'outline:2px solid var(--pBg);outline-offset:1px':''}">${icon(ic,'ic24')}${v?`<p class="foot num" style="font-weight:500">${v}</p>`:''}<p class="capt t2" style="text-align:center">${l}</p></div>`).join('')}</div>
+      <span class="newMark">29.10: CardTile "What to see" (fix/country-card), not a CardPlacesLink row</span>
+      <p class="foot link" style="text-decoration:underline;align-self:flex-end">${T('מקורות','Sources')}</p></div>`,
+    T('1א · עדכון 29.10: כרטיס המדינה אחרי התיקון הדחוף (fix/country-card). "מה לראות" הוא אייקון ברצועה, לא שורה. האייקונים כאן סכמטיים, והסדר ברצועה (כולל "בטיחות") נקבע באישור של רז לתיקון. ההקשה פותחת את PlacesScreen עם בורר הערים.',
+      '1a · Update 29.10: the country card after the urgent fix (fix/country-card). What to see is a tile in the strip, not a row. Icons here are schematic; the strip order (incl. Safety) is set in Raz\'s review of the fix. Tapping opens PlacesScreen with the city picker.')));
 
   // 1b. trip kit sections
   out.push(phone(`<div class="card" style="gap:8px"><div class="strip"></div><p class="capt t2">${T('נסיעות','Trips')}</p>
@@ -357,32 +372,59 @@ function phones(){
     T('1ב · תיק הנסיעה: "מסלול" ו"מה לראות" אחרי "מלונות" ולפני "ביטוח". המקטע לא לחיץ, רק "פתיחת המסלול". עד 3 פעילויות של היום.',
       '1b · Trip kit: Itinerary and What to see after Hotels, before Insurance. Only the button opens the board; up to 3 of today\'s activities.')));
 
-  // 2. Places, country tab
-  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('country')}${chips('all')}
-      <div class="content" style="padding-top:12px"><div class="list">
-        ${placeRow({he:'בית חב"ד בנגקוק', en:'Chabad House Bangkok', c:cat.chabad(), curated:true, saved:true})}
-        ${placeRow({he:'הארמון הגדול', en:'Grand Palace', c:cat.attractions(), saved:true})}
-        ${placeRow({he:'וואט פו', en:'Wat Pho', c:cat.culture()})}
-        ${placeRow({he:'', en:'Chatuchak Weekend Market', c:cat.food()})}
-        ${placeRow({he:'הפארק הלאומי קאו יאי', en:'Khao Yai National Park', c:cat.nature()})}
-      </div><p class="foot t2">${T('מוצגים 20 מתוך 57','Showing 20 of 57')}</p></div>`,
-    T('2 · "במדינה": לשוניות נגללות (הראשונה מימין), צ\'יפים בשורה אחת נגללת. "מומלץ לישראלים" ראשון, בתג info ולא ירוק. שם בלי עברית מוצג באנגלית מבודד. שמירה וניווט: 48 כל אחד.',
-      '2 · Country tab: scrollable tabs, one scrolling chip row. Curated first, info tag (not green). Places without a Hebrew name show the English name, isolated. Save and navigate: 48 each.')));
+  // 2. Places, trip mode: city picker + "In the city" (update 29.10)
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${cityPicker('bkk', tripCities)}${tabs('city')}${chips('all')}
+      <div class="content" style="padding-top:8px">${`<p class="foot t2">${T('עד 15 ק"מ ממרכז בנגקוק','Within 15 km of the centre of Bangkok')}</p>`}<div class="list">
+        ${placeRow({he:'בית חב"ד בנגקוק', en:'Chabad House Bangkok', c:cat.chabad(), curated:true, saved:true, dist:km('2.1')})}
+        ${placeRow({he:'הארמון הגדול', en:'Grand Palace', c:cat.attractions(), saved:true, dist:km('1.2')})}
+        ${placeRow({he:'וואט פו', en:'Wat Pho', c:cat.culture(), dist:km('1.5')})}
+        ${placeRow({he:'', en:'Lumphini Park', c:cat.nature(), dist:m(850)})}
+      </div><p class="foot t2">${T('מוצגים 20 מתוך 20','Showing 20 of 20')}</p></div>`,
+    T('2 · עדכון 29.10, מצב נסיעה: בורר הערים בראש (ערי הנסיעה לפי הסדר, "עיר אחרת", ו"בכל המדינה" תמיד אחרון). ברירת המחדל בנסיעה פעילה: העיר של הלילה. מתחתיו שלוש לשוניות קבועות. "קוסמוי" הוקלדה ידנית ומופיעה בבורר (מצב ריק, מסך 3ב). אוצרים ראשונים, ואז פופולריות. מרחק ממרכז העיר.',
+      '2 · Update 29.10, trip mode: the city picker on top (trip cities in order, Other city, and Whole country always last). Default on an active trip: tonight\'s city. Three fixed tabs below. Koh Samui was typed and appears in the picker (empty state, screen 3b). Curated first, then popularity. Distance from the centre.')));
 
-  // 3. City tab with distances + empty category
-  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('bkk')}${chips('shopping')}
-      <div class="content" style="padding-top:20px;align-items:flex-start">
+  // 3. Country card without a trip: 5 largest, no tab bar (update 29.10)
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), null)}${cityPicker('bkk', largest)}${chips('shopping')}
+      <div class="content" style="padding-top:16px;align-items:flex-start">
         <p class="body">${T('אין מקומות בקטגוריה הזו עד 15 ק"מ ממרכז בנגקוק.','No places in this category within 15 km of the centre of Bangkok.')}</p>
         <p class="callout t2">${T('הרשימה מבוססת על Wikidata, ובחלק מהקטגוריות יש בה מעט מקומות.','The list comes from Wikidata, and some categories have few places.')}</p>
         <span class="btn b-text" style="padding:0">${T('הצגת כל הקטגוריות','Show all categories')}</span>
-        <span class="stateLabel">same tab, chip "All":</span>
-        <div class="list" style="width:100%">${placeRow({he:'הארמון הגדול', en:'Grand Palace', c:cat.attractions(), dist:km('1.2'), saved:true})}${placeRow({he:'וואט ארון', en:'Wat Arun', c:cat.culture(), dist:km('1.9')})}${placeRow({he:'', en:'Lumphini Park', c:cat.nature(), dist:m(850)})}</div>
+        <span class="stateLabel">picker: "Whole country", chip "All" (no distance):</span>
+        <div class="list" style="width:100%">${placeRow({he:'הארמון הגדול', en:'Grand Palace', c:cat.attractions()})}${placeRow({he:'הפארק הלאומי קאו יאי', en:'Khao Yai National Park', c:cat.nature()})}${placeRow({he:'', en:'Chatuchak Weekend Market', c:cat.food()})}</div>
       </div>`,
-    T('3 · לשונית עיר (רק ערים מהרשימה, AC-4): מרחק ממרכז העיר. קטגוריה ריקה: הסבר שמתאר את הנתונים, ו"הצגת כל הקטגוריות". מתחת ל-1 ק"מ: מטרים.',
-      '3 · City tab (list cities only, AC-4): distance from the city centre. Empty category: explains the data, offers All. Under 1 km: metres.')));
+    T('3 · עדכון 29.10, כרטיס מדינה בלי נסיעה: 5 הערים הגדולות, וברירת המחדל היא הגדולה. אין סרגל לשוניות (יש רק "בעיר"), ואין שמירה. למעלה: קטגוריה ריקה בעיר. למטה: "בכל המדינה", בלי מרחק.',
+      '3 · Update 29.10, country card without a trip: the 5 largest cities, defaulting to the largest. No tab bar (only "In the city"), no saving. Top: empty category in a city. Bottom: Whole country, no distance.')));
+
+  // 3b. Empty city, typed city (update 29.10)
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${cityPicker('pai', [['bkk'],['pai']])}${tabs('city')}${chips('all')}
+      <div class="content" style="padding-top:16px;align-items:flex-start">
+        <span class="stateLabel">places-empty · city-none</span>
+        <p class="body">${T('לא מצאנו מקומות מוכרים בפאי.','We found no well-known places in Pai.')}</p>
+        <p class="callout t2">${T('הרשימה שלנו כוללת בעיקר מקומות מוכרים, ובערים קטנות יש בה מעט מקומות או אף אחד.','Our list mostly has well-known places, and small cities have few or none.')}</p>
+        <span class="btn b-secondary">${T('לראות בכל המדינה','See the whole country')}</span>
+        <span class="stateLabel">places-empty · city-manual (picker on "Koh Samui · typed")</span>
+        <p class="body">${T('את קוסמוי הוספתם בהקלדה, ולכן אין לנו את המיקום שלה.','You typed Koh Samui yourself, so we don\'t have its location.')}</p>
+        <span class="btn b-secondary">${T('לראות בכל המדינה','See the whole country')}</span>
+        <span class="btn b-text" style="padding:0">${icon('search')}${T('חיפוש קוסמוי ברשימת הערים','Find Koh Samui in the city list')} <span class="newMark">[proposal]</span></span>
+      </div>`,
+    T('3ב · עדכון 29.10: עיר בלי מקומות, ועיר שהוקלדה (בלי geoname_id). שתיהן עם "לראות בכל המדינה", שבוחר "בכל המדינה" בבורר ושומר את הקטגוריה. [הצעה] בעיר שהוקלדה: חיפוש שלה ברשימה, לצפייה בלבד.',
+      '3b · Update 29.10: a city without places, and a typed city (no geoname_id). Both offer "See the whole country", which selects Whole country and keeps the category. [Proposal] For a typed city: look it up in the list, view only.')));
+
+  // 3c. Other city search (update 29.10)
+  out.push(phone(`${bar(T('עיר אחרת','Other city'), country())}
+      <div class="content" style="padding-top:0">
+        <div class="field" style="border:2px solid var(--pBg)"><span>${T('קרבי','Krabi')}</span>${icon('search','ic20')}</div>
+        <p class="foot t2">${T('3 תוצאות','3 results')}</p>
+        <div class="list">${[T('קרבי','Krabi'),T('אאו נאנג, קרבי','Ao Nang, Krabi'),T('קלונג תום','Khlong Thom')].map(n=>`<div class="lrow" style="border-top:1px solid var(--bSub)"><span class="t2">${icon('pin','ic20')}</span><p class="body grow">${n}</p></div>`).join('')}</div>
+        <p class="foot t2">${T('מחפשים בכל הערים של תאילנד שבמכשיר. העיר לא נשלחת לשרת ולא נוספת לנסיעה.','We search every Thai city stored on this device. The city isn\'t sent to a server or added to the trip.')}</p>
+        <span class="stateLabel">after picking: the city joins the picker, selected</span>
+      </div>
+      <div style="position:absolute;inset-inline:0;bottom:120px">${cityPicker('kbi', [['bkk'],['cnx']], {extra:'kbi', label:false})}</div>`,
+    T('3ג · עדכון 29.10: "עיר אחרת" פותח את CitySearchScreen של ספרינט 3 במצב בחירה, על כל ערי המדינה ברשימה הארוזה. עובד בלי רשת. בלי "להוסיף כמו שנכתב". העיר שנבחרה נכנסת לבורר לפני "עיר אחרת", ונשארת עד סוף ההפעלה.',
+      '3c · Update 29.10: Other city opens sprint 3\'s CitySearchScreen in pick mode over every bundled city in the country. Works offline. No "add as written". The chosen city joins the picker before Other city and stays for the app session.')));
 
   // 4. Near hotel
-  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('hotel')}
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${cityPicker('bkk', tripCities)}${tabs('hotel')}
       <div class="content" style="padding-bottom:0">
         <div class="hscroll" style="padding:0"><span class="pchip on">${icon('check')}${own('Amari Watergate')}</span><span class="pchip">${own('Rayavadee Krabi')}</span></div>
         <div><p class="flabel">${T('רדיוס','Radius')}</p><div class="seg" role="radiogroup"><span>${km(1)}</span><span class="on">${icon('check')}${km(3)}</span><span>${km(10)}</span></div></div>
@@ -392,11 +434,11 @@ function phones(){
         ${placeRow({he:'', en:'Platinum Fashion Mall', c:cat.shopping(), dist:m(300)})}
         ${placeRow({he:'', en:'Jim Thompson House', c:cat.culture(), dist:km('1.4')})}
       </div><p class="foot t2">${T('הסדר: קודם "מומלץ לישראלים", ואז לפי המרחק.','Order: Curated for Israelis first, then by distance.')}</p></div>`,
-    T('4 · "ליד המלון": בורר מלון (רק כשיש כמה עם נקודה), רדיוס 1/3/10 (ברירת מחדל 3). הסינון במכשיר. אוצרים ראשונים ואז לפי מרחק (שאלה 3).',
-      '4 · Near the hotel: hotel chooser (only with several points), radius 1/3/10 (default 3). Filtered on device. Curated first, then by distance (question 3).')));
+    T('4 · "ליד המלון": בורר מלון (רק כשיש כמה עם נקודה), רדיוס 1/3/10 (ברירת מחדל 3). הסינון במכשיר. אוצרים ראשונים ואז לפי מרחק. עדכון 29.10: הבורר נשאר למעלה. החלפת עיר בוחרת את המלון שבטווח 15 ק"מ ממנה, אם יש כזה (שאלה 12).',
+      '4 · Near the hotel: hotel chooser (only with several points), radius 1/3/10 (default 3). Filtered on device. Curated first, then by distance. Update 29.10: the picker stays on top. Changing the city selects the hotel within 15 km of it, if any (question 12).')));
 
   // 5. Near hotel, no point
-  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('hotel')}
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${cityPicker('bkk', tripCities)}${tabs('hotel')}
       <div class="content">
         ${notice(T('בחרו את מיקום המלון במפה כדי לראות מקומות לידו.','Choose the hotel\'s location on the map to see places near it.'),'pin',`<span class="btn b-secondary" style="align-self:flex-start;min-height:44px;background:var(--surface)">${T('בחירה במפה','Choose on map')}</span>`)}
         <div><p class="flabel">${T('רדיוס','Radius')}</p><div class="seg"><span>${km(1)}</span><span class="on">${icon('check')}${km(3)}</span><span>${km(10)}</span></div></div>
@@ -407,7 +449,7 @@ function phones(){
       '5 · Hotel without a point: list from the first trip city (AC-5), "Near Bangkok", and Choose on map, which opens the picker and saves right away. Offline: blocked.')));
 
   // 6. PlaceSheet curated
-  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('country')}<div class="scrimL"></div>
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${cityPicker('bkk', tripCities)}${tabs('city')}<div class="scrimL"></div>
       <div class="sheet"><div class="handle"></div><span class="x">${icon('close','ic20')}</span>
         <p class="title2" style="padding-inline-end:44px">${T('בית חב"ד בנגקוק','Chabad House Bangkok')}</p>
         <p class="callout t2">${lang==='he'?own('Chabad House Bangkok'):'בית חב"ד בנגקוק'}</p>
@@ -425,8 +467,8 @@ function phones(){
       '6 · PlaceSheet, curated: description (≤280), source and verification date, which is what justifies the label. Wikidata places: no description, just "From Wikidata" and a link.')));
 
   // 7. Saved + row menu
-  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('saved')}
-      <div class="content"><div class="list">
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${cityPicker('bkk', tripCities)}${tabs('saved')}
+      <div class="content"><p class="foot t2">${T('כל השמורים לנסיעה, מכל הערים.','Everything saved for this trip, from every city.')} <span class="newMark">29.10</span></p><div class="list">
         ${placeRow({he:'הארמון הגדול', en:'Grand Palace', c:`${cat.attractions()} · ${T('ביום 3','On day 3')}`, actions:'menu'})}
         ${placeRow({he:'בית חב"ד בנגקוק', en:'Chabad House Bangkok', c:cat.chabad(), curated:true, actions:'menu'})}
         ${placeRow({he:'', en:'Chatuchak Weekend Market', c:cat.food(), actions:'menu'})}
@@ -441,7 +483,7 @@ function phones(){
       '7 · Saved: newest first. "On day 3" when already on the board [proposal]. ⋮: add to a day (stays saved), navigate, remove without a confirm.')));
 
   // 8. States
-  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('country')}
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${cityPicker('bkk', tripCities)}${tabs('city')}
       <div class="content">
         <span class="stateLabel">loading (no copy, online) · skeleton after 150 ms</span>
         ${[1,2,3].map(()=>`<div class="hstack"><div class="grow vstack" style="gap:6px"><div class="skel" style="height:16px;width:70%"></div><div class="skel" style="height:12px;width:40%"></div></div><div class="skel" style="width:32px;height:32px;border-radius:50%"></div></div>`).join('')}
@@ -584,7 +626,7 @@ function phones(){
           <li><u>${T('יום 1, בדרך','Day 1, travelling')}</u></li>
           <li><u>${T('יום 4, כבר יש בו פעילויות','Day 4, it already has activities')}</u></li>
           <li><u>${T('יום 5, התמלא בינתיים ממכשיר אחר','Day 5, filled meanwhile from another device')}</u></li>
-          <li><u>${T("יום 6, לא מצאנו מספיק מקומות ליד צ'אנג מאי",'Day 6, not enough places near Chiang Mai')}</u></li></ul>
+          <li><u>${T('יום 6, אין מקומות מוכרים ליד פאי','Day 6, no well-known places near Pai')}</u> <span class="newMark">29.10</span></li></ul>
         <p class="foot">${T('בימים חמים לא תכננו פעילות בחוץ בין 12:00 ל-15:00.','On hot days we didn\'t plan outdoor activities between 12:00 and 15:00.')}</p></div>
         <span class="iconBtn" style="position:absolute;inset-inline-end:0;top:0;color:var(--infoFg)">${icon('close','ic20')}</span></div></div>
       ${dayH(2, wd('ב׳','Mon'), '21.12', T(`נחיתה ${iso('14:55')} · יום קצר`,'Landing 14:55 · short day'))}
@@ -592,9 +634,11 @@ function phones(){
       ${arow('19:00', own('Asiatique'), {auto:true, flash:true})}${addAct()}
       ${dayH(3, wd('ג׳','Tue'), '22.12', null, {today:true})}
       ${arow('09:30', T('הארמון הגדול','Grand Palace'), {auto:true, flash:true})}
+      ${dayH(6, wd('ו׳','Fri'), '25.12', null, {city:T('פאי','Pai')})}
+      ${emptyDay(T('אין מקומות מוכרים ליד פאי.','No well-known places near Pai.'))}${addAct()}
       ${toast(T('תכננו 5 ימים','Planned 5 days'))}`,
-    T('15 · AutoPlanResult: InlineNotice עם ×, הסיבות לכל יום שדולג (כולל filled_meanwhile מהשרת, D2). הפעילויות החדשות נכנסות בהשהיה מדורגת [הצעה]. בהדמיה: ההבהוב.',
-      '15 · AutoPlanResult: an InlineNotice with ×, a reason for every skipped day (including filled_meanwhile from the server, D2). New items fade in staggered [proposal]; shown here as the flash.')));
+    T('15 · AutoPlanResult: InlineNotice עם ×, הסיבות לכל יום שדולג (כולל filled_meanwhile מהשרת, D2). הפעילויות החדשות נכנסות בהשהיה מדורגת [הצעה]. בהדמיה: ההבהוב. עדכון 29.10 (D23): יום שהעיר של הלילה שלו בלי מקומות נשאר ריק, עם "אין מקומות מוכרים ליד פאי." במקום "אין פעילויות.", ו"+ הוספת פעילות" נשאר.',
+      '15 · AutoPlanResult: an InlineNotice with ×, a reason for every skipped day (including filled_meanwhile from the server, D2). New items fade in staggered [proposal]; shown here as the flash. Update 29.10 (D23): a day whose night city has no places stays empty, reading "No well-known places near Pai." instead of "No activities.", and Add an activity stays.')));
 
   // 16. Out of range, cap, no flights
   out.push(phone(`${bar(T('מסלול','Itinerary'), `${T('יוון בקיץ','Greece in summer')} · ${iso('3.7 – 8.7')}`)}
@@ -634,6 +678,38 @@ function phones(){
       <div class="content"><p class="foot t2">${T('[קו חיתוך 1] רק דרך הידית ≡. הרמה: scale 1.02, elevation 3, רטט. בהפחתת תנועה: בלי scale. אם נחתך: הידית נעלמת, התפריט נשאר.','[Cut line 1] Only via the ≡ handle. Lift: scale 1.02, elevation 3, haptic. Reduced motion: no scale. If cut: no handle, the menu stays.')}</p></div>`,
     T('18 · [קו חיתוך 1] גרירה כתוספת: ידית 48 לפני ⋮, קו הכנסה ב-action.primary. ראשונה לחיתוך (שאלה 9).',
       '18 · [Cut line 1] Drag as an extra: a 48 handle before ⋮, an insertion line in action.primary. First to cut (question 9).')));
+
+  // 19. Trip form: "Which city will you be in?" right after the destination (update 29.10)
+  const destBlock = `<div class="boxed" style="flex-direction:row;align-items:center;gap:12px"><div class="strip" style="width:4px;height:56px"></div>
+      <div class="grow"><p class="capt t2">${T('יעד','Destination')}</p><p class="title2">${country()}</p><p class="foot t2 iso">Thailand</p></div><span class="chip c-tag iso" style="font-size:15px">THA</span></div>`;
+  out.push(phone(`${bar(T('נסיעה חדשה','New trip'), null, true)}<div class="content" style="padding-bottom:110px">
+      ${destBlock}
+      <div><p class="bodyS" role="heading">${T('באיזו עיר תהיו?','Which city will you be in?')} <span class="newMark">29.10 · moved</span></p>
+        <p class="foot t2" style="margin-bottom:6px">${T('לפי סדר הביקור. לפי העיר נציע מה לראות.','In the order you\'ll visit. We\'ll suggest what to see by city.')}</p>
+        <div class="list"><div class="lrow"><span class="t2">${icon('pin','ic20')}</span><p class="body grow">${T('בנגקוק','Bangkok')}</p><span class="iconBtn">${icon('close','ic20')}</span></div>
+          <div class="lrow" style="border-top:1px solid var(--bSub)"><span class="t2">${icon('pin','ic20')}</span><div class="grow"><p class="body">${T('קוסמוי','Koh Samui')}</p><p class="foot t2">${T('כמו שנכתב','As written')}</p></div><span class="iconBtn">${icon('close','ic20')}</span></div></div>
+        <span class="btn b-link">${icon('plus')}${T('הוספת עיר','Add a city')}</span></div>
+      <div class="wrap"><div class="grow" style="flex-basis:160px">${field(T('יציאה','Departure'), '20.12.2026', {ltr:true, ic:'cal'})}</div><div class="grow" style="flex-basis:160px">${field(T('חזרה','Return'), '27.12.2026', {ltr:true, ic:'cal'})}</div></div>
+      ${field(T('שם הנסיעה','Trip name'), tripName())}
+      <p class="foot t2">${T('טיסות · נוסעים · הערות (בלי שינוי)','Flights · Travellers · Notes (unchanged)')}</p>
+    </div><div class="footer"><span class="btn b-primary">${T('שמירת הנסיעה','Save trip')}</span></div>`,
+    T('19 · עדכון 29.10: בטופס הנסיעה, CitiesSection עולה מיד אחרי היעד ומקבל את הכותרת "באיזו עיר תהיו?". הרכיב, התקרה של 10 ו"כמו שנכתב" לא משתנים. הסדר: יעד, ערים, תאריכים, שם, טיסות, נוסעים, הערות.',
+      '19 · Update 29.10: in the trip form, CitiesSection moves right after the destination, titled "Which city will you be in?". The component, the cap of 10 and "As written" are unchanged. Order: destination, cities, dates, name, flights, travellers, notes.')));
+
+  // 20. The short question before save_trip (create / duplicate without a listed city)
+  out.push(phone(`${bar(T('נסיעה חדשה','New trip'), null, true)}<div class="content">${destBlock}
+      <div><p class="bodyS">${T('באיזו עיר תהיו?','Which city will you be in?')}</p><span class="btn b-link">${icon('plus')}${T('הוספת עיר','Add a city')}</span></div></div>
+      <div class="footer"><span class="btn b-primary">${T('שמירת הנסיעה','Save trip')}</span></div>
+      <div class="scrimL"></div>
+      <div class="sheet"><div class="handle"></div><span class="x">${icon('close','ic20')}</span>
+        <p class="title2" role="heading" style="padding-inline-end:44px">${T('באיזו עיר תהיו?','Which city will you be in?')}</p>
+        <p class="callout t2">${T('כך נציע מה לראות לפי העיר. אפשר לשנות אחר כך בעריכת הנסיעה.','That way we can suggest what to see by city. You can change it later by editing the trip.')}</p>
+        <div class="list" style="background:transparent">${largest.map(([k],i)=>`<div class="mrow" role="button" style="${i?'border-top:1px solid var(--bSub)':''}"><span class="t2">${icon('pin','ic20')}</span><p class="body grow">${CITY[k]()}</p></div>`).join('')}
+          <div class="mrow" role="button" style="border-top:1px solid var(--bSub)"><span class="t2">${icon('search','ic20')}</span><p class="body grow link">${T('חיפוש עיר אחרת','Search for another city')}</p>${icon('chev','ic20','flipRtl t2')}</div></div>
+        <span class="btn b-text" style="align-self:center">${T('דילוג ושמירה בלי עיר','Skip and save without a city')}</span>
+      </div>`,
+    T('20 · עדכון 29.10: ביצירה ובשכפול, "שמירת הנסיעה" בלי אף עיר מהרשימה פותח את השאלה לפני save_trip: 5 הערים הגדולות, חיפוש, ודילוג. הקשה על עיר שומרת מיד (קריאה אחת). × חוזר לטופס בלי לשמור. פעם אחת לכל נסיעה (סימון במכשיר). בעריכה אין שאלה.',
+      '20 · Update 29.10: on create and duplicate, Save with no listed city opens this question before save_trip: the 5 largest cities, search, and skip. Tapping a city saves straight away (one call). × goes back to the form without saving. Once per trip (a device flag). Never on edit.')));
 
   document.getElementById('phones').innerHTML = out.join('');
 }

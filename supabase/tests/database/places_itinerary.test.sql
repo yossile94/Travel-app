@@ -299,7 +299,8 @@ reset role;
 -- ------------------------------------------------------- deletion
 delete from public.trips where id = '10000000-0000-4000-8000-0000000011a1';
 select is(
-  (select count(*)::int from public.itinerary_items) + (select count(*)::int from public.trip_saved_places),
+  (select count(*)::int from public.itinerary_items where trip_id = '10000000-0000-4000-8000-0000000011a1')
+    + (select count(*)::int from public.trip_saved_places where trip_id = '10000000-0000-4000-8000-0000000011a1'),
   0, 'deleting the trip deletes its plan and saved places');
 select ok(public.admin_delete_user('00000000-0000-4000-8000-0000000011b1', 'user_request'), 'B''s account is deleted');
 select is((select count(*)::int from public.itinerary_items), 0,
