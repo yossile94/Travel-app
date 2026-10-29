@@ -369,8 +369,8 @@ as $$
 declare
   uid uuid := auth.uid();
   v_trip public.trips := public.itinerary_gate(p_trip_id);
-  v_skipped jsonb := '[]';
-  v_skip_days date[] := '{}';
+  v_skipped jsonb := '[]'::jsonb;
+  v_skip_days date[] := '{}'::date[];
   v_inserted integer := 0;
   v_day date;
   i jsonb;
