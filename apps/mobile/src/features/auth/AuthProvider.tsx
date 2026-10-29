@@ -36,6 +36,7 @@ import {
 import { requestDeletion } from '@/features/account/deleteAccountApi';
 import { resetFlightsStore } from '@/features/flights/flightsStore';
 import { wipeKitDevice } from '@/features/kit/wipe';
+import { wipePassportDevice } from '@/features/passportAlerts/passportRunner';
 import { pushKeysOf, unregisterDevice } from '@/features/push/push';
 import { clearTripsCaches } from '@/features/trips/tripsCache';
 import { clearStoredSessions } from '@/lib/secureSessionStorage';
@@ -197,6 +198,8 @@ async function localSignOut(): Promise<void> {
     resetFlightsStore();
     // Sprint 8 AC-9, AC-10: the policy files, their key and the reminders.
     await wipeKitDevice();
+    // Sprint 10 AC-6: the passports, their keys and their notifications.
+    await wipePassportDevice();
   }
 }
 
@@ -280,6 +283,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetFlightsStore();
     // Sprint 8 AC-9, AC-10: the policy files, their key and the reminders.
     await wipeKitDevice();
+    // Sprint 10 AC-6: the passports, their keys and their notifications.
+    await wipePassportDevice();
     if (!userId) return;
     await removeLocalAgreement(userId);
     await removeLocalChoices(userId);

@@ -34,6 +34,7 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider';
 import { TripTemperature } from '@/features/climate/TripTemperature';
 import { useDestination } from '@/features/destination/destinationData';
+import { PassportBanners } from '@/features/kit/PassportBanners';
 import { TripStatusLine } from '@/features/destination/DestinationFields';
 import { FlightsSection } from '@/features/flights/FlightsSection';
 import { tripHasFlights } from '@/features/flights/flightsStore';
@@ -299,6 +300,14 @@ export function CardTrips({
             </Pressable>
             {expanded ? (
               <View style={styles.details}>
+                {/* Sprint 10 design 6.2: the passports first, red, orange, then the reminder. */}
+                <PassportBanners
+                  trip={trip}
+                  advisories={destination.data?.advisories}
+                  today={today}
+                  colorScheme={colorScheme}
+                  onToast={onToast}
+                />
                 {/* Sprint 4 design 8: entry and NSC warning first, not tappable. */}
                 <TripStatusLine
                   advisory={destination.data?.advisories.get(trip.countryAdm0)}

@@ -65,6 +65,10 @@ jobs:
       - name: Connection cases are current
         run: node scripts/gen-connection-cases.mjs --check
 
+      # Sprint 10 D15: the admin panel's rules and the CHECKs run one table of cases.
+      - name: Admin cases are current
+        run: node scripts/gen-admin-cases.mjs --check
+
       # Applies every migration in supabase/migrations to a fresh database.
       - name: Start the database
         run: npx supabase db start

@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,14 +21,18 @@ import {
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button, TextField, type ViewHandle } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
-import { DownloadIcon, PencilIcon, ShieldIcon, TrashIcon } from '@/components/icons';
+import { DownloadIcon, PassportIcon, PencilIcon, ShieldIcon, TrashIcon } from '@/components/icons';
 import { initialOf } from '@/features/auth/AccountButton';
 import { useAuth, type AuthUser } from '@/features/auth/AuthProvider';
 import { isolateLtr } from '@/features/globe/BoardingPassCard';
+import { nameSuggestions } from '@/features/passport/passportModel';
+import { PassportsScreen } from '@/features/passport/PassportScreens';
+import { hasPassports, usePassports } from '@/features/passport/passportStore';
 import { FlightAlertsRow } from '@/features/push/FlightAlertsRow';
 import { unregisterDevice } from '@/features/push/push';
 import { colors, fonts, layout, limits, radius, type ColorScheme } from '@/theme/tokens';
 
+import { useTrips } from '../trips/TripsProvider';
 import { codePointLength } from '../trips/tripDates';
 import { displayNameError } from './accountApi';
 import { ConsentsScreen, DeleteAccountScreen, ListRow } from './AccountScreens';
@@ -42,11 +47,20 @@ interface Props {
   insetsBottom: number;
   onClose: () => void;
   onToast: (text: string) => void;
+  /** Sprint 10 design 7.3: a passport reminder opens "My passports" at once. */
+  openPassports?: boolean;
 }
 
-type Pushed = 'consents' | 'delete' | null;
+type Pushed = 'consents' | 'delete' | 'passports' | null;
 
-export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Props) {
+export function AccountSheet({
+  visible,
+  user,
+  onToast,
+  insetsTop,
+  openPassports,
+  ...sheet
+}: Props) {
   const { t } = useTranslation();
   const { signOut, displayName, renameProfile } = useAuth();
   const palette = colors[sheet.colorScheme];
@@ -55,7 +69,9 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
   const [editing, setEditing] = useState(false);
   /** While the name saves, back does nothing (design 8.2), so a failure is seen. */
   const nameSaving = useRef(false);
-  const [pushed, setPushed] = useState<Pushed>(null);
+  const [pushed, setPushed] = useState<Pushed>(openPassports ? 'passports' : null);
+  const { cache } = useTrips();
+  const { holders } = usePassports();
   const [exporting, setExporting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
@@ -66,6 +82,7 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
   const [openedAs, setOpenedAs] = useState(visible);
   if (openedAs !== visible) {
     setOpenedAs(visible);
+    if (visible && openPassports) setPushed('passports');
     if (!visible) {
       setEditing(false);
       setPushed(null);
@@ -87,6 +104,25 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
     setExporting(false);
     if (result === 'offline') setExportNotice(t('export.offline'));
     else if (result === 'error') setExportNotice(t('export.error'));
+  };
+
+  // Sprint 10 design 3.3 (D1): traveler names from the trips, the nearest first;
+  // the passport module gets them as a prop and never reads trips itself.
+  const suggestions = nameSuggestions(
+    [...(cache?.upcoming ?? []), ...(cache?.past ?? [])].flatMap((trip) =>
+      trip.travelers.map((tr) => tr.name),
+    ),
+    holders,
+  );
+
+  const signOutNow = () => {
+    // Sprint 6 design 6.4: busy while this device leaves the alerts, 3 s at most.
+    setSigningOut(true);
+    void unregisterDevice().finally(() => {
+      setSigningOut(false);
+      sheet.onClose();
+      void signOut();
+    });
   };
 
   const screen = {
@@ -169,6 +205,14 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
             <View style={[styles.divider, { backgroundColor: palette.borderSubtle }]} />
             <FlightAlertsRow userId={user.id} visible={visible} colorScheme={sheet.colorScheme} />
             <ListRow
+              icon={(color) => <PassportIcon color={color} />}
+              label={t('account.passports')}
+              description={t('account.passportsSub')}
+              onPress={() => setPushed('passports')}
+              colorScheme={sheet.colorScheme}
+              testID="account-passports"
+            />
+            <ListRow
               icon={(color) => <ShieldIcon color={color} />}
               label={t('account.consents')}
               onPress={() => setPushed('consents')}
@@ -200,15 +244,21 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
               accessibilityRole="button"
               accessibilityState={{ busy: signingOut, disabled: signingOut }}
               disabled={signingOut}
-              onPress={() => {
-                // Sprint 6 design 6.4: busy while this device leaves the alerts, 3 s at most.
-                setSigningOut(true);
-                void unregisterDevice().finally(() => {
-                  setSigningOut(false);
-                  sheet.onClose();
-                  void signOut();
-                });
-              }}
+              onPress={() =>
+                // Sprint 10 design 2.1: with passports on the device, ask first.
+                void hasPassports().then((has) =>
+                  has
+                    ? Alert.alert(
+                        t('account.signOutPassportsTitle'),
+                        t('account.signOutPassportsBody'),
+                        [
+                          { text: t('account.signOutCancel'), style: 'cancel' },
+                          { text: t('account.signOut'), style: 'destructive', onPress: signOutNow },
+                        ],
+                      )
+                    : signOutNow(),
+                )
+              }
               style={[styles.secondary, { backgroundColor: palette.secondaryBg }]}
               testID="sign-out"
             >
@@ -226,6 +276,16 @@ export function AccountSheet({ visible, user, onToast, insetsTop, ...sheet }: Pr
           user={user}
           onBack={() => setPushed(null)}
           onDeleteAccount={() => setPushed('delete')}
+        />
+      ) : null}
+      {visible && pushed === 'passports' ? (
+        <PassportsScreen
+          suggestions={suggestions}
+          colorScheme={sheet.colorScheme}
+          insetsTop={insetsTop}
+          insetsBottom={sheet.insetsBottom}
+          onToast={onToast}
+          onBack={() => setPushed(null)}
         />
       ) : null}
       {visible && pushed === 'delete' ? (

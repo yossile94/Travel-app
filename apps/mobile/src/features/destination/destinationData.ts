@@ -32,6 +32,8 @@ export interface Advisory {
   mfaUrl: string | null;
   /** When the daily job last saw this area; null: not checked yet. */
   fetchedAt: string | null;
+  /** Sprint 10 AC-14: months of passport validity on return, from the admin; null: the default 6. */
+  passportValidityMonths?: number | null;
 }
 
 export interface Destination {
@@ -63,7 +65,7 @@ async function readServer(): Promise<Stored | null> {
     supabase
       .from('country_advisories')
       .select(
-        'adm0, entry_status, entry_note, entry_source_url, entry_verified_at, nsc_level, nsc_levels, nsc_text, nsc_url, mfa_text, mfa_url, fetched_at',
+        'adm0, entry_status, entry_note, entry_source_url, entry_verified_at, nsc_level, nsc_levels, nsc_text, nsc_url, mfa_text, mfa_url, fetched_at, passport_validity_months',
       ),
   ]);
   if (rates.error || advisories.error) {
@@ -92,6 +94,7 @@ async function readServer(): Promise<Stored | null> {
       mfaText: a.mfa_text as string | null,
       mfaUrl: a.mfa_url as string | null,
       fetchedAt: a.fetched_at as string | null,
+      passportValidityMonths: (a.passport_validity_months as number | null) ?? null,
     })),
   };
 }
@@ -150,6 +153,16 @@ export function loadDestination(): Promise<Destination | null> {
     return current;
   })();
   return loading;
+}
+
+/**
+ * What this session or the device already has, without a server read: the
+ * passport wallet may not reach the network (sprint 10, Dana bug 1).
+ */
+export async function cachedDestination(): Promise<Destination | null> {
+  if (current) return current;
+  const device = await readDevice();
+  return device ? fromStored(device, 'device') : null;
 }
 
 /** For tests. */

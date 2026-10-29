@@ -168,6 +168,8 @@ export function GlobeScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const auth = useAuth();
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  /** Sprint 10: the sheet was opened by a passport reminder, straight to "My passports". */
+  const [passportsFromAlert, setPassportsFromAlert] = useState(false);
   // Signing in, out or into the consent screen closes whatever sheet led there
   // (design 4.2, 5.2): the next screen is the globe, the consent screen or a toast.
   const [sheetForStatus, setSheetForStatus] = useState(auth.state.status);
@@ -862,6 +864,12 @@ export function GlobeScreen() {
       const trip = trips.cache?.upcoming.find((x) => x.id === tripId);
       if (trip && !tripForm) openTripFromList(trip);
     },
+    // Sprint 10 design 7.3: a passport reminder opens the account sheet on "My passports".
+    onOpenPassports: () => {
+      if (tripForm) return;
+      setPassportsFromAlert(true);
+      setAccountSheetOpen(true);
+    },
   });
 
   // Sprint 6 F-018: the channel, the consent on the server, and the alerts explainer.
@@ -1276,8 +1284,10 @@ export function GlobeScreen() {
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
           onToast={showTripToast}
+          openPassports={passportsFromAlert}
           onClose={() => {
             setAccountSheetOpen(false);
+            setPassportsFromAlert(false);
             setLastInteractionAt(Date.now());
           }}
         />

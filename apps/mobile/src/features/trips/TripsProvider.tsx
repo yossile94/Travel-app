@@ -21,6 +21,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { prefetchFlights } from '@/features/flights/flightsStore';
 import { pruneInsuranceReminders } from '@/features/kit/insuranceReminder';
 import { kitsOf, prefetchKit } from '@/features/kit/kitStore';
+import { passportTripsLoaded } from '@/features/passportAlerts/passportRunner';
 
 import { loadTripCountries, loadTripPage, type Trip } from './tripsApi';
 import {
@@ -139,6 +140,12 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       setCountries(new Set(saved.countries));
       setNextTrip(saved.nextTrip);
       setFirstLoad(true);
+      // Sprint 10 AC-12: offline, the passports are checked against the saved copy.
+      // "full" may be the past list's: under 50 upcoming is surely the whole list (Raz).
+      void passportTripsLoaded(
+        saved.upcoming,
+        !saved.full || saved.upcoming.length < CACHE_UPCOMING_MAX,
+      );
       return;
     }
     setCountries(result.value);
@@ -166,6 +173,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
         void saveTripsCache(saved, generation);
         // Sprint 5 (Raz 6): the upcoming trips' flights join the offline copy.
         void prefetchFlights(saved.upcoming.map((trip) => trip.id));
+        // Sprint 10 AC-12: a trip created or moved is checked against the passports.
+        void passportTripsLoaded(saved.upcoming, next.value.trips.length <= CACHE_UPCOMING_MAX);
         // Sprint 8: and their hotels and insurance; then reminders of trips now
         // insured, or gone from a complete list, are cancelled (design 11.3).
         const ids = saved.upcoming.map((trip) => trip.id);
@@ -177,6 +186,12 @@ export function TripsProvider({ children }: { children: ReactNode }) {
           );
         });
       }
+    } else if (next.ok && currentUser.current === forUser) {
+      // Past trips failed: the upcoming ones are still checked (Dana bug 4).
+      void passportTripsLoaded(
+        next.value.trips.slice(0, CACHE_UPCOMING_MAX),
+        next.value.trips.length <= CACHE_UPCOMING_MAX,
+      );
     }
   }, []);
   // A new day changes which trip is next (design 3.4).
