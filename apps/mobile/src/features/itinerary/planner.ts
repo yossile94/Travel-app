@@ -51,7 +51,13 @@ export interface PlannedItem {
   order: number;
 }
 
-export type DayKind = 'busy' | 'inTransit' | 'rest' | 'planned' | 'empty' | 'beyondLimit';
+/**
+ * noPlaces: no known place near that night (D23); placesUsed: there were, but
+ * all are already in earlier days, and a place never repeats (Raz, 29.10).
+ * Neither counts as a day the plan will fill (the preview's count).
+ */
+export type DayKind =
+  'busy' | 'inTransit' | 'rest' | 'planned' | 'noPlaces' | 'placesUsed' | 'beyondLimit';
 
 export interface PlanResult {
   items: PlannedItem[];
@@ -136,9 +142,8 @@ export function planTrip(input: PlannerInput): PlanResult {
     if (kind !== 'normal') return days.push({ day, kind });
 
     const night = input.nightPoint(day);
-    const pool = input.places
-      .filter((p) => !used.has(p.ref) && km([p.lng, p.lat], night) <= REACH_KM)
-      .sort(byPopularity);
+    const near = input.places.filter((p) => km([p.lng, p.lat], night) <= REACH_KM);
+    const pool = near.filter((p) => !used.has(p.ref)).sort(byPopularity);
     // The day's anchor is the best place left near the night; the rest stay near it.
     const chosen: PlannerPlace[] = [];
     while (chosen.length < slots.length) {
@@ -188,7 +193,7 @@ export function planTrip(input: PlannerInput): PlanResult {
         order: order++,
       });
     }
-    days.push({ day, kind: order ? 'planned' : 'empty' });
+    days.push({ day, kind: order ? 'planned' : near.length ? 'placesUsed' : 'noPlaces' });
   });
   return { items, days };
 }

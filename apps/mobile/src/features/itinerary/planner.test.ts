@@ -132,7 +132,8 @@ describe('places (AC-16)', () => {
     });
     // Only the far place is within reach of that night: one item a day, then empty days.
     expect(onDay(r, '2027-01-05').map((i) => i.placeRef)).toEqual(['wd:Q999']);
-    expect(r.days.find((d) => d.day === '2027-01-06')?.kind).toBe('empty');
+    // Its one place went on the first day: the places ran out (Raz, 29.10).
+    expect(r.days.find((d) => d.day === '2027-01-06')?.kind).toBe('placesUsed');
   });
 
   it('D23: a night in a city with no places nearby stays empty, never filled from far away', () => {
@@ -143,7 +144,21 @@ describe('places (AC-16)', () => {
       departure: null,
     });
     expect(r.items).toEqual([]);
-    expect(r.days.every((d) => d.kind === 'empty')).toBe(true);
+    expect(r.days.every((d) => d.kind === 'noPlaces')).toBe(true);
+  });
+
+  it('a city with one place, calm pace: that day gets one item', () => {
+    const one = place('wd:Q5', 10, [101.5, 14.5]);
+    const r = planTrip({
+      ...base,
+      places: [one],
+      nightPoint: () => [101.5, 14.5],
+      arrival: null,
+      departure: null,
+      pace: 'calm',
+    });
+    expect(onDay(r, '2027-01-05').map((i) => i.placeRef)).toEqual(['wd:Q5']);
+    expect(r.days.find((d) => d.day === '2027-01-05')?.kind).toBe('planned');
   });
 
   it('tropical: the 15:30 slot takes an indoor place, outdoor ones go morning and evening', () => {
