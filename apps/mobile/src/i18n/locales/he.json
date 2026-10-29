@@ -31,7 +31,13 @@
       "more": "עוד",
       "cities": "ערים",
       "citiesA11y": "ערים לפי הסדר: {{list}}",
-      "duplicate": "שכפול"
+      "duplicate": "שכפול",
+      "showAllHint": "מציג את הנסיעות בכל הכרטיס",
+      "rowOpenHint": "פותח את הנסיעה בכל הכרטיס"
+    },
+    "tripsMode": {
+      "details": "פרטי היעד",
+      "detailsHint": "מציג שוב את פרטי היעד והקיצורים"
     },
     "emergency": "חירום {{inCountry}}",
     "emergencyHint": "פותח מספרי חירום ונציגות",

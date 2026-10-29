@@ -254,6 +254,8 @@ export const motion = {
   toastVisible: 3000,
   /** The account-deleted toast stays longer: it has no screen of its own (sprint 2 design 11.3). */
   toastVisibleLong: 5000,
+  /** Fix my-trips-space 5: each half of the card's Trips mode fade (200 in all, linear). */
+  cardTripsModeFade: 100,
   /** A loading skeleton shows only after this long, so a fast answer doesn't flash. */
   skeletonDelay: 150,
   skeletonPulse: 1000,
@@ -328,6 +330,12 @@ export const layout = {
   cardTileGap: 8,
   cardTileBadge: 20,
   cardTilesListFromFontScale: 1.6,
+  /**
+   * Fix my-trips-space 3.2: "Your trips" is 32dp tall and reaches 48 with its
+   * hit slop: at 48 the A73's list fell to ~81dp and the card into scroll mode.
+   */
+  cardTripsHeadingMin: 32,
+  cardTripsHeadingSlop: 8,
 } as const;
 
 export const radius = { xs: 4, md: 12, lg: 16, sheet: 28, pill: 999, flap: 4 } as const;

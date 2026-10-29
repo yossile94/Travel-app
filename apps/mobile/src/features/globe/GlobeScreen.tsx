@@ -200,6 +200,12 @@ export function GlobeScreen() {
     seq: number;
   } | null>(null);
   const openSeq = useRef(0);
+  /**
+   * Fix my-trips-space 2.1 (ADR-017): the card's "Trips mode", for this
+   * country: the icons step aside and the trips take the card. Dropped with
+   * openTrip, so a card opened again starts with its icons.
+   */
+  const [tripsModeFor, setTripsModeFor] = useState<string | null>(null);
   /** Sprint 6 AC-5: the flight a tapped alert opens, in the open trip's row. */
   const [openFlight, setOpenFlight] = useState<string | null>(null);
   const [alertText, setAlertText] = useState<AlertText | null>(null);
@@ -361,6 +367,8 @@ export function GlobeScreen() {
 
   // Any other country, or none, drops it (review): reopening later starts closed.
   if (openTrip && selectedAdm0 !== openTrip.adm0) setOpenTrip(null);
+  if (tripsModeFor && selectedAdm0 !== tripsModeFor) setTripsModeFor(null);
+  const tripsMode = tripsModeFor !== null && tripsModeFor === selectedAdm0;
 
   // Sprint 2 design 2.3: after sign-in (and consent), do what the tap asked for.
   if (auth.state.status === 'signedIn' && pendingIntent) {
@@ -627,11 +635,13 @@ export function GlobeScreen() {
   useEffect(() => {
     if (!handlesBack(selection) || searchOpen) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      dispatch({ type: 'backPressed' });
+      // Fix my-trips-space 2.3: in Trips mode, back first brings the icons back.
+      if (tripsMode) setTripsModeFor(null);
+      else dispatch({ type: 'backPressed' });
       return true;
     });
     return () => subscription.remove();
-  }, [selection, searchOpen]);
+  }, [selection, searchOpen, tripsMode]);
 
   // Sprint 1 F-002: search pauses the globe; choosing a result is a tap on it.
   const openSearch = useCallback(() => {
@@ -841,6 +851,7 @@ export function GlobeScreen() {
       setAccountSheetOpen(false);
       setSearchOpen(false);
       setOpenTrip({ id: tripId, adm0, seq: ++openSeq.current });
+      setTripsModeFor(adm0);
       setOpenFlight(`${flightId}:${openSeq.current}`);
       dispatch({ type: 'countryTapped', country: { adm0 } });
     },
@@ -942,6 +953,7 @@ export function GlobeScreen() {
     (trip: Trip) => {
       setMyTripsOpen(false);
       setOpenTrip({ id: trip.id, adm0: trip.countryAdm0, seq: ++openSeq.current });
+      setTripsModeFor(trip.countryAdm0);
       if (countryByAdm0(trip.countryAdm0)) {
         dispatch({ type: 'countryTapped', country: { adm0: trip.countryAdm0 } });
       }
@@ -956,6 +968,7 @@ export function GlobeScreen() {
     pinTapRef.current = (adm0, tripId) => {
       if (selectedAdm0 === adm0) {
         setOpenTrip({ id: tripId, adm0, seq: ++openSeq.current });
+        setTripsModeFor(adm0);
         return;
       }
       if (trips.nextTrip?.id === tripId) openTripFromList(trips.nextTrip);
@@ -988,6 +1001,7 @@ export function GlobeScreen() {
     // Once per launch, on the first answer from the server: it reacts to
     // that answer, so it can't happen during render.
     setOpenTrip({ id: trip.id, adm0: trip.countryAdm0, seq: ++openSeq.current });
+    setTripsModeFor(trip.countryAdm0);
     dispatch({ type: 'countryTapped', country: { adm0: trip.countryAdm0 } });
     AccessibilityInfo.announceForAccessibility(t('activeTrip.opened', { name: trip.title }));
   }, [globeReady, trips.firstLoad, trips.nextTrip, trips.today, auth.state.status, t]);
@@ -1221,6 +1235,8 @@ export function GlobeScreen() {
           today={trips.today}
           city={selectedCity}
           onOpenPlaces={() => setPlacesFor(selectedCountry.adm0)}
+          tripsMode={tripsMode}
+          onExitTripsMode={() => setTripsModeFor(null)}
           match={
             cardMatch ? (
               <CardMatch result={cardMatch} filters={filters} colorScheme={colorScheme} />
@@ -1230,9 +1246,11 @@ export function GlobeScreen() {
             auth.state.status === 'signedIn' ||
             auth.state.status === 'signedOut' ||
             auth.state.status === 'needsConsent'
-              ? (maxListHeight, onNoticeHeight) => (
+              ? (maxListHeight, onNoticeHeight, shownTripsMode) => (
                   <CardTrips
                     country={selectedCountry}
+                    tripsMode={shownTripsMode}
+                    onTripsMode={(on) => setTripsModeFor(on ? selectedCountry.adm0 : null)}
                     colorScheme={colorScheme}
                     maxListHeight={maxListHeight}
                     onNoticeHeight={onNoticeHeight}

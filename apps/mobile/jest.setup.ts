@@ -10,14 +10,19 @@ jest.mock('react-native-reanimated', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   const identity = (t: number) => t;
 
+  const { useState } = jest.requireActual<typeof import('react')>('react');
+  // Kept across renders, as a real shared value is.
   function useSharedValue<T>(initial: T) {
-    const ref = {
-      value: initial,
-      get: () => ref.value,
-      set: (next: T) => {
-        ref.value = next;
-      },
-    };
+    const [ref] = useState(() => {
+      const value = {
+        value: initial,
+        get: () => value.value,
+        set: (next: T) => {
+          value.value = next;
+        },
+      };
+      return value;
+    });
     return ref;
   }
 
@@ -31,6 +36,7 @@ jest.mock('react-native-reanimated', () => {
     useAnimatedKeyboard: () => ({ height: { value: 0 }, state: { value: 0 } }),
     ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
     withTiming: jest.fn(<T>(target: T) => target),
+    useReducedMotion: () => false,
   };
 });
 

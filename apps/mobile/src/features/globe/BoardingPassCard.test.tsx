@@ -228,6 +228,95 @@ describe('BoardingPassCard', () => {
     expect(withStrip - coupon.mock.calls.at(-1)![0]).toBe(110);
   });
 
+  it('Trips mode: a fade, then the compact header and no strip; its old height no longer counts (Raz 2)', async () => {
+    const coupon = jest.fn((_max: number, _notice: unknown, _mode: boolean) => null);
+    const errors = jest.spyOn(console, 'error');
+    const props = {
+      country: countryByAdm0('THA')!,
+      colorScheme: 'light' as const,
+      reduceMotion: true,
+      bottomInset: 0,
+      topInset: 0,
+      onClose: jest.fn(),
+      coupon,
+    };
+    const { rerender } = await render(<BoardingPassCard {...props} />);
+    const layout = (height: number) => ({
+      nativeEvent: { layout: { x: 0, y: 0, width: 360, height } },
+    });
+    await fireEvent(screen.getByTestId('card-header'), 'layout', layout(150));
+    await fireEvent(screen.getByTestId('card-strip'), 'layout', layout(212));
+    const destination = coupon.mock.calls.at(-1)![0];
+
+    await rerender(<BoardingPassCard {...props} tripsMode />);
+    // Until the fade's first half ends, the destination view stays and taps wait.
+    expect(screen.getByTestId('card-strip')).toBeOnTheScreen();
+    expect(screen.getByTestId('country-card').props.pointerEvents).toBe('none');
+    await act(async () => jest.advanceTimersByTime(motion.cardTripsModeFade));
+    expect(screen.queryByTestId('card-strip')).toBeNull();
+    expect(screen.queryByTestId('card-tiles')).toBeNull();
+    expect(screen.queryByTestId('card-name-en')).toBeNull();
+    expect(screen.getByTestId('card-trips-mode')).toBeOnTheScreen();
+    await fireEvent(screen.getByTestId('card-trips-mode'), 'layout', layout(600));
+    await fireEvent(screen.getByTestId('card-header-compact'), 'layout', layout(96));
+    const [trips, , mode] = coupon.mock.calls.at(-1)!;
+    // One tear line under the compact header, not two at the same height (seen on the A73).
+    const sameKey = errors.mock.calls.filter((call) => /same key/.test(String(call[0])));
+    errors.mockRestore();
+    expect(sameKey).toEqual([]);
+    expect(mode).toBe(true);
+    expect(trips - destination).toBe(150 + 212 - 96);
+    await act(async () => jest.advanceTimersByTime(motion.cardTripsModeFade));
+    expect(screen.getByTestId('country-card').props.pointerEvents).toBe('auto');
+
+    const onExit = jest.fn();
+    await rerender(<BoardingPassCard {...props} tripsMode onExitTripsMode={onExit} />);
+    await fireEvent.press(screen.getByTestId('card-destination-details'));
+    expect(onExit).toHaveBeenCalled();
+  });
+
+  it('back before the swap: the content fades in again, and taps come back (Raz 1)', async () => {
+    const props = {
+      country: countryByAdm0('THA')!,
+      colorScheme: 'light' as const,
+      reduceMotion: true,
+      bottomInset: 0,
+      onClose: jest.fn(),
+      coupon: () => null,
+    };
+    const fades = () =>
+      jest
+        .mocked(withTiming)
+        .mock.calls.filter(([, config]) => config?.duration === motion.cardTripsModeFade)
+        .map(([to]) => to);
+    const { rerender } = await render(<BoardingPassCard {...props} />);
+    await rerender(<BoardingPassCard {...props} tripsMode />);
+    expect(fades().at(-1)).toBe(0);
+    await act(async () => jest.advanceTimersByTime(motion.cardTripsModeFade / 2));
+    await rerender(<BoardingPassCard {...props} tripsMode={false} />);
+    expect(fades().at(-1)).toBe(1);
+    await act(async () => jest.advanceTimersByTime(motion.cardTripsModeFade * 2));
+    expect(screen.getByTestId('card-header')).toBeOnTheScreen();
+    expect(screen.getByTestId('country-card').props.pointerEvents).toBe('auto');
+  });
+
+  it('a card that opens in Trips mode starts there, with no fade (5)', async () => {
+    await render(
+      <BoardingPassCard
+        country={countryByAdm0('THA')!}
+        colorScheme="light"
+        reduceMotion
+        bottomInset={0}
+        onClose={jest.fn()}
+        coupon={() => null}
+        tripsMode
+      />,
+    );
+    expect(screen.getByTestId('card-header-compact')).toBeOnTheScreen();
+    expect(screen.queryByTestId('card-header')).toBeNull();
+    expect(screen.getByTestId('country-card').props.pointerEvents).toBe('auto');
+  });
+
   it('no tile shows a threat level, and the old warning row is gone (fix AC-2)', async () => {
     await renderCard('THA');
     expect(screen.queryByTestId('card-advisory')).toBeNull();

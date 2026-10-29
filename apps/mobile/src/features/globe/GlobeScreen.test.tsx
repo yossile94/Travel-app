@@ -987,6 +987,36 @@ describe('GlobeScreen', () => {
       await tap({ pin: { adm0: 'GRC', tripId: 'trip-grc' }, country: { adm0: 'TUR', code: 'TR' } });
       expect(screen.getByText('יוון')).toBeOnTheScreen();
     });
+
+    it('fix my-trips-space: the pin opens the card in Trips mode; back brings the icons, back again closes', async () => {
+      const handlers: (() => boolean)[] = [];
+      const spy = jest
+        .spyOn(BackHandler, 'addEventListener')
+        .mockImplementation((_event, handler) => {
+          handlers.push(handler as () => boolean);
+          return { remove: () => handlers.splice(handlers.indexOf(handler as () => boolean), 1) };
+        });
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.nextTrip = { ...greece, startDate: '2026-11-01', endDate: '2026-11-05' };
+      await render(<GlobeScreen />);
+      await tap({ pin: { adm0: 'GRC', tripId: 'trip-grc' }, country: { adm0: 'TUR', code: 'TR' } });
+      expect(screen.getByTestId('card-trips-mode')).toBeOnTheScreen();
+      // The flight ends and the listener registers again: back still leaves Trips mode first (Raz a).
+      const registered = spy.mock.calls.length;
+      await act(async () => jest.advanceTimersByTime(5_000));
+      expect(spy.mock.calls.length).toBeGreaterThan(registered);
+      await act(async () => {
+        handlers.at(-1)!();
+      });
+      await act(async () => jest.advanceTimersByTime(motion.cardTripsModeFade * 2));
+      expect(screen.queryByTestId('card-trips-mode')).toBeNull();
+      expect(screen.getByTestId('card-strip')).toBeOnTheScreen();
+      await act(async () => {
+        handlers.at(-1)!();
+      });
+      expect(screen.queryByTestId('country-card')).toBeNull();
+      spy.mockRestore();
+    });
   });
 });
 

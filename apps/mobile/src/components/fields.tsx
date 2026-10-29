@@ -181,6 +181,7 @@ export function Button({
   outlined = false,
   blocked = false,
   testID,
+  ref,
 }: {
   kind: ButtonKind;
   label: string;
@@ -201,6 +202,8 @@ export function Button({
    */
   blocked?: boolean;
   testID?: string;
+  /** For focus (fix my-trips-space 6.2: "New trip" after the last trip goes). */
+  ref?: Ref<ComponentRef<typeof Pressable>>;
 }) {
   const palette = colors[colorScheme];
   const fg = blocked
@@ -232,6 +235,7 @@ export function Button({
               : 'transparent';
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityLabel={busy && busyLabel ? busyLabel : (a11yLabel ?? label)}
       accessibilityHint={a11yHint}
