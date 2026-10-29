@@ -57,6 +57,8 @@ import {
 import { advisoriesAsOf, countText } from '@/features/discover/discoverText';
 import { MonthSheet } from '@/features/discover/MonthSheet';
 import { useDestination } from '@/features/destination/destinationData';
+import { PlacesScreen } from '@/features/places/PlacesScreen';
+import { contextTrip } from '@/features/places/placesModel';
 import { SearchBar, type SearchCity } from '@/features/search/SearchBar';
 import { cityPoint } from '@/features/trips/citiesData';
 import { CardTrips } from '@/features/trips/CardTrips';
@@ -186,6 +188,8 @@ export function GlobeScreen() {
   const trips = useTrips();
   const [myTripsOpen, setMyTripsOpen] = useState(false);
   const [tripForm, setTripForm] = useState<TripFormTarget | null>(null);
+  // Sprint 11: "What to see" from the card, for this country (design 2.1, 3.1).
+  const [placesFor, setPlacesFor] = useState<string | null>(null);
   const [pendingIntent, setPendingIntent] = useState<PendingIntent>(null);
   /** The trip to open in the card, when the card was opened from "My trips" (design 5.3). */
   // seq: every request counts, even for the same trip again (Raz, m1).
@@ -1216,6 +1220,7 @@ export function GlobeScreen() {
           topInset={insets.top}
           today={trips.today}
           city={selectedCity}
+          onOpenPlaces={() => setPlacesFor(selectedCountry.adm0)}
           match={
             cardMatch ? (
               <CardMatch result={cardMatch} filters={filters} colorScheme={colorScheme} />
@@ -1386,6 +1391,26 @@ export function GlobeScreen() {
         onAllow={push.allow}
         onLater={push.later}
       />
+
+      {placesFor ? (
+        <PlacesScreen
+          adm0={placesFor}
+          // Raz 13: the active trip that started last, else the next one.
+          trip={contextTrip(
+            trips.cache?.upcoming ?? (trips.nextTrip ? [trips.nextTrip] : []),
+            placesFor,
+            trips.today,
+          )}
+          signedIn={auth.state.status === 'signedIn'}
+          today={trips.today}
+          colorScheme={colorScheme}
+          reduceMotion={reduceMotion === true}
+          insetsTop={insets.top}
+          insetsBottom={insets.bottom}
+          onClose={() => setPlacesFor(null)}
+          onToast={showTripToast}
+        />
+      ) : null}
 
       {/* Design 2.3: "signed in as" waits until the trip form closes. */}
       {/* One toast at a time: the trip's first, then "signed in as" (review). */}

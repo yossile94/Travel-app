@@ -9,6 +9,7 @@ import {
   contextTrip,
   distanceKm,
   formatDistance,
+  nightCityId,
   mergeCurated,
   placesInCity,
   placesNear,
@@ -237,5 +238,45 @@ describe('the trip form question (design 2.5, D19)', () => {
     ['create', [], false, false, false],
   ] as const)('%s, cities %j, asked %s, online %s → %s', (kind, list, asked, online, expected) => {
     expect(shouldAskCity(kind, list, asked, online)).toBe(expected);
+  });
+});
+
+describe("tonight's city (design 3.7.3)", () => {
+  const points: Record<number, [number, number]> = {
+    1: [100.5, 13.75],
+    2: [98.98, 18.79],
+    3: [98.39, 7.88],
+  };
+  const pointOf = (id: number) => points[id] ?? null;
+  const t3 = trip({
+    startDate: '2027-01-01',
+    endDate: '2027-01-09',
+    cities: [
+      { geonameId: 1, name: 'בנגקוק' },
+      { geonameId: 2, name: "צ'אנג מאי" },
+      { geonameId: 3, name: 'פוקט' },
+    ],
+  });
+  it('the trip city nearest a hotel with a point that covers tonight', () => {
+    const hotel = {
+      checkIn: '2027-01-01',
+      checkOut: '2027-01-05',
+      point: [98.97, 18.78] as [number, number],
+    };
+    expect(nightCityId(t3, [hotel], '2027-01-02', pointOf)).toBe(2);
+  });
+  it('otherwise the days split evenly between the cities, in order', () => {
+    expect(nightCityId(t3, [], '2027-01-01', pointOf)).toBe(1);
+    expect(nightCityId(t3, [], '2027-01-04', pointOf)).toBe(2);
+    expect(nightCityId(t3, [], '2027-01-09', pointOf)).toBe(3);
+  });
+  it('one listed city: it; none, or not active: null', () => {
+    expect(
+      nightCityId(trip({ cities: [{ geonameId: 2, name: 'x' }] }), [], '2026-12-25', pointOf),
+    ).toBe(2);
+    expect(
+      nightCityId(trip({ cities: [{ geonameId: null, name: 'x' }] }), [], '2026-12-25', pointOf),
+    ).toBeNull();
+    expect(nightCityId(t3, [], '2026-12-25', pointOf)).toBeNull();
   });
 });

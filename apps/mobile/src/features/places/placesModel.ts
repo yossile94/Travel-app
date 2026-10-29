@@ -267,3 +267,43 @@ export function shouldAskCity(
   if (kind === 'edit' || asked || !online) return false;
   return !cities.some((c) => c.geonameId !== null);
 }
+
+// ------------------------------------------------------ tonight's city
+
+/** Whole days from a to b ("YYYY-MM-DD"). */
+const daysBetween = (a: string, b: string) =>
+  Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+
+/**
+ * Design 3.7.3 (scope ח3): the trip city of tonight's night, for the picker's
+ * default on an active trip — the listed trip city nearest a hotel with a
+ * point that covers tonight (within 15 km); else the one listed city; else the
+ * trip's days split evenly between its listed cities in order. Null when the
+ * trip isn't active or has no listed city.
+ */
+export function nightCityId(
+  trip: Pick<Trip, 'cities' | 'startDate' | 'endDate'>,
+  hotels: readonly { checkIn: string; checkOut: string; point?: [number, number] | null }[],
+  today: string,
+  pointOf: (id: number) => [number, number] | null,
+): number | null {
+  if (today < trip.startDate || today > trip.endDate) return null;
+  const listed: number[] = [];
+  for (const c of trip.cities)
+    if (c.geonameId !== null && !listed.includes(c.geonameId)) listed.push(c.geonameId);
+  if (listed.length === 0) return null;
+  const hotel = hotels.find((h) => h.point && h.checkIn <= today && today < h.checkOut);
+  if (hotel?.point) {
+    const nearest = listed
+      .map((id) => ({ id, at: pointOf(id) }))
+      .filter((c): c is { id: number; at: [number, number] } => c.at !== null)
+      .map((c) => ({ id: c.id, km: distanceKm(c.at, hotel.point!) }))
+      .filter((c) => c.km <= CITY_RADIUS_KM)
+      .sort((a, b) => a.km - b.km)[0];
+    if (nearest) return nearest.id;
+  }
+  if (listed.length === 1) return listed[0]!;
+  const days = daysBetween(trip.startDate, trip.endDate) + 1;
+  const index = daysBetween(trip.startDate, today);
+  return listed[Math.min(listed.length - 1, Math.floor((index * listed.length) / days))]!;
+}

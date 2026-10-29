@@ -24,6 +24,7 @@ import {
   ClockIcon,
   CloudOffIcon,
   HourglassIcon,
+  MapPinIcon,
   PhoneIcon,
   ShieldIcon,
   ThermometerIcon,
@@ -73,7 +74,7 @@ export function tileLayout(
 }
 
 interface Tile {
-  key: 'safety' | 'time' | 'money' | 'climate' | 'emergency';
+  key: 'safety' | 'time' | 'money' | 'climate' | 'places' | 'emergency';
   icon: (color: string) => ReactNode;
   /** The value under the icon; none for Safety and emergency. */
   value?: ReactNode;
@@ -96,6 +97,8 @@ export function CardTiles({
   city,
   onOpenSafety,
   safetyRef,
+  onOpenPlaces,
+  placesRef,
 }: {
   country: CountryInfo;
   safety: SafetyState;
@@ -107,6 +110,9 @@ export function CardTiles({
   onOpenSafety: () => void;
   /** Focus comes back here when the Safety sheet closes. */
   safetyRef: React.RefObject<ComponentRef<typeof Pressable> | null>;
+  /** Sprint 11: "What to see"; its screen is the globe's (fix 6.5). */
+  onOpenPlaces?: () => void;
+  placesRef?: React.RefObject<ComponentRef<typeof Pressable> | null>;
 }) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
@@ -288,6 +294,17 @@ export function CardTiles({
       onPress: temp === 'loading' ? undefined : () => setOpen('climate'),
     });
   }
+  // Sprint 11: always outside Israel, like Safety, with no value (design 2.1).
+  if (!israel && onOpenPlaces) {
+    tiles.push({
+      key: 'places',
+      icon: (color) => <MapPinIcon color={color} />,
+      label: t('card.tile.places'),
+      a11y: t('places.cardA11y', { country: countryName(country, i18n.language) }),
+      hint: t('places.cardHint'),
+      onPress: onOpenPlaces,
+    });
+  }
   if (!israel && auth?.state.status === 'signedOut') {
     const words = countryWords(countryName(country, i18n.language), i18n.language);
     tiles.push({
@@ -306,7 +323,9 @@ export function CardTiles({
   // Whole points: rounding never pushes the last tile to a new row (Raz review 6).
   const column = Math.floor((width - gap * (cols - 1)) / cols);
   const tileWidth = few ? Math.min(layout.cardTileMaxWidthFew, column) : column;
-  const refOf = (key: Tile['key']) => (key === 'safety' ? safetyRef : refs[key]);
+  const fallback = useRef<ComponentRef<typeof Pressable>>(null);
+  const refOf = (key: Tile['key']) =>
+    key === 'safety' ? safetyRef : key === 'places' ? (placesRef ?? fallback) : refs[key];
 
   return (
     <>

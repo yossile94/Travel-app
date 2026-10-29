@@ -22,6 +22,7 @@ import { prefetchFlights } from '@/features/flights/flightsStore';
 import { pruneInsuranceReminders } from '@/features/kit/insuranceReminder';
 import { kitsOf, prefetchKit } from '@/features/kit/kitStore';
 import { passportTripsLoaded } from '@/features/passportAlerts/passportRunner';
+import { prefetchPlaces } from '@/features/places/placesData';
 
 import { loadTripCountries, loadTripPage, type Trip } from './tripsApi';
 import {
@@ -171,6 +172,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       // between must not leave a copy (Dudi e2, Raz S4-M1).
       if (currentUser.current === forUser) {
         void saveTripsCache(saved, generation);
+        // Sprint 11 (design 7): the places of these countries, for the airport.
+        prefetchPlaces(saved.upcoming.map((trip) => trip.countryAdm0));
         // Sprint 5 (Raz 6): the upcoming trips' flights join the offline copy.
         void prefetchFlights(saved.upcoming.map((trip) => trip.id));
         // Sprint 10 AC-12: a trip created or moved is checked against the passports.
