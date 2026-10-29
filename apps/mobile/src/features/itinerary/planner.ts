@@ -30,7 +30,7 @@ export interface PlannerInput {
   busyDays: ReadonlySet<string>;
   places: readonly PlannerPlace[];
   /** Where the night of a day is (Raz ח3), [lng, lat]. */
-  nightPoint: (day: string) => [number, number];
+  nightPoint: (day: string) => [number, number] | null;
   /** Raz ח2: the `hot` band that month, there. */
   tropical: (day: string) => boolean;
   pace: Pace;
@@ -57,7 +57,15 @@ export interface PlannedItem {
  * Neither counts as a day the plan will fill (the preview's count).
  */
 export type DayKind =
-  'busy' | 'inTransit' | 'rest' | 'planned' | 'noPlaces' | 'placesUsed' | 'beyondLimit';
+  | 'busy'
+  | 'inTransit'
+  | 'rest'
+  /** Landing too late for any slot (D16): nothing to plan, not a lack of places. */
+  | 'arrivalEvening'
+  | 'planned'
+  | 'noPlaces'
+  | 'placesUsed'
+  | 'beyondLimit';
 
 export interface PlanResult {
   items: PlannedItem[];
@@ -140,9 +148,11 @@ export function planTrip(input: PlannerInput): PlanResult {
     if (input.busyDays.has(day)) return days.push({ day, kind: 'busy' });
     const { slots, airportAt, kind } = daySlots(day, input);
     if (kind !== 'normal') return days.push({ day, kind });
+    if (slots.length === 0 && !airportAt) return days.push({ day, kind: 'arrivalEvening' });
 
     const night = input.nightPoint(day);
-    const near = input.places.filter((p) => km([p.lng, p.lat], night) <= REACH_KM);
+    // No city and no hotel that night: no known place at the destination (D23).
+    const near = night ? input.places.filter((p) => km([p.lng, p.lat], night) <= REACH_KM) : [];
     const pool = near.filter((p) => !used.has(p.ref)).sort(byPopularity);
     // The day's anchor is the best place left near the night; the rest stay near it.
     const chosen: PlannerPlace[] = [];

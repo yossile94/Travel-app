@@ -147,6 +147,11 @@ describe('places (AC-16)', () => {
     expect(r.days.every((d) => d.kind === 'noPlaces')).toBe(true);
   });
 
+  it('an evening landing is its own kind, not a lack of places', () => {
+    const r = planTrip({ ...base, arrival: { date: '2027-01-05', time: '19:30', flightHours: 4 } });
+    expect(r.days[0]).toEqual({ day: '2027-01-05', kind: 'arrivalEvening' });
+  });
+
   it('a city with one place, calm pace: that day gets one item', () => {
     const one = place('wd:Q5', 10, [101.5, 14.5]);
     const r = planTrip({

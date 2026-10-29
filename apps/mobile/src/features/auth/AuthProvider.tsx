@@ -38,6 +38,7 @@ import { resetFlightsStore } from '@/features/flights/flightsStore';
 import { wipeKitDevice } from '@/features/kit/wipe';
 import { wipePassportDevice } from '@/features/passportAlerts/passportRunner';
 import { forgetPickedCities } from '@/features/places/pickedCities';
+import { clearBoards } from '@/features/itinerary/itineraryStore';
 import { clearSaved } from '@/features/places/savedPlaces';
 import { forgetAskedCities } from '@/features/trips/CityAskSheet';
 import { pushKeysOf, unregisterDevice } from '@/features/push/push';
@@ -205,6 +206,7 @@ async function localSignOut(): Promise<void> {
     await wipePassportDevice();
     // Sprint 11: the saved places held in memory.
     clearSaved();
+    clearBoards();
     forgetPickedCities();
     await forgetAskedCities();
   }
@@ -294,6 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await wipePassportDevice();
     // Sprint 11: the saved places held in memory.
     clearSaved();
+    clearBoards();
     forgetPickedCities();
     await forgetAskedCities();
     if (!userId) return;
