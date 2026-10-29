@@ -72,7 +72,7 @@ beforeEach(() => {
 
 describe('the passport runner', () => {
   it('a trips load checks the trips with the country rule, then plans the reminders', async () => {
-    await passportTripsLoaded([trip]);
+    await passportTripsLoaded([trip], true);
     expect(destination.loadDestination).toHaveBeenCalled();
     const [trips, holders, monthsOf] = alerts.checkTripPassports.mock.calls[0]!;
     expect(trips).toEqual([trip]);
@@ -86,7 +86,7 @@ describe('the passport runner', () => {
 
   it('a save in the wallet reads the cached country rules only: no network (Dana bug 1)', async () => {
     startPassportAlerts();
-    await passportTripsLoaded([trip]);
+    await passportTripsLoaded([trip], true);
     jest.clearAllMocks();
     mockPassports.listeners.forEach((l) => l([holder]));
     await settle();
@@ -113,7 +113,7 @@ describe('the passport runner', () => {
   });
 
   it('wiping cancels the notifications, then the passports; later saves check no trip (AC-6)', async () => {
-    await passportTripsLoaded([trip]);
+    await passportTripsLoaded([trip], true);
     await wipePassportDevice();
     expect(alerts.cancelAllPassportAlerts).toHaveBeenCalled();
     expect(store.wipePassports).toHaveBeenCalled();
@@ -131,8 +131,8 @@ describe('the passport runner', () => {
   it('one failing run does not stop the next', async () => {
     alerts.checkTripPassports.mockRejectedValueOnce(new Error('boom'));
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    await passportTripsLoaded([trip]);
-    await passportTripsLoaded([trip]);
+    await passportTripsLoaded([trip], true);
+    await passportTripsLoaded([trip], true);
     expect(alerts.checkTripPassports).toHaveBeenCalledTimes(2);
     expect(warn).toHaveBeenCalledWith('[passport] alerts failed', 'Error');
     warn.mockRestore();

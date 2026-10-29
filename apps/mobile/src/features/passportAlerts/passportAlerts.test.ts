@@ -98,6 +98,15 @@ describe('a trip against the passports (AC-12)', () => {
     expect(await AsyncStorage.getItem('passport.lastNotified')).toBe('{}');
   });
 
+  it("a cut list (more than 50 upcoming) keeps a missing trip's notification and record (Raz)", async () => {
+    await checkTripPassports([thailand], [me('2027-06-01')], none, none, texts, now);
+    n.dismissNotificationAsync.mockClear();
+    await checkTripPassports([], [me('2027-06-01')], none, none, texts, now, false);
+    expect(n.dismissNotificationAsync).not.toHaveBeenCalled();
+    await checkTripPassports([thailand], [me('2027-06-01')], none, none, texts, now);
+    expect(n.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+  });
+
   it("the country's rule: 0 months and valid on the return day is fine (Dana)", async () => {
     const zero = (adm0: string) => (adm0 === 'THA' ? 0 : null);
     expect(

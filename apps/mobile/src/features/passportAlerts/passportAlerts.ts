@@ -140,6 +140,8 @@ export async function checkTripPassports(
   parentOf: (adm0: string) => string | undefined,
   texts: PassportTexts,
   now = new Date(),
+  /** The whole upcoming list, not the first 50 of more (Raz review): only then may a missing trip be dropped. */
+  complete = true,
 ): Promise<string[]> {
   const today = todayPg(now);
   const notified = await readNotified();
@@ -180,13 +182,13 @@ export async function checkTripPassports(
     }).catch(() => {});
     sent.push(trip.id);
   }
-  // Trips not in this list (over, deleted) keep no record, and their shown
-  // notification goes too (Dana bug 3).
+  // Trips not in a complete list (over, deleted) keep no record, and their
+  // shown notification goes too (Dana bug 3). A cut list keeps them as they are.
   const listed = new Set(trips.map((t) => t.id));
-  for (const tripId of Object.keys(notified)) {
-    if (!listed.has(tripId)) {
-      await Notifications.dismissNotificationAsync(`${TRIP_PREFIX}${tripId}`).catch(() => {});
-    }
+  for (const [tripId, severity] of Object.entries(notified)) {
+    if (listed.has(tripId)) continue;
+    if (!complete) next[tripId] = severity;
+    else await Notifications.dismissNotificationAsync(`${TRIP_PREFIX}${tripId}`).catch(() => {});
   }
   await AsyncStorage.setItem(NOTIFIED_KEY, JSON.stringify(next)).catch(() => {});
   return sent;

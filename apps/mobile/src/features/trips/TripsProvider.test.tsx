@@ -205,8 +205,9 @@ describe('TripsProvider offline (sprint 4 F-015)', () => {
     await act(async () => result.current.start());
     await answer(0, ['THA']);
     expect(tripsCache.saveTripsCache).not.toHaveBeenCalled();
-    expect(passportRunner.passportTripsLoaded).toHaveBeenCalledWith([
-      { id: 'trip-1', countryAdm0: 'THA' },
-    ]);
+    expect(passportRunner.passportTripsLoaded).toHaveBeenCalledWith(
+      [{ id: 'trip-1', countryAdm0: 'THA' }],
+      true,
+    );
   });
 });

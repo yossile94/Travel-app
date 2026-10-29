@@ -30,6 +30,7 @@ const parents = rawMeta as unknown as Record<string, { parent?: string }>;
 const parentOf = (adm0: string) => parents[adm0]?.parent;
 
 let trips: readonly AlertTrip[] | null = null;
+let tripsComplete = true;
 let running: Promise<void> = Promise.resolve();
 
 function texts(): PassportTexts {
@@ -63,9 +64,10 @@ function texts(): PassportTexts {
 /** network: only with a trips load; a save in the wallet reads the cached copy (Dana bug 1). */
 async function check(holders: readonly Holder[], network: boolean) {
   if (!trips) return;
+  const complete = tripsComplete;
   const destination = await (network ? loadDestination() : cachedDestination()).catch(() => null);
   const monthsOf = (adm0: string) => destination?.advisories.get(adm0)?.passportValidityMonths;
-  await checkTripPassports(trips, holders, monthsOf, parentOf, texts());
+  await checkTripPassports(trips, holders, monthsOf, parentOf, texts(), new Date(), complete);
 }
 
 /** Runs one after another, so two quick saves never interleave. */
@@ -83,8 +85,13 @@ async function holders(): Promise<readonly Holder[]> {
 }
 
 /** The trips provider's upcoming trips, after each load (TripsProvider). */
-export function passportTripsLoaded(next: readonly AlertTrip[]): Promise<void> {
+export function passportTripsLoaded(
+  next: readonly AlertTrip[],
+  /** false when more upcoming trips exist than were loaded (the first 50). */
+  complete: boolean,
+): Promise<void> {
   trips = next;
+  tripsComplete = complete;
   // The 9/6/3 reminders too: a permission granted later, or a new language (Raz review, important 5).
   return queue(async () => {
     const list = await holders();
