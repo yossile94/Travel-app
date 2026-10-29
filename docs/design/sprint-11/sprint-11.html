@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ספרינט 11: מה לראות ומסלול (הדמיה)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Tokens from docs/design/tokens.json 0.11.0 + tokens-0.12.0.proposed.json. No new hex values
+     (the drawn street map uses existing primitives only: sand.50/100, night.25, sky.100, lagoon.50). */
+  :root { --fs: 1; }
+  :root {
+    --canvas:#FFFBF5; --surface:#FFFFFF; --raised:#FFFFFF; --tag:#FBF4E8; --pressed:#FBF4E8;
+    --t1:#121C36; --t2:#4A5573; --t3:#646E8A; --link:#1561BC; --alert:#C81E16;
+    --pBg:#1561BC; --pFg:#FFFFFF; --secBg:#EEF6FF; --secFg:#104C94; --ctaBg:#C8441F;
+    --infoBg:#EEF6FF; --infoFg:#104C94; --bSub:#F4E7D0; --bCtl:#7D869E;
+    --okBg:#E8FAF7; --okFg:#0A665D; --orFg:#A8381A; --disFg:#646E8A;
+    --toastBg:#121C36; --toastFg:#F3F6FC; --skel:#F4E7D0; --scrim:rgba(6,11,24,0.48);
+  }
+  body.dark {
+    --canvas:#060B18; --surface:#0B1326; --raised:#121C36; --tag:#1A2749; --pressed:#1A2749;
+    --t1:#F3F6FC; --t2:#A3B3DB; --t3:#7487BD; --link:#6FB3FA; --alert:#FF5D52;
+    --pBg:#6FB3FA; --pFg:#060B18; --secBg:#1A2749; --secFg:#A9D2FF; --ctaBg:#FF7A57;
+    --infoBg:#1A2749; --infoFg:#A9D2FF; --bSub:#1A2749; --bCtl:#7487BD;
+    --okBg:#0D2B2E; --okFg:#8FE3D6; --orFg:#FF9677; --disFg:#7487BD;
+    --skel:#1A2749; --scrim:rgba(0,0,0,0.6);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Rubik, system-ui, sans-serif; background:#d9dde6; color:#121C36; }
+  body.dark { background:#1d2230; }
+  .panelBar { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:16px; align-items:center;
+    padding:10px 16px; background:#121C36; color:#F3F6FC; font-size:14px; }
+  .panelBar label { display:flex; gap:6px; align-items:center; }
+  h2.part { margin:24px 24px 0; font-size:20px; color:#121C36; }
+  body.dark h2.part { color:#F3F6FC; }
+  .row { display:flex; flex-wrap:wrap; gap:28px; padding:24px; align-items:flex-start; }
+  .frame { width:411px; }
+  .cap { font-size:13px; color:#34477D; margin:0 0 8px; min-height:70px; }
+  body.dark .cap { color:#A3B3DB; }
+  .phone { position:relative; width:411px; height:860px; border-radius:28px; overflow:hidden;
+    background:var(--canvas); color:var(--t1); box-shadow:0 8px 30px rgba(18,28,54,.25); }
+  .title2 { font-size:calc(22px*var(--fs)); line-height:calc(28px*var(--fs)); font-weight:600; margin:0; }
+  .title3 { font-size:calc(18px*var(--fs)); line-height:calc(24px*var(--fs)); font-weight:600; margin:0; }
+  .barT { font-size:calc(20px*var(--fs)); line-height:calc(26px*var(--fs)); font-weight:600; margin:0; }
+  .body { font-size:calc(16px*var(--fs)); line-height:calc(24px*var(--fs)); margin:0; }
+  .bodyS { font-size:calc(16px*var(--fs)); line-height:calc(22px*var(--fs)); font-weight:500; margin:0; }
+  .callout { font-size:calc(15px*var(--fs)); line-height:calc(21px*var(--fs)); margin:0; }
+  .foot { font-size:calc(13px*var(--fs)); line-height:calc(18px*var(--fs)); margin:0; }
+  .capt { font-size:calc(12px*var(--fs)); line-height:calc(16px*var(--fs)); font-weight:600; margin:0; }
+  .numMd { font-size:calc(17px*var(--fs)); line-height:calc(22px*var(--fs)); font-weight:500; font-variant-numeric:tabular-nums; margin:0; }
+  .num { font-variant-numeric:tabular-nums; }
+  .iso { unicode-bidi:isolate; direction:ltr; }
+  .own { unicode-bidi:isolate; }
+  .t2 { color:var(--t2); } .t3 { color:var(--t3); } .link { color:var(--link); }
+  .ic12 { width:12px; height:12px; flex:none; } .ic16 { width:16px; height:16px; flex:none; } .ic20 { width:20px; height:20px; flex:none; } .ic24 { width:24px; height:24px; flex:none; } .ic40 { width:40px; height:40px; flex:none; } .ic48 { width:48px; height:48px; flex:none; }
+  .hstack { display:flex; align-items:center; gap:8px; }
+  .vstack { display:flex; flex-direction:column; gap:8px; }
+  .between { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .wrap { display:flex; flex-wrap:wrap; gap:8px; }
+  .grow { flex:1; min-width:0; }
+  .stateLabel { font-family:monospace; font-size:11px; color:var(--t3); direction:ltr; display:block; margin:8px 0 2px; }
+  .newMark { font:11px monospace; color:#C8441F; direction:ltr; }
+  html[dir=rtl] .flipRtl { transform:scaleX(-1); }
+  /* chrome */
+  .bar { display:flex; align-items:center; gap:4px; min-height:56px; padding-inline-end:16px; margin-top:28px; }
+  .backBtn { width:48px; height:48px; display:grid; place-items:center; flex:none; }
+  .content { padding:8px 16px 16px; display:flex; flex-direction:column; gap:calc(14px*min(var(--fs),1.3)); }
+  .footer { position:absolute; inset-inline:0; bottom:0; padding:12px 16px 28px; border-top:1px solid var(--bSub); background:var(--canvas); }
+  /* controls */
+  .btn { min-height:48px; border-radius:999px; border:0; font:inherit; font-size:calc(16px*var(--fs)); font-weight:500;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:0 20px; }
+  .b-primary { background:var(--pBg); color:var(--pFg); width:100%; }
+  .b-secondary { background:var(--secBg); color:var(--secFg); }
+  body.dark .b-secondary { border:1px solid var(--bCtl); }
+  .b-text { background:none; color:var(--link); padding:0 8px; min-height:48px; }
+  .b-link { background:none; color:var(--link); padding:0; min-height:48px; justify-content:flex-start; }
+  .busy { opacity:.85; }
+  .spin { width:16px; height:16px; border-radius:50%; border:2px solid currentColor; border-top-color:transparent; display:inline-block; }
+  .notice { display:flex; gap:8px; padding:12px; border-radius:12px; background:var(--infoBg); color:var(--infoFg); align-items:flex-start; }
+  .flabel { font-size:calc(13px*var(--fs)); line-height:calc(18px*var(--fs)); font-weight:500; color:var(--t2); margin:0 0 4px; }
+  .field { min-height:48px; border:1px solid var(--bCtl); border-radius:8px; padding:0 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--surface); font-size:calc(16px*var(--fs)); }
+  .field.err { border:2px solid var(--alert); }
+  .field.multi { align-items:flex-start; padding:12px; min-height:96px; }
+  .ferr { display:flex; gap:6px; align-items:center; color:var(--alert); }
+  .chip { display:inline-flex; align-items:center; gap:4px; border-radius:999px; padding:2px 8px; font-size:calc(12px*var(--fs)); line-height:calc(16px*var(--fs)); font-weight:500; white-space:nowrap; }
+  .c-tag { background:var(--tag); color:var(--t2); }
+  .c-info { background:var(--infoBg); color:var(--infoFg); }
+  .c-ok { background:var(--okBg); color:var(--okFg); }
+  .pchip { min-height:40px; display:inline-flex; align-items:center; gap:6px; padding:0 14px; border-radius:999px; border:1px solid var(--bCtl); font-size:calc(15px*var(--fs)); white-space:nowrap; flex:none; }
+  .pchip.on { background:var(--secBg); color:var(--secFg); border-color:transparent; }
+  .hscroll { display:flex; gap:8px; overflow:hidden; padding:0 16px; }
+  .list { border-radius:12px; background:var(--surface); overflow:hidden; }
+  body.dark .list { border:1px solid var(--bSub); }
+  .iconBtn { width:48px; height:48px; display:grid; place-items:center; flex:none; color:var(--t2); border-radius:50%; }
+  .iconBtn.on { color:var(--pBg); }
+  .skel { background:var(--skel); border-radius:8px; }
+  /* tabs */
+  .tabs { display:flex; border-bottom:1px solid var(--bSub); overflow:hidden; padding:0 4px; }
+  .tab { position:relative; min-height:48px; padding:0 16px; display:flex; align-items:center; gap:6px; color:var(--t2); font-weight:500; font-size:calc(16px*var(--fs)); white-space:nowrap; flex:none; }
+  .tab.on { color:var(--pBg); }
+  .tab.on::after { content:''; position:absolute; inset-inline:12px; bottom:0; height:3px; border-radius:3px 3px 0 0; background:var(--pBg); }
+  .seg { display:flex; border:1px solid var(--bCtl); border-radius:999px; overflow:hidden; }
+  .seg span { flex:1; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:calc(15px*var(--fs)); font-weight:500; border-inline-start:1px solid var(--bCtl); gap:6px; }
+  .seg span:first-child { border-inline-start:0; }
+  .seg span.on { background:var(--secBg); color:var(--secFg); }
+  /* place row */
+  .prow { display:flex; align-items:flex-start; gap:4px; min-height:72px; padding:10px 8px 10px 16px; border-top:1px solid var(--bSub); }
+  html[dir=rtl] .prow { padding:10px 16px 10px 8px; }
+  .prow:first-child { border-top:0; }
+  /* itinerary */
+  .dayH { position:relative; min-height:56px; padding:8px 16px; display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--canvas); border-bottom:1px solid var(--bSub); }
+  .dayH.sticky { box-shadow:0 2px 6px rgba(18,28,54,.08); }
+  .arow { display:flex; align-items:flex-start; gap:8px; min-height:64px; padding:10px 0; padding-inline-start:16px; background:var(--surface); border-bottom:1px solid var(--bSub); }
+  .tcol { width:calc(56px*min(var(--fs),1.3)); flex:none; padding-top:1px; }
+  .flash { background:var(--okBg); }
+  .lifted { box-shadow:0 8px 24px rgba(18,28,54,.14); transform:scale(1.02); position:relative; z-index:2; border-radius:8px; }
+  /* card context */
+  .card { position:absolute; inset-inline:12px; top:60px; bottom:24px; background:var(--raised); border-radius:24px; padding:16px; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+  body.dark .card { border:1px solid rgba(163,179,219,0.16); }
+  .strip { width:40px; height:4px; border-radius:2px; background:#FF7A57; }
+  .openRow { background:var(--tag); border-radius:16px; padding:12px; display:flex; flex-direction:column; gap:10px; }
+  .brow { display:flex; align-items:center; justify-content:space-between; min-height:48px; padding:0 12px; border-radius:8px; background:var(--surface); gap:8px; }
+  .lrow { display:flex; align-items:center; gap:12px; min-height:56px; padding:8px 12px; }
+  .boxed { background:var(--surface); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px; }
+  body.dark .boxed { border:1px solid var(--bSub); }
+  /* sheets */
+  .scrimL { position:absolute; inset:0; background:var(--scrim); }
+  .sheet { position:absolute; inset-inline:0; bottom:0; background:var(--raised); border-radius:28px 28px 0 0; padding:8px 16px 28px; display:flex; flex-direction:column; gap:10px; }
+  body.dark .sheet { border-top:1px solid var(--bSub); }
+  .handle { width:32px; height:4px; border-radius:2px; background:var(--bCtl); opacity:.6; margin:4px auto; }
+  .x { position:absolute; inset-inline-end:8px; top:12px; width:48px; height:48px; display:grid; place-items:center; color:var(--t1); }
+  .mrow { display:flex; align-items:center; gap:12px; min-height:56px; }
+  .mrow.dis { color:var(--disFg); }
+  .pace { border:1px solid var(--bCtl); border-radius:12px; min-height:64px; padding:10px 12px; display:flex; gap:12px; align-items:center; }
+  .pace.on { border:2px solid var(--pBg); background:var(--secBg); }
+  .rdot { width:20px; height:20px; border-radius:50%; border:2px solid var(--bCtl); display:grid; place-items:center; flex:none; }
+  .rdot.on { border-color:var(--pBg); }
+  .rdot.on::after { content:''; width:10px; height:10px; border-radius:50%; background:var(--pBg); }
+  .toast { position:absolute; inset-inline:16px; padding:12px 16px; border-radius:12px; background:var(--toastBg); color:var(--toastFg); font-size:calc(14px*var(--fs)); line-height:calc(20px*var(--fs)); }
+  /* map */
+  .mapWrap { position:absolute; inset:0; top:84px; bottom:200px; overflow:hidden; }
+  .mapPanel { position:absolute; inset-inline:0; bottom:0; padding:16px 16px 28px; background:var(--raised); border-radius:24px 24px 0 0; display:flex; flex-direction:column; gap:8px; }
+  .zoom { position:absolute; inset-inline-start:12px; top:12px; display:flex; flex-direction:column; gap:8px; }
+  .chromeBtn { width:48px; height:48px; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,0.92); border:1px solid rgba(18,28,54,0.08); color:#121C36; }
+  .mapAttr { position:absolute; bottom:8px; left:8px; right:8px; display:flex; justify-content:space-between; font:600 11px system-ui; color:#4A5573; direction:ltr; }
+
+  /* ===================== admin ===================== */
+  .desk {
+    --color-bg-canvas:#FFFBF5; --color-bg-surface:#FFFFFF; --color-bg-surface-alt:#FBF4E8; --color-bg-pressed:#FBF4E8; --color-bg-tag:#FBF4E8;
+    --color-text-primary:#121C36; --color-text-secondary:#4A5573; --color-text-tertiary:#646E8A; --color-text-link:#1561BC; --color-text-alert:#C81E16;
+    --color-action-primary-bg:#1561BC; --color-action-primary-fg:#FFFFFF; --color-action-secondary-bg:#EEF6FF; --color-action-secondary-fg:#104C94;
+    --color-status-success-subtle-bg:#E8FAF7; --color-status-success-subtle-fg:#0A665D;
+    --color-status-info-subtle-bg:#EEF6FF; --color-status-info-subtle-fg:#104C94; --color-entry-restricted-fg:#A8381A;
+    --color-border-subtle:#F4E7D0; --color-border-control:#7D869E; --color-focus-ring:#1F78DB;
+    --color-toast-bg:#121C36; --color-toast-fg:#F3F6FC;
+    position:relative; width:1200px; height:860px; border-radius:12px; overflow:hidden; background:var(--color-bg-canvas); color:var(--color-text-primary);
+    box-shadow:0 8px 30px rgba(18,28,54,.25); font-size:16px; line-height:24px;
+  }
+  .dframe { width:1200px; }
+  .desk h1 { font-size:28px; line-height:34px; font-weight:700; margin:0; }
+  .desk .sub { color:var(--color-text-secondary); font-size:13px; line-height:18px; margin:4px 0 0; }
+  .desk p { margin:0; }
+  .dtop { height:56px; display:flex; align-items:center; gap:16px; padding:0 24px; background:var(--color-bg-surface); border-bottom:1px solid var(--color-border-subtle); }
+  .dtop .brand { font-weight:600; font-size:18px; }
+  .env { background:var(--color-status-info-subtle-bg); color:var(--color-status-info-subtle-fg); border-radius:999px; padding:2px 10px; font-size:12px; font-weight:600; }
+  .spacer { flex:1; }
+  .rtag { background:var(--color-bg-tag); color:var(--color-text-secondary); border-radius:999px; padding:2px 10px; font-size:12px; font-weight:600; }
+  .dlink { color:var(--color-text-link); text-decoration:underline; min-height:44px; display:inline-flex; align-items:center; padding:0 4px; }
+  .dbody { display:flex; height:804px; }
+  .dnav { width:232px; flex:none; padding:16px 12px; display:flex; flex-direction:column; gap:4px; border-inline-end:1px solid var(--color-border-subtle); }
+  .dnav a { min-height:44px; display:flex; align-items:center; padding:0 12px; border-radius:8px; color:var(--color-text-primary); text-decoration:none; gap:8px; }
+  .dnav a[aria-current] { background:var(--color-action-secondary-bg); color:var(--color-action-secondary-fg); font-weight:600; }
+  .dnav hr { border:0; border-top:1px solid var(--color-border-subtle); margin:8px 0; width:100%; }
+  .dmain { flex:1; padding:28px 32px; overflow:hidden; display:flex; flex-direction:column; gap:14px; max-width:1120px; }
+  .dbtn { min-height:44px; border-radius:999px; border:0; padding:0 20px; font:inherit; font-weight:500; display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
+  .dbtn.primary { background:var(--color-action-primary-bg); color:var(--color-action-primary-fg); }
+  .dinput { min-height:44px; border:1px solid var(--color-border-control); border-radius:8px; padding:0 12px; display:flex; align-items:center; background:var(--color-bg-surface); gap:8px; }
+  .dinput.err { border:2px solid var(--color-text-alert); }
+  .dinput.multi { min-height:72px; align-items:flex-start; padding-top:10px; }
+  .dlabel { font-size:14px; font-weight:500; margin-bottom:4px; display:block; }
+  .dhelp { font-size:13px; line-height:18px; color:var(--color-text-secondary); margin-top:4px; }
+  .derr { font-size:13px; line-height:18px; color:var(--color-text-alert); margin-top:4px; display:flex; gap:4px; align-items:center; }
+  .dwarn { font-size:13px; line-height:18px; color:var(--color-entry-restricted-fg); margin-top:4px; display:flex; gap:4px; align-items:center; }
+  table.dt { width:100%; border-collapse:collapse; background:var(--color-bg-surface); border-radius:12px; overflow:hidden; font-size:15px; }
+  table.dt th { text-align:start; background:var(--color-bg-surface-alt); color:var(--color-text-secondary); font-weight:600; font-size:13px; height:40px; padding:0 12px; }
+  table.dt td { height:56px; padding:4px 12px; border-top:1px solid var(--color-border-subtle); }
+  table.dt tr.hover td { background:var(--color-bg-pressed); }
+  table.dt a { color:var(--color-text-primary); text-decoration:none; font-weight:500; }
+  .stag { border-radius:999px; padding:2px 10px; font-size:12px; font-weight:600; white-space:nowrap; }
+  .s-draft { background:var(--color-bg-tag); color:var(--color-text-secondary); }
+  .s-published { background:var(--color-status-success-subtle-bg); color:var(--color-status-success-subtle-fg); }
+  .s-hidden { background:var(--color-status-info-subtle-bg); color:var(--color-status-info-subtle-fg); }
+  .pager { display:flex; align-items:center; justify-content:space-between; color:var(--color-text-secondary); font-size:14px; }
+  fieldset.dfs { border:1px solid var(--color-border-subtle); border-radius:12px; padding:10px 16px 14px; margin:0; }
+  fieldset.dfs legend { font-weight:600; padding:0 4px; font-size:15px; }
+  .radios { display:flex; gap:20px; flex-wrap:wrap; }
+  .radio { min-height:44px; display:inline-flex; align-items:center; gap:8px; }
+  .summary { border-radius:12px; padding:10px 16px; background:var(--color-status-info-subtle-bg); color:var(--color-text-primary); border-inline-start:4px solid var(--color-text-alert); }
+  .dtoast { position:absolute; bottom:24px; inset-inline-end:24px; background:var(--color-toast-bg); color:var(--color-toast-fg); border-radius:12px; padding:12px 16px; font-size:14px; max-width:420px; }
+  .mono { font-family:ui-monospace, monospace; direction:ltr; unicode-bidi:isolate; }
+  .g2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .diff { background:var(--color-bg-surface-alt); }
+  .diff td { font-size:14px; height:36px; }
+</style>
+</head>
+<body>
+<div class="panelBar" role="toolbar" aria-label="הגדרות ההדמיה">
+  <b>ספרינט 11 · מה לראות ומסלול</b>
+  <label><input type="checkbox" id="dark"> כהה (טלפון)</label>
+  <label>גופן <select id="fs"><option value="1">100%</option><option value="1.3">130%</option><option value="2">200%</option></select></label>
+  <label>שפה <select id="lang"><option value="he">עברית</option><option value="en">English</option></select></label>
+  <span style="opacity:.75">שמות מקומות, קואורדינטות, מרחקים, שעות, תיאורים ומקורות להדגמה בלבד. המפה מצוירת, לא Mapbox.</span>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+  <symbol id="back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="pin" viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0112 0c0 5.4-6 11-6 11zM12 7.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="bm" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.5L7 20z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="bmOn" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.5L7 20z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="more" viewBox="0 0 24 24"><path d="M12 5.5v.01M12 12v.01M12 18.5v.01" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></symbol>
+  <symbol id="wand" viewBox="0 0 24 24"><path d="M5 19L15 9M14 4v2M19 9h2M17.5 5.5l1.5-1.5M9.5 4.5l1 1M19.5 14.5l-1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="drag" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="nav" viewBox="0 0 24 24"><path d="M12 2l7 19-7-4-7 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="plane" viewBox="0 0 24 24"><path d="M3 17h18M5 13l3 1 9-4a2 2 0 012 3l-10 4-5-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="info" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 8v5m0-8.5v.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="alert" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM12 7.5v5.5M12 16.5v.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4.5M12 17.5v.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="clock" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="pencil" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16zM14 6l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 104.6 11.1L20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="cloudOff" viewBox="0 0 24 24"><path d="M3 3l18 18M8 8a5 5 0 00-1 9.9h10M17.7 13.2A4 4 0 0014 8.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="bed" viewBox="0 0 24 24"><path d="M3 18V7M3 14h18v4M21 14v-3a3 3 0 00-3-3h-7v6M7 11h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<h2 class="part">חלק א · הטלפון</h2>
+<div class="row" id="phones"></div>
+<h2 class="part">חלק ב · פאנל האדמין (מחשב)</h2>
+<div class="row" id="desks"></div>
+
+<script>
+let lang = 'he';
+const T = (he, en) => lang === 'he' ? he : en;
+const icon = (id, cls='ic16', extra='') => `<svg class="${cls} ${extra}" aria-hidden="true"><use href="#${id}"/></svg>`;
+const iso = (s) => `<span class="iso num">${s}</span>`;
+const own = (s) => `<span class="own" lang="en">${s}</span>`;
+const phone = (inner, cap) => `<div class="frame"><p class="cap">${cap}</p><div class="phone">${inner}</div></div>`;
+const desk = (inner, cap) => `<div class="dframe"><p class="cap">${cap}</p><div class="desk">${inner}</div></div>`;
+const km = (n) => T(`${iso(n)} ק"מ`, `${n} km`);
+const m = (n) => T(`${iso(n)} מ'`, `${n} m`);
+
+/* ---------- shared bits ---------- */
+const bar = (title, sub, closeIcon=false, extra='') => `<div class="bar"><span class="backBtn">${closeIcon?icon('close','ic24'):icon('back','ic24','flipRtl')}</span>
+  <div class="grow"><p class="barT" role="heading">${title}</p>${sub?`<p class="foot t2">${sub}</p>`:''}</div>${extra}</div>`;
+const notice = (text, ic='info', extra='') => `<div class="notice">${icon(ic,'ic20')}<div class="grow vstack" style="gap:4px"><p class="callout">${text}</p>${extra}</div></div>`;
+const field = (label, value, {err=null, ltr=false, ic=null, ph=false, multi=false, counter=null, help=null}={}) => `<div><p class="flabel">${label}</p>
+  <div class="field${err?' err':''}${multi?' multi':''}"><span class="${ltr?'iso num':''} ${ph?'t3':''}">${value}</span>${ic?icon(ic,'ic20'):''}</div>
+  ${err?`<p class="foot ferr">${icon('alert')}${err}</p>`:''}${help||counter?`<div class="between"><p class="foot t2">${help||''}</p>${counter?`<p class="foot t2 num">${iso(counter)}</p>`:''}</div>`:''}</div>`;
+const toast = (text, bottom=28) => `<div class="toast" style="bottom:${bottom}px">${text}</div>`;
+const tripName = () => T('תאילנד בדצמבר', 'Thailand in December');
+const country = () => T('תאילנד', 'Thailand');
+const cat = {
+  attractions:()=>T('אטרקציות','Attractions'), nature:()=>T('טבע','Nature'), culture:()=>T('תרבות והיסטוריה','Culture & history'),
+  families:()=>T('משפחות','Families'), food:()=>T('אוכל ושווקים','Food & markets'), shopping:()=>T('קניות','Shopping'),
+  chabad:()=>T('חב"ד','Chabad'), kosher:()=>T('כשרות','Kosher'), memorial:()=>T('אתר זיכרון','Memorial site'),
+};
+const curatedTag = () => `<span class="chip c-info">${T('מומלץ לישראלים','Curated for Israelis')}</span>`;
+const autoTag = () => `<span class="chip c-tag">${icon('wand','ic12')}${T('אוטומטי','Auto')}</span>`;
+
+function tabs(active, {cities=true, hotel=true, saved=12}={}){
+  const t = (k, label) => `<span class="tab${k===active?' on':''}" role="tab">${label}</span>`;
+  return `<div class="tabs" role="tablist">${t('country',T('במדינה','Country'))}${cities?t('bkk',T('בנגקוק','Bangkok'))+t('cnx',T("צ'אנג מאי",'Chiang Mai')):''}${hotel?t('hotel',T('ליד המלון','Near the hotel')):''}${t('saved',`${T('שמורים','Saved')} ${iso(saved)}`)}</div>`;
+}
+function chips(active){
+  const list = [['all',T('הכול','All')],['attractions',cat.attractions()],['nature',cat.nature()],['culture',cat.culture()],['families',cat.families()],['food',cat.food()],['shopping',cat.shopping()]];
+  return `<div class="hscroll" style="padding-top:12px">${list.map(([k,l])=>`<span class="pchip${k===active?' on':''}" role="radio">${k===active?icon('check'):''}${l}</span>`).join('')}</div>`;
+}
+function placeRow({he, en, c, dist=null, curated=false, saved=false, actions='save'}){
+  const primary = lang==='he' && he ? he : own(en);
+  const secondary = lang==='he' && he ? own(en) : (he && lang!=='he' ? he : '');
+  const acts = actions==='save'
+    ? `<span class="iconBtn${saved?' on':''}">${icon(saved?'bmOn':'bm','ic24')}</span><span class="iconBtn">${icon('nav','ic24')}</span>`
+    : `<span class="iconBtn">${icon('nav','ic24')}</span><span class="iconBtn">${icon('more','ic24')}</span>`;
+  return `<div class="prow" role="button"><div class="grow vstack" style="gap:2px;padding-top:2px">
+      <p class="bodyS">${primary}</p>${secondary?`<p class="foot t2">${secondary}</p>`:''}
+      <div class="wrap" style="gap:6px;align-items:center;margin-top:2px">${curated?curatedTag():''}<p class="foot t2">${c}${dist?` · ${dist}`:''}</p></div></div>
+    <div class="hstack" style="gap:4px;flex-wrap:${'wrap'};justify-content:flex-end">${acts}</div></div>`;
+}
+const dayH = (n, wd, date, label=null, {today=false, transit=false, city=null, sticky=false}={}) => `<div class="dayH${sticky?' sticky':''}" role="heading">
+  <div><p class="bodyS ${transit?'t2':''}">${T('יום','Day')} ${n} · ${wd} ${iso(date)}</p>${city?`<p class="foot t2">${city}</p>`:''}</div>
+  <div class="hstack" style="gap:6px">${today?`<span class="chip c-ok">${T('היום','Today')}</span>`:''}${label?`<span class="chip c-tag">${transit?icon('plane','ic12'):''}${label}</span>`:''}</div></div>`;
+const arow = (time, title, {place=null, note=null, auto=false, flash=false, drag=false, lifted=false, sub=null}={}) => `<div class="arow${flash?' flash':''}${lifted?' lifted':''}" role="button">
+  <div class="tcol">${time?`<p class="numMd iso">${time}</p>`:`<p class="numMd t3" aria-hidden="true">—</p>`}</div>
+  <div class="grow vstack" style="gap:2px;padding-top:1px"><div class="wrap" style="gap:6px;align-items:center"><p class="bodyS">${title}</p>${auto?autoTag():''}</div>
+    ${sub?`<p class="foot t2">${sub}</p>`:''}${place||note?`<p class="foot t2" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${place?`${icon('pin','ic12')} ${place}`:''}${place&&note?' · ':''}${note||''}</p>`:''}</div>
+  ${drag?`<span class="iconBtn">${icon('drag','ic24')}</span>`:''}<span class="iconBtn">${icon('more','ic24')}</span></div>`;
+const addAct = () => `<div style="padding:0 16px;background:var(--surface);border-bottom:1px solid var(--bSub)"><span class="btn b-link">${icon('plus')}${T('הוספת פעילות','Add an activity')}</span></div>`;
+const emptyDay = (text) => `<div style="padding:10px 16px 0;background:var(--surface)"><p class="callout t2">${text}</p></div>`;
+const wd = (he,en) => T(he,en);
+
+function streetMap(){
+  return `<svg viewBox="0 0 411 576" style="position:absolute;inset:0;width:100%;height:100%" aria-hidden="true">
+    <rect width="411" height="576" fill="#FBF4E8"/>
+    <path d="M0 410 C 90 380, 140 470, 230 440 S 380 380, 411 400 L411 576 L0 576z" fill="#D6E9FF"/>
+    <rect x="250" y="70" width="120" height="90" rx="10" fill="#E8FAF7"/>
+    ${[60,140,230,320].map(x=>`<path d="M${x} 0 L${x+20} 576" stroke="#FFFFFF" stroke-width="10"/>`).join('')}
+    ${[80,190,300].map(y=>`<path d="M0 ${y} L411 ${y+30}" stroke="#FFFFFF" stroke-width="12"/>`).join('')}
+    <path d="M0 250 C 120 230, 250 280, 411 240" stroke="#F3F6FC" stroke-width="18" fill="none"/>
+    <path d="M0 250 C 120 230, 250 280, 411 240" stroke="#FFFBF5" stroke-width="12" fill="none"/>
+    ${[[90,110],[170,150],[110,330],[280,210],[200,350],[330,320]].map(([x,y])=>`<rect x="${x}" y="${y}" width="36" height="26" rx="3" fill="#F4E7D0"/>`).join('')}
+    <text x="262" y="120" font-size="11" fill="#4A5573" font-family="system-ui">Lumphini Park</text>
+    <text x="40" y="500" font-size="11" fill="#4A5573" font-family="system-ui">Chao Phraya</text>
+  </svg>`;
+}
+
+function phones(){
+  const out = [];
+
+  // 1a. country card with "What to see"
+  out.push(phone(`<div class="card"><div class="strip"></div><p class="capt t2">${T('יעד','Destination')}</p>
+      <p class="title2" style="font-size:calc(28px*var(--fs));line-height:1.2">${country()}</p><p class="callout t2 iso">Thailand</p>
+      <div class="wrap"><span class="chip c-ok">${T('כניסה מותרת','Entry allowed')}</span><span class="chip c-tag">${T('אזהרה רמה 1','Advisory level 1')}</span></div>
+      <div class="between"><div><p class="capt t2">${T('שעה מקומית','Local time')}</p><p class="bodyS num">${iso('21:40')}</p></div><div><p class="capt t2">${T('מטבע','Currency')}</p><p class="bodyS">${T('באט','Baht')}</p></div></div>
+      <div class="boxed"><p class="capt t2">${T('טמפרטורה','Temperature')}</p><p class="bodyS">${iso('27°')} ${T('בדצמבר','in December')}</p></div>
+      <div class="boxed" style="padding:0"><div class="lrow"><span class="t2">${icon('pin','ic24')}</span><div class="grow"><p class="body">${T('מה לראות בתאילנד','What to see in Thailand')}</p><p class="foot t2">${T('מקומות מובילים לפי קטגוריה','Top places by category')}</p></div><span class="t2">${icon('chev','ic20','flipRtl')}</span></div></div>
+      <span class="newMark">new: CardPlacesLink (after CardTemperature, before CardSources)</span>
+      <p class="foot link" style="text-decoration:underline">${T('מקורות','Sources')}</p></div>`,
+    T('1א · כרטיס המדינה: "מה לראות ב…" אחרי הטמפרטורה ולפני "מקורות". ListRow עם MapPinIcon. מוצג גם בלי התחברות, בלי מספר מקומות.',
+      '1a · Country card: "What to see in…" after the temperature, before Sources. Shown signed out too, without a count.')));
+
+  // 1b. trip kit sections
+  out.push(phone(`<div class="card" style="gap:8px"><div class="strip"></div><p class="capt t2">${T('נסיעות','Trips')}</p>
+      <div class="openRow" style="gap:8px"><div class="between"><p class="bodyS">${tripName()}</p><p class="foot t2">${iso('20.12 – 27.12')}</p></div>
+      <p class="capt t2">${T('טיסות','Flights')}</p><div class="brow"><p class="callout">${iso('TLV → BKK · LY 081')}</p></div>
+      <p class="capt t2">${T('מלונות','Hotels')}</p><div class="brow"><span class="hstack">${icon('bed','ic20','t2')}<p class="callout">${own('Amari Watergate')}</p></span></div>
+      <p class="capt t2" role="heading">${T('מסלול','Itinerary')} <span class="newMark">new</span></p>
+      <div class="boxed"><p class="foot t2">${T('היום · יום 3 · ג׳','Today · Day 3 · Tue')} ${iso('22.12')}</p>
+        <div class="hstack"><p class="callout num iso" style="width:44px">09:30</p><p class="callout grow">${T('הארמון הגדול','Grand Palace')}</p>${autoTag()}</div>
+        <div class="hstack"><p class="callout num iso" style="width:44px">15:30</p><p class="callout grow">${own('Wat Pho')}</p>${autoTag()}</div>
+        <div class="hstack"><p class="callout num iso" style="width:44px">19:00</p><p class="callout grow">${T('אוכל ב-','Food in ')}${own('Chinatown')}</p></div>
+        <div class="between" style="flex-wrap:wrap"><span class="btn b-secondary" style="min-height:44px">${T('פתיחת המסלול','Open the itinerary')}${icon('chev','ic16','flipRtl')}</span><p class="foot t2">${T('8 ימים · 5 מתוכננים','8 days · 5 planned')}</p></div></div>
+      <p class="capt t2" role="heading">${T('מה לראות','What to see')} <span class="newMark">new</span></p>
+      <div class="boxed" style="padding:0;gap:0"><div class="lrow"><span class="t2">${icon('pin','ic24')}</span><div class="grow"><p class="body">${T('מה לראות בתאילנד','What to see in Thailand')}</p><p class="foot t2">${T('לפי עיר, ליד המלון, ולפי קטגוריה','By city, near the hotel and by category')}</p></div><span class="t2">${icon('chev','ic20','flipRtl')}</span></div>
+        <div class="lrow" style="border-top:1px solid var(--bSub)"><span class="t2">${icon('bm','ic24')}</span><p class="body grow">${T('שמורים לנסיעה','Saved for this trip')}</p><p class="bodyS num">${iso(12)}</p><span class="t2">${icon('chev','ic20','flipRtl')}</span></div></div>
+      <p class="capt t2">${T('ביטוח','Insurance')} · ${T('חירום בתאילנד','Emergency in Thailand')} …</p></div></div>`,
+    T('1ב · תיק הנסיעה: "מסלול" ו"מה לראות" אחרי "מלונות" ולפני "ביטוח". המקטע לא לחיץ, רק "פתיחת המסלול". עד 3 פעילויות של היום.',
+      '1b · Trip kit: Itinerary and What to see after Hotels, before Insurance. Only the button opens the board; up to 3 of today\'s activities.')));
+
+  // 2. Places, country tab
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('country')}${chips('all')}
+      <div class="content" style="padding-top:12px"><div class="list">
+        ${placeRow({he:'בית חב"ד בנגקוק', en:'Chabad House Bangkok', c:cat.chabad(), curated:true, saved:true})}
+        ${placeRow({he:'הארמון הגדול', en:'Grand Palace', c:cat.attractions(), saved:true})}
+        ${placeRow({he:'וואט פו', en:'Wat Pho', c:cat.culture()})}
+        ${placeRow({he:'', en:'Chatuchak Weekend Market', c:cat.food()})}
+        ${placeRow({he:'הפארק הלאומי קאו יאי', en:'Khao Yai National Park', c:cat.nature()})}
+      </div><p class="foot t2">${T('מוצגים 20 מתוך 57','Showing 20 of 57')}</p></div>`,
+    T('2 · "במדינה": לשוניות נגללות (הראשונה מימין), צ\'יפים בשורה אחת נגללת. "מומלץ לישראלים" ראשון, בתג info ולא ירוק. שם בלי עברית מוצג באנגלית מבודד. שמירה וניווט: 48 כל אחד.',
+      '2 · Country tab: scrollable tabs, one scrolling chip row. Curated first, info tag (not green). Places without a Hebrew name show the English name, isolated. Save and navigate: 48 each.')));
+
+  // 3. City tab with distances + empty category
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('bkk')}${chips('shopping')}
+      <div class="content" style="padding-top:20px;align-items:flex-start">
+        <p class="body">${T('אין מקומות בקטגוריה הזו עד 15 ק"מ ממרכז בנגקוק.','No places in this category within 15 km of the centre of Bangkok.')}</p>
+        <p class="callout t2">${T('הרשימה מבוססת על Wikidata, ובחלק מהקטגוריות יש בה מעט מקומות.','The list comes from Wikidata, and some categories have few places.')}</p>
+        <span class="btn b-text" style="padding:0">${T('הצגת כל הקטגוריות','Show all categories')}</span>
+        <span class="stateLabel">same tab, chip "All":</span>
+        <div class="list" style="width:100%">${placeRow({he:'הארמון הגדול', en:'Grand Palace', c:cat.attractions(), dist:km('1.2'), saved:true})}${placeRow({he:'וואט ארון', en:'Wat Arun', c:cat.culture(), dist:km('1.9')})}${placeRow({he:'', en:'Lumphini Park', c:cat.nature(), dist:m(850)})}</div>
+      </div>`,
+    T('3 · לשונית עיר (רק ערים מהרשימה, AC-4): מרחק ממרכז העיר. קטגוריה ריקה: הסבר שמתאר את הנתונים, ו"הצגת כל הקטגוריות". מתחת ל-1 ק"מ: מטרים.',
+      '3 · City tab (list cities only, AC-4): distance from the city centre. Empty category: explains the data, offers All. Under 1 km: metres.')));
+
+  // 4. Near hotel
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('hotel')}
+      <div class="content" style="padding-bottom:0">
+        <div class="hscroll" style="padding:0"><span class="pchip on">${icon('check')}${own('Amari Watergate')}</span><span class="pchip">${own('Rayavadee Krabi')}</span></div>
+        <div><p class="flabel">${T('רדיוס','Radius')}</p><div class="seg" role="radiogroup"><span>${km(1)}</span><span class="on">${icon('check')}${km(3)}</span><span>${km(10)}</span></div></div>
+      </div>${chips('all')}
+      <div class="content" style="padding-top:12px"><div class="list">
+        ${placeRow({he:'בית חב"ד בנגקוק', en:'Chabad House Bangkok', c:cat.chabad(), curated:true, dist:km('2.6'), saved:true})}
+        ${placeRow({he:'', en:'Platinum Fashion Mall', c:cat.shopping(), dist:m(300)})}
+        ${placeRow({he:'', en:'Jim Thompson House', c:cat.culture(), dist:km('1.4')})}
+      </div><p class="foot t2">${T('הסדר: קודם "מומלץ לישראלים", ואז לפי המרחק.','Order: Curated for Israelis first, then by distance.')}</p></div>`,
+    T('4 · "ליד המלון": בורר מלון (רק כשיש כמה עם נקודה), רדיוס 1/3/10 (ברירת מחדל 3). הסינון במכשיר. אוצרים ראשונים ואז לפי מרחק (שאלה 3).',
+      '4 · Near the hotel: hotel chooser (only with several points), radius 1/3/10 (default 3). Filtered on device. Curated first, then by distance (question 3).')));
+
+  // 5. Near hotel, no point
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('hotel')}
+      <div class="content">
+        ${notice(T('בחרו את מיקום המלון במפה כדי לראות מקומות לידו.','Choose the hotel\'s location on the map to see places near it.'),'pin',`<span class="btn b-secondary" style="align-self:flex-start;min-height:44px;background:var(--surface)">${T('בחירה במפה','Choose on map')}</span>`)}
+        <div><p class="flabel">${T('רדיוס','Radius')}</p><div class="seg"><span>${km(1)}</span><span class="on">${icon('check')}${km(3)}</span><span>${km(10)}</span></div></div>
+        <p class="bodyS">${T('ליד בנגקוק','Near Bangkok')}</p>
+        <div class="list">${placeRow({he:'הארמון הגדול', en:'Grand Palace', c:cat.attractions(), dist:km('1.2')})}${placeRow({he:'וואט פו', en:'Wat Pho', c:cat.culture(), dist:km('1.5')})}</div>
+      </div>`,
+    T('5 · מלון בלי נקודה: הרשימה ממרכז העיר הראשונה בנסיעה (AC-5), "ליד בנגקוק", ו"בחירה במפה" שפותח את MapPointPicker ושומר מיד. בלי רשת: blocked.',
+      '5 · Hotel without a point: list from the first trip city (AC-5), "Near Bangkok", and Choose on map, which opens the picker and saves right away. Offline: blocked.')));
+
+  // 6. PlaceSheet curated
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('country')}<div class="scrimL"></div>
+      <div class="sheet"><div class="handle"></div><span class="x">${icon('close','ic20')}</span>
+        <p class="title2" style="padding-inline-end:44px">${T('בית חב"ד בנגקוק','Chabad House Bangkok')}</p>
+        <p class="callout t2">${lang==='he'?own('Chabad House Bangkok'):'בית חב"ד בנגקוק'}</p>
+        <div class="wrap" style="align-items:center">${curatedTag()}<p class="foot t2">${cat.chabad()}</p></div>
+        <p class="foot t2">${T('2.6 ק"מ מהמלון, בקו אווירי','2.6 km from the hotel, as the crow flies')}</p>
+        <div style="height:1px;background:var(--bSub)"></div>
+        <p class="body">${T('בית חב"ד במרכז העיר, עם ארוחות שבת בהרשמה מראש.','A Chabad House in the city centre, with Shabbat meals by advance booking.')}</p>
+        <p class="foot t2">${T('מקור:','Source:')} <span class="link iso" style="text-decoration:underline">chabad.example.org</span> · ${T('אומת ב-','Verified ')}${iso('12.10.2026')}</p>
+        <div style="height:1px;background:var(--bSub)"></div>
+        <span class="btn b-secondary">${icon('bmOn','ic20')}${T('הסרה מהשמורים','Remove from saved')}</span>
+        <span class="btn b-secondary">${icon('nav','ic20')}${T('ניווט','Navigate')}</span>
+        <span class="btn b-text" style="align-self:flex-start;padding:0">${icon('cal','ic20')}${T('הוספה ליום…','Add to a day…')}</span>
+      </div>`,
+    T('6 · PlaceSheet של מקום אוצר: תיאור (עד 280), מקור ותאריך אימות. זה מה שמצדיק את התווית. מקום מ-Wikidata: בלי תיאור, רק "מתוך Wikidata" וקישור.',
+      '6 · PlaceSheet, curated: description (≤280), source and verification date, which is what justifies the label. Wikidata places: no description, just "From Wikidata" and a link.')));
+
+  // 7. Saved + row menu
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('saved')}
+      <div class="content"><div class="list">
+        ${placeRow({he:'הארמון הגדול', en:'Grand Palace', c:`${cat.attractions()} · ${T('ביום 3','On day 3')}`, actions:'menu'})}
+        ${placeRow({he:'בית חב"ד בנגקוק', en:'Chabad House Bangkok', c:cat.chabad(), curated:true, actions:'menu'})}
+        ${placeRow({he:'', en:'Chatuchak Weekend Market', c:cat.food(), actions:'menu'})}
+      </div></div><div class="scrimL"></div>
+      <div class="sheet"><div class="handle"></div>
+        <p class="title3">${T('בית חב"ד בנגקוק','Chabad House Bangkok')}</p>
+        <div class="mrow">${icon('cal','ic24','t2')}<p class="body grow">${T('הוספה ליום…','Add to a day…')}</p>${icon('chev','ic20','flipRtl t2')}</div>
+        <div class="mrow">${icon('nav','ic24','t2')}<p class="body">${T('ניווט','Navigate')}</p></div>
+        <div class="mrow">${icon('bm','ic24','t2')}<p class="body">${T('הסרה מהשמורים','Remove from saved')}</p></div>
+      </div>`,
+    T('7 · "שמורים": החדש ראשון. "ביום 3" כשהמקום כבר בלוח [הצעה]. ⋮: הוספה ליום (המקום נשאר בשמורים), ניווט, הסרה בלי אישור.',
+      '7 · Saved: newest first. "On day 3" when already on the board [proposal]. ⋮: add to a day (stays saved), navigate, remove without a confirm.')));
+
+  // 8. States
+  out.push(phone(`${bar(T('מה לראות בתאילנד','What to see in Thailand'), tripName())}${tabs('country')}
+      <div class="content">
+        <span class="stateLabel">loading (no copy, online) · skeleton after 150 ms</span>
+        ${[1,2,3].map(()=>`<div class="hstack"><div class="grow vstack" style="gap:6px"><div class="skel" style="height:16px;width:70%"></div><div class="skel" style="height:12px;width:40%"></div></div><div class="skel" style="width:32px;height:32px;border-radius:50%"></div></div>`).join('')}
+        <span class="stateLabel">offline, copy on device</span>
+        <p class="foot t2">${T('מוצג מהשמירה האחרונה · היום, 08:12','Shown from the last save · Today, 08:12')}</p>
+        <div class="list">${placeRow({he:'הארמון הגדול', en:'Grand Palace', c:cat.attractions()})}</div>
+        <span class="stateLabel">offline, no copy</span>
+        <div class="vstack" style="align-items:center;text-align:center;padding:4px 8px"><span class="t2">${icon('cloudOff','ic48')}</span>
+          <p class="body">${T('כדי לראות את המקומות בפעם הראשונה צריך חיבור. אחר כך הם יישמרו במכשיר.','You need a connection to see the places the first time. After that they\'re kept on this device.')}</p>
+          <span class="btn b-secondary">${T('נסו שוב','Try again')}</span></div>
+      </div>${toast(T('בלי חיבור אפשר רק לצפות','Offline: view only'))}`,
+    T('8 · מצבים: שלד, עותק במכשיר בלי רשת (🔖 blocked, וה-Toast בהקשה), ובלי עותק. ניווט עובד תמיד. "שמורים" עובד מהעותק המוצפן של הנסיעה.',
+      '8 · States: skeleton, offline with a copy (save is blocked, toast on tap), offline without a copy. Navigate always works. Saved works from the trip\'s encrypted copy.')));
+
+  // 9. Hotel form with point field
+  out.push(phone(`${bar(T('עריכת מלון','Edit hotel'), tripName())}<div class="content" style="padding-bottom:110px">
+      ${field(T('שם המלון','Hotel name'), own('Amari Watergate'))}
+      ${field(T('כתובת באנגלית','Address in English'), own('847 Phetchaburi Road, Ratchathewi, Bangkok 10400'), {ltr:true})}
+      <div class="wrap"><div class="grow" style="flex-basis:160px">${field(T("צ'ק-אין","Check-in"), '20.12.2026', {ltr:true, ic:'cal'})}</div><div class="grow" style="flex-basis:160px">${field(T("צ'ק-אאוט","Check-out"), '24.12.2026', {ltr:true, ic:'cal'})}</div></div>
+      <div><p class="flabel">${T('מיקום במפה (לא חובה)','Location on map (optional)')} <span class="newMark">new</span></p>
+        <div class="boxed" style="border:1px solid var(--bCtl)"><div class="hstack">${icon('pin','ic20','t2')}<div class="grow"><p class="bodyS">${T('נבחרה נקודה','Point chosen')}</p><p class="foot t2">${iso('13.7563, 100.5018')}</p></div></div>
+          <div class="hstack"><span class="btn b-secondary" style="min-height:44px">${T('שינוי','Change')}</span><span class="btn b-text">${T('הסרה','Remove')}</span></div></div>
+        <p class="foot t2" style="margin-top:4px">${T('כדי לראות מקומות ליד המלון. בלי חיפוש כתובת: מזיזים את המפה עד שהסיכה על המלון.','To see places near the hotel. No address search: move the map until the pin is on the hotel.')}</p></div>
+      <p class="title3">${T('פרטי הזמנה','Booking details')}</p>
+    </div><div class="footer"><span class="btn b-primary">${T('שמירת המלון','Save hotel')}</span></div>`,
+    T('9 · טופס המלון (ספרינט 8) עם "מיקום במפה" אחרי התאריכים. בלי מפה קטנה: רק הקואורדינטות. "הסרה" נמחקת רק ב"שמירת המלון". נשמר דרך save_hotel, בלי יומן.',
+      '9 · Hotel form (sprint 8) with "Location on map" after the dates. No mini map: coordinates only. Remove takes effect on Save. Saved through save_hotel, not logged.')));
+
+  // 10. Map picker
+  out.push(phone(`${bar(T('מיקום המלון','Hotel location'), null, true, `<span class="pchip" style="min-height:40px">${T('בנגקוק','Bangkok')} ▾</span>`)}
+      <div class="mapWrap">${streetMap()}
+        <div class="zoom"><span class="chromeBtn">${icon('plus','ic20')}</span><span class="chromeBtn">${icon('minus','ic20')}</span></div>
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);color:#C8441F;filter:drop-shadow(0 4px 6px rgba(18,28,54,.25))">
+          <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z" fill="#C8441F" stroke="#FFFFFF" stroke-width="1.6"/><circle cx="12" cy="10" r="2.6" fill="#FFFFFF"/></svg></div>
+        <div style="position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:#121C36"></div>
+        <div class="mapAttr"><span>mapbox</span><span>ⓘ © Mapbox © OpenStreetMap</span></div>
+      </div>
+      <div class="mapPanel"><p class="callout">${T('הזיזו את המפה עד שהסיכה על המלון.','Move the map until the pin is on the hotel.')}</p>
+        <p class="foot t2">${iso('13.7563, 100.5018')}</p>
+        <span class="btn b-primary">${T('בחירת הנקודה','Choose this point')}</span>
+        <span class="btn b-text" style="align-self:flex-start;padding:0;min-height:40px">${T('הזנת קואורדינטות','Enter coordinates')} <span class="newMark">[proposal]</span></span></div>`,
+    T('10 · MapPointPicker: סגנון רחובות בשתי הערכות, סיכה קבועה במרכז (המפה זזה). זום בצד ההתחלה. ייחוס Mapbox גלוי. TalkBack: פעולות הזזה וזום. בלי מיקום ובלי geocoding.',
+      '10 · MapPointPicker: streets style in both themes, fixed centre pin (the map moves). Zoom at the start side. Mapbox attribution visible. TalkBack: move and zoom actions. No location, no geocoding.')));
+
+  // 11. Itinerary board
+  out.push(phone(`${bar(T('מסלול','Itinerary'), `${tripName()} · ${iso('20.12 – 27.12')}`)}
+      <div style="padding:0 16px 8px"><span class="btn b-secondary">${icon('wand','ic20')}${T('תכנון אוטומטי','Plan automatically')}</span><p class="foot t2" style="margin-top:4px">${T('ממלא רק ימים ריקים.','Fills only empty days.')}</p></div>
+      ${dayH(1, wd('א׳','Sun'), '20.12', T('בדרך','Travelling'), {transit:true})}
+      ${emptyDay(T('בדרך ליעד. אפשר להוסיף פעילות אם רוצים.','On the way. You can still add an activity.'))}${addAct()}
+      ${dayH(2, wd('ב׳','Mon'), '21.12', T(`נחיתה ${iso('14:55')} · יום קצר`, 'Landing 14:55 · short day'))}
+      ${arow('16:00', T("צ'ק-אין במלון",'Hotel check-in'))}
+      ${arow('19:00', own('Asiatique'), {auto:true, place:own('Asiatique The Riverfront')})}${addAct()}
+      ${dayH(3, wd('ג׳','Tue'), '22.12', null, {today:true, city:T('בנגקוק','Bangkok'), sticky:true})}
+      ${arow('09:30', T('הארמון הגדול','Grand Palace'), {auto:true, place:own('Grand Palace'), note:T('לבוש צנוע','Modest dress')})}
+      ${arow('15:30', own('Wat Pho'), {auto:true})}
+      ${arow(null, T('לקנות סים מקומי','Buy a local SIM'))}${addAct()}
+      ${dayH(8, wd('א׳','Sun'), '27.12', T(`המראה ${iso('09:30')} · יציאה לשדה`, 'Take-off 09:30 · to the airport'))}
+      ${arow('06:30', T('יציאה לשדה התעופה','Leave for the airport'), {auto:true})}`,
+    T('11 · הלוח: SectionList, כותרות יום דביקות. תוויות ניטרליות לפי D16 ("בדרך", נחיתה, המראה), "היום" ירוק. עמודת שעה מימין, "—" בלי שעה. "אוטומטי" על כל פעילות מתוכננת. ⋮ בסוף.',
+      '11 · Board: SectionList with sticky day headers. Neutral labels per D16; Today in green. Time column at the start, "—" without a time. Auto tag on planned items. ⋮ at the end.')));
+
+  // 12a. Activity menu sheet
+  out.push(phone(`${bar(T('מסלול','Itinerary'), tripName())}${dayH(3, wd('ג׳','Tue'), '22.12', null, {today:true})}
+      ${arow('09:30', T('הארמון הגדול','Grand Palace'), {auto:true})}${arow('15:30', own('Wat Pho'), {auto:true})}
+      <div class="scrimL"></div><div class="sheet"><div class="handle"></div><span class="x">${icon('close','ic20')}</span>
+        <div style="padding-inline-end:44px"><p class="title3">${T('הארמון הגדול','Grand Palace')}</p><p class="foot t2">${T('יום 3','Day 3')} · ${iso('09:30')} · ${T('מקום 1 מתוך 3','Position 1 of 3')}</p></div>
+        <div class="mrow">${icon('pencil','ic24','t2')}<p class="body">${T('עריכה','Edit')}</p></div>
+        <div class="mrow dis" aria-disabled="true">${icon('up','ic24')}<p class="body">${T('למעלה','Move up')}</p></div>
+        <div class="mrow">${icon('down','ic24','t2')}<p class="body">${T('למטה','Move down')}</p></div>
+        <div class="mrow">${icon('cal','ic24','t2')}<p class="body grow">${T('העברה ליום…','Move to day…')}</p>${icon('chev','ic20','flipRtl t2')}</div>
+        <div class="mrow">${icon('nav','ic24','t2')}<p class="body">${T('ניווט','Navigate')}</p></div>
+        <div class="mrow">${icon('trash','ic24','t2')}<p class="body">${T('מחיקה','Delete')}</p></div></div>`,
+    T('12א · ActivityMenuSheet: "למעלה" מושבת בראש היום (נשאר במקום). למעלה/למטה מבצעים מיד והגיליון נשאר פתוח. אותן פעולות גם כ-accessibilityActions על השורה.',
+      '12a · ActivityMenuSheet: Move up disabled at the top (stays in place). Up/down act at once and the sheet stays open. The same actions are accessibilityActions on the row.')));
+
+  // 12b. Move to day step
+  const mday = (n, w, d, label, {cur=false, full=false}={}) => `<div class="mrow${full?' dis':''}" style="border-top:1px solid var(--bSub)"><span class="rdot${cur?' on':''}"></span><p class="body grow">${T('יום','Day')} ${n} · ${w} ${iso(d)}</p>${label?`<span class="chip c-tag">${label}</span>`:''}</div>`;
+  out.push(phone(`${bar(T('מסלול','Itinerary'), tripName())}<div class="scrimL"></div><div class="sheet" style="top:150px">
+      <div class="hstack"><span class="backBtn">${icon('back','ic24','flipRtl')}</span><p class="title3">${T('העברה ליום','Move to day')}</p></div>
+      ${mday(1, wd('א׳','Sun'), '20.12', T('בדרך','Travelling'))}
+      ${mday(2, wd('ב׳','Mon'), '21.12', T(`נחיתה ${iso('14:55')} · יום קצר`,'Landing 14:55 · short day'))}
+      ${mday(3, wd('ג׳','Tue'), '22.12', T('היום','Today'), {cur:true})}
+      ${mday(4, wd('ד׳','Wed'), '23.12', T('מלא (30)','Full (30)'), {full:true})}
+      ${mday(5, wd('ה׳','Thu'), '24.12', null)}${mday(6, wd('ו׳','Fri'), '25.12', null)}${mday(7, wd('ש׳','Sat'), '26.12', null)}
+      ${mday(8, wd('א׳','Sun'), '27.12', T(`המראה ${iso('09:30')} · יציאה לשדה`,'Take-off 09:30 · to the airport'))}
+    </div>${toast(T('הועבר ליום 5','Moved to day 5'))}`,
+    T('12ב · "העברה ליום…": שלב שני באותו גיליון, עם "חזור". היום הנוכחי מסומן ולא לחיץ, יום מלא מושבת. בחירה מעבירה לסוף היום, גוללת אליו ומהבהבת.',
+      '12b · Move to day: a second step in the same sheet, with Back. Current day marked, full day disabled. Picking moves to the end of that day, scrolls and flashes.')));
+
+  // 13a. Activity form
+  out.push(phone(`${bar(T('עריכת פעילות','Edit activity'), `${T('יום 3 · ג׳','Day 3 · Tue')} ${iso('22.12')}`)}<div class="content" style="padding-bottom:110px">
+      ${field(T('כותרת','Title'), '', {err:T('צריך להזין כותרת.','Enter a title.'), ph:true})}
+      <p class="foot t2" style="margin-top:-8px">${T('אחרי שינוי של הכותרת או השעה, הפעילות תסומן כידנית.','If you change the title or time, the activity will be marked as manual.')}</p>
+      <div class="wrap"><div class="grow" style="flex-basis:160px">${field(T('יום','Day'), '22.12.2026', {ltr:true, ic:'cal'})}</div><div class="grow" style="flex-basis:160px">${field(T('שעה (לא חובה)','Time (optional)'), '09:30', {ltr:true, ic:'clock'})}</div></div>
+      <span class="btn b-text" style="align-self:flex-start;padding:0;margin-top:-8px">${T('הסרת השעה','Remove the time')}</span>
+      <div><p class="flabel">${T('מקום (לא חובה)','Place (optional)')}</p><div class="boxed" style="border:1px solid var(--bCtl);flex-direction:row;align-items:center">${icon('pin','ic20','t2')}<p class="callout grow">${T('הארמון הגדול','Grand Palace')} · <span class="t2">${cat.attractions()}</span></p><span class="btn b-text" style="min-height:40px">${T('הסרה','Remove')}</span></div></div>
+      <span class="btn b-text" style="align-self:flex-start;padding:0">${icon('nav','ic20')}${T('ניווט','Navigate')}</span>
+      ${field(T('הערה (לא חובה)','Note (optional)'), T('לבוש צנוע, כתפיים מכוסות','Modest dress, shoulders covered'), {multi:true, counter:null})}
+      <span class="btn b-text ink" style="align-self:flex-start;padding:0;color:var(--t1)">${icon('trash','ic20')}${T('מחיקת הפעילות','Delete the activity')}</span>
+    </div><div class="footer"><span class="btn b-primary">${T('שמירה','Save')}</span></div>`,
+    T('13א · ActivityScreen על FormShell: כותרת 1–120, יום ושעה (DateField עם ClockIcon), מקום כ-snapshot, הערה עד 500. בפעילות אוטומטית: הסבר מתי התג יורד. מחיקה כ-Button text.',
+      '13a · ActivityScreen on FormShell: title 1–120, day and time (DateField with ClockIcon), place as a snapshot, note ≤500. For auto items: when the tag goes away. Delete as a text button.')));
+
+  // 13b. Place picker sheet
+  const pick = (name, c) => `<div class="mrow" style="border-top:1px solid var(--bSub)"><span class="rdot"></span><p class="body grow">${name} · <span class="t2 callout">${c}</span></p></div>`;
+  out.push(phone(`${bar(T('פעילות חדשה','New activity'), `${T('יום 5 · ה׳','Day 5 · Thu')} ${iso('24.12')}`)}<div class="scrimL"></div>
+      <div class="sheet" style="top:120px"><div class="handle"></div><span class="x">${icon('close','ic20')}</span>
+        <p class="title3">${T('בחירת מקום','Choose a place')}</p>
+        <div class="seg"><span class="on">${icon('check')}${T('שמורים','Saved')} ${iso(12)}</span><span>${T('מה לראות','What to see')}</span></div>
+        <div class="field">${icon('search','ic20','t2')}<span class="grow">${T('ואט','wat')}</span>${icon('close','ic16','t2')}</div>
+        ${pick(own('Wat Pho'), cat.culture())}${pick(own('Wat Arun'), cat.culture())}${pick(own('Wat Saket'), cat.culture())}
+        <span class="stateLabel">no match:</span>
+        <p class="callout t2">${T('אין מקום בשם הזה ברשימה. אפשר להקליד אותו ככותרת, בלי מקום.','No place by that name in the list. You can type it as the title, without a place.')}</p>
+      </div>`,
+    T('13ב · PlacePickerSheet: "שמורים" או "מה לראות" (רשימה אחת, בלי לשוניות). "סינון לפי שם" מסנן במכשיר, בעברית ובאנגלית. זה לא חיפוש Places.',
+      '13b · PlacePickerSheet: Saved or What to see (one list, no tabs). Filter by name runs on device, Hebrew and English. This is not a Places search.')));
+
+  // 14. Auto plan sheet
+  out.push(phone(`${bar(T('מסלול','Itinerary'), tripName())}<div class="scrimL"></div>
+      <div class="sheet"><div class="handle"></div><span class="x">${icon('close','ic20')}</span>
+        <p class="title2">${T('תכנון אוטומטי','Plan automatically')}</p>
+        <p class="body">${T('נמלא רק את הימים הריקים. מה שהוספתם לא ישתנה.','We\'ll fill only the empty days. What you added won\'t change.')}</p>
+        <p class="capt t2" role="heading">${T('קצב','Pace')}</p>
+        <div class="pace on" role="radio"><span class="rdot on"></span><div><p class="bodyS">${T('רגוע','Relaxed')}</p><p class="foot t2">${T('2 פעילויות ביום','2 activities a day')}</p></div></div>
+        <div class="pace" role="radio"><span class="rdot"></span><div><p class="bodyS">${T('אינטנסיבי','Packed')}</p><p class="foot t2">${T('3 פעילויות ביום','3 activities a day')}</p></div></div>
+        <p class="callout">${T('5 ימים ריקים יתוכננו. 2 ימים עם פעילויות לא ישתנו. היום הראשון והאחרון קצרים לפי הטיסות.','5 empty days will be planned. 2 days with activities won\'t change. The first and last days are short, following the flights.')}</p>
+        <div class="hstack t2" style="align-items:flex-start">${icon('info')}<p class="foot">${T('המתכנן לא יודע שעות פתיחה וימי סגירה. כדאי לבדוק לפני שיוצאים.','The planner doesn\'t know opening hours or closing days. Check before you go.')}</p></div>
+        <span class="btn b-primary">${T('תכנון 5 ימים','Plan 5 days')}</span>
+      </div>`,
+    T('14 · AutoPlanSheet: הבטחת AC-14 בראש, קצב רגוע/אינטנסיבי (radio cards), ספירה של הימים שיתוכננו בפועל, והמגבלה הכתובה לפני ההחלה. בזמן ההחלה: "מתכננים…".',
+      '14 · AutoPlanSheet: the AC-14 promise first, Relaxed / Packed radio cards, a count of the days that will really be planned, and the written limitation before applying. While applying: "Planning…".')));
+
+  // 15. Result
+  out.push(phone(`${bar(T('מסלול','Itinerary'), tripName())}
+      <div style="padding:0 16px 8px"><span class="btn b-secondary">${icon('wand','ic20')}${T('תכנון אוטומטי','Plan automatically')}</span></div>
+      <div style="padding:0 16px 8px"><div class="notice" style="position:relative">${icon('wand','ic20')}<div class="grow vstack" style="gap:4px;padding-inline-end:36px">
+        <p class="bodyS">${T('תכננו 5 ימים · 12 פעילויות','Planned 5 days · 12 activities')}</p>
+        <p class="foot">${T('לא נגענו ב:','We left these alone:')}</p>
+        <ul class="foot" style="margin:0;padding-inline-start:18px">
+          <li><u>${T('יום 1, בדרך','Day 1, travelling')}</u></li>
+          <li><u>${T('יום 4, כבר יש בו פעילויות','Day 4, it already has activities')}</u></li>
+          <li><u>${T('יום 5, התמלא בינתיים ממכשיר אחר','Day 5, filled meanwhile from another device')}</u></li>
+          <li><u>${T("יום 6, לא מצאנו מספיק מקומות ליד צ'אנג מאי",'Day 6, not enough places near Chiang Mai')}</u></li></ul>
+        <p class="foot">${T('בימים חמים לא תכננו פעילות בחוץ בין 12:00 ל-15:00.','On hot days we didn\'t plan outdoor activities between 12:00 and 15:00.')}</p></div>
+        <span class="iconBtn" style="position:absolute;inset-inline-end:0;top:0;color:var(--infoFg)">${icon('close','ic20')}</span></div></div>
+      ${dayH(2, wd('ב׳','Mon'), '21.12', T(`נחיתה ${iso('14:55')} · יום קצר`,'Landing 14:55 · short day'))}
+      ${arow('15:30', own('Jim Thompson House'), {auto:true, flash:true})}
+      ${arow('19:00', own('Asiatique'), {auto:true, flash:true})}${addAct()}
+      ${dayH(3, wd('ג׳','Tue'), '22.12', null, {today:true})}
+      ${arow('09:30', T('הארמון הגדול','Grand Palace'), {auto:true, flash:true})}
+      ${toast(T('תכננו 5 ימים','Planned 5 days'))}`,
+    T('15 · AutoPlanResult: InlineNotice עם ×, הסיבות לכל יום שדולג (כולל filled_meanwhile מהשרת, D2). הפעילויות החדשות נכנסות בהשהיה מדורגת [הצעה]. בהדמיה: ההבהוב.',
+      '15 · AutoPlanResult: an InlineNotice with ×, a reason for every skipped day (including filled_meanwhile from the server, D2). New items fade in staggered [proposal]; shown here as the flash.')));
+
+  // 16. Out of range, cap, no flights
+  out.push(phone(`${bar(T('מסלול','Itinerary'), `${T('יוון בקיץ','Greece in summer')} · ${iso('3.7 – 8.7')}`)}
+      <div class="content" style="padding-top:0">
+        ${notice(T('בלי טיסות כל הימים מלאים. אם תוסיפו טיסה, היום הראשון והאחרון יתאימו לשעות שלה.','Without flights every day is a full day. Add a flight and the first and last days will follow its times.'),'info',`<span class="btn b-text" style="align-self:flex-start;padding:0;min-height:40px;color:var(--infoFg);text-decoration:underline">${T('הוספת טיסה','Add a flight')}</span>`)}
+        ${notice(T('2 פעילויות מחוץ לתאריכי הנסיעה.','2 activities are outside the trip dates.'),'warn',`<span class="btn b-text" style="align-self:flex-start;padding:0;min-height:40px;color:var(--infoFg);text-decoration:underline">${T('מעבר אליהן','Go to them')}</span>`)}
+      </div>
+      ${dayH(4, wd('ב׳','Mon'), '6.7', null)}
+      ${arow('10:00', T('שייט לאיים','Island cruise'))}
+      <div style="padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--bSub)"><p class="foot t2">${T('אפשר עד 30 פעילויות ביום.','Up to 30 activities per day.')}</p></div>
+      <div class="dayH"><div class="hstack"><span style="color:var(--orFg)">${icon('warn')}</span><p class="bodyS">${T('מחוץ לתאריכי הנסיעה (2)','Outside the trip dates (2)')}</p></div></div>
+      <div style="padding:8px 16px;background:var(--surface)"><p class="foot t2">${T('אחרי שינוי התאריכים, הפעילויות האלה כבר לא בנסיעה.','After the dates changed, these activities are no longer in the trip.')}</p></div>
+      ${arow(null, T('שוק הפשפשים','Flea market'), {sub:T(`${iso('2.7')} · לפני הנסיעה`,'2.7 · before the trip')})}
+      ${arow('11:00', own('Acropolis Museum'), {sub:T(`${iso('9.7')} · אחרי הנסיעה`,'9.7 · after the trip')})}`,
+    T('16 · נסיעה בלי טיסות (רמז), "מחוץ לתאריכים" (אייקון כתום, לא אדום, שום דבר לא נמחק; ⋮ = העברה או מחיקה), ותקרת 30 ליום במקום "הוספה".',
+      '16 · Trip without flights (hint), Outside the trip dates (orange icon, not red, nothing deleted; ⋮ = move or delete), and the 30-per-day cap replacing Add.')));
+
+  // 17. Offline board
+  out.push(phone(`${bar(T('מסלול','Itinerary'), tripName())}
+      <div class="content" style="padding-top:0">${notice(T('בלי חיבור אפשר רק לצפות. עריכה תחזור כשיהיה חיבור.','Offline you can only view. Editing returns when you\'re online.'),'cloudOff',`<p class="foot">${T('מוצג מהשמירה האחרונה · היום, 08:12','Shown from the last save · Today, 08:12')}</p>`)}
+        <span class="btn b-secondary" style="opacity:1">${icon('wand','ic20')}${T('תכנון אוטומטי','Plan automatically')}</span><span class="stateLabel" style="margin-top:-8px">blocked: looks normal, tap = readOnlyHint</span></div>
+      ${dayH(3, wd('ג׳','Tue'), '22.12', null, {today:true, sticky:true})}
+      ${arow('09:30', T('הארמון הגדול','Grand Palace'), {auto:true, place:own('Grand Palace'), note:T('לבוש צנוע','Modest dress')})}
+      ${arow('15:30', own('Wat Pho'), {auto:true})}${addAct()}
+      ${toast(T('בלי חיבור אפשר רק לצפות','Offline: view only'))}`,
+    T('17 · בלי רשת (AC-13): מהעותק המוצפן, לקריאה בלבד. כפתורי כתיבה blocked עם הרמז. ניווט עובד. בלי "יישמר כשיהיה חיבור": אין תור כתיבה.',
+      '17 · Offline (AC-13): from the encrypted copy, read-only. Write buttons are blocked with the hint. Navigate works. No "will save later": there is no write queue.')));
+
+  // 18. Drag (cut line 1)
+  out.push(phone(`${bar(T('מסלול','Itinerary'), tripName())}
+      ${dayH(3, wd('ג׳','Tue'), '22.12', null, {today:true})}
+      ${arow('09:30', T('הארמון הגדול','Grand Palace'), {auto:true, drag:true})}
+      <div style="height:6px;background:var(--pBg);margin:0 16px;border-radius:3px"></div>
+      ${arow('15:30', own('Wat Pho'), {auto:true, drag:true, lifted:true})}
+      ${arow(null, T('לקנות סים מקומי','Buy a local SIM'), {drag:true})}${addAct()}
+      ${dayH(4, wd('ד׳','Wed'), '23.12', null)}${arow('10:00', own('Chatuchak'), {drag:true})}
+      <div class="content"><p class="foot t2">${T('[קו חיתוך 1] רק דרך הידית ≡. הרמה: scale 1.02, elevation 3, רטט. בהפחתת תנועה: בלי scale. אם נחתך: הידית נעלמת, התפריט נשאר.','[Cut line 1] Only via the ≡ handle. Lift: scale 1.02, elevation 3, haptic. Reduced motion: no scale. If cut: no handle, the menu stays.')}</p></div>`,
+    T('18 · [קו חיתוך 1] גרירה כתוספת: ידית 48 לפני ⋮, קו הכנסה ב-action.primary. ראשונה לחיתוך (שאלה 9).',
+      '18 · [Cut line 1] Drag as an extra: a 48 handle before ⋮, an insertion line in action.primary. First to cut (question 9).')));
+
+  document.getElementById('phones').innerHTML = out.join('');
+}
+
+/* ---------- admin ---------- */
+function shell(active, inner){
+  const items = [['entry',T('כניסה לישראלים','Entry for Israelis')],['mct',T('זמני חיבור','Connection times')],['places',T('מומלץ לישראלים','Curated for Israelis')]];
+  const it = ([k,l]) => `<a href="#" ${k===active?'aria-current="page"':''}>${l}${k==='places'?' <span class="newMark">new</span>':''}</a>`;
+  return `<div class="dtop"><span class="brand">${T('פאנל התוכן','Content panel')}</span><span class="env">${T('סביבת פיתוח','Development')}</span><span class="spacer"></span>
+      <span class="mono" style="font-size:14px;color:var(--color-text-secondary)">dana@example.com</span><span class="rtag">${T('עריכת תוכן','Content editor')}</span>
+      <a class="dlink">${T('English','עברית')}</a><a class="dlink">${T('התנתקות','Sign out')}</a></div>
+    <div class="dbody"><nav class="dnav" aria-label="main">${items.map(it).join('')}<hr><a href="#">${T('יומן שינויים','Change log')}</a></nav>
+    <main class="dmain">${inner}</main></div>`;
+}
+const dfield = (label, value, {err=null, help=null, ltr=false, multi=false, warn=null, counter=null}={}) => `<div><label class="dlabel">${label}</label>
+  <div class="dinput${err?' err':''}${multi?' multi':''}"><span class="${ltr?'mono':''}" style="flex:1">${value}</span>${counter?`<span class="mono" style="font-size:13px;color:var(--color-text-secondary)">${counter}</span>`:''}</div>
+  ${err?`<p class="derr">${icon('alert')}${err}</p>`:''}${warn?`<p class="dwarn">${icon('warn')}${warn}</p>`:''}${help?`<p class="dhelp">${help}</p>`:''}</div>`;
+const st = (s) => `<span class="stag s-${s}">${{draft:T('טיוטה','Draft'),published:T('מפורסם','Published'),hidden:T('מוסתר','Hidden')}[s]}</span>`;
+
+function desks(){
+  const out = [];
+  const prow = (he, en, c, k, s, ver, upd, hover=false) => `<tr class="${hover?'hover':''}"><td><a href="#">${lang==='he'?he:en}</a><br><span style="font-size:13px;color:var(--color-text-secondary)" lang="${lang==='he'?'en':'he'}">${lang==='he'?en:he}</span></td><td>${c}</td><td>${k}</td><td>${st(s)}</td><td class="num">${ver}</td><td class="num">${upd}</td></tr>`;
+
+  // A. list
+  out.push(desk(shell('places', `<div class="between"><div><h1>${T('מומלץ לישראלים','Curated for Israelis')}</h1><p class="sub">${T('שינויים מגיעים לאפליקציה בהפעלה הבאה שלה.','Changes reach the app the next time it starts.')}</p></div>
+        <span class="dbtn primary">${icon('plus')}${T('הוספת מקום','Add a place')}</span></div>
+      <div class="hstack" style="gap:12px"><div class="dinput" style="width:320px">${icon('search','ic20')}<span style="color:var(--color-text-tertiary)">${T('חיפוש לפי שם','Search by name')}</span></div>
+        <div class="dinput" style="width:200px"><span>${T('מדינה: הכול','Country: all')} ▾</span></div><div class="dinput" style="width:180px"><span>${T('מצב: הכול','Status: all')} ▾</span></div></div>
+      <table class="dt"><caption style="position:absolute;clip:rect(0 0 0 0)">${T('מומלץ לישראלים','Curated for Israelis')}</caption>
+        <thead><tr><th scope="col">${T('שם','Name')}</th><th scope="col">${T('מדינה','Country')}</th><th scope="col">${T('קטגוריה','Category')}</th><th scope="col">${T('מצב','Status')}</th><th scope="col">${T('אומת ב-','Verified')}</th><th scope="col">${T('עודכן','Updated')}</th></tr></thead>
+        <tbody>${prow('בית חב"ד קטמנדו','Chabad House Kathmandu',T('נפאל','Nepal'),cat.chabad(),'published','2.10.2026','2.10.2026')}
+          ${prow('אנדרטה לזכר הקהילה','Community memorial',T('פולין','Poland'),cat.memorial(),'hidden','1.9.2026','3.10.2026')}
+          ${prow('בית חב"ד בנגקוק','Chabad House Bangkok',T('תאילנד','Thailand'),cat.chabad(),'published','12.10.2026','12.10.2026', true)}
+          ${prow('מסעדה כשרה ב-Khao San','Kosher restaurant, Khao San',T('תאילנד','Thailand'),cat.kosher(),'draft','—','27.10.2026')}
+          ${prow('בית חב"ד קוסמוי','Chabad House Koh Samui',T('תאילנד','Thailand'),cat.chabad(),'published','12.10.2026','12.10.2026')}</tbody></table>
+      <div class="pager"><span class="num">${T('1–50 מתוך 63','1–50 of 63')}</span><span class="hstack"><a class="dlink">‹ ${T('הקודם','Previous')}</a><a class="dlink">${T('הבא','Next')} ›</a></span></div>`),
+    T('א · /places: עמודים של 50, לפי מדינה ואז שם. חיפוש וסינון בשרת. תג מצב תמיד עם מילה: טיוטה (tag), מפורסם (success), מוסתר (info, לא disabled: 4.37 נכשל).',
+      'A · /places: pages of 50, by country then name. Search and filters on the server. Status always as a word: Draft (tag), Published (success), Hidden (info, not disabled: 4.37 fails).')));
+
+  // B. form
+  out.push(desk(shell('places', `<a class="dlink" style="align-self:flex-start;padding:0">‹ ${T('מומלץ לישראלים','Curated for Israelis')}</a>
+      <div><h1>${T('מקום חדש','New place')}</h1><p class="sub">${T('שינויים מגיעים לאפליקציה בהפעלה הבאה שלה.','Changes reach the app the next time it starts.')}</p></div>
+      <div class="summary" role="alert"><b>${T('יש 2 שגיאות בטופס','There are 2 errors in the form')}</b> · <a class="dlink" style="min-height:0">${T('קואורדינטות','Coordinates')}</a> · <a class="dlink" style="min-height:0">${T('מקור','Source')}</a></div>
+      <div class="g2">${dfield(T('מדינה','Country'), `${T('תאילנד','Thailand')} ▾`)}${dfield(T('קטגוריה','Category'), `${cat.chabad()} ▾`)}</div>
+      <div class="g2">${dfield(T('שם בעברית','Hebrew name'), 'בית חב"ד בנגקוק')}${dfield(T('שם באנגלית','English name'), 'Chabad House Bangkok', {ltr:true})}</div>
+      ${dfield(T('תיאור קצר (לא חובה)','Short description (optional)'), T('בית חב"ד במרכז העיר, עם ארוחות שבת בהרשמה מראש.','A Chabad House in the city centre, with Shabbat meals by advance booking.'), {multi:true, counter:'52/280'})}
+      <fieldset class="dfs"><legend>${T('מיקום','Location')}</legend><div class="hstack" style="align-items:flex-start;gap:16px">
+        <div style="flex:1">${dfield(T('קואורדינטות (קו רוחב, קו אורך)','Coordinates (latitude, longitude)'), '100.4970, 13.7590', {ltr:true, err:T('קו רוחב בין ‎-90 ל-90.','Latitude between -90 and 90.'), help:T('אפשר להדביק מ-Google Maps: לחיצה ימנית על הנקודה ואז העתקה.','You can paste from Google Maps: right-click the point, then copy.')})}
+          <p class="dhelp" style="margin-top:8px">${T('לפני התיקון, האזהרה הרכה [הצעה]:','Before the fix, the soft warning [proposal]:')}</p>
+          <p class="dwarn">${icon('warn')}${T('הנקודה נראית מחוץ לתאילנד. בדקו שלא הוחלפו קו הרוחב וקו האורך.','The point looks outside Thailand. Check that latitude and longitude weren\'t swapped.')}</p>
+          <p class="dhelp" style="margin-top:8px">${T('אחרי התיקון (13.7590, 100.4970):','After the fix (13.7590, 100.4970):')} <b style="color:var(--color-text-primary)">${T('שייך לעיר: בנגקוק (1.4 ק"מ מהמרכז)','Belongs to: Bangkok (1.4 km from the centre)')}</b></p></div>
+        <div style="width:300px;height:170px;border-radius:12px;overflow:hidden;position:relative;border:1px solid var(--color-border-subtle)">${streetMap()}
+          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%)"><svg width="32" height="32" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z" fill="#C8441F" stroke="#FFFFFF" stroke-width="1.6"/></svg></div>
+          <span class="newMark" style="position:absolute;top:6px;inset-inline-start:8px;background:#fff;padding:0 4px">[proposal] read-only map</span></div></div></fieldset>
+      <div class="g2">${dfield(T('מקור','Source'), 'http://chabad.example.org', {ltr:true, err:T('כתובת המקור צריכה להתחיל ב-https://','The source must start with https://')})}${dfield(T('תאריך אימות','Verified on'), '12.10.2026', {ltr:true})}</div>
+      <fieldset class="dfs"><legend>${T('מצב','Status')}</legend><div class="radios">
+        <span class="radio"><span class="rdot on" style="border-color:#1561BC"></span>${T('טיוטה','Draft')}</span><span class="radio"><span class="rdot" style="border-color:#7D869E"></span>${T('מפורסם','Published')}</span><span class="radio"><span class="rdot" style="border-color:#7D869E"></span>${T('מוסתר','Hidden')}</span></div>
+        <p class="dhelp">${T('רק "מפורסם" מופיע באפליקציה.','Only Published appears in the app.')}</p></fieldset>
+      <div class="hstack"><span class="dbtn primary">${T('שמירה','Save')}</span><a class="dlink">${T('ביטול','Cancel')}</a></div>`),
+    T('ב · /places/new: אותם כללים בכל מצב (D15). קואורדינטות בשדה אחד שמקבל הדבקה [הצעה]. "שייך לעיר" מחושב (D8, אין שדה עיר). אזהרת bbox רכה ומפת בדיקה לקריאה בלבד [הצעות].',
+      'B · /places/new: the same rules in every status (D15). One coordinates field that takes a paste [proposal]. "Belongs to" is computed (D8, no city field). Soft bbox warning and a read-only check map [proposals].')));
+
+  // C. audit row
+  out.push(desk(shell('', `<h1>${T('יומן שינויים','Change log')}</h1>
+      <table class="dt"><thead><tr><th scope="col">${T('מתי','When')}</th><th scope="col">${T('מי','Who')}</th><th scope="col">${T('טבלה · שורה','Table · row')}</th><th scope="col">${T('פעולה','Action')}</th><th scope="col">${T('שינוי','Change')}</th></tr></thead>
+        <tbody><tr><td class="num mono">28.10.2026 14:02</td><td class="mono">dana@example.com</td><td>${T('מומלץ לישראלים','Curated for Israelis')} · בית חב"ד בנגקוק</td><td>${T('עדכון','Update')}</td><td>▾ ${T('2 שדות','2 fields')}</td></tr>
+          <tr class="diff"><td colspan="5"><span class="mono">status</span>: draft → published</td></tr>
+          <tr class="diff"><td colspan="5"><span class="mono">verified_at</span>: 2026-09-01 → 2026-10-12</td></tr>
+          <tr><td class="num mono">27.10.2026 18:40</td><td class="mono">dana@example.com</td><td>${T('מומלץ לישראלים','Curated for Israelis')} · מסעדה כשרה ב-Khao San</td><td>${T('הוספה','Insert')}</td><td>▸ ${T('9 שדות','9 fields')}</td></tr></tbody></table>
+      <div class="dtoast" role="status">${T('נשמר. האפליקציה תציג את השינוי בהפעלה הבאה שלה.','Saved. The app will show the change the next time it starts.')}</div>`),
+    T('ג · היומן (ספרינט 10, Admin בלבד): "מומלץ לישראלים" כשם טבלה, והשם בעברית כמפתח השורה. הטריגר כותב, הטופס לא.',
+      'C · Change log (sprint 10, Admin only): "Curated for Israelis" as the table name and the Hebrew name as the row key. The trigger writes it, not the form.')));
+
+  document.getElementById('desks').innerHTML = out.join('');
+}
+
+function apply(){
+  lang = document.getElementById('lang').value;
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+  document.body.classList.toggle('dark', document.getElementById('dark').checked);
+  document.documentElement.style.setProperty('--fs', document.getElementById('fs').value);
+  phones(); desks();
+}
+['dark','fs','lang'].forEach(id => document.getElementById(id).addEventListener('change', apply));
+apply();
+</script>
+</body>
+</html>
