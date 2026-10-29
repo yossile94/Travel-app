@@ -15,7 +15,13 @@
     },
     {
       "name": "not checked, nothing else",
-      "input": { "status": null, "note": "", "source": "", "verified": "", "months": "" },
+      "input": {
+        "status": null,
+        "note": "",
+        "source": "",
+        "verified": "",
+        "months": ""
+      },
       "ok": true
     },
     {
@@ -67,7 +73,13 @@
     },
     {
       "name": "note of 501",
-      "input": { "status": null, "note": "x501", "source": "", "verified": "", "months": "" },
+      "input": {
+        "status": null,
+        "note": "x501",
+        "source": "",
+        "verified": "",
+        "months": ""
+      },
       "ok": false,
       "field": "note"
     },
@@ -192,6 +204,196 @@
       },
       "ok": false,
       "field": "source"
+    }
+  ],
+  "curated": [
+    {
+      "name": "a draft with everything",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "בית חב\"ד בנגקוק",
+        "nameEn": "Chabad House Bangkok",
+        "body": "",
+        "coords": "13.7590, 100.4970",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "draft"
+      },
+      "ok": true
+    },
+    {
+      "name": "published with a description",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "בית חב\"ד בנגקוק",
+        "nameEn": "Chabad House Bangkok",
+        "body": "ארוחות שבת בהרשמה מראש.",
+        "coords": "13.7590, 100.4970",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "published"
+      },
+      "ok": true
+    },
+    {
+      "name": "hidden",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "בית חב\"ד בנגקוק",
+        "nameEn": "Chabad House Bangkok",
+        "body": "",
+        "coords": "13.7590, 100.4970",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "hidden"
+      },
+      "ok": true
+    },
+    {
+      "name": "coordinates with spaces only",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "בית חב\"ד בנגקוק",
+        "nameEn": "Chabad House Bangkok",
+        "body": "",
+        "coords": "-33.8688 151.2093",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "draft"
+      },
+      "ok": true
+    },
+    {
+      "name": "no Hebrew name",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "",
+        "nameEn": "Chabad House Bangkok",
+        "body": "",
+        "coords": "13.7590, 100.4970",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "draft"
+      },
+      "ok": false,
+      "field": "nameHe"
+    },
+    {
+      "name": "a Hebrew name of 121",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "x121",
+        "nameEn": "Chabad House Bangkok",
+        "body": "",
+        "coords": "13.7590, 100.4970",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "draft"
+      },
+      "ok": false,
+      "field": "nameHe"
+    },
+    {
+      "name": "no English name",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "בית חב\"ד בנגקוק",
+        "nameEn": " ",
+        "body": "",
+        "coords": "13.7590, 100.4970",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "draft"
+      },
+      "ok": false,
+      "field": "nameEn"
+    },
+    {
+      "name": "a description of 281",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "בית חב\"ד בנגקוק",
+        "nameEn": "Chabad House Bangkok",
+        "body": "x281",
+        "coords": "13.7590, 100.4970",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "draft"
+      },
+      "ok": false,
+      "field": "body"
+    },
+    {
+      "name": "latitude 91",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "בית חב\"ד בנגקוק",
+        "nameEn": "Chabad House Bangkok",
+        "body": "",
+        "coords": "91, 100",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "draft"
+      },
+      "ok": false,
+      "field": "coords"
+    },
+    {
+      "name": "longitude 181",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "בית חב\"ד בנגקוק",
+        "nameEn": "Chabad House Bangkok",
+        "body": "",
+        "coords": "13, 181",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "draft"
+      },
+      "ok": false,
+      "field": "coords"
+    },
+    {
+      "name": "http source",
+      "input": {
+        "adm0": "THA",
+        "category": "chabad",
+        "nameHe": "בית חב\"ד בנגקוק",
+        "nameEn": "Chabad House Bangkok",
+        "body": "",
+        "coords": "13.7590, 100.4970",
+        "source": "http://x.example",
+        "verified": "2026-10-12",
+        "status": "draft"
+      },
+      "ok": false,
+      "field": "source"
+    },
+    {
+      "name": "a category from elsewhere",
+      "input": {
+        "adm0": "THA",
+        "category": "nightlife",
+        "nameHe": "בית חב\"ד בנגקוק",
+        "nameEn": "Chabad House Bangkok",
+        "body": "",
+        "coords": "13.7590, 100.4970",
+        "source": "https://chabadthailand.com",
+        "verified": "2026-10-12",
+        "status": "draft"
+      },
+      "ok": false,
+      "field": "category"
     }
   ]
 }

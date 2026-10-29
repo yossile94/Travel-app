@@ -86,6 +86,15 @@ h2 {
   background: var(--color-bg-tag);
   color: var(--color-text-secondary);
 }
+/* Sprint 11 design 23.2: a curated place's status, always with its word. */
+.tag-published {
+  background: var(--color-status-success-subtleBg);
+  color: var(--color-status-success-subtleFg);
+}
+.tag-hidden {
+  background: var(--color-status-info-subtleBg);
+  color: var(--color-status-info-subtleFg);
+}
 .badge-dev {
   background: var(--color-entry-restricted-bg);
   color: var(--color-entry-restricted-fg);

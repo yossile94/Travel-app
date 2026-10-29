@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { requireAccess } from './access';
+import { curatedErrors, curatedPayload, type CuratedForm } from './curated';
 import { serverClient } from './supabase/server';
 import {
   entryErrors,
@@ -35,6 +36,7 @@ export type SaveResult =
     }
   | { ok: false; fields: Record<string, string> };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jerusalem' });
 
 /** Postgres codes: 42501 no permission (RLS), 23514 a CHECK, 23505 a duplicate. */
@@ -127,4 +129,36 @@ export async function revokeRoleAction(userId: string, role: Role): Promise<Save
   if (error) return fromCode(error.code);
   revalidatePath('/roles');
   return { ok: true };
+}
+
+/**
+ * Sprint 11 F-032 (design 23.3): a curated place, new or changed. RLS lets
+ * only content editors write (has_role), the trigger logs it, and the CHECKs
+ * repeat the form's rules (D15). No delete: "hidden" removes it from the app.
+ */
+export async function saveCuratedAction(
+  form: CuratedForm,
+  id: string | null,
+): Promise<SaveResult | { ok: true; id: string }> {
+  await requireAccess();
+  if (id !== null && !UUID.test(id)) return { ok: false, error: 'rejected' };
+  const fields = curatedErrors(form, today());
+  if (Object.keys(fields).length) return { ok: false, fields };
+  const supabase = await serverClient();
+  const row = curatedPayload(form);
+  if (id === null) {
+    const { data, error } = await supabase.from('curated_places').insert(row).select('id').single();
+    if (error) return fromCode(error.code);
+    revalidatePath('/places');
+    return { ok: true, id: data.id as string };
+  }
+  const { data, error } = await supabase
+    .from('curated_places')
+    .update(row)
+    .eq('id', id)
+    .select('id');
+  if (error) return fromCode(error.code);
+  if (!data?.length) return { ok: false, error: 'notFound' };
+  revalidatePath('/places');
+  return { ok: true, id };
 }
