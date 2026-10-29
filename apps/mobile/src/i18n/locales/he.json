@@ -36,7 +36,28 @@
     },
     "rate": "שער חליפין",
     "emergency": "חירום {{inCountry}}",
-    "emergencyHint": "פותח מספרי חירום ונציגות"
+    "emergencyHint": "פותח מספרי חירום ונציגות",
+    "tile": {
+      "safety": "בטיחות",
+      "time": "שעה",
+      "money": "מטבע",
+      "climate": "טמפרטורה",
+      "emergency": "חירום",
+      "safetyA11y": "בטיחות: כניסה ואזהרות מסע",
+      "safetyHint": "פותח רמת איום, כניסה ומקור",
+      "hint": "פותח פרטים",
+      "timeA11y": "{{label}}: {{clock}}, {{difference}}",
+      "moneyA11y": "מטבע: {{name}}",
+      "moneyIls": "מטבע: {{name}}, {{symbol}}",
+      "moneyLoading": "השער נטען",
+      "updated": "עודכן ב-{{date}}",
+      "badgeStale": "ייתכן שלא מעודכן",
+      "badgeOffline": "בלי רשת"
+    },
+    "timeSheetTitle": "שעה מקומית",
+    "moneySheetTitle": "מטבע ושער חליפין",
+    "climateSheetTitle": "טמפרטורה",
+    "climateNotForecast": "ממוצע רב-שנתי (1991–2020), לא תחזית."
   },
   "timeDifference": {
     "same": "כמו בישראל",

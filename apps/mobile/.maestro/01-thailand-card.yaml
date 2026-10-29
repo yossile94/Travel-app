@@ -1,6 +1,6 @@
 appId: com.travelapp.companion
-name: Thailand opens a card with local time, difference and currency (AC-4)
-tags: [sprint-0, ac-4]
+name: Thailand opens a card with its tiles; time, difference, currency and safety one tap away (AC-4; fix AC-3, AC-5)
+tags: [sprint-0, ac-4, fix-country-card]
 ---
 - launchApp:
     clearState: true
@@ -14,13 +14,32 @@ tags: [sprint-0, ac-4]
     timeout: 4000
 - assertVisible: תאילנד
 - assertVisible: Thailand
+- assertVisible:
+    id: card-tile-safety
 # The clock is checked on the device because Hermes, not Node, formats it.
 - assertVisible:
-    id: card-time
+    id: card-tile-time
 - assertVisible: '.*\d\d:\d\d.*'
+- tapOn:
+    id: card-tile-time
+- assertVisible:
+    id: time-sheet-difference
 - assertVisible: '.*יותר מבישראל'
-- assertVisible: בהט תאילנדי
+- back
+# The currency sheet: the name, the code and the calculator.
 - assertVisible: '.*THB.*'
+- tapOn:
+    id: card-tile-money
+- assertVisible:
+    id: calculator-sheet
+- assertVisible: '.*בהט תאילנדי.*'
+- back
+# The threat level only in the Safety sheet (Yossi, 29.10).
+- tapOn:
+    id: card-tile-safety
+- assertVisible:
+    id: travel-info-sheet
+- back
 # Android back closes the card.
 - back
 - assertNotVisible:

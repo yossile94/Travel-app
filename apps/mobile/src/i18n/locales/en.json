@@ -36,7 +36,28 @@
     },
     "rate": "Exchange rate",
     "emergency": "Emergency in {{inCountry}}",
-    "emergencyHint": "Opens emergency numbers and the Israeli mission"
+    "emergencyHint": "Opens emergency numbers and the Israeli mission",
+    "tile": {
+      "safety": "Safety",
+      "time": "Time",
+      "money": "Currency",
+      "climate": "Temperature",
+      "emergency": "Emergency",
+      "safetyA11y": "Safety: entry and travel warnings",
+      "safetyHint": "Opens the threat level, entry and source",
+      "hint": "Opens details",
+      "timeA11y": "{{label}}: {{clock}}, {{difference}}",
+      "moneyA11y": "Currency: {{name}}",
+      "moneyIls": "Currency: {{name}}, {{symbol}}",
+      "moneyLoading": "The rate is loading",
+      "updated": "Updated {{date}}",
+      "badgeStale": "May be out of date",
+      "badgeOffline": "Offline"
+    },
+    "timeSheetTitle": "Local time",
+    "moneySheetTitle": "Currency and exchange rate",
+    "climateSheetTitle": "Temperature",
+    "climateNotForecast": "A long-term average (1991–2020), not a forecast."
   },
   "timeDifference": {
     "same": "Same as Israel",

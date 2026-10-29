@@ -16,6 +16,8 @@ export const colors = {
     focusRing: '#1F78DB',
     pressed: '#FBF4E8',
     tag: '#FBF4E8',
+    /** bg.tilePressed: a pressed card tile, whose rest colour is bg.tag (fix-country-card 12). */
+    tilePressed: '#F4E7D0',
     chromeBg: 'rgba(255,255,255,0.92)',
     chromeFg: '#121C36',
     chromeBorder: 'rgba(18,28,54,0.08)',
@@ -69,6 +71,7 @@ export const colors = {
     focusRing: '#6FB3FA',
     pressed: '#1A2749',
     tag: '#1A2749',
+    tilePressed: '#24355F',
     chromeBg: 'rgba(18,28,54,0.88)',
     chromeFg: '#F3F6FC',
     chromeBorder: 'rgba(163,179,219,0.32)',
@@ -318,6 +321,13 @@ export const layout = {
   discoverMonthCellMin: 48,
   discoverChipMaxFontScale: 1.6,
   discoverPageSize: 50,
+  /** The country card's tiles (fix-country-card 5.2, 5.3). */
+  cardTileMinWidth: 64,
+  cardTileMinHeight: 76,
+  cardTileMaxWidthFew: 112,
+  cardTileGap: 8,
+  cardTileBadge: 20,
+  cardTilesListFromFontScale: 1.6,
 } as const;
 
 export const radius = { xs: 4, md: 12, lg: 16, sheet: 28, pill: 999, flap: 4 } as const;

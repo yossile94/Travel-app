@@ -135,6 +135,12 @@ describe('design tokens in the app', () => {
     expectValue('mapboxLogoLeft', 'layout.mapbox.logoLeft');
     expectValue('mapboxAttributionLeft', 'layout.mapbox.attributionLeft');
     expectValue('cardNameStepDownChars', 'layout.card.nameStepDownChars');
+    expectValue('cardTileMinWidth', 'size.cardTile.minWidth');
+    expectValue('cardTileMinHeight', 'size.cardTile.minHeight');
+    expectValue('cardTileMaxWidthFew', 'size.cardTile.maxWidthFew');
+    expectValue('cardTileGap', 'size.cardTile.gap');
+    expectValue('cardTileBadge', 'size.cardTile.badge');
+    expectValue('cardTilesListFromFontScale', 'layout.cardTiles.listFromFontScale');
     const light = app.slice(app.indexOf('light: {'), app.indexOf('dark: {'));
     const dark = app.slice(app.indexOf('dark: {'), app.indexOf('} as const;'));
     for (const [scheme, block] of [
@@ -145,6 +151,7 @@ describe('design tokens in the app', () => {
         ['textTertiary', 'text.tertiary'],
         ['pressed', 'bg.pressed'],
         ['tag', 'bg.tag'],
+        ['tilePressed', 'bg.tilePressed'],
         ['chromeBg', 'chrome.bg'],
         ['chromeFg', 'chrome.fg'],
         ['chromeBorder', 'chrome.border'],
