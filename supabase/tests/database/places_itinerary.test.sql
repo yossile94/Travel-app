@@ -6,7 +6,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(59);
+select plan(65);
 
 insert into auth.users (id, email, email_confirmed_at)
 values
@@ -221,6 +221,13 @@ select throws_ok($$ select public.apply_auto_plan('10000000-0000-4000-8000-00000
 select is((select count(*)::int from public.itinerary_items where day_date = date '2027-01-16'), 0,
   'a refused plan writes nothing');
 select is(
+  public.apply_auto_plan('10000000-0000-4000-8000-0000000011a1', (
+    select jsonb_agg(jsonb_build_object('id', gen_random_uuid(),
+      'day', case when g % 2 = 0 then '2027-01-17' else '20270117' end,
+      'title', 'Auto ' || g, 'order', least(g - 1, 29)))
+    from generate_series(1, 31) g)) ->> 'result',
+  'limit', '31 items on one day in two spellings of the date are still 31 (Dudi)');
+select is(
   public.apply_auto_plan('10000000-0000-4000-8000-0000000011b1', pg_temp.auto_items(6, 1)) ->> 'result',
   'gone', 'another user''s trip is gone');
 
@@ -248,6 +255,28 @@ select is((select count(*)::int from public.itinerary_items), 0, 'B never reads 
 select is((select count(*)::int from public.trip_saved_places), 0, 'B never reads A''s saved places');
 select is(public.delete_itinerary_item('20000000-0000-4000-8000-000000000002'), 'gone',
   'B cannot delete A''s item');
+select is(public.move_itinerary_item('20000000-0000-4000-8000-000000000002', date '2027-01-12', 0), 'gone',
+  'B cannot move A''s item');
+reset role;
+
+-- 600 a trip, on B's trip.
+insert into public.itinerary_items (id, trip_id, user_id, day_date, title, sort_order)
+select gen_random_uuid(), '10000000-0000-4000-8000-0000000011b1', '00000000-0000-4000-8000-0000000011b1',
+  date '2027-01-17', 'Filler ' || g, g
+from generate_series(1, 580) g;
+select pg_temp.sign_in('00000000-0000-4000-8000-0000000011b1');
+select is(
+  public.apply_auto_plan('10000000-0000-4000-8000-0000000011b1', pg_temp.auto_items(0, 21)) ->> 'result',
+  'limit', 'a plan that would pass 600 items in the trip is refused');
+reset role;
+insert into public.itinerary_items (id, trip_id, user_id, day_date, title, sort_order)
+select gen_random_uuid(), '10000000-0000-4000-8000-0000000011b1', '00000000-0000-4000-8000-0000000011b1',
+  date '2027-01-16', 'Filler ' || g, g
+from generate_series(1, 20) g;
+select pg_temp.sign_in('00000000-0000-4000-8000-0000000011b1');
+select is(public.save_itinerary_item('20000000-0000-4000-8000-0000000000d1',
+  '10000000-0000-4000-8000-0000000011b1', pg_temp.item(1)),
+  'limit', 'a 601st item in the trip is refused');
 reset role;
 select pg_temp.sign_in('00000000-0000-4000-8000-0000000011c1');
 select throws_ok($$ select public.save_itinerary_item('20000000-0000-4000-8000-0000000000c1',
@@ -272,6 +301,9 @@ delete from public.trips where id = '10000000-0000-4000-8000-0000000011a1';
 select is(
   (select count(*)::int from public.itinerary_items) + (select count(*)::int from public.trip_saved_places),
   0, 'deleting the trip deletes its plan and saved places');
+select ok(public.admin_delete_user('00000000-0000-4000-8000-0000000011b1', 'user_request'), 'B''s account is deleted');
+select is((select count(*)::int from public.itinerary_items), 0,
+  'deleting the account deletes its plans');
 
 select * from finish();
 rollback;

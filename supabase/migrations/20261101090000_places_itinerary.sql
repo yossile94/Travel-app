@@ -383,7 +383,7 @@ begin
   end if;
   if exists (
     select 1 from jsonb_array_elements(p_items) x
-    where jsonb_typeof(x) <> 'object' or x ->> 'day' is null
+    where jsonb_typeof(x) <> 'object' or x ->> 'day' is null or x ->> 'id' is null
        or jsonb_typeof(x -> 'order') is distinct from 'number'
   ) then
     raise exception 'each item needs a day and an order' using errcode = '22023';
@@ -403,7 +403,8 @@ begin
     raise exception 'an order is from 0 to 29' using errcode = '22023';
   end if;
   if exists (
-    select 1 from jsonb_array_elements(p_items) x group by x ->> 'day' having count(*) > 30
+    -- By the date, not its spelling: "2027-01-10" and "20270110" are one day (Dudi).
+    select 1 from jsonb_array_elements(p_items) x group by (x ->> 'day')::date having count(*) > 30
   ) then
     return jsonb_build_object('result', 'limit');
   end if;
