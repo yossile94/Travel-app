@@ -2,6 +2,7 @@ import '@/i18n';
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 
 import { countryByAdm0 } from '@/features/globe/countryData';
 
@@ -177,7 +178,7 @@ describe('CardTrips (sprint 3 AC-3, AC-5, AC-6, AC-9)', () => {
     await rerender(card(null, 2));
     expect(screen.queryByTestId('card-trip-duplicate')).toBeNull();
     // Fix my-trips-space 2.2: a collapse request leaves Trips mode as it is.
-    expect(screen.getByTestId('card-trips-heading').props.accessibilityRole).toBe('header');
+    expect(screen.getByRole('header', { name: 'הנסיעות שלך' })).toBeOnTheScreen();
   });
 
   it('reads the list again when the day changes (design 3.4, Raz m2)', async () => {
@@ -213,14 +214,14 @@ describe('Trips mode (fix my-trips-space)', () => {
       'פותח את הנסיעה בכל הכרטיס',
     );
     await fireEvent.press(screen.getByTestId('card-trip-t2'));
-    expect(screen.getByTestId('card-trips-heading').props.accessibilityRole).toBe('header');
+    expect(screen.getByRole('header', { name: 'הנסיעות שלך' })).toBeOnTheScreen();
     expect(screen.getByTestId('card-trip-t2').props.accessibilityState).toMatchObject({
       expanded: true,
     });
     // Closing the open row keeps Trips mode (2.3).
     await fireEvent.press(screen.getByTestId('card-trip-t2'));
     expect(screen.queryByTestId('card-trip-duplicate')).toBeNull();
-    expect(screen.getByTestId('card-trips-heading').props.accessibilityRole).toBe('header');
+    expect(screen.getByRole('header', { name: 'הנסיעות שלך' })).toBeOnTheScreen();
   });
 
   it('"Your trips": Trips mode, and the only trip opens with it', async () => {
@@ -233,7 +234,7 @@ describe('Trips mode (fix my-trips-space)', () => {
     await render(card());
     await fireEvent.press(screen.getByTestId('card-trips-heading'));
     expect(screen.queryByTestId('card-trip-duplicate')).toBeNull();
-    expect(screen.getByTestId('card-trips-heading').props.accessibilityRole).toBe('header');
+    expect(screen.getByRole('header', { name: 'הנסיעות שלך' })).toBeOnTheScreen();
   });
 
   it('the open head and the 0-height view after its trip are sticky, counted over every child (Raz b)', async () => {
@@ -260,8 +261,44 @@ describe('Trips mode (fix my-trips-space)', () => {
     expect(sticky()).toEqual([]);
   });
 
+  it('a row asked to open waits for Trips mode on screen (the fade, 2.2)', async () => {
+    mockList.upcoming = [trip({ id: 't1' })];
+    await render(
+      <CardTrips
+        country={greece}
+        colorScheme="light"
+        maxListHeight={600}
+        initiallyOpen="t1"
+        openSeq={1}
+        onNewTrip={jest.fn()}
+        onEditTrip={jest.fn()}
+        onDuplicateTrip={jest.fn()}
+        onToast={jest.fn()}
+        tripsMode={false}
+      />,
+    );
+    expect(screen.queryByTestId('card-trip-duplicate')).toBeNull();
+  });
+
+  it('focus: to the open row on the way in, after an open or a close, and back on the way out (6.2, Raz 2)', async () => {
+    const focus = jest
+      .spyOn(AccessibilityInfo, 'sendAccessibilityEvent')
+      .mockImplementation(() => {});
+    mockList.upcoming = [trip({ id: 't1' }), trip({ id: 't2' })];
+    await render(card());
+    await fireEvent.press(screen.getByTestId('card-trip-t2'));
+    expect(focus).toHaveBeenLastCalledWith(expect.anything(), 'focus');
+    const entered = focus.mock.calls.length;
+    await fireEvent.press(screen.getByTestId('card-trip-t2'));
+    expect(focus.mock.calls.length).toBeGreaterThan(entered);
+    focus.mockRestore();
+  });
+
   it('leaves Trips mode when the rows are gone, not while a requested trip is loading (2.3)', async () => {
     const onTripsMode = jest.fn();
+    const focus = jest
+      .spyOn(AccessibilityInfo, 'sendAccessibilityEvent')
+      .mockImplementation(() => {});
     const coupon = (status: string) => {
       mockList.status = status;
       return (
@@ -291,6 +328,9 @@ describe('Trips mode (fix my-trips-space)', () => {
     mockList.upcoming = [];
     await rerender(coupon('ready'));
     expect(onTripsMode).toHaveBeenCalledWith(false);
+    // Focus goes to "New trip" (6.2).
+    expect(focus).toHaveBeenLastCalledWith(expect.anything(), 'focus');
+    focus.mockRestore();
     mockList.status = 'ready';
   });
 });

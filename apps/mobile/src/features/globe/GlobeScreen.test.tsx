@@ -1002,7 +1002,9 @@ describe('GlobeScreen', () => {
       await tap({ pin: { adm0: 'GRC', tripId: 'trip-grc' }, country: { adm0: 'TUR', code: 'TR' } });
       expect(screen.getByTestId('card-trips-mode')).toBeOnTheScreen();
       // The flight ends and the listener registers again: back still leaves Trips mode first (Raz a).
+      const registered = spy.mock.calls.length;
       await act(async () => jest.advanceTimersByTime(5_000));
+      expect(spy.mock.calls.length).toBeGreaterThan(registered);
       await act(async () => {
         handlers.at(-1)!();
       });

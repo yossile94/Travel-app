@@ -230,7 +230,7 @@ describe('BoardingPassCard', () => {
 
   it('Trips mode: a fade, then the compact header and no strip; its old height no longer counts (Raz 2)', async () => {
     const coupon = jest.fn((_max: number, _notice: unknown, _mode: boolean) => null);
-    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errors = jest.spyOn(console, 'error');
     const props = {
       country: countryByAdm0('THA')!,
       colorScheme: 'light' as const,
@@ -261,7 +261,9 @@ describe('BoardingPassCard', () => {
     await fireEvent(screen.getByTestId('card-header-compact'), 'layout', layout(96));
     const [trips, , mode] = coupon.mock.calls.at(-1)!;
     // One tear line under the compact header, not two at the same height (seen on the A73).
-    expect(JSON.stringify(errors.mock.calls)).not.toMatch(/same key/);
+    const sameKey = errors.mock.calls.filter((call) => /same key/.test(String(call[0])));
+    errors.mockRestore();
+    expect(sameKey).toEqual([]);
     expect(mode).toBe(true);
     expect(trips - destination).toBe(150 + 212 - 96);
     await act(async () => jest.advanceTimersByTime(motion.cardTripsModeFade));
@@ -271,7 +273,31 @@ describe('BoardingPassCard', () => {
     await rerender(<BoardingPassCard {...props} tripsMode onExitTripsMode={onExit} />);
     await fireEvent.press(screen.getByTestId('card-destination-details'));
     expect(onExit).toHaveBeenCalled();
-    errors.mockRestore();
+  });
+
+  it('back before the swap: the content fades in again, and taps come back (Raz 1)', async () => {
+    const props = {
+      country: countryByAdm0('THA')!,
+      colorScheme: 'light' as const,
+      reduceMotion: true,
+      bottomInset: 0,
+      onClose: jest.fn(),
+      coupon: () => null,
+    };
+    const fades = () =>
+      jest
+        .mocked(withTiming)
+        .mock.calls.filter(([, config]) => config?.duration === motion.cardTripsModeFade)
+        .map(([to]) => to);
+    const { rerender } = await render(<BoardingPassCard {...props} />);
+    await rerender(<BoardingPassCard {...props} tripsMode />);
+    expect(fades().at(-1)).toBe(0);
+    await act(async () => jest.advanceTimersByTime(motion.cardTripsModeFade / 2));
+    await rerender(<BoardingPassCard {...props} tripsMode={false} />);
+    expect(fades().at(-1)).toBe(1);
+    await act(async () => jest.advanceTimersByTime(motion.cardTripsModeFade * 2));
+    expect(screen.getByTestId('card-header')).toBeOnTheScreen();
+    expect(screen.getByTestId('country-card').props.pointerEvents).toBe('auto');
   });
 
   it('a card that opens in Trips mode starts there, with no fade (5)', async () => {

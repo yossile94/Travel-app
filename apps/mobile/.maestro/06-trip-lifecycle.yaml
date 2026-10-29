@@ -93,6 +93,12 @@ env:
     timeout: 6000
 - tapOn:
     id: 'card-trip-[0-9a-f]{8}-.*'
+# Fix my-trips-space: the trip takes the card; the icons step aside.
+- assertVisible:
+    id: card-trips-mode
+- assertNotVisible:
+    id: card-strip
+- takeScreenshot: fix-trips-mode
 - tapOn:
     id: card-trip-delete
 - assertVisible: למחוק את הנסיעה?

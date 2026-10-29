@@ -130,7 +130,7 @@ interface Props {
 
 /**
  * The coupon's fixed parts around its list: padding, heading and "New trip"
- * (design 2.1). The heading is a 48dp button since fix my-trips-space 3.2.
+ * (design 2.1). The heading is a button since fix my-trips-space 3.2.
  */
 const COUPON_CHROME = 12 + layout.cardTripsHeadingMin + 16 + 12 + 48 + 4;
 
@@ -165,12 +165,16 @@ export function BoardingPassCard({
   const [settling, setSettling] = useState(false);
   const fade = useSharedValue(1);
   useEffect(() => {
-    if (tripsMode === shown) return;
     const half = {
       duration: motion.cardTripsModeFade,
       easing: Easing.linear,
       reduceMotion: ReduceMotion.Never,
     };
+    // Raz 1: asked back before the swap (a tap, then back): the content fades in again.
+    if (tripsMode === shown) {
+      if (fade.get() < 1) fade.set(withTiming(1, half));
+      return;
+    }
     fade.set(withTiming(0, half));
     const swap = setTimeout(() => {
       setShown(tripsMode);
@@ -347,7 +351,7 @@ export function BoardingPassCard({
             </Svg>
           )}
 
-          <Animated.View style={[styles.grow, fadeStyle]}>
+          <Animated.View style={[fullHeight ? styles.fill : styles.grow, fadeStyle]}>
             {shown ? (
               <View
                 style={styles.row}
@@ -518,7 +522,7 @@ export function BoardingPassCard({
 
             <OuterScrollContext.Provider value={outer}>
               {coupon ? (
-                <View style={fullHeight ? styles.grow : undefined}>
+                <View style={fullHeight ? styles.fill : undefined}>
                   {coupon(scrollMode ? Infinity : maxListHeight, setNoticeHeight, shown)}
                 </View>
               ) : null}
@@ -614,6 +618,7 @@ const styles = StyleSheet.create({
   },
   label: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, textAlign: 'left' },
   grow: { flexGrow: 1 },
+  fill: { flex: 1 },
   // Fix my-trips-space 3.1: the compact header in Trips mode.
   mainCompact: { paddingBottom: 4 },
   nameCompact: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 26, textAlign: 'left' },

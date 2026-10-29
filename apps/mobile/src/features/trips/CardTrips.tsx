@@ -51,7 +51,7 @@ import { tripHasKit } from '@/features/kit/kitStore';
 import { TripKitSections } from '@/features/kit/TripKitSections';
 import { isolateOwn, OuterScrollContext } from '@/features/globe/BoardingPassCard';
 import type { CountryInfo } from '@/features/globe/countryData';
-import { colors, fonts, layout, radius, timing, type ColorScheme } from '@/theme/tokens';
+import { colors, fonts, layout, motion, radius, timing, type ColorScheme } from '@/theme/tokens';
 
 import { countryName } from './countryName';
 import {
@@ -181,10 +181,18 @@ export function CardTrips({
   const rowY = useRef(new Map<string, number>());
   const tapScroll = useRef<string | null>(null);
   useEffect(() => {
+    // Raz 1: leaving Trips mode drops a scroll still waiting.
+    if (!tripsMode) tapScroll.current = null;
     if (!tripsMode || outer || tapScroll.current === null || tapScroll.current !== open) return;
     const y = rowY.current.get(open);
     tapScroll.current = null;
-    if (y !== undefined) scroll.current?.scrollTo({ y, animated: !reduceMotion });
+    if (y === undefined) return;
+    // 3.4: once the transition is over.
+    const timer = setTimeout(
+      () => scroll.current?.scrollTo({ y, animated: !reduceMotion }),
+      motion.cardTripsModeFade,
+    );
+    return () => clearTimeout(timer);
   }, [tripsMode, open, outer, reduceMotion]);
   const onRowLayout = (id: string, y: number) => {
     rowY.current.set(id, y);
@@ -268,12 +276,15 @@ export function CardTrips({
   // 2.3: no rows and no trip still on its way (loading, an error or offline
   // with one asked for): back to the icons.
   const waiting = initiallyOpen !== null && state.status !== 'ready' && state.status !== 'idle';
+  const newTripRef = useRef<ComponentRef<typeof Pressable>>(null);
   useEffect(() => {
-    if (tripsMode && !hasRows && !waiting) onTripsMode?.(false);
+    if (!tripsMode || hasRows || waiting) return;
+    onTripsMode?.(false);
+    if (newTripRef.current) AccessibilityInfo.sendAccessibilityEvent(newTripRef.current, 'focus');
   }, [tripsMode, hasRows, waiting, onTripsMode]);
 
   const heads = useRef(new Map<string, ComponentRef<typeof Pressable>>());
-  const headingRef = useRef<ComponentRef<typeof Pressable>>(null);
+  const headingRef = useRef<ComponentRef<typeof View>>(null);
   useEffect(() => {
     if (!focusTarget) return;
     const node =
@@ -339,6 +350,8 @@ export function CardTrips({
               if (!tripsMode) return enterWith(trip.id);
               setRowNotice(null);
               setOpen(expanded ? null : trip.id);
+              // Raz 2: the head remounts as it becomes (or stops being) sticky.
+              setFocusTarget({ id: trip.id, n: (focusTarget?.n ?? 0) + 1 });
             }}
             style={({ pressed }) => [
               styles.row,
@@ -551,30 +564,39 @@ export function CardTrips({
     <View style={[styles.coupon, tripsMode && styles.fill]} testID="card-trips">
       {hasRows ? (
         // 3.2: in the destination view, the heading opens Trips mode; one trip opens with it.
-        <Pressable
-          ref={headingRef}
-          accessibilityRole={tripsMode ? 'header' : 'button'}
-          accessibilityHint={tripsMode ? undefined : t('card.trips.showAllHint')}
-          disabled={tripsMode}
-          onPress={() => {
-            const all = [...state.upcoming, ...state.past];
-            enterWith(all.length === 1 && !state.hasMore ? all[0]!.id : null);
-          }}
-          style={({ pressed }) => [
-            styles.heading,
-            pressed && !tripsMode && { backgroundColor: palette.pressed },
-          ]}
-          testID="card-trips-heading"
-        >
-          <Text style={[styles.headingText, { color: palette.textPrimary }]}>
-            {t('card.trips.title')}
-          </Text>
-          {tripsMode ? null : (
+        tripsMode ? (
+          <View ref={headingRef} style={styles.heading} testID="card-trips-heading">
+            <Text
+              style={[styles.headingText, { color: palette.textPrimary }]}
+              accessibilityRole="header"
+            >
+              {t('card.trips.title')}
+            </Text>
+          </View>
+        ) : (
+          <Pressable
+            ref={headingRef}
+            accessibilityRole="button"
+            accessibilityHint={t('card.trips.showAllHint')}
+            hitSlop={{ top: layout.cardTripsHeadingSlop, bottom: layout.cardTripsHeadingSlop }}
+            onPress={() => {
+              const all = [...state.upcoming, ...state.past];
+              enterWith(all.length === 1 && !state.hasMore ? all[0]!.id : null);
+            }}
+            style={({ pressed }) => [
+              styles.heading,
+              pressed && { backgroundColor: palette.pressed },
+            ]}
+            testID="card-trips-heading"
+          >
+            <Text style={[styles.headingText, { color: palette.textPrimary }]}>
+              {t('card.trips.title')}
+            </Text>
             <View style={styles.flipped}>
               <ChevronDownIcon color={palette.textTertiary} />
             </View>
-          )}
-        </Pressable>
+          </Pressable>
+        )
       ) : null}
       {showsCached && trips.cache ? (
         <View
@@ -626,7 +648,15 @@ export function CardTrips({
             }
           }}
           scrollEnabled={!outer}
-          style={outer ? undefined : { maxHeight: Math.max(maxListHeight, layout.tripRowMin) }}
+          style={
+            outer
+              ? undefined
+              : [
+                  { maxHeight: Math.max(maxListHeight, layout.tripRowMin) },
+                  // Raz 3: in Trips mode the list gives way, so "New trip" is never pushed out.
+                  tripsMode && styles.shrink,
+                ]
+          }
           stickyHeaderIndices={sticky}
           testID="card-trips-list"
           nestedScrollEnabled
@@ -656,6 +686,7 @@ export function CardTrips({
           onPress={guard('new', onNewTrip)}
           colorScheme={colorScheme}
           testID="card-new-trip"
+          ref={newTripRef}
         />
       </View>
     </View>
@@ -736,7 +767,8 @@ const styles = StyleSheet.create({
   caption: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, textAlign: 'left' },
   section: { marginTop: 8 },
   rowWrap: { overflow: 'hidden' },
-  fill: { flexGrow: 1 },
+  fill: { flex: 1 },
+  shrink: { flexShrink: 1 },
   // Fix my-trips-space 3.2: "Your trips" is a 48dp row.
   heading: {
     minHeight: layout.cardTripsHeadingMin,

@@ -105,8 +105,22 @@ tags: [sprint-11]
 - tapOn:
     id: itinerary-back
 
-# Clean up: delete the trip (its board and saved places go with it).
-- back
+# Clean up: delete the trip (its board and saved places go with it). Back
+# would now leave Trips mode on the card, so only an open screen gets it,
+# and the row opens again if it closed.
+- runFlow:
+    when:
+      visible:
+        id: itinerary-screen
+    commands:
+      - back
+- runFlow:
+    when:
+      notVisible:
+        id: card-trip-delete
+    commands:
+      - tapOn:
+          id: 'card-trip-[0-9a-f]{8}-.*'
 - tapOn:
     id: card-trip-delete
 - tapOn: מחיקה

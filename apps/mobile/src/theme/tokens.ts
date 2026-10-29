@@ -330,8 +330,12 @@ export const layout = {
   cardTileGap: 8,
   cardTileBadge: 20,
   cardTilesListFromFontScale: 1.6,
-  /** Fix my-trips-space 3.2: "Your trips", a 48dp button. */
-  cardTripsHeadingMin: 48,
+  /**
+   * Fix my-trips-space 3.2: "Your trips" is 32dp tall and reaches 48 with its
+   * hit slop: at 48 the A73's list fell to ~81dp and the card into scroll mode.
+   */
+  cardTripsHeadingMin: 32,
+  cardTripsHeadingSlop: 8,
 } as const;
 
 export const radius = { xs: 4, md: 12, lg: 16, sheet: 28, pill: 999, flap: 4 } as const;
