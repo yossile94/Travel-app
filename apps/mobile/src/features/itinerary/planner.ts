@@ -211,3 +211,38 @@ function assignSlots(slots: string[], places: PlannerPlace[], tropical: boolean)
     return { slot, place: pick };
   });
 }
+
+export type DayLabelKind =
+  | 'arrival_full'
+  | 'arrival_short'
+  | 'arrival_evening'
+  | 'arrival_rest'
+  | 'in_transit'
+  | 'departure_airport'
+  | 'departure_short';
+
+/**
+ * Design 9.3 (D16): a day's label, from the same rules as daySlots, so the
+ * board and the planner never disagree. Null: a full day (or no flights).
+ * One-day trip: only the departure rule.
+ */
+export function dayLabel(
+  day: string,
+  input: Pick<PlannerInput, 'arrival' | 'departure'>,
+): { kind: DayLabelKind; time?: string } | null {
+  const { arrival, departure } = input;
+  if (arrival && day < arrival.date) return { kind: 'in_transit' };
+  if (departure && day === departure.date) {
+    const dep = minutes(departure.time);
+    return { kind: dep < 14 * 60 ? 'departure_airport' : 'departure_short', time: departure.time };
+  }
+  if (arrival && day === arrival.date) {
+    if (arrival.flightHours > 8) return { kind: 'arrival_rest', time: arrival.time };
+    const land = minutes(arrival.time);
+    return {
+      kind: land < 12 * 60 ? 'arrival_full' : land < 18 * 60 ? 'arrival_short' : 'arrival_evening',
+      time: arrival.time,
+    };
+  }
+  return null;
+}

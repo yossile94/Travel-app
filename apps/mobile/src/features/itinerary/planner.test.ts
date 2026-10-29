@@ -1,6 +1,6 @@
 // Sprint 11 AC-14 – AC-18 (D16, D17): the planner's table of cases, the
 // spec's own criterion first.
-import { daySlots, planTrip, type PlannerInput, type PlannerPlace } from './planner';
+import { dayLabel, daySlots, planTrip, type PlannerInput, type PlannerPlace } from './planner';
 
 const place = (
   ref: string,
@@ -188,5 +188,30 @@ describe('places (AC-16)', () => {
     const r = planTrip({ ...base, end: '2027-04-30', arrival: null, departure: null });
     expect(r.days.filter((d) => d.kind === 'beyondLimit').length).toBeGreaterThan(0);
     expect(r.items.every((i) => i.day < '2027-03-06')).toBe(true);
+  });
+});
+
+describe('the day labels share the planner rules (design 9.3)', () => {
+  it.each([
+    ['2027-01-05', { kind: 'arrival_short', time: '14:55' }],
+    ['2027-01-07', null],
+    ['2027-01-12', { kind: 'departure_airport', time: '09:30' }],
+  ] as const)('%s → %j', (day, expected) => {
+    expect(dayLabel(day, base)).toEqual(expected);
+  });
+  it('before landing: on the way; a long flight: rest; evening landing', () => {
+    expect(dayLabel('2027-01-04', base)).toEqual({ kind: 'in_transit' });
+    expect(
+      dayLabel('2027-01-05', {
+        ...base,
+        arrival: { date: '2027-01-05', time: '06:10', flightHours: 11 },
+      }),
+    ).toEqual({ kind: 'arrival_rest', time: '06:10' });
+    expect(
+      dayLabel('2027-01-05', {
+        ...base,
+        arrival: { date: '2027-01-05', time: '21:10', flightHours: 4 },
+      })?.kind,
+    ).toBe('arrival_evening');
   });
 });
