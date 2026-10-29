@@ -565,11 +565,16 @@ export function CardTrips({
       {hasRows ? (
         // 3.2: in the destination view, the heading opens Trips mode; one trip opens with it.
         tripsMode ? (
-          <View ref={headingRef} style={styles.heading} testID="card-trips-heading">
-            <Text
-              style={[styles.headingText, { color: palette.textPrimary }]}
-              accessibilityRole="header"
-            >
+          // Raz: the wrapper is the accessible header, so focus can land on it (6.2).
+          <View
+            ref={headingRef}
+            accessible
+            accessibilityRole="header"
+            accessibilityLabel={t('card.trips.title')}
+            style={styles.heading}
+            testID="card-trips-heading"
+          >
+            <Text style={[styles.headingText, { color: palette.textPrimary }]}>
               {t('card.trips.title')}
             </Text>
           </View>

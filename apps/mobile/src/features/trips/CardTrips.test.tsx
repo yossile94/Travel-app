@@ -203,6 +203,10 @@ describe('CardTrips (sprint 3 AC-3, AC-5, AC-6, AC-9)', () => {
 });
 
 describe('Trips mode (fix my-trips-space)', () => {
+  /** The testID of the view focus was last sent to. */
+  const focusedId = (focus: jest.SpyInstance) =>
+    (focus.mock.calls.at(-1)![0] as { props?: { testID?: string } }).props?.testID;
+
   const sticky = () => screen.getByTestId('card-trips-list').props.stickyHeaderIndices as number[];
 
   it('in the destination view a row never opens in place: a tap enters Trips mode with it open', async () => {
@@ -287,10 +291,28 @@ describe('Trips mode (fix my-trips-space)', () => {
     mockList.upcoming = [trip({ id: 't1' }), trip({ id: 't2' })];
     await render(card());
     await fireEvent.press(screen.getByTestId('card-trip-t2'));
-    expect(focus).toHaveBeenLastCalledWith(expect.anything(), 'focus');
+    expect(focusedId(focus)).toBe('card-trip-t2');
     const entered = focus.mock.calls.length;
     await fireEvent.press(screen.getByTestId('card-trip-t2'));
     expect(focus.mock.calls.length).toBeGreaterThan(entered);
+    expect(focusedId(focus)).toBe('card-trip-t2');
+    focus.mockRestore();
+  });
+
+  it('focus: entering from "Your trips" with 2 trips lands on the header (6.2, Raz)', async () => {
+    const focus = jest
+      .spyOn(AccessibilityInfo, 'sendAccessibilityEvent')
+      .mockImplementation(() => {});
+    mockList.upcoming = [trip({ id: 't1' }), trip({ id: 't2' })];
+    await render(card());
+    await fireEvent.press(screen.getByTestId('card-trips-heading'));
+    expect(focusedId(focus)).toBe('card-trips-heading');
+    // An accessible view, which TalkBack can land on (not a plain wrapper).
+    expect(
+      (focus.mock.calls.at(-1)![0] as unknown as { props: { accessible?: boolean } }).props
+        .accessible,
+    ).toBe(true);
+    expect(screen.getByRole('header', { name: 'הנסיעות שלך' })).toBeOnTheScreen();
     focus.mockRestore();
   });
 
@@ -329,7 +351,7 @@ describe('Trips mode (fix my-trips-space)', () => {
     await rerender(coupon('ready'));
     expect(onTripsMode).toHaveBeenCalledWith(false);
     // Focus goes to "New trip" (6.2).
-    expect(focus).toHaveBeenLastCalledWith(expect.anything(), 'focus');
+    expect(focusedId(focus)).toBe('card-new-trip');
     focus.mockRestore();
     mockList.status = 'ready';
   });

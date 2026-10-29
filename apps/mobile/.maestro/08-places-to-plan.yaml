@@ -114,6 +114,13 @@ tags: [sprint-11]
         id: itinerary-screen
     commands:
       - back
+# Delete may only be below the fold: scroll to it first (a tap on the sticky
+# head would close the row).
+- scrollUntilVisible:
+    element:
+      id: card-trip-delete
+    direction: DOWN
+    optional: true
 - runFlow:
     when:
       notVisible:
@@ -121,6 +128,14 @@ tags: [sprint-11]
     commands:
       - tapOn:
           id: 'card-trip-[0-9a-f]{8}-.*'
+      - scrollUntilVisible:
+          element:
+            id: card-trip-delete
+          direction: DOWN
 - tapOn:
     id: card-trip-delete
 - tapOn: מחיקה
+# Wait for the delete before anything else: until then back leaves Trips mode.
+- extendedWaitUntil:
+    visible: הנסיעה נמחקה
+    timeout: 10000
