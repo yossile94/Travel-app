@@ -42,6 +42,20 @@ jest.mock('@react-native-community/netinfo', () =>
   jest.requireActual('@react-native-community/netinfo/jest/netinfo-mock.js'),
 );
 
+// Sprint 11: Mapbox has no native side in Jest (the hotel's map point is in
+// the kit screens). A map and a camera that draw nothing; the globe tests
+// replace it with their own.
+jest.mock('@rnmapbox/maps', () => {
+  const React = jest.requireActual<typeof import('react')>('react');
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  const MapView = ({ children }: { children?: React.ReactNode }) =>
+    React.createElement(View, { testID: 'mock-map' }, children);
+  const Camera = React.forwardRef(function Camera() {
+    return null;
+  });
+  return { MapView, Camera };
+});
+
 // Sprint 6: expo-notifications has no native side in Jest. A small stand-in
 // with the calls the app makes; tests that care override it.
 jest.mock('expo-notifications', () => ({

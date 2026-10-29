@@ -59,6 +59,15 @@ env:
 - tapOn:
     id: trip-form-save
 
+# Sprint 11 AC-2 (Raz ח8): a trip without a city asks once; this flow skips it.
+- runFlow:
+    when:
+      visible:
+        id: city-ask
+    commands:
+      - tapOn:
+          id: city-ask-skip
+
 # AC-3: saved, back on the card with the trip in it.
 - extendedWaitUntil:
     notVisible:

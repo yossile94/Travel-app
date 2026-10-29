@@ -328,6 +328,7 @@ export function CardTrips({
                 <TripKitSections
                   trip={trip}
                   readOnly={readOnly}
+                  today={today}
                   colorScheme={colorScheme}
                   onToast={onToast}
                 />

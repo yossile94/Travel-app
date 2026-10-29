@@ -218,8 +218,12 @@ export function CitiesSection({
 
 type ListState = 'loading' | 'ready' | 'error';
 
-/** Design 5.2: a full screen from the end side, the search field focused. */
-function CitySearchScreen({
+/**
+ * Design 5.2: a full screen from the end side, the search field focused.
+ * Sprint 11 (design 3.7.2):  for "עיר אחרת" — only listed
+ * cities, no "as written", and a note that the city stays on the device.
+ */
+export function CitySearchScreen({
   country,
   colorScheme,
   reduceMotion,
@@ -227,6 +231,8 @@ function CitySearchScreen({
   insetsBottom,
   onClose,
   onPick,
+  mode = 'add',
+  note,
 }: {
   country: CountryInfo;
   colorScheme: ColorScheme;
@@ -234,7 +240,10 @@ function CitySearchScreen({
   insetsTop: number;
   insetsBottom: number;
   onClose: () => void;
-  onPick: (city: TripCity) => void;
+  onPick: (city: TripCity, entry: CityEntry | null) => void;
+  mode?: 'add' | 'pick';
+  /** Under the field, in pick mode. */
+  note?: string;
 }) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
@@ -271,7 +280,8 @@ function CitySearchScreen({
   const results = useMemo(() => (index ? searchCities(index, query) : []), [index, query]);
   const typed = query.trim();
   const typedLength = codePointLength(typed);
-  const showAsWritten = typed !== '' && typedLength <= NAME_MAX && !hasExactMatch(results, typed);
+  const showAsWritten =
+    mode === 'add' && typed !== '' && typedLength <= NAME_MAX && !hasExactMatch(results, typed);
   const tooLong = typedLength > NAME_MAX;
 
   // The count, 600 ms after the last keystroke (sprint 1's search delay).
@@ -307,7 +317,7 @@ function CitySearchScreen({
   );
 
   const pick = (city: CityEntry) =>
-    onPick({ geonameId: city.id, name: displayName(city, i18n.language) });
+    onPick({ geonameId: city.id, name: displayName(city, i18n.language) }, city);
 
   const empty = listState === 'ready' && index?.length === 0;
 
@@ -358,6 +368,11 @@ function CitySearchScreen({
             />
           </View>
         </View>
+        {note ? (
+          <Text style={[styles.footnote, styles.note, { color: palette.textSecondary }]}>
+            {note}
+          </Text>
+        ) : null}
         {tooLong ? (
           <Text
             style={[styles.footnote, styles.error, { color: palette.textAlert }]}
@@ -441,7 +456,7 @@ function CitySearchScreen({
               showAsWritten ? (
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => onPick({ geonameId: null, name: typed })}
+                  onPress={() => onPick({ geonameId: null, name: typed }, null)}
                   style={({ pressed }) => [
                     styles.asWritten,
                     { borderTopColor: palette.borderSubtle },
@@ -494,6 +509,7 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   grow: { flex: 1, gap: 2 },
+  note: { paddingHorizontal: 16, paddingBottom: 8 },
   caption: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, textAlign: 'left' },
   body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, textAlign: 'left' },
   bodyStrong: { fontFamily: fonts.medium, fontSize: 16, lineHeight: 22 },

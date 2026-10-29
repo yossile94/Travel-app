@@ -46,6 +46,7 @@ export default async function PanelLayout({ children }: { children: ReactNode })
           items={[
             { href: '/countries', label: t('nav.entry'), id: 'entry' },
             { href: '/mct', label: t('nav.mct'), id: 'mct' },
+            { href: '/places', label: t('nav.places'), id: 'places' },
             ...(admin
               ? [
                   { href: '/audit', label: t('nav.audit'), id: 'audit', divider: true },

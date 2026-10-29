@@ -1,7 +1,7 @@
 /**
  * Small shared controls for the account screens (sprint 1 design 7.3–7.5).
  */
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -139,6 +139,20 @@ export function Toast({
       <Text style={styles.toast}>{text}</Text>
     </View>
   );
+}
+
+/**
+ * Sprint 11 QA B1: a toast owned by a full-screen Modal. The globe's toast is
+ * drawn under any Modal, so a screen shown as one keeps its own: `say` shows
+ * a text and `render(top)` draws it, in the screen or in an open sheet.
+ */
+export function useToast() {
+  const [toast, setToast] = useState<{ text: string; at: number } | null>(null);
+  const say = useCallback((text: string) => setToast({ text, at: Date.now() }), []);
+  const clear = useCallback(() => setToast(null), []);
+  const render = (top: number) =>
+    toast ? <Toast key={toast.at} text={toast.text} top={top} onDone={clear} /> : null;
+  return { say, render };
 }
 
 const styles = StyleSheet.create({

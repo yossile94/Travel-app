@@ -33,6 +33,8 @@ interface HotelRow {
   check_in: string;
   check_out: string;
   booking_ref: string | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 interface InsuranceRow {
@@ -54,6 +56,10 @@ export const hotelFromRow = (r: HotelRow): Hotel => ({
   checkIn: r.check_in,
   checkOut: r.check_out,
   bookingRef: r.booking_ref,
+  point:
+    r.lat !== null && r.lat !== undefined && r.lng !== null && r.lng !== undefined
+      ? [r.lng, r.lat]
+      : null,
 });
 
 export const insuranceFromRow = (r: InsuranceRow): Insurance => ({
@@ -82,7 +88,7 @@ export async function loadKit(
     supabase
       .from('hotels')
       .select(
-        'id, trip_id, name, address_en, address_local, phone, check_in, check_out, booking_ref',
+        'id, trip_id, name, address_en, address_local, phone, check_in, check_out, booking_ref, lat, lng',
       )
       .in('trip_id', ids)
       .order('check_in')

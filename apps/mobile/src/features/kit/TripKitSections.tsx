@@ -10,7 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmergencyCard, SosScreen } from '@/features/emergency/EmergencyViews';
 import type { ColorScheme } from '@/theme/tokens';
 
-import type { KitTrip } from './HotelScreen';
+import { ItinerarySection, PlacesSection } from '@/features/itinerary/KitSections';
+import type { Trip } from '@/features/trips/tripsApi';
 import { HotelsSection } from './HotelsSection';
 import { InsuranceSection } from './InsuranceSection';
 import { refreshTripKit, useTripKit } from './kitStore';
@@ -18,11 +19,14 @@ import { refreshTripKit, useTripKit } from './kitStore';
 export function TripKitSections({
   trip,
   readOnly,
+  today,
   colorScheme,
   onToast,
 }: {
-  trip: KitTrip;
+  trip: Trip;
   readOnly: boolean;
+  /** Sprint 11: today, for the itinerary section. */
+  today: string;
   colorScheme: ColorScheme;
   onToast: (text: string) => void;
 }) {
@@ -48,6 +52,21 @@ export function TripKitSections({
         insurance={kit.insurance}
         status={kit.status}
         offline={offline}
+        colorScheme={colorScheme}
+        onToast={onToast}
+      />
+      {/* Sprint 11 design 2.2: the itinerary and "what to see" after the hotels. */}
+      <ItinerarySection
+        trip={trip}
+        today={today}
+        offline={offline}
+        colorScheme={colorScheme}
+        onToast={onToast}
+      />
+      <PlacesSection
+        trip={trip}
+        today={today}
+        hasHotels={kit.hotels.length > 0}
         colorScheme={colorScheme}
         onToast={onToast}
       />

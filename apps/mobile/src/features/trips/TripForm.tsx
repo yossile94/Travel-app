@@ -56,6 +56,7 @@ import { hotelsOutside, type Hotel } from '@/features/kit/kitModel';
 import { kitsOf, refreshTripKit, tripKitNow } from '@/features/kit/kitStore';
 
 import { CitiesSection } from './CitiesSection';
+import { CityAskSheet, markAskedCity, useLargestCities, wasAskedCity } from './CityAskSheet';
 import { TravelersSection } from './TravelersSection';
 import {
   codePointLength,
@@ -82,6 +83,7 @@ import {
   type TripFormField,
   type TripFormValues,
 } from './tripFormRules';
+import { shouldAskCity } from '@/features/places/placesModel';
 import { deleteTrip, saveTrip, type Trip, type WriteResult } from './tripsApi';
 
 export type TripFormTarget =
@@ -166,7 +168,8 @@ export function TripForm({
     }
     return emptyForm();
   });
-  const [values, setValues] = useState(initial);
+  const [formValues, setValues] = useState(initial);
+  const values = formValues;
   const [submitted, setSubmitted] = useState(false);
   const [returnCleared, setReturnCleared] = useState(false);
   const [busy, setBusy] = useState<'save' | 'delete' | null>(null);
@@ -174,6 +177,9 @@ export function TripForm({
   const working = useRef(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [outsideHotels, setOutsideHotels] = useState<Hotel[]>([]);
+  // Sprint 11 AC-4 (design 2.5.2): the one question before save_trip.
+  const [askingCity, setAskingCity] = useState(false);
+  const largest = useLargestCities(target.country.adm0);
   // D-2: once the updated terms are accepted, the consent notice goes (the user saves again).
   const [authWas, setAuthWas] = useState(auth.status);
   if (authWas !== auth.status) {
@@ -264,18 +270,24 @@ export function TripForm({
     });
   };
 
-  const save = async () => {
+  const saveWith = async (withCities?: TripFormValues['cities']) => {
     if (busy || working.current) return;
     working.current = true;
     try {
-      await saveOnce();
+      await saveOnce(withCities);
     } finally {
       working.current = false;
     }
   };
+  const save = () => saveWith();
 
-  const saveOnce = async () => {
+  /**
+   * `withCities`: the cities after the city question (a pick, or the same list
+   * when skipped); then the question isn't asked again (design 2.5.2).
+   */
+  const saveOnce = async (withCities?: TripFormValues['cities']) => {
     setSubmitted(true);
+    const values = withCities ? { ...formValues, cities: withCities } : formValues;
     const found = validateTripForm(values);
     const first = firstErrorField(found);
     if (first) {
@@ -305,6 +317,19 @@ export function TripForm({
       setOutsideHotels(outside);
       setNotice('hotelsOutside');
       AccessibilityInfo.announceForAccessibility(t('tripForm.hotelsOutside'));
+      return;
+    }
+    if (
+      !withCities &&
+      largest?.length &&
+      shouldAskCity(
+        target.kind === 'new' ? 'create' : target.kind,
+        values.cities,
+        await wasAskedCity(tripId),
+        true,
+      )
+    ) {
+      setAskingCity(true);
       return;
     }
     setBusy('save');
@@ -538,6 +563,18 @@ export function TripForm({
             </Text>
           </View>
 
+          {/* Sprint 11 design 2.5.1: "which city" right after the destination. */}
+          <CitiesSection
+            country={target.country}
+            cities={values.cities}
+            onChange={(cities) => setValues((v) => ({ ...v, cities }))}
+            disabled={locked}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsTop={insetsTop}
+            insetsBottom={insetsBottom}
+          />
+
           <View style={styles.dates}>
             <View
               onLayout={(e) => (fieldY.current.startDate = e.nativeEvent.layout.y)}
@@ -605,7 +642,7 @@ export function TripForm({
             />
           </View>
 
-          {/* Sprint 5 design 13: after the name, before the cities. */}
+          {/* Sprint 5 design 13, sprint 11 2.5.1: after the name, before the travelers. */}
           <TripFormFlights
             trip={{
               id: tripId,
@@ -617,17 +654,6 @@ export function TripForm({
             }}
             saved={editing}
             onFlightSaved={onFlightSaved}
-            disabled={locked}
-            colorScheme={colorScheme}
-            reduceMotion={reduceMotion}
-            insetsTop={insetsTop}
-            insetsBottom={insetsBottom}
-          />
-
-          <CitiesSection
-            country={target.country}
-            cities={values.cities}
-            onChange={(cities) => setValues((v) => ({ ...v, cities }))}
             disabled={locked}
             colorScheme={colorScheme}
             reduceMotion={reduceMotion}
@@ -716,6 +742,30 @@ export function TripForm({
           )}
         </View>
       </KeyboardAvoidingView>
+      {askingCity && largest ? (
+        <CityAskSheet
+          country={target.country}
+          cities={largest}
+          typed={values.cities.find((c) => c.geonameId === null)?.name ?? null}
+          colorScheme={colorScheme}
+          reduceMotion={reduceMotion}
+          insetsTop={insetsTop}
+          insetsBottom={insetsBottom}
+          onClose={() => setAskingCity(false)}
+          onPick={(city) => {
+            setAskingCity(false);
+            const cities = [...values.cities, city];
+            setValues((v) => ({ ...v, cities }));
+            void markAskedCity(tripId);
+            void saveWith(cities);
+          }}
+          onSkip={() => {
+            setAskingCity(false);
+            void markAskedCity(tripId);
+            void saveWith(values.cities);
+          }}
+        />
+      ) : null}
     </Modal>
   );
 }

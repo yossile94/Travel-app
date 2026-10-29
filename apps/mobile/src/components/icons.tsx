@@ -337,6 +337,10 @@ export const BanknoteIcon = pathIcon(
 );
 /** A thermometer: the temperature tile, an average, not the weather now (12.2). */
 export const ThermometerIcon = pathIcon('M10 13.8V5a2 2 0 114 0v8.8a4 4 0 11-4 0zM12 9v6.5');
+/** A map pin: "What to see" on the country card (sprint 11, design 31.4). */
+export const MapPinIcon = pathIcon(
+  'M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21zM12 7a2.5 2.5 0 100 5 2.5 2.5 0 000-5z',
+);
 /** Bed: a hotel. */
 export const BedIcon = pathIcon(
   'M3 7v12M3 13h18v6M21 13v-2a3 3 0 00-3-3h-7v5M7 11.5a1.5 1.5 0 100-.01',

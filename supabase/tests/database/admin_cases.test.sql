@@ -3,7 +3,7 @@
 -- Sprint 10 D15: the CHECKs accept and refuse what the panel does.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(30);
 select lives_ok($$insert into public.country_advisories (adm0, entry_status, entry_note, entry_source_url, entry_verified_at, passport_validity_months) values ('Z00', 'allowed', null, 'https://www.gov.il/x', '2026-10-20', null)$$, 'entry: allowed with source and date');
 select lives_ok($$insert into public.country_advisories (adm0, entry_status, entry_note, entry_source_url, entry_verified_at, passport_validity_months) values ('Z01', null, null, null, null, null)$$, 'entry: not checked, nothing else');
 select lives_ok($$insert into public.country_advisories (adm0, entry_status, entry_note, entry_source_url, entry_verified_at, passport_validity_months) values ('Z02', null, 'old', 'https://x.example', '2026-01-01', 3)$$, 'entry: not checked keeps note and source');
@@ -22,6 +22,18 @@ select throws_ok($$insert into public.min_connection_times (iata, minutes, sourc
 select throws_ok($$insert into public.min_connection_times (iata, minutes, source_url, verified_at) values ('QAE', 361, 'https://x.example', '2026-10-01')$$, '23514', null, 'mct: 361 minutes');
 select throws_ok($$insert into public.min_connection_times (iata, minutes, source_url, verified_at) values ('FR', 60, 'https://x.example', '2026-10-01')$$, '23514', null, 'mct: two letters');
 select throws_ok($$insert into public.min_connection_times (iata, minutes, source_url, verified_at) values ('QAG', 60, 'http://x.example', '2026-10-01')$$, '23514', null, 'mct: http source');
+select lives_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', 'בית חב"ד בנגקוק', 'Chabad House Bangkok', null, 13.759, 100.497, 'https://chabadthailand.com', '2026-10-12', 'draft')$$, 'curated: a draft with everything');
+select lives_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', 'בית חב"ד בנגקוק', 'Chabad House Bangkok', 'ארוחות שבת בהרשמה מראש.', 13.759, 100.497, 'https://chabadthailand.com', '2026-10-12', 'published')$$, 'curated: published with a description');
+select lives_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', 'בית חב"ד בנגקוק', 'Chabad House Bangkok', null, 13.759, 100.497, 'https://chabadthailand.com', '2026-10-12', 'hidden')$$, 'curated: hidden');
+select lives_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', 'בית חב"ד בנגקוק', 'Chabad House Bangkok', null, -33.8688, 151.2093, 'https://chabadthailand.com', '2026-10-12', 'draft')$$, 'curated: coordinates with spaces only');
+select throws_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', '', 'Chabad House Bangkok', null, 13.759, 100.497, 'https://chabadthailand.com', '2026-10-12', 'draft')$$, '23514', null, 'curated: no Hebrew name');
+select throws_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', repeat('x', 121), 'Chabad House Bangkok', null, 13.759, 100.497, 'https://chabadthailand.com', '2026-10-12', 'draft')$$, '23514', null, 'curated: a Hebrew name of 121');
+select throws_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', 'בית חב"ד בנגקוק', '', null, 13.759, 100.497, 'https://chabadthailand.com', '2026-10-12', 'draft')$$, '23514', null, 'curated: no English name');
+select throws_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', 'בית חב"ד בנגקוק', 'Chabad House Bangkok', repeat('x', 281), 13.759, 100.497, 'https://chabadthailand.com', '2026-10-12', 'draft')$$, '23514', null, 'curated: a description of 281');
+select throws_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', 'בית חב"ד בנגקוק', 'Chabad House Bangkok', null, 91, 100, 'https://chabadthailand.com', '2026-10-12', 'draft')$$, '23514', null, 'curated: latitude 91');
+select throws_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', 'בית חב"ד בנגקוק', 'Chabad House Bangkok', null, 13, 181, 'https://chabadthailand.com', '2026-10-12', 'draft')$$, '23514', null, 'curated: longitude 181');
+select throws_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'chabad', 'בית חב"ד בנגקוק', 'Chabad House Bangkok', null, 13.759, 100.497, 'http://x.example', '2026-10-12', 'draft')$$, '23514', null, 'curated: http source');
+select throws_ok($$insert into public.curated_places (adm0, category, name_he, name_en, body, lat, lng, source_url, verified_at, status) values ('THA', 'nightlife', 'בית חב"ד בנגקוק', 'Chabad House Bangkok', null, 13.759, 100.497, 'https://chabadthailand.com', '2026-10-12', 'draft')$$, '23514', null, 'curated: a category from elsewhere');
 
 select * from finish();
 rollback;

@@ -109,6 +109,8 @@ interface Props {
   match?: ReactNode;
   /** Sprint 9 AC-12: a city chosen in search; its temperature and name replace the area's. */
   city?: { id: number; nameHe: string; nameEn: string } | null;
+  /** Sprint 11: opens "What to see" for this country. */
+  onOpenPlaces?: () => void;
 }
 
 /** The coupon's fixed parts around its list: padding, heading and "New trip" (design 2.1). */
@@ -128,6 +130,7 @@ export function BoardingPassCard({
   today = todayPg(),
   match,
   city = null,
+  onOpenPlaces,
 }: Props) {
   const { t } = useTranslation();
   const { fontScale, height: windowHeight } = useWindowDimensions();
@@ -390,6 +393,7 @@ export function BoardingPassCard({
               city={city}
               onOpenSafety={() => setSafetyFrom('tile')}
               safetyRef={safetyTileRef}
+              onOpenPlaces={onOpenPlaces}
             />
             <CardSources
               colorScheme={colorScheme}

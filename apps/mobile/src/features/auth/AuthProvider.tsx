@@ -37,6 +37,10 @@ import { requestDeletion } from '@/features/account/deleteAccountApi';
 import { resetFlightsStore } from '@/features/flights/flightsStore';
 import { wipeKitDevice } from '@/features/kit/wipe';
 import { wipePassportDevice } from '@/features/passportAlerts/passportRunner';
+import { forgetPickedCities } from '@/features/places/pickedCities';
+import { clearBoards } from '@/features/itinerary/itineraryStore';
+import { clearSaved } from '@/features/places/savedPlaces';
+import { forgetAskedCities } from '@/features/trips/CityAskSheet';
 import { pushKeysOf, unregisterDevice } from '@/features/push/push';
 import { clearTripsCaches } from '@/features/trips/tripsCache';
 import { clearStoredSessions } from '@/lib/secureSessionStorage';
@@ -200,6 +204,11 @@ async function localSignOut(): Promise<void> {
     await wipeKitDevice();
     // Sprint 10 AC-6: the passports, their keys and their notifications.
     await wipePassportDevice();
+    // Sprint 11: the saved places held in memory.
+    clearSaved();
+    clearBoards();
+    forgetPickedCities();
+    await forgetAskedCities();
   }
 }
 
@@ -285,6 +294,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await wipeKitDevice();
     // Sprint 10 AC-6: the passports, their keys and their notifications.
     await wipePassportDevice();
+    // Sprint 11: the saved places held in memory.
+    clearSaved();
+    clearBoards();
+    forgetPickedCities();
+    await forgetAskedCities();
     if (!userId) return;
     await removeLocalAgreement(userId);
     await removeLocalChoices(userId);

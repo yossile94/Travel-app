@@ -17,6 +17,8 @@ export interface Hotel {
   checkIn: string;
   checkOut: string;
   bookingRef: string | null;
+  /** Sprint 11 D9: a point picked on the map, [lng, lat]; null when none. */
+  point?: [number, number] | null;
 }
 
 export interface Insurance {

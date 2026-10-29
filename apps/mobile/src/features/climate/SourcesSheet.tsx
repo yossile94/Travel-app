@@ -98,6 +98,9 @@ export function SourcesSheet({ visible, onClose, ...sheet }: Props) {
       {credit(t('sources.airports'), 'sources-airports')}
       {credit(t('sources.cities'), 'sources-cities')}
       {credit(t('sources.climate'), 'sources-climate')}
+      {/* Sprint 11 AC-1: the places and the curated ones. */}
+      {credit(t('sources.places'), 'sources-places')}
+      {credit(t('sources.curated'), 'sources-curated')}
     </BottomSheet>
   );
 }

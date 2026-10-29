@@ -31,6 +31,8 @@ interface Props {
   onBack?: () => void;
   onClose: () => void;
   children: ReactNode;
+  /** Sprint 11 QA B1: a toast for this sheet, drawn in its Modal so it shows above it. */
+  overlay?: ReactNode;
   testID?: string;
 }
 
@@ -46,6 +48,7 @@ export function BottomSheet({
   onBack,
   onClose,
   children,
+  overlay,
   testID,
 }: Props) {
   const { t } = useTranslation();
@@ -148,6 +151,7 @@ export function BottomSheet({
         </Pressable>
         {children}
       </Animated.View>
+      {overlay}
     </Modal>
   );
 }

@@ -18,3 +18,5 @@ supabase/functions/deno.lock
 .worktrees/
 apps/admin/src/app/tokens.css
 apps/admin/.next
+# Written by next build.
+apps/admin/next-env.d.ts
