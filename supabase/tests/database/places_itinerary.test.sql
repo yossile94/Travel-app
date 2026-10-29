@@ -88,7 +88,7 @@ select col_is_pk('public', 'places', array['adm0', 'wikidata_id'],
 
 -- ---------------------------------------------------------------- places
 select pg_temp.as_anon();
-select is((select count(*)::int from public.places where adm0 = 'THA'), 1,
+select is((select count(*)::int from public.places where wikidata_id in ('Q999999901', 'Q999999902')), 1,
   'anon reads places; a hidden one is not shown');
 select is((select count(*)::int from public.places where wikidata_id = 'Q999999903'), 2,
   'D24: a shared place shows in both countries');
