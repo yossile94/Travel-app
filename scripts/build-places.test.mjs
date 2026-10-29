@@ -10,6 +10,7 @@ import {
   km,
   point,
   render,
+  resolveShared,
   selectPlaces,
   withinCap,
 } from './build-places.mjs';
@@ -102,8 +103,41 @@ describe('places (sprint 11 D10)', () => {
       ],
       'abc',
     );
-    assert.match(sql, /on conflict \(wikidata_id\) do update/);
-    assert.match(sql, /set hidden = true where not exists/);
+    assert.match(sql, /on conflict \(adm0, wikidata_id\) do update/);
+    assert.match(sql, /set hidden = true\nwhere not p\.hidden and not exists/);
     assert.match(sql, /'Ta''Prohm'/);
+    // The CLI's own transaction (Dudi 5).
+    assert.doesNotMatch(sql, /^(begin|commit);$/m);
+    assert.match(sql, /drop table places_build;/);
+  });
+
+  it('the same place twice in one country fails the build', () => {
+    const row = {
+      qid: 'Q1',
+      adm0: 'THA',
+      he: null,
+      en: 'A',
+      group: 'culture',
+      links: 1,
+      at: [100, 13],
+    };
+    assert.throws(() => render([row, row], 'x'), /twice in one country/);
+  });
+
+  it('D24: a shared place is in both countries, a disputed one in one only', () => {
+    const at = (qid, adm0, point) => ({ qid, adm0, at: point });
+    const rows = [
+      at('Q34221', 'CAN', [-79.07, 43.08]),
+      at('Q34221', 'USA', [-79.07, 43.08]),
+      at('Q1', 'ISR', [35.69, 33.25]),
+      at('Q1', 'SYR', [35.69, 33.25]),
+      at('Q2', 'RUS', [34.13, 44.43]),
+      at('Q2', 'UKR', [34.13, 44.43]),
+      at('Q3', 'CHN', [118.8, 32.05]),
+      at('Q3', 'TWN', [118.8, 32.05]),
+    ];
+    const cities = { CHN: [[118.78, 32.06]], TWN: [[121.56, 25.04]] };
+    const kept = resolveShared(rows, cities).map((r) => `${r.adm0}:${r.qid}`);
+    assert.deepEqual(kept, ['CAN:Q34221', 'USA:Q34221', 'ISR:Q1', 'UKR:Q2', 'CHN:Q3']);
   });
 });

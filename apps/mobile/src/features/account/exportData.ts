@@ -89,7 +89,10 @@ export async function buildExport(
       'dep_iata, dep_tz, arr_iata, arr_tz, dep_sched, arr_sched, dep_terminal, dep_gate, ' +
       'arr_terminal, pnr, seat, cabin, same_booking, created_at, updated_at), ' +
       // Sprint 8 (Dudi 2): hotels and insurance, booking and policy numbers included.
-      'hotels(name, address_en, address_local, phone, check_in, check_out, booking_ref, created_at, updated_at), ' +
+      'hotels(name, address_en, address_local, phone, check_in, check_out, booking_ref, lat, lng, created_at, updated_at), ' +
+      // Sprint 11 (Dudi 4): the daily plan and the saved places.
+      'itinerary_items(day_date, time_of_day, title, note, place_ref, place_name, lat, lng, source, sort_order, created_at, updated_at), ' +
+      'trip_saved_places(place_ref, name, lat, lng, created_at), ' +
       'insurance(provider, policy_number, valid_until, emergency_phone, notes, created_at, updated_at)',
     user.id,
     signal,

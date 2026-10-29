@@ -6,10 +6,13 @@
 --   trip_saved_places, itinerary_items: the user's own, owner-only, written
 --     only through the RPCs below (consent gate, limits, one transaction).
 --   hotels.lat/lng: a point picked on the map (D9); never logged.
+--
+-- Rollback (dev): drop the four tables and the seven functions below, restore
+-- save_hotel from 20261030090000_travel_kit.sql, and drop hotels.lat/lng.
 
 -- ------------------------------------------------------------------ places
 create table public.places (
-  wikidata_id text primary key constraint places_qid_check check (wikidata_id ~ '^Q[0-9]{1,12}$'),
+  wikidata_id text not null constraint places_qid_check check (wikidata_id ~ '^Q[0-9]{1,12}$'),
   adm0 text not null constraint places_adm0_check check (adm0 ~ '^[A-Z0-9]{3}$'),
   name_he text constraint places_name_he_check
     check (char_length(name_he) between 1 and 120 and public.text_is_clean(name_he)),
@@ -21,7 +24,9 @@ create table public.places (
     check (category in ('attraction', 'nature', 'culture', 'family', 'food', 'shopping')),
   popularity integer not null constraint places_popularity_check check (popularity >= 0),
   -- No longer in Wikidata's answer: hidden, kept for itinerary snapshots (D10).
-  hidden boolean not null default false
+  hidden boolean not null default false,
+  -- A place in two countries (Niagara Falls) is a row in each (Dudi, blocker 1; D24).
+  primary key (adm0, wikidata_id)
 );
 comment on table public.places is
   'Places for "What to see" (sprint 11 F-029), from Wikidata (CC0) by scripts/build-places.mjs. Read by all.';
@@ -62,8 +67,13 @@ create index curated_places_published on public.curated_places (adm0) where stat
 create index curated_places_area_status on public.curated_places (adm0, status);
 
 alter table public.curated_places enable row level security;
-create policy "anyone reads published curated places"
-  on public.curated_places for select to anon, authenticated
+-- Two policies: anon may not execute has_role, so it can't be in anon's
+-- expression even behind an "or" (Dudi, blocker 2).
+create policy "anon reads published curated places"
+  on public.curated_places for select to anon
+  using (status = 'published');
+create policy "users read published curated places, editors all"
+  on public.curated_places for select to authenticated
   using (status = 'published' or (select public.has_role('content_editor')));
 create policy "editors insert curated places"
   on public.curated_places for insert to authenticated
@@ -208,11 +218,15 @@ begin
   if v_trip.id is null then
     return 'gone';
   end if;
+  if jsonb_typeof(i) <> 'object' then
+    raise exception 'item must be an object' using errcode = '22023';
+  end if;
   begin
     v_day := (i ->> 'day')::date;
     v_time := nullif(i ->> 'time', '')::time;
+    perform (i ->> 'lat')::double precision, (i ->> 'lng')::double precision;
   exception when others then
-    raise exception 'bad day or time' using errcode = '22023';
+    raise exception 'bad day, time or point' using errcode = '22023';
   end;
   if v_day is null or v_day < v_trip.start_date or v_day > v_trip.end_date then
     return 'day';
@@ -297,7 +311,13 @@ begin
   if v_trip.id is null then
     return 'gone';
   end if;
-  if p_day < v_trip.start_date or p_day > v_trip.end_date then
+  -- Read again under the trip's lock: another device may have moved it (Dudi 6).
+  select trip_id, day_date into v_item
+  from public.itinerary_items where id = p_id and user_id = uid for update;
+  if not found or v_item.trip_id <> v_trip.id then
+    return 'gone';
+  end if;
+  if p_day is null or p_day < v_trip.start_date or p_day > v_trip.end_date then
     return 'day';
   end if;
   if p_day <> v_item.day_date
@@ -306,8 +326,8 @@ begin
   end if;
   select coalesce(array_agg(id order by sort_order, id), '{}') into v_ids
   from public.itinerary_items where trip_id = v_item.trip_id and day_date = p_day and id <> p_id;
-  v_ids := v_ids[1:greatest(0, least(p_position, cardinality(v_ids)))] || p_id
-    || v_ids[greatest(0, least(p_position, cardinality(v_ids))) + 1:];
+  v_ids := v_ids[1:greatest(0, least(coalesce(p_position, 0), cardinality(v_ids)))] || p_id
+    || v_ids[greatest(0, least(coalesce(p_position, 0), cardinality(v_ids))) + 1:];
   update public.itinerary_items t
     set day_date = p_day, sort_order = n.pos * 1024, updated_at = now()
   from unnest(v_ids) with ordinality as n(id, pos)
@@ -335,12 +355,11 @@ $$;
 revoke execute on function public.delete_itinerary_item(uuid) from public, anon;
 grant execute on function public.delete_itinerary_item(uuid) to authenticated;
 
--- D2: the planner's items go only into days that are still empty here; the
--- days skipped (another device filled them meanwhile) come back.
 -- D2 (Raz design approval 1): the planner's items go only into days that are
 -- still empty here. Each skipped day comes back with its reason:
 -- filled_meanwhile (another device added to it) or out_of_range (the trip's
--- dates changed). result: ok, gone (no such trip of yours), limit (600).
+-- dates changed). result: ok, gone (no such trip of yours), limit (600 a trip,
+-- 30 a day). Every item is checked before anything is written (Dudi 3).
 create function public.apply_auto_plan(p_trip_id uuid, p_items jsonb)
   returns jsonb
   language plpgsql
@@ -361,6 +380,32 @@ begin
   end if;
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) > 300 then
     raise exception 'items must be an array of at most 300' using errcode = '22023';
+  end if;
+  if exists (
+    select 1 from jsonb_array_elements(p_items) x
+    where jsonb_typeof(x) <> 'object' or x ->> 'day' is null
+       or jsonb_typeof(x -> 'order') is distinct from 'number'
+  ) then
+    raise exception 'each item needs a day and an order' using errcode = '22023';
+  end if;
+  begin
+    perform (x ->> 'id')::uuid, (x ->> 'day')::date, nullif(x ->> 'time', '')::time,
+      (x ->> 'lat')::double precision, (x ->> 'lng')::double precision
+    from jsonb_array_elements(p_items) x;
+  exception when others then
+    raise exception 'bad item' using errcode = '22023';
+  end;
+  if exists (
+    select 1 from jsonb_array_elements(p_items) x
+    where (x ->> 'order')::numeric not between 0 and 29
+       or (x ->> 'order')::numeric <> trunc((x ->> 'order')::numeric)
+  ) then
+    raise exception 'an order is from 0 to 29' using errcode = '22023';
+  end if;
+  if exists (
+    select 1 from jsonb_array_elements(p_items) x group by x ->> 'day' having count(*) > 30
+  ) then
+    return jsonb_build_object('result', 'limit');
   end if;
   for v_day in
     select distinct (x ->> 'day')::date from jsonb_array_elements(p_items) x order by 1
@@ -412,6 +457,14 @@ begin
   if v_trip.id is null then
     return 'gone';
   end if;
+  if jsonb_typeof(p) <> 'object' then
+    raise exception 'place must be an object' using errcode = '22023';
+  end if;
+  begin
+    perform (p ->> 'lat')::double precision, (p ->> 'lng')::double precision;
+  exception when others then
+    raise exception 'bad point' using errcode = '22023';
+  end;
   if exists (select 1 from public.trip_saved_places where trip_id = p_trip_id and place_ref = p ->> 'placeRef') then
     return 'ok';
   end if;
@@ -474,8 +527,9 @@ begin
   begin
     v_in := (h ->> 'checkIn')::date;
     v_out := (h ->> 'checkOut')::date;
+    perform (h ->> 'lat')::double precision, (h ->> 'lng')::double precision;
   exception when others then
-    raise exception 'bad date' using errcode = '22023';
+    raise exception 'bad date or point' using errcode = '22023';
   end;
 
   select start_date, end_date into v_trip
@@ -501,7 +555,10 @@ begin
     set name = excluded.name, address_en = excluded.address_en,
         address_local = excluded.address_local, phone = excluded.phone,
         check_in = excluded.check_in, check_out = excluded.check_out,
-        booking_ref = excluded.booking_ref, lat = excluded.lat, lng = excluded.lng,
+        booking_ref = excluded.booking_ref,
+        -- An older app sends no point: it keeps the one saved (Dudi 8).
+        lat = case when h ? 'lat' then excluded.lat else t.lat end,
+        lng = case when h ? 'lng' then excluded.lng else t.lng end,
         updated_at = now()
     -- A reused id never moves another user's or another trip's hotel.
     where t.user_id = uid and t.trip_id = p_trip_id;

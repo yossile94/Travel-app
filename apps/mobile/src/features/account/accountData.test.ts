@@ -111,6 +111,10 @@ describe('export (AC-14)', () => {
     expect(columns).toContain('trip_cities(');
     // Sprint 8 (Dudi 2): hotels and insurance, with their booking and policy numbers.
     expect(columns).toContain('hotels(name');
+    // Sprint 11 (Dudi 4): the plan, the saved places and the hotel's point.
+    expect(columns).toContain('itinerary_items(day_date');
+    expect(columns).toContain('trip_saved_places(place_ref');
+    expect(columns).toMatch(/booking_ref, lat, lng/);
     expect(columns).toMatch(/booking_ref/);
     expect(columns).toContain('insurance(provider, policy_number');
     expect(trips[1]!.calls).toContainEqual(['gt', 'id', 500]);
