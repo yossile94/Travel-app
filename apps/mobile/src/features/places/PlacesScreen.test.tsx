@@ -86,7 +86,24 @@ jest.mock('./savedPlaces', () => ({
   savePlace: jest.fn(async () => 'ok'),
   unsavePlace: jest.fn(async () => 'ok'),
 }));
-const mockHotels = { list: [] as { name: string; point: [number, number] | null }[] };
+const hotel = (
+  id: string,
+  name: string,
+  point: [number, number] | null,
+  checkIn = '2026-12-20',
+) => ({
+  id,
+  tripId: 'trip-1',
+  name,
+  addressEn: 'Somewhere 1',
+  addressLocal: null,
+  phone: null,
+  checkIn,
+  checkOut: '2027-01-03',
+  bookingRef: null,
+  point,
+});
+const mockHotels = { list: [] as ReturnType<typeof hotel>[] };
 jest.mock('@/features/kit/kitStore', () => ({
   useTripKit: () => ({
     hotels: mockHotels.list,
@@ -94,7 +111,10 @@ jest.mock('@/features/kit/kitStore', () => ({
     status: 'ready',
     fromCache: false,
   }),
+  refreshTripKit: jest.fn(async () => {}),
 }));
+jest.mock('@/features/kit/kitApi', () => ({ saveHotel: jest.fn(async () => 'ok') }));
+const kitApi = jest.requireMock<Record<'saveHotel', jest.Mock>>('@/features/kit/kitApi');
 const saved = jest.requireMock<Record<'savePlace' | 'unsavePlace', jest.Mock>>('./savedPlaces');
 // D20 (Raz ח9): picking a city or the hotel tab never reaches the server.
 const mockServer = { from: jest.fn(), rpc: jest.fn() };
@@ -121,7 +141,6 @@ const trip = (over: Partial<Trip> = {}): Trip => ({
 });
 
 const show = async (over: Partial<React.ComponentProps<typeof PlacesScreen>> = {}) => {
-  const onToast = jest.fn();
   await render(
     <PlacesScreen
       adm0="THA"
@@ -133,13 +152,14 @@ const show = async (over: Partial<React.ComponentProps<typeof PlacesScreen>> = {
       insetsTop={0}
       insetsBottom={0}
       onClose={jest.fn()}
-      onToast={onToast}
       {...over}
     />,
   );
   await act(async () => {});
-  return onToast;
 };
+/** QA B1: the toast is drawn inside the screen's Modal. */
+const toasted = (text: string | RegExp) =>
+  expect(screen.getByTestId('toast')).toHaveTextContent(text);
 const checked = (testID: string) => screen.getByTestId(testID).props.accessibilityState?.checked;
 
 let online = true;
@@ -235,10 +255,10 @@ describe('with a trip (design 3.1, 5.2; Raz 29.10)', () => {
   });
 
   it('saving goes to the trip and says to which', async () => {
-    const onToast = await show({ trip: trip(), signedIn: true });
+    await show({ trip: trip(), signedIn: true });
     await fireEvent.press(screen.getByTestId(`place-save-${beach.ref}`));
     expect(saved.savePlace).toHaveBeenCalledWith('trip-1', beach, 'he');
-    expect(onToast).toHaveBeenCalledWith(t('places.savedTo', { trip: 'תאילנד בדצמבר' }));
+    toasted(t('places.savedTo', { trip: 'תאילנד בדצמבר' }));
   });
 
   it('a saved place is unsaved without asking', async () => {
@@ -253,10 +273,10 @@ describe('with a trip (design 3.1, 5.2; Raz 29.10)', () => {
 
   it('offline, saving is blocked with the read-only hint', async () => {
     online = false;
-    const onToast = await show({ trip: trip(), signedIn: true });
+    await show({ trip: trip(), signedIn: true });
     await fireEvent.press(screen.getByTestId(`place-save-${beach.ref}`));
     expect(saved.savePlace).not.toHaveBeenCalled();
-    expect(onToast).toHaveBeenCalledWith(t('offline.readOnlyHint'));
+    toasted(t('offline.readOnlyHint'));
   });
 
   it('the saved tab lists every saved place of the trip', async () => {
@@ -285,6 +305,15 @@ describe('states and navigating (design 5.4, 7)', () => {
     expect(screen.getByTestId('place-wikidata')).toBeOnTheScreen();
   });
 
+  it('a Chabad or kosher place carries the fixed "check before you go" line (QA B5)', async () => {
+    await show();
+    await fireEvent.press(screen.getByTestId(`place-row-${chabad.ref}`));
+    expect(screen.getByTestId('place-kosher-note')).toHaveTextContent(t('places.kosherNote'));
+    await fireEvent.press(screen.getByTestId('place-sheet-close'));
+    await fireEvent.press(screen.getByTestId(`place-row-${palace.ref}`));
+    expect(screen.queryByTestId('place-kosher-note')).toBeNull();
+  });
+
   it('navigating opens the maps app at the coordinates, built on the device', async () => {
     const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
     await show();
@@ -302,7 +331,7 @@ describe('states and navigating (design 5.4, 7)', () => {
 
 describe('no server calls for the picker, and "add to day" from saved (D20; AC-6, Raz ח4)', () => {
   it('picking another city and the hotel tab call nothing on the server', async () => {
-    mockHotels.list = [{ name: 'Krabi Inn', point: [98.91, 8.09] }];
+    mockHotels.list = [hotel('h1', 'Krabi Inn', [98.91, 8.09])];
     await show({ trip: trip(), signedIn: true });
     await fireEvent.press(screen.getByTestId('places-city-country'));
     await fireEvent.press(screen.getByTestId(`places-city-${KRABI}`));
@@ -313,7 +342,7 @@ describe('no server calls for the picker, and "add to day" from saved (D20; AC-6
 
   it('a saved place goes to the end of the day picked, with its name and no time', async () => {
     mockSaved.places = [{ ref: 'wd:Q9', name: 'שוק', lat: 13.8, lng: 100.55, createdAt: '' }];
-    const onToast = await show({ trip: trip(), signedIn: true });
+    await show({ trip: trip(), signedIn: true });
     await fireEvent.press(screen.getByTestId('places-tab-saved'));
     await fireEvent.press(screen.getByTestId('saved-menu-wd:Q9'));
     await fireEvent.press(screen.getByTestId('add-to-day-2026-12-21'));
@@ -327,16 +356,57 @@ describe('no server calls for the picker, and "add to day" from saved (D20; AC-6
       lat: 13.8,
       lng: 100.55,
     });
-    expect(onToast).toHaveBeenCalledWith(t('places.addedToDay', { n: 2 }));
+    toasted(t('places.addedToDay', { n: 2 }));
   });
 
   it('offline, "add to day" says view only and opens nothing', async () => {
     online = false;
     mockSaved.places = [{ ref: 'wd:Q9', name: 'שוק', lat: 13.8, lng: 100.55, createdAt: '' }];
-    const onToast = await show({ trip: trip(), signedIn: true });
+    await show({ trip: trip(), signedIn: true });
     await fireEvent.press(screen.getByTestId('places-tab-saved'));
     await fireEvent.press(screen.getByTestId('saved-menu-wd:Q9'));
     expect(screen.queryByTestId('add-to-day')).toBeNull();
-    expect(onToast).toHaveBeenCalledWith(t('offline.readOnlyHint'));
+    toasted(t('offline.readOnlyHint'));
+  });
+});
+
+describe('"near the hotel" (AC-5, design 3.4; QA B4)', () => {
+  it('two hotels with a point: chips by check-in; one picked by hand is the one measured from', async () => {
+    mockHotels.list = [
+      hotel('h2', 'Krabi Inn', [98.91, 8.09], '2026-12-27'),
+      hotel('h1', 'Amari', [100.5, 13.75], '2026-12-20'),
+    ];
+    await show({ trip: trip({ cities: [] }), signedIn: true, today: '2026-12-21' });
+    await fireEvent.press(screen.getByTestId('places-city-country'));
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    expect(screen.getByTestId('places-hotel-h1').props.accessibilityState?.checked).toBe(true);
+    expect(screen.getByTestId(`place-row-${palace.ref}`)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('places-hotel-h2'));
+    expect(screen.getByTestId('places-hotel-h2').props.accessibilityState?.checked).toBe(true);
+    expect(screen.getByTestId(`place-row-${beach.ref}`)).toBeOnTheScreen();
+    expect(screen.queryByTestId(`place-row-${palace.ref}`)).toBeNull();
+  });
+
+  it('no hotel with a point: "pick on map" saves the point at once and says so', async () => {
+    mockHotels.list = [hotel('h1', 'Amari', null)];
+    await show({ trip: trip(), signedIn: true });
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    expect(screen.getByTestId('places-hotel-no-point')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
+    await fireEvent.changeText(screen.getByTestId('map-point-type'), '13.7465, 100.4927');
+    await fireEvent(screen.getByTestId('map-point-type'), 'submitEditing');
+    await fireEvent.press(screen.getByTestId('map-point-choose'));
+    await act(async () => {});
+    expect(kitApi.saveHotel).toHaveBeenCalledWith(
+      'h1',
+      'trip-1',
+      expect.objectContaining({
+        name: 'Amari',
+        lat: 13.7465,
+        lng: 100.4927,
+        checkIn: '2026-12-20',
+      }),
+    );
+    toasted(t('places.hotelPointSaved', { name: 'Amari' }));
   });
 });

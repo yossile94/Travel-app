@@ -96,7 +96,6 @@ const item = (id: string, day: string, sortOrder: number, over: Partial<Item> = 
 });
 
 const show = async (today = '2027-01-06') => {
-  const onToast = jest.fn();
   await render(
     <ItineraryScreen
       trip={trip}
@@ -106,12 +105,13 @@ const show = async (today = '2027-01-06') => {
       insetsTop={0}
       insetsBottom={0}
       onClose={jest.fn()}
-      onToast={onToast}
     />,
   );
   await act(async () => {});
-  return onToast;
 };
+/** QA B1: the toast is drawn inside the screen's Modal. */
+const toasted = (text: string | RegExp) =>
+  expect(screen.getByTestId('toast')).toHaveTextContent(text);
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -154,7 +154,7 @@ describe('the board (AC-8, design 9)', () => {
 
 describe('adding, moving (AC-9, AC-10)', () => {
   it('"+ add" opens the form for that day; saving sends one call', async () => {
-    const onToast = await show();
+    await show();
     await fireEvent.press(screen.getByTestId('day-add-2027-01-06'));
     await fireEvent.changeText(screen.getByTestId('activity-title'), "שוק צ'טוצ'ק");
     await fireEvent.press(screen.getByTestId('activity-save'));
@@ -164,7 +164,7 @@ describe('adding, moving (AC-9, AC-10)', () => {
       title: "שוק צ'טוצ'ק",
       time: null,
     });
-    expect(onToast).toHaveBeenCalledWith(t('activity.saved', { title: "שוק צ'טוצ'ק", n: 2 }));
+    toasted(t('activity.saved', { title: "שוק צ'טוצ'ק", n: 2 }));
   });
 
   it('the menu moves an item down within its day, and to another day at its end', async () => {
@@ -198,7 +198,7 @@ describe('planning automatically (AC-14 – AC-16)', () => {
       fromCache: false,
       savedAt: '',
     };
-    const onToast = await show('2026-12-01');
+    await show('2026-12-01');
     await fireEvent.press(screen.getByTestId('planner-button'));
     // Day 6 is busy; days 5 and 7 can be filled from the two Bangkok places.
     expect(screen.getByTestId('planner-preview')).toHaveTextContent(
@@ -209,7 +209,7 @@ describe('planning automatically (AC-14 – AC-16)', () => {
     const sent = store.applyPlan.mock.calls[0]![1] as { day: string }[];
     expect(sent.every((i) => i.day !== '2027-01-06')).toBe(true);
     expect(screen.getByTestId('planner-result')).toBeOnTheScreen();
-    expect(onToast).toHaveBeenCalledWith(expect.stringContaining('תכננו'));
+    toasted(/תכננו/);
   });
 });
 
@@ -221,11 +221,11 @@ describe('offline (AC-13, design 20)', () => {
       fromCache: true,
       savedAt: '2027-01-06T08:00:00Z',
     };
-    const onToast = await show();
+    await show();
     expect(screen.getByTestId('itinerary-offline')).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId('day-add-2027-01-06'));
     await fireEvent.press(screen.getByTestId('planner-button'));
-    expect(onToast).toHaveBeenCalledWith(t('offline.readOnlyHint'));
+    toasted(t('offline.readOnlyHint'));
     expect(screen.queryByTestId('activity-screen')).toBeNull();
     expect(screen.queryByTestId('planner-sheet')).toBeNull();
   });
@@ -274,7 +274,7 @@ describe('the menu (design 14.1; Raz ח6, ח7)', () => {
   it('"delete" asks with the same confirmation as the form, then deletes', async () => {
     mockBoard.state = one(false);
     const alert = jest.spyOn(Alert, 'alert');
-    const onToast = await show();
+    await show();
     await fireEvent.press(screen.getByTestId('activity-menu-a'));
     await fireEvent.press(screen.getByTestId('menu-delete'));
     expect(screen.queryByTestId('activity-screen')).toBeNull();
@@ -288,7 +288,7 @@ describe('the menu (design 14.1; Raz ח6, ח7)', () => {
     expect(
       jest.requireMock<Record<'deleteItem', jest.Mock>>('./itineraryStore').deleteItem,
     ).toHaveBeenCalledWith('trip-1', 'a');
-    expect(onToast).toHaveBeenCalledWith(t('activity.deleted'));
+    toasted(t('activity.deleted'));
     alert.mockRestore();
   });
 

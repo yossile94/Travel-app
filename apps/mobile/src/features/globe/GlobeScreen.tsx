@@ -1408,7 +1408,6 @@ export function GlobeScreen() {
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
           onClose={() => setPlacesFor(null)}
-          onToast={showTripToast}
         />
       ) : null}
 

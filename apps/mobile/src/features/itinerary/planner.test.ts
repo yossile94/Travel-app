@@ -22,6 +22,7 @@ const places = Array.from({ length: 40 }, (_, i) =>
 const base: PlannerInput = {
   start: '2027-01-05',
   end: '2027-01-12',
+  today: '2026-12-01',
   arrival: { date: '2027-01-05', time: '14:55', flightHours: 7 },
   departure: { date: '2027-01-12', time: '09:30' },
   busyDays: new Set(),
@@ -33,6 +34,19 @@ const base: PlannerInput = {
   newId: (i) => `id-${i}`,
 };
 const onDay = (r: ReturnType<typeof planTrip>, day: string) => r.items.filter((i) => i.day === day);
+
+describe('today (AC-18, QA B3)', () => {
+  it('a trip already under way: earlier days stay empty and unreported; today is planned', () => {
+    const r = planTrip({ ...base, today: '2027-01-08' });
+    expect(r.days.filter((d) => d.kind === 'past').map((d) => d.day)).toEqual([
+      '2027-01-05',
+      '2027-01-06',
+      '2027-01-07',
+    ]);
+    expect(r.items.every((i) => i.day >= '2027-01-08')).toBe(true);
+    expect(onDay(r, '2027-01-08').length).toBe(3);
+  });
+});
 
 describe('the planner (sprint 11 AC-15, the spec criterion)', () => {
   it('8 days, landing 14:55, take-off 09:30: first day ≤ 2, last day only the airport, a busy day untouched', () => {

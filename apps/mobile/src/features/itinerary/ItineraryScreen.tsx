@@ -23,7 +23,7 @@ import {
 
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/fields';
-import { InlineNotice } from '@/components/formControls';
+import { InlineNotice, useToast } from '@/components/formControls';
 import { BackIcon, MapPinIcon, PlusIcon } from '@/components/icons';
 import { useClimate } from '@/features/climate/climateData';
 import { useTripFlights } from '@/features/flights/flightsStore';
@@ -62,7 +62,6 @@ export function ItineraryScreen({
   insetsTop,
   insetsBottom,
   onClose,
-  onToast,
 }: {
   trip: Trip;
   today: string;
@@ -71,9 +70,11 @@ export function ItineraryScreen({
   insetsTop: number;
   insetsBottom: number;
   onClose: () => void;
-  onToast: (text: string) => void;
 }) {
   const { t, i18n } = useTranslation();
+  // QA B1: the board is a Modal, so its toasts are drawn inside it.
+  const toast = useToast();
+  const onToast = toast.say;
   const p = colors[colorScheme];
   const state = useBoard(trip.id);
   const flights = useTripFlights(trip.id).flights;
@@ -422,6 +423,7 @@ export function ItineraryScreen({
                 hotels: kit.hotels,
                 places: places.places,
                 pointOf: cityPoint,
+                today,
                 normals:
                   climate.status === 'ready'
                     ? (climate.climate.area(trip.countryAdm0)?.normals ?? null)
@@ -484,6 +486,7 @@ export function ItineraryScreen({
                   hotels: kit.hotels,
                   places: places.places,
                   pointOf: cityPoint,
+                  today,
                   normals: null,
                   pace,
                   language: i18n.language,
@@ -503,6 +506,7 @@ export function ItineraryScreen({
             onClose={() => setPlanning(false)}
           />
         ) : null}
+        {toast.render(insetsTop + 64)}
       </View>
     </Modal>
   );

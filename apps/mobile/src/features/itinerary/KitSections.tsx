@@ -148,7 +148,6 @@ export function ItinerarySection({
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
           onClose={() => setOpen(false)}
-          onToast={onToast}
         />
       ) : null}
     </View>
@@ -251,7 +250,6 @@ export function PlacesSection({
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
           onClose={() => setOpen(null)}
-          onToast={onToast}
         />
       ) : null}
     </View>

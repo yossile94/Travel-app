@@ -22,6 +22,8 @@ export interface PlannerPlace {
 export interface PlannerInput {
   start: string;
   end: string;
+  /** AC-18 (QA B3): today at the destination; earlier days are never planned. */
+  today: string;
   /** The outbound arrival, local to the destination; null with no flights. */
   arrival: { date: string; time: string; flightHours: number } | null;
   /** The return departure, local; null with no flights. */
@@ -57,6 +59,8 @@ export interface PlannedItem {
  * Neither counts as a day the plan will fill (the preview's count).
  */
 export type DayKind =
+  /** Already behind us at the destination (QA B3): not planned, not reported. */
+  | 'past'
   | 'busy'
   | 'inTransit'
   | 'rest'
@@ -144,6 +148,7 @@ export function planTrip(input: PlannerInput): PlanResult {
   let counter = 0;
 
   tripDays(input.start, input.end).forEach((day, index) => {
+    if (day < input.today) return days.push({ day, kind: 'past' });
     if (index >= MAX_DAYS) return days.push({ day, kind: 'beyondLimit' });
     if (input.busyDays.has(day)) return days.push({ day, kind: 'busy' });
     const { slots, airportAt, kind } = daySlots(day, input);

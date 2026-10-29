@@ -91,6 +91,7 @@ describe('the whole input (D1, D23)', () => {
       anchors: { arrival: null, departure: null },
       hotels: [],
       places: [place('wd:Q1', BKK), place('wd:Q2', CNX)],
+      today: '2026-12-01',
       pointOf,
       normals: Array.from({ length: 12 }, () => 2700),
       pace: 'calm',

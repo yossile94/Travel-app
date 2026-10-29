@@ -25,7 +25,7 @@ import {
 
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/fields';
-import { InlineNotice } from '@/components/formControls';
+import { InlineNotice, useToast } from '@/components/formControls';
 import { BackIcon, CloudOffIcon, NavigateIcon, SearchIcon } from '@/components/icons';
 import { dottedDate } from '@/features/destination/DestinationFields';
 import { isolateOwn } from '@/features/globe/BoardingPassCard';
@@ -34,7 +34,10 @@ import { dayHeading } from '@/features/itinerary/dayText';
 import { DAY_MAX } from '@/features/itinerary/itineraryModel';
 import { tripDays } from '@/features/itinerary/planner';
 import { saveItem, useBoard } from '@/features/itinerary/itineraryStore';
-import { useTripKit } from '@/features/kit/kitStore';
+import { saveHotel } from '@/features/kit/kitApi';
+import { byCheckIn, hotelPayload, type Hotel } from '@/features/kit/kitModel';
+import { refreshTripKit, useTripKit } from '@/features/kit/kitStore';
+import { MapPointPicker } from '@/features/kit/MapPointPicker';
 import { cityAreas, cityPoint } from '@/features/trips/citiesData';
 import { CitySearchScreen } from '@/features/trips/CitiesSection';
 import { entryOf, type CityEntry } from '@/features/trips/citySearch';
@@ -78,7 +81,6 @@ export interface PlacesScreenProps {
   insetsTop: number;
   insetsBottom: number;
   onClose: () => void;
-  onToast: (text: string) => void;
   /** Design 2.4: the kit's second row opens "שמורים". */
   initialTab?: 'city' | 'saved';
 }
@@ -123,10 +125,12 @@ export function PlacesScreen({
   insetsTop,
   insetsBottom,
   onClose,
-  onToast,
   initialTab = 'city',
 }: PlacesScreenProps) {
   const { t, i18n } = useTranslation();
+  // QA B1: the screen is a Modal, so its toasts are drawn here, or in the open sheet.
+  const toast = useToast();
+  const onToast = toast.say;
   const p = colors[colorScheme];
   const country = countryByAdm0(adm0);
   const area = country ? countryName(country, i18n.language) : adm0;
@@ -147,6 +151,10 @@ export function PlacesScreen({
   const [opened, setOpened] = useState<ShownPlace | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [picked, setPicked] = useState(() => pickedCity(memoryKey));
+  // AC-5 (Raz 29.10): a hotel picked by hand stays until the city changes.
+  const [manualHotel, setManualHotel] = useState<string | null>(null);
+  const [pinning, setPinning] = useState<Hotel | null>(null);
+  const [pinBusy, setPinBusy] = useState(false);
 
   const hotels = kit.hotels;
   const night = useMemo(
@@ -172,6 +180,7 @@ export function PlacesScreen({
     const next = { key, searched };
     rememberCity(memoryKey, next);
     setPicked(next);
+    setManualHotel(null);
     setShown(PAGE_SIZE);
   };
 
@@ -197,8 +206,10 @@ export function PlacesScreen({
   const cityLng = cityAt ? cityAt[0] : null;
   const cityLat = cityAt ? cityAt[1] : null;
   const typed = selected?.kind === 'typed';
+  const withPoint = byCheckIn(hotels.filter((h) => h.point));
   const hotelPoint = (() => {
-    const withPoint = hotels.filter((h) => h.point);
+    const manual = withPoint.find((h) => h.id === manualHotel);
+    if (manual) return { id: manual.id, point: manual.point!, name: manual.name };
     if (cityLng !== null && cityLat !== null) {
       // Raz 12: the hotel within 15 km of the picked city, the nearest; none
       // there, the city itself (AC-5, Raz review 10), never a far hotel.
@@ -206,11 +217,18 @@ export function PlacesScreen({
         .map((h) => ({ h, km: distanceKm([cityLng, cityLat], h.point!) }))
         .filter((x) => x.km <= CITY_RADIUS_KM)
         .sort((a, b) => a.km - b.km)[0]?.h;
-      return near ? { point: near.point!, name: near.name } : null;
+      return near ? { id: near.id, point: near.point!, name: near.name } : null;
     }
-    const first = withPoint[0];
-    return first ? { point: first.point!, name: first.name } : null;
+    // Design 3.4: the hotel of tonight, else the first by check-in.
+    const first = withPoint.find((h) => h.checkIn <= today && today < h.checkOut) ?? withPoint[0];
+    return first ? { id: first.id, point: first.point!, name: first.name } : null;
   })();
+  // Design 3.4: "pick on map" when no hotel has a point, for tonight's hotel or the first.
+  const unpinned = withPoint.length
+    ? null
+    : (byCheckIn(hotels).find((h) => h.checkIn <= today && today < h.checkOut) ??
+      byCheckIn(hotels)[0] ??
+      null);
   // AC-5 (Raz re-review 4): no city picked and no hotel point, the trip's first listed city.
   const firstTripCity = trip?.cities.find((c) => c.geonameId !== null && cityPoint(c.geonameId));
   const tripCityAt = firstTripCity ? cityPoint(firstTripCity.geonameId!) : null;
@@ -247,6 +265,30 @@ export function PlacesScreen({
     } else if (result === 'limit') onToast(t('places.savedLimit'));
     else if (result === 'offline') onToast(t('offline.readOnlyHint'));
     else onToast(t('places.saveError'));
+  };
+  // Design 3.4: the point is saved at once through save_hotel, the hotel otherwise as it is.
+  const pinHotel = async (hotel: Hotel, point: [number, number]) => {
+    if (!tripId) return;
+    setPinBusy(true);
+    const payload = {
+      ...hotelPayload({
+        name: hotel.name,
+        addressEn: hotel.addressEn,
+        addressLocal: hotel.addressLocal ?? '',
+        phone: hotel.phone ?? '',
+        checkIn: hotel.checkIn,
+        checkOut: hotel.checkOut,
+        bookingRef: hotel.bookingRef ?? '',
+      }),
+      lat: point[1],
+      lng: point[0],
+    };
+    const result = await saveHotel(hotel.id, tripId, payload);
+    if (result === 'ok') await refreshTripKit(tripId);
+    setPinBusy(false);
+    if (result === 'ok') onToast(t('places.hotelPointSaved', { name: hotel.name }));
+    else if (result === 'offline') onToast(t('offline.readOnlyHint'));
+    else onToast(t('hotel.saveError'));
   };
   const navigate = (target: { lat: number; lng: number; name: string }) =>
     void Linking.openURL(navigateUrl(target)).catch(() => onToast(t('places.saveError')));
@@ -403,6 +445,24 @@ export function PlacesScreen({
           />
         ) : (
           <>
+            {tab === 'hotel' && withPoint.length > 1 ? (
+              <ChipRow label={t('places.hotelChooser')} testID="places-hotel-chooser">
+                {withPoint.map((h) => (
+                  <Chip
+                    key={h.id}
+                    label={isolateOwn(h.name)}
+                    on={hotelPoint?.id === h.id}
+                    role="radio"
+                    colorScheme={colorScheme}
+                    onPress={() => {
+                      setManualHotel(h.id);
+                      setShown(PAGE_SIZE);
+                    }}
+                    testID={`places-hotel-${h.id}`}
+                  />
+                ))}
+              </ChipRow>
+            ) : null}
             {tab === 'hotel' ? (
               <View style={styles.pad}>
                 <Text style={[styles.flabel, { color: p.textSecondary }]}>
@@ -456,8 +516,22 @@ export function PlacesScreen({
                           )
                     }
                     colorScheme={colorScheme}
+                    testID="places-hotel-no-point"
                   />
                 )}
+                {unpinned ? (
+                  <Button
+                    kind="secondary"
+                    label={t('hotel.pointChoose')}
+                    busy={pinBusy}
+                    blocked={online === false}
+                    onPress={() =>
+                      online === false ? onToast(t('offline.readOnlyHint')) : setPinning(unpinned)
+                    }
+                    colorScheme={colorScheme}
+                    testID="places-hotel-no-point-pick"
+                  />
+                ) : null}
               </View>
             ) : null}
             <ChipRow label={t('places.catLabel')} testID="places-categories">
@@ -561,6 +635,7 @@ export function PlacesScreen({
             onSave={() => void toggleSave(opened.place)}
             onNavigate={navigate}
             onToast={onToast}
+            overlay={toast.render(insetsTop + 16)}
           />
         ) : null}
 
@@ -573,6 +648,26 @@ export function PlacesScreen({
             insetsBottom={insetsBottom}
             onClose={() => setAddingToDay(null)}
             onToast={onToast}
+            overlay={toast.render(insetsTop + 16)}
+          />
+        ) : null}
+
+        {pinning ? (
+          <MapPointPicker
+            start={
+              cityAt || tripCityAt
+                ? { point: (cityAt ?? tripCityAt)!, zoom: 13 }
+                : { point: country?.label ?? [0, 20], zoom: 6 }
+            }
+            colorScheme={colorScheme}
+            insetsTop={insetsTop}
+            insetsBottom={insetsBottom}
+            onClose={() => setPinning(null)}
+            onPick={(point) => {
+              const hotel = pinning;
+              setPinning(null);
+              void pinHotel(hotel, point);
+            }}
           />
         ) : null}
 
@@ -592,6 +687,7 @@ export function PlacesScreen({
             }}
           />
         ) : null}
+        {opened || addingToDay ? null : toast.render(insetsTop + 64)}
       </View>
     </Modal>
   );
@@ -612,6 +708,8 @@ function ChipRow({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      // QA B2: a horizontal row keeps its own height, neither stretched nor cut.
+      style={styles.chipRow}
       contentContainerStyle={styles.chips}
       accessibilityRole="radiogroup"
       accessibilityLabel={label}
@@ -781,6 +879,7 @@ function PlaceSheet({
   onSave,
   onNavigate,
   onToast,
+  overlay,
 }: {
   item: ShownPlace;
   cityLabel: string | null;
@@ -795,6 +894,7 @@ function PlaceSheet({
   onSave: () => void;
   onNavigate: (target: { lat: number; lng: number; name: string }) => void;
   onToast: (text: string) => void;
+  overlay: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const p = colors[colorScheme];
@@ -813,6 +913,7 @@ function PlaceSheet({
       insetsBottom={insetsBottom}
       onClose={onClose}
       maxHeight={640}
+      overlay={overlay}
       testID="place-sheet"
     >
       <ScrollView>
@@ -848,6 +949,15 @@ function PlaceSheet({
           <View style={styles.gap}>
             {place.curated.body ? (
               <Text style={[styles.body, { color: p.textPrimary }]}>{place.curated.body}</Text>
+            ) : null}
+            {place.category === 'kosher' || place.category === 'chabad' ? (
+              // Sprint 11 (QA B5): a fixed line under every kosher and Chabad place.
+              <Text
+                style={[styles.footnote, { color: p.textSecondary }]}
+                testID="place-kosher-note"
+              >
+                {t('places.kosherNote')}
+              </Text>
             ) : null}
             <Text style={[styles.footnote, { color: p.textSecondary }]}>
               <Text
@@ -1004,6 +1114,7 @@ function AddToDaySheet({
   insetsBottom,
   onClose,
   onToast,
+  overlay,
 }: {
   place: SavedPlace;
   trip: Trip;
@@ -1012,6 +1123,7 @@ function AddToDaySheet({
   insetsBottom: number;
   onClose: () => void;
   onToast: (text: string) => void;
+  overlay: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const p = colors[colorScheme];
@@ -1048,6 +1160,7 @@ function AddToDaySheet({
       insetsBottom={insetsBottom}
       onClose={onClose}
       maxHeight={640}
+      overlay={overlay}
       testID="add-to-day"
     >
       <Text style={[styles.title2, { color: p.textPrimary }]} accessibilityRole="header">
@@ -1239,6 +1352,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'left',
   },
+  chipRow: { flexGrow: 0, flexShrink: 0 },
   chips: { paddingHorizontal: 16, paddingVertical: 8, gap: 8, flexDirection: 'row' },
   chip: {
     minHeight: 40,
