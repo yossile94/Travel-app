@@ -210,4 +210,31 @@ describe('TripsProvider offline (sprint 4 F-015)', () => {
       true,
     );
   });
+
+  it('many past trips do not make the upcoming list look cut (Raz)', async () => {
+    jest
+      .requireMock<Record<string, jest.Mock>>('./tripsApi')
+      .loadTripPage!.mockImplementation(async ({ section }: { section: string }) =>
+        section === 'past'
+          ? {
+              ok: true,
+              value: {
+                trips: Array.from({ length: 21 }, (_, i) => ({
+                  id: `past-${i}`,
+                  countryAdm0: 'THA',
+                })),
+              },
+            }
+          : mockNext,
+      );
+    mockNext = { ok: true, value: { trips: [{ id: 'trip-1', countryAdm0: 'THA' }] } };
+    const { result } = await renderHook(() => useTrips(), { wrapper });
+    await act(async () => result.current.start());
+    await answer(0, ['THA']);
+    expect(tripsCache.saveTripsCache!.mock.calls[0]![0].full).toBe(true);
+    expect(passportRunner.passportTripsLoaded).toHaveBeenCalledWith(
+      [{ id: 'trip-1', countryAdm0: 'THA' }],
+      true,
+    );
+  });
 });

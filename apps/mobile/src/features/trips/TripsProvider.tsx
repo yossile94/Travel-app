@@ -141,7 +141,11 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       setNextTrip(saved.nextTrip);
       setFirstLoad(true);
       // Sprint 10 AC-12: offline, the passports are checked against the saved copy.
-      void passportTripsLoaded(saved.upcoming, !saved.full);
+      // "full" may be the past list's: under 50 upcoming is surely the whole list (Raz).
+      void passportTripsLoaded(
+        saved.upcoming,
+        !saved.full || saved.upcoming.length < CACHE_UPCOMING_MAX,
+      );
       return;
     }
     setCountries(result.value);
@@ -170,7 +174,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
         // Sprint 5 (Raz 6): the upcoming trips' flights join the offline copy.
         void prefetchFlights(saved.upcoming.map((trip) => trip.id));
         // Sprint 10 AC-12: a trip created or moved is checked against the passports.
-        void passportTripsLoaded(saved.upcoming, !saved.full);
+        void passportTripsLoaded(saved.upcoming, next.value.trips.length <= CACHE_UPCOMING_MAX);
         // Sprint 8: and their hotels and insurance; then reminders of trips now
         // insured, or gone from a complete list, are cancelled (design 11.3).
         const ids = saved.upcoming.map((trip) => trip.id);
