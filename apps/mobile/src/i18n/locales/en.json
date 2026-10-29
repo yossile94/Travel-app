@@ -1382,6 +1382,7 @@
     "hotelFar": "No hotel near {{city}}. Distances are from the city centre.",
     "hotelNoPoint": "Choose the hotel's location on the map to see places near it.",
     "kosherNote": "Kashrut details and hours may change. Check with the source before you go.",
+    "hotelPickFor": "Choose where {{name}} is on the map",
     "hotelChooser": "Which hotel",
     "hotelPointSaved": "Saved the location of {{name}}",
     "hotelNoPointNoCity": "Choose the hotel's location on the map to see places near it. Meanwhile, you can see places by city in the \"In the city\" tab.",

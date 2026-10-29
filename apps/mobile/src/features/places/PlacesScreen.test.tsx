@@ -96,11 +96,11 @@ const hotel = (
   tripId: 'trip-1',
   name,
   addressEn: 'Somewhere 1',
-  addressLocal: null,
-  phone: null,
+  addressLocal: null as string | null,
+  phone: null as string | null,
   checkIn,
   checkOut: '2027-01-03',
-  bookingRef: null,
+  bookingRef: null as string | null,
   point,
 });
 const mockHotels = { list: [] as ReturnType<typeof hotel>[] };
@@ -112,6 +112,10 @@ jest.mock('@/features/kit/kitStore', () => ({
     fromCache: false,
   }),
   refreshTripKit: jest.fn(async () => {}),
+}));
+const mockConsent = jest.fn(async () => true);
+jest.mock('@/features/auth/AuthProvider', () => ({
+  useAuth: () => ({ recheckConsent: mockConsent }),
 }));
 jest.mock('@/features/kit/kitApi', () => ({ saveHotel: jest.fn(async () => 'ok') }));
 const kitApi = jest.requireMock<Record<'saveHotel', jest.Mock>>('@/features/kit/kitApi');
@@ -408,5 +412,75 @@ describe('"near the hotel" (AC-5, design 3.4; QA B4)', () => {
       }),
     );
     toasted(t('places.hotelPointSaved', { name: 'Amari' }));
+  });
+
+  it('a hand-picked hotel lasts until the city changes; then the 15 km rule again', async () => {
+    mockHotels.list = [
+      hotel('h1', 'Amari', [100.5, 13.75], '2026-12-20'),
+      hotel('h2', 'Krabi Inn', [98.91, 8.09], '2026-12-27'),
+    ];
+    await show({ trip: trip({ cities: [] }), signedIn: true, today: '2026-12-21' });
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    expect(screen.getByTestId('places-hotel-h1').props.accessibilityState?.checked).toBe(true);
+    await fireEvent.press(screen.getByTestId('places-hotel-h2'));
+    expect(screen.getByTestId('places-hotel-h2').props.accessibilityState?.checked).toBe(true);
+    await fireEvent.press(screen.getByTestId(`places-city-${BANGKOK}`));
+    expect(screen.getByTestId('places-hotel-h1').props.accessibilityState?.checked).toBe(true);
+  });
+
+  it('several hotels and no point: the button names the hotel; the whole hotel is sent back', async () => {
+    mockHotels.list = [
+      {
+        ...hotel('h1', 'Amari', null, '2026-12-20'),
+        phone: '+6621234567',
+        addressLocal: 'ถนน 1',
+        bookingRef: 'AB12',
+      },
+      hotel('h2', 'Krabi Inn', null, '2026-12-27'),
+    ];
+    await show({ trip: trip(), signedIn: true, today: '2026-12-21' });
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    expect(screen.getByTestId('places-hotel-no-point-pick')).toHaveTextContent(/Amari/);
+    await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
+    await fireEvent.changeText(screen.getByTestId('map-point-type'), '13.7465, 100.4927');
+    await fireEvent(screen.getByTestId('map-point-type'), 'submitEditing');
+    await fireEvent.press(screen.getByTestId('map-point-choose'));
+    await act(async () => {});
+    expect(kitApi.saveHotel).toHaveBeenCalledWith('h1', 'trip-1', {
+      name: 'Amari',
+      addressEn: 'Somewhere 1',
+      addressLocal: 'ถนน 1',
+      phone: '+6621234567',
+      checkIn: '2026-12-20',
+      checkOut: '2027-01-03',
+      bookingRef: 'AB12',
+      lat: 13.7465,
+      lng: 100.4927,
+    });
+  });
+
+  it('an expired consent brings up the gate and retries once (Raz)', async () => {
+    mockHotels.list = [hotel('h1', 'Amari', null)];
+    kitApi.saveHotel.mockResolvedValueOnce('consent');
+    await show({ trip: trip(), signedIn: true });
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
+    await fireEvent.changeText(screen.getByTestId('map-point-type'), '13.7465, 100.4927');
+    await fireEvent(screen.getByTestId('map-point-type'), 'submitEditing');
+    await fireEvent.press(screen.getByTestId('map-point-choose'));
+    await act(async () => {});
+    expect(mockConsent).toHaveBeenCalled();
+    expect(kitApi.saveHotel).toHaveBeenCalledTimes(2);
+    toasted(t('places.hotelPointSaved', { name: 'Amari' }));
+  });
+
+  it('offline, "pick on map" opens nothing and sends nothing', async () => {
+    online = false;
+    mockHotels.list = [hotel('h1', 'Amari', null)];
+    await show({ trip: trip(), signedIn: true });
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
+    expect(screen.queryByTestId('map-point-type')).toBeNull();
+    expect(kitApi.saveHotel).not.toHaveBeenCalled();
   });
 });

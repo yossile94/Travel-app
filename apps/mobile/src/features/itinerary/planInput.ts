@@ -69,7 +69,7 @@ export function planInput(args: {
   language: string;
   airportTitle: string;
   newId: (index: number) => string;
-  /** Today at the destination (AC-18). */
+  /** Today, the device's date (AC-18). */
   today: string;
 }): PlannerInput {
   const night = nightPointFor(args.trip, args.hotels, args.pointOf);

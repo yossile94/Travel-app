@@ -27,6 +27,7 @@ import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/fields';
 import { InlineNotice, useToast } from '@/components/formControls';
 import { BackIcon, CloudOffIcon, NavigateIcon, SearchIcon } from '@/components/icons';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { dottedDate } from '@/features/destination/DestinationFields';
 import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import { countryByAdm0 } from '@/features/globe/countryData';
@@ -140,6 +141,7 @@ export function PlacesScreen({
   const tripId = signedIn ? (trip?.id ?? null) : null;
   const saved = useSaved(tripId);
   const kit = useTripKit(tripId);
+  const { recheckConsent } = useAuth();
   const memoryKey = `${adm0}:${tripId ?? '-'}`;
   const [addingToDay, setAddingToDay] = useState<SavedPlace | null>(null);
 
@@ -283,12 +285,16 @@ export function PlacesScreen({
       lat: point[1],
       lng: point[0],
     };
-    const result = await saveHotel(hotel.id, tripId, payload);
+    let result = await saveHotel(hotel.id, tripId, payload);
+    // Raz: like the hotel form, an expired consent brings up the gate, then retries once.
+    if (result === 'consent' && (await recheckConsent())) {
+      result = await saveHotel(hotel.id, tripId, payload);
+    }
     if (result === 'ok') await refreshTripKit(tripId);
     setPinBusy(false);
     if (result === 'ok') onToast(t('places.hotelPointSaved', { name: hotel.name }));
     else if (result === 'offline') onToast(t('offline.readOnlyHint'));
-    else onToast(t('hotel.saveError'));
+    else if (result !== 'consent') onToast(t('hotel.saveError'));
   };
   const navigate = (target: { lat: number; lng: number; name: string }) =>
     void Linking.openURL(navigateUrl(target)).catch(() => onToast(t('places.saveError')));
@@ -522,7 +528,12 @@ export function PlacesScreen({
                 {unpinned ? (
                   <Button
                     kind="secondary"
-                    label={t('hotel.pointChoose')}
+                    // Raz: with several hotels, the button names the one it places.
+                    label={
+                      hotels.length > 1
+                        ? t('places.hotelPickFor', { name: isolateOwn(unpinned.name) })
+                        : t('hotel.pointChoose')
+                    }
                     busy={pinBusy}
                     blocked={online === false}
                     onPress={() =>

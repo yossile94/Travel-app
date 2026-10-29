@@ -22,7 +22,7 @@ export interface PlannerPlace {
 export interface PlannerInput {
   start: string;
   end: string;
-  /** AC-18 (QA B3): today at the destination; earlier days are never planned. */
+  /** AC-18 (QA B3): earlier days are never planned. The app passes the device's date (trips.today). */
   today: string;
   /** The outbound arrival, local to the destination; null with no flights. */
   arrival: { date: string; time: string; flightHours: number } | null;
