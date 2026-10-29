@@ -33,12 +33,20 @@ tags: [sprint-0, ac-4, fix-country-card]
 - assertVisible:
     id: calculator-sheet
 - assertVisible: '.*בהט תאילנדי.*'
+# What moved from the card into the sheet: the rate, its date and its source (fix 13.4).
+- assertVisible:
+    id: money-sheet-rate
+- assertVisible: 'עודכן ב-.*'
+- assertVisible:
+    id: rate-attribution
 - back
-# The threat level only in the Safety sheet (Yossi, 29.10).
+# The threat level only in the Safety sheet (Yossi, 29.10), with its check date.
 - tapOn:
     id: card-tile-safety
 - assertVisible:
     id: travel-info-sheet
+- assertVisible: 'אזהרת מסע של המל"ל'
+- assertVisible: 'נבדק ב-.*'
 - back
 # Android back closes the card.
 - back

@@ -8,7 +8,6 @@ import { useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
-  findNodeHandle,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -62,7 +61,13 @@ export function tileLayout(
   count: number,
 ): { mode: 'tiles' | 'list'; cols: number } {
   if (fontScale >= layout.cardTilesListFromFontScale) return { mode: 'list', cols: 1 };
-  const maxCols = Math.max(1, Math.floor(width / (layout.cardTileMinWidth * fontScale)));
+  const min = layout.cardTileMinWidth;
+  const gap = layout.cardTileGap;
+  // The gaps count too: five 64-wide tiles need 352, not 320 (Raz review 1).
+  const maxCols = Math.max(
+    1,
+    Math.min(Math.floor(width / (min * fontScale)), Math.floor((width + gap) / (min + gap))),
+  );
   const rows = Math.ceil(Math.max(count, 1) / maxCols);
   return { mode: 'tiles', cols: Math.ceil(Math.max(count, 1) / rows) };
 }
@@ -105,8 +110,12 @@ export function CardTiles({
 }) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
-  const { fontScale } = useWindowDimensions();
-  const [width, setWidth] = useState(0);
+  const { fontScale, width: windowWidth } = useWindowDimensions();
+  // Until measured, the card's width less its margins and the strip's padding
+  // (12 + 12 + 16 + 16): never one column, whose height the coupon would take
+  // as the strip's (Raz review 2).
+  const [measured, setWidth] = useState(0);
+  const width = measured || Math.max(0, windowWidth - 56);
   const [open, setOpen] = useState<'time' | 'money' | 'climate' | 'emergency' | null>(null);
   const refs = {
     time: useRef<ComponentRef<typeof Pressable>>(null),
@@ -118,8 +127,8 @@ export function CardTiles({
     const from = open;
     setOpen(null);
     // Focus goes back to the tile that opened the sheet (6).
-    const node = from ? findNodeHandle(refs[from].current) : null;
-    if (node) AccessibilityInfo.setAccessibilityFocus(node);
+    const node = from ? refs[from].current : null;
+    if (node) AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
   };
 
   const now = useMinuteClock();
@@ -152,8 +161,13 @@ export function CardTiles({
   const rate = currency ? (destination.data?.rates.get(currency.code) ?? null) : null;
   const moneyLoading = !destination.data && (!destination.failed || offline === null);
   const moneyFailed = !destination.data && destination.failed && offline !== null;
+  // The same rule as the label below, so the badge is always in it (Raz review 4).
   const moneyBadge: TileBadge =
-    !rate && offline === true ? 'offline' : rate && isStale(rate.fetchedAt) ? 'stale' : null;
+    !rate && moneyFailed && offline === true
+      ? 'offline'
+      : rate && isStale(rate.fetchedAt)
+        ? 'stale'
+        : null;
 
   // Temperature: the area's point, or a city chosen in search (sprint 9 AC-12).
   const month = Number(today.slice(5, 7));
@@ -289,9 +303,9 @@ export function CardTiles({
   const { mode, cols } = tileLayout(width, fontScale, tiles.length);
   const few = tiles.length <= 2;
   const gap = layout.cardTileGap;
-  const tileWidth = few
-    ? Math.min(layout.cardTileMaxWidthFew, (width - gap * (cols - 1)) / cols)
-    : (width - gap * (cols - 1)) / cols;
+  // Whole points: rounding never pushes the last tile to a new row (Raz review 6).
+  const column = Math.floor((width - gap * (cols - 1)) / cols);
+  const tileWidth = few ? Math.min(layout.cardTileMaxWidthFew, column) : column;
   const refOf = (key: Tile['key']) => (key === 'safety' ? safetyRef : refs[key]);
 
   return (
@@ -299,7 +313,10 @@ export function CardTiles({
       <View
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
         // Not drawn until measured, so the columns never jump (5.3).
-        style={[mode === 'list' ? styles.list : styles.grid, { gap, opacity: width > 0 ? 1 : 0 }]}
+        style={[
+          mode === 'list' ? styles.list : styles.grid,
+          { gap, opacity: measured > 0 ? 1 : 0 },
+        ]}
         accessibilityValue={{ text: mode }}
         testID="card-tiles"
       >
@@ -310,6 +327,7 @@ export function CardTiles({
             list={mode === 'list'}
             width={tileWidth}
             colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
             pressRef={refOf(tile.key)}
           />
         ))}
@@ -447,12 +465,14 @@ function CardTile({
   list,
   width,
   colorScheme,
+  reduceMotion,
   pressRef,
 }: {
   tile: Tile;
   list: boolean;
   width: number;
   colorScheme: ColorScheme;
+  reduceMotion: boolean;
   pressRef: React.RefObject<ComponentRef<typeof Pressable> | null>;
 }) {
   const palette = colors[colorScheme];
@@ -509,7 +529,8 @@ function CardTile({
       style={({ pressed }) => [
         shape,
         pressed && { backgroundColor: palette.tilePressed },
-        pressed && !list && styles.pressed,
+        // Reduced motion: the colour only (fix 11).
+        pressed && !list && !reduceMotion && styles.pressed,
       ]}
       testID={testID}
     >

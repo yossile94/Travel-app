@@ -13,7 +13,6 @@
     "destination": "Destination",
     "localTime": "Local time",
     "localTimeIn": "Local time · {{city}}",
-    "currency": "Currency",
     "close": "Close",
     "code": "Country code {{code}}",
     "trips": {
@@ -34,7 +33,6 @@
       "citiesA11y": "Cities in order: {{list}}",
       "duplicate": "Duplicate"
     },
-    "rate": "Exchange rate",
     "emergency": "Emergency in {{inCountry}}",
     "emergencyHint": "Opens emergency numbers and the Israeli mission",
     "tile": {
@@ -50,9 +48,7 @@
       "moneyA11y": "Currency: {{name}}",
       "moneyIls": "Currency: {{name}}, {{symbol}}",
       "moneyLoading": "The rate is loading",
-      "updated": "Updated {{date}}",
-      "badgeStale": "May be out of date",
-      "badgeOffline": "Offline"
+      "updated": "Updated {{date}}"
     },
     "timeSheetTitle": "Local time",
     "moneySheetTitle": "Currency and exchange rate",
@@ -506,7 +502,6 @@
     "maybeStale": "May be out of date"
   },
   "calc": {
-    "title": "Currency calculator",
     "ils": "Israeli shekel · ILS",
     "usd": "US dollar · USD",
     "local": "{{name}} · {{code}}",
@@ -533,7 +528,6 @@
   "advisory": {
     "label": "Israeli NSC travel warning",
     "level": "Level {{n}} · {{word}}",
-    "levelUpTo": "Up to level {{n}} · {{word}}",
     "levelOf": "Level {{n}} of 4",
     "levelOfUpTo": "Up to level {{n}} of 4",
     "mixed": "The level varies by region",
@@ -558,7 +552,6 @@
     "checked": "Checked {{date}}",
     "firstOffline": "Travel warnings will show once you're online",
     "error": "Couldn't load the travel warning",
-    "rowA11y": "Israeli NSC travel warning: {{level}}, {{word}}",
     "rowHint": "Opens details and source",
     "sheetTitle": "Entry and travel warnings",
     "body": {

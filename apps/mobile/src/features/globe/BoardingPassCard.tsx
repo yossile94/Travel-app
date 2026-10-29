@@ -11,7 +11,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
-  findNodeHandle,
   I18nManager,
   Platform,
   Pressable,
@@ -146,8 +145,8 @@ export function BoardingPassCard({
     const from = safetyFrom;
     setSafetyFrom(null);
     // Focus goes back to whichever opened it (6).
-    const node = findNodeHandle((from === 'entry' ? entryRef : safetyTileRef).current);
-    if (node) AccessibilityInfo.setAccessibilityFocus(node);
+    const node = (from === 'entry' ? entryRef : safetyTileRef).current;
+    if (node) AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
   };
   // Design 1.2: the coupon's "shown from last save" line, when it shows, is part
   // of its fixed parts too (Raz, S4-M2).

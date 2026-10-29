@@ -2,9 +2,9 @@
 // strip's columns, the Safety tile with no threat level anywhere on the card,
 // the badges, the entry line, and which tiles show.
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
-import '@/i18n';
 import i18n from '@/i18n';
 import {
   CardEntryLine,
@@ -14,6 +14,7 @@ import {
 import type { Advisory, Destination } from '@/features/destination/destinationData';
 import type { Rate } from '@/features/destination/rateFormat';
 
+import { BoardingPassCard } from './BoardingPassCard';
 import { CardTiles, tileLayout } from './CardTiles';
 import { countryByAdm0 } from './countryData';
 
@@ -110,6 +111,9 @@ describe('the strip (AC-3, fix 5.3, 5.4)', () => {
     [355, 1.3, 5, { mode: 'tiles', cols: 3 }],
     [355, 1.3, 4, { mode: 'tiles', cols: 4 }],
     [304, 1, 5, { mode: 'tiles', cols: 3 }],
+    // An iPhone 12–16: the gaps make five 64-wide tiles too wide (Raz review 1).
+    [334, 1, 5, { mode: 'tiles', cols: 3 }],
+    [352, 1, 5, { mode: 'tiles', cols: 5 }],
     [355, 1, 6, { mode: 'tiles', cols: 3 }],
     [355, 1.6, 5, { mode: 'list', cols: 1 }],
     [355, 2, 1, { mode: 'list', cols: 1 }],
@@ -279,5 +283,57 @@ describe('the entry line (AC-1, fix 4.2)', () => {
     await line({ entryStatus: 'restricted', nscLevel: 4, nscLevels: [4] });
     expect(screen.queryByTestId('advisory-bar-4', { includeHiddenElements: true })).toBeNull();
     expect(screen.getByTestId('card-entry-line').props.accessibilityLabel).not.toMatch(/רמה/);
+  });
+});
+
+describe('focus comes back to what opened the sheet (fix 6, AC-1)', () => {
+  const card = () =>
+    render(
+      <BoardingPassCard
+        country={countryByAdm0('THA')!}
+        colorScheme="light"
+        reduceMotion
+        bottomInset={0}
+        onClose={jest.fn()}
+      />,
+    );
+
+  const focused = () => {
+    const focus = jest
+      .spyOn(AccessibilityInfo, 'sendAccessibilityEvent')
+      .mockImplementation(() => {});
+    return () => {
+      const [node, event] = focus.mock.calls.at(-1) ?? [];
+      return event === 'focus'
+        ? (node as unknown as { props?: { testID?: string } }).props?.testID
+        : undefined;
+    };
+  };
+  afterEach(() => jest.restoreAllMocks());
+
+  beforeEach(() => {
+    mockDestination.state = {
+      data: data({ advisories: new Map([['THA', advisory({ entryStatus: 'restricted' })]]) }),
+      failed: false,
+    };
+  });
+
+  it('the entry line or the Safety tile, whichever opened the sheet', async () => {
+    const last = focused();
+    await card();
+    await fireEvent.press(screen.getByTestId('card-entry-line'));
+    await fireEvent.press(screen.getByTestId('travel-info-sheet-close'));
+    expect(last()).toBe('card-entry-line');
+    await fireEvent.press(screen.getByTestId('card-tile-safety'));
+    await fireEvent.press(screen.getByTestId('travel-info-sheet-close'));
+    expect(last()).toBe('card-tile-safety');
+  });
+
+  it('a tile, when it opened its own sheet', async () => {
+    const last = focused();
+    await card();
+    await fireEvent.press(screen.getByTestId('card-tile-time'));
+    await fireEvent.press(screen.getByTestId('time-sheet-close'));
+    expect(last()).toBe('card-tile-time');
   });
 });
