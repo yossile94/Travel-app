@@ -86,10 +86,27 @@ jest.mock('./savedPlaces', () => ({
   savePlace: jest.fn(async () => 'ok'),
   unsavePlace: jest.fn(async () => 'ok'),
 }));
+const mockHotels = { list: [] as { name: string; point: [number, number] | null }[] };
 jest.mock('@/features/kit/kitStore', () => ({
-  useTripKit: () => ({ hotels: [], insurance: null, status: 'ready', fromCache: false }),
+  useTripKit: () => ({
+    hotels: mockHotels.list,
+    insurance: null,
+    status: 'ready',
+    fromCache: false,
+  }),
 }));
 const saved = jest.requireMock<Record<'savePlace' | 'unsavePlace', jest.Mock>>('./savedPlaces');
+// D20 (Raz ח9): picking a city or the hotel tab never reaches the server.
+const mockServer = { from: jest.fn(), rpc: jest.fn() };
+jest.mock('@/lib/supabase', () => ({ supabase: mockServer }));
+jest.mock('@/features/itinerary/itineraryStore', () => ({
+  useBoard: () => ({ status: 'ready', items: [], fromCache: false, savedAt: '' }),
+  saveItem: jest.fn(async () => 'ok'),
+}));
+jest.mock('expo-crypto', () => ({ randomUUID: () => 'new-item' }));
+const board = jest.requireMock<Record<'saveItem', jest.Mock>>(
+  '@/features/itinerary/itineraryStore',
+);
 
 const trip = (over: Partial<Trip> = {}): Trip => ({
   id: 'trip-1',
@@ -129,6 +146,7 @@ let online = true;
 beforeEach(() => {
   forgetPickedCities();
   online = true;
+  mockHotels.list = [];
   mockSaved.places = [];
   mockPlaces.state = {
     status: 'ready',
@@ -279,5 +297,46 @@ describe('states and navigating (design 5.4, 7)', () => {
       'geo:13.75,100.5?q=13.75,100.5(Grand%20Palace)',
     );
     open.mockRestore();
+  });
+});
+
+describe('no server calls for the picker, and "add to day" from saved (D20; AC-6, Raz ח4)', () => {
+  it('picking another city and the hotel tab call nothing on the server', async () => {
+    mockHotels.list = [{ name: 'Krabi Inn', point: [98.91, 8.09] }];
+    await show({ trip: trip(), signedIn: true });
+    await fireEvent.press(screen.getByTestId('places-city-country'));
+    await fireEvent.press(screen.getByTestId(`places-city-${KRABI}`));
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    expect(mockServer.from).not.toHaveBeenCalled();
+    expect(mockServer.rpc).not.toHaveBeenCalled();
+  });
+
+  it('a saved place goes to the end of the day picked, with its name and no time', async () => {
+    mockSaved.places = [{ ref: 'wd:Q9', name: 'שוק', lat: 13.8, lng: 100.55, createdAt: '' }];
+    const onToast = await show({ trip: trip(), signedIn: true });
+    await fireEvent.press(screen.getByTestId('places-tab-saved'));
+    await fireEvent.press(screen.getByTestId('saved-menu-wd:Q9'));
+    await fireEvent.press(screen.getByTestId('add-to-day-2026-12-21'));
+    expect(board.saveItem).toHaveBeenCalledWith('trip-1', 'new-item', {
+      day: '2026-12-21',
+      time: null,
+      title: 'שוק',
+      note: null,
+      placeRef: 'wd:Q9',
+      placeName: 'שוק',
+      lat: 13.8,
+      lng: 100.55,
+    });
+    expect(onToast).toHaveBeenCalledWith(t('places.addedToDay', { n: 2 }));
+  });
+
+  it('offline, "add to day" says view only and opens nothing', async () => {
+    online = false;
+    mockSaved.places = [{ ref: 'wd:Q9', name: 'שוק', lat: 13.8, lng: 100.55, createdAt: '' }];
+    const onToast = await show({ trip: trip(), signedIn: true });
+    await fireEvent.press(screen.getByTestId('places-tab-saved'));
+    await fireEvent.press(screen.getByTestId('saved-menu-wd:Q9'));
+    expect(screen.queryByTestId('add-to-day')).toBeNull();
+    expect(onToast).toHaveBeenCalledWith(t('offline.readOnlyHint'));
   });
 });

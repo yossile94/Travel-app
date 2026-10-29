@@ -1,0 +1,112 @@
+appId: com.travelapp.companion
+name: What to see in Bangkok, saved, added to a day, then the auto plan (sprint 11 main path)
+tags: [sprint-11]
+# Runs on the A73 only, never in CI (ADR-003), after 06-trip-lifecycle signed
+# the test account in (no clearState here: the session is kept).
+#   maestro test .maestro/08-places-to-plan.yaml
+# Precondition: signed in, consent current, no trips to Thailand and no
+# active trip; the places of Thailand are in the database (sprint 11 data).
+# The trip is dated today, so it is active: if the flow stops before its last
+# step, delete the Thailand trip by hand (Raz, R2).
+---
+- launchApp
+- openLink: travelapp://?lng=101.0732&lat=15.4597&zoom=4
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible:
+      id: country-card
+    timeout: 4000
+- tapOn:
+    id: card-new-trip
+- extendedWaitUntil:
+    visible:
+      id: trip-form
+    timeout: 5000
+- tapOn:
+    id: trip-form-start
+- tapOn: אישור
+- tapOn: אישור
+- tapOn:
+    id: trip-form-save
+
+# AC-2: no city yet, so the app asks where; Bangkok is in the largest cities.
+- extendedWaitUntil:
+    visible:
+      id: city-ask
+    timeout: 5000
+- tapOn: בנגקוק
+- extendedWaitUntil:
+    notVisible:
+      id: trip-form
+    timeout: 15000
+
+# AC-4: the card's places tile opens "What to see" in the trip's city.
+- tapOn:
+    id: card-tile-places
+- extendedWaitUntil:
+    visible:
+      id: places-screen
+    timeout: 10000
+- assertVisible: '.*בנגקוק.*'
+- extendedWaitUntil:
+    visible:
+      id: 'place-row-.*'
+    timeout: 20000
+
+# AC-6: save the first place, then add it to day 1 from "Saved".
+- tapOn:
+    id: 'place-save-.*'
+    index: 0
+- assertVisible: '.*נשמר לנסיעה.*'
+- tapOn:
+    id: places-tab-saved
+- tapOn:
+    id: 'saved-menu-.*'
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: add-to-day
+    timeout: 5000
+- tapOn:
+    id: 'add-to-day-.*'
+    index: 0
+- assertVisible: נוסף ליום 1
+- tapOn:
+    id: places-back
+
+# AC-12, AC-14: the board has the place on day 1; the auto plan fills the rest.
+- tapOn:
+    id: 'card-trip-[0-9a-f]{8}-.*'
+- scrollUntilVisible:
+    element:
+      id: kit-itinerary-open
+    direction: DOWN
+- tapOn:
+    id: kit-itinerary-open
+- extendedWaitUntil:
+    visible:
+      id: itinerary-screen
+    timeout: 10000
+- assertVisible:
+    id: 'activity-[0-9a-f]{8}-.*'
+- tapOn:
+    id: planner-button
+- tapOn:
+    id: planner-go
+- extendedWaitUntil:
+    visible:
+      id: planner-result
+    timeout: 15000
+- takeScreenshot: s11-places-to-plan
+- tapOn:
+    id: planner-result-close
+- tapOn:
+    id: itinerary-back
+
+# Clean up: delete the trip (its board and saved places go with it).
+- back
+- tapOn:
+    id: card-trip-delete
+- tapOn: מחיקה

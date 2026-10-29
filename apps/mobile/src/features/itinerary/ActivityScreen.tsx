@@ -7,6 +7,7 @@
  */
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as Crypto from 'expo-crypto';
+import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -174,24 +175,8 @@ export function ActivityScreen({
     if (!start) return;
     if (readOnly) return setNotice(t('activity.offline'));
     const inRange = start.day >= trip.startDate && start.day <= trip.endDate;
-    Alert.alert(
-      t('activity.deleteTitle'),
-      inRange
-        ? t('activity.deleteBody', { title: start.title, n: dayIndexOf(start.day) })
-        : t('activity.deleteBodyOut', { title: start.title }),
-      [
-        { text: t('activity.close'), style: 'cancel' },
-        {
-          text: t('activity.deleteConfirm'),
-          style: 'destructive',
-          onPress: () =>
-            void deleteItem(trip.id, start.id).then((r) =>
-              r === 'ok'
-                ? onDone(t('activity.deleted'), start.day)
-                : setNotice(t('activity.saveError')),
-            ),
-        },
-      ],
+    confirmDelete(t, trip.id, start, inRange ? dayIndexOf(start.day) : null, (r) =>
+      r === 'ok' ? onDone(t('activity.deleted'), start.day) : setNotice(t('activity.saveError')),
     );
   };
 
@@ -486,3 +471,30 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });
+
+/**
+ * Design 12.4 (Raz ח7): the one delete confirmation, for the form and for the
+ * board's menu. `dayIndex` null: the item is outside the trip's dates.
+ */
+export function confirmDelete(
+  t: TFunction,
+  tripId: string,
+  item: { id: string; title: string },
+  dayIndex: number | null,
+  onResult: (result: BoardWrite) => void,
+) {
+  Alert.alert(
+    t('activity.deleteTitle'),
+    dayIndex !== null
+      ? t('activity.deleteBody', { title: item.title, n: dayIndex })
+      : t('activity.deleteBodyOut', { title: item.title }),
+    [
+      { text: t('activity.close'), style: 'cancel' },
+      {
+        text: t('activity.deleteConfirm'),
+        style: 'destructive',
+        onPress: () => void deleteItem(tripId, item.id).then(onResult),
+      },
+    ],
+  );
+}

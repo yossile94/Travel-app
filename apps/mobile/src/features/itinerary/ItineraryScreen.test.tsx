@@ -262,3 +262,42 @@ describe('the form rules (design 12.2)', () => {
     alert.mockRestore();
   });
 });
+
+describe('the menu (design 14.1; Raz ח6, ח7)', () => {
+  const one = (fromCache: boolean) => ({
+    status: 'ready',
+    items: [item('a', '2027-01-06', 1, { lat: BKK[1], lng: BKK[0], placeName: 'ארמון' })],
+    fromCache,
+    savedAt: '2027-01-06T08:00:00Z',
+  });
+
+  it('"delete" asks with the same confirmation as the form, then deletes', async () => {
+    mockBoard.state = one(false);
+    const alert = jest.spyOn(Alert, 'alert');
+    const onToast = await show();
+    await fireEvent.press(screen.getByTestId('activity-menu-a'));
+    await fireEvent.press(screen.getByTestId('menu-delete'));
+    expect(screen.queryByTestId('activity-screen')).toBeNull();
+    expect(alert).toHaveBeenCalledWith(
+      t('activity.deleteTitle'),
+      t('activity.deleteBody', { title: 'a', n: 2 }),
+      expect.any(Array),
+    );
+    const buttons = alert.mock.calls[0]![2] as { style?: string; onPress?: () => void }[];
+    await act(async () => buttons.find((b) => b.style === 'destructive')!.onPress!());
+    expect(
+      jest.requireMock<Record<'deleteItem', jest.Mock>>('./itineraryStore').deleteItem,
+    ).toHaveBeenCalledWith('trip-1', 'a');
+    expect(onToast).toHaveBeenCalledWith(t('activity.deleted'));
+    alert.mockRestore();
+  });
+
+  it('from the device copy only "navigate" works', async () => {
+    mockBoard.state = one(true);
+    await show();
+    await fireEvent.press(screen.getByTestId('activity-menu-a'));
+    for (const id of ['menu-edit', 'menu-up', 'menu-down', 'menu-move', 'menu-delete'])
+      expect(screen.getByTestId(id).props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByTestId('menu-navigate').props.accessibilityState.disabled).toBe(false);
+  });
+});

@@ -39,7 +39,7 @@ import { countryByAdm0 } from '@/features/globe/countryData';
 import type { Trip } from '@/features/trips/tripsApi';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
 
-import { ActivityScreen, type ActivityTarget } from './ActivityScreen';
+import { ActivityScreen, confirmDelete, type ActivityTarget } from './ActivityScreen';
 import { dayHeading } from './dayText';
 import {
   DAY_MAX,
@@ -380,6 +380,7 @@ export function ItineraryScreen({
             item={menu.item}
             day={menu.day}
             days={board.days}
+            readOnly={readOnly}
             colorScheme={colorScheme}
             reduceMotion={reduceMotion}
             insetsBottom={insetsBottom}
@@ -394,7 +395,9 @@ export function ItineraryScreen({
             }}
             onDelete={() => {
               setMenu(null);
-              setForm({ kind: 'edit', item: menu.item });
+              confirmDelete(t, trip.id, menu.item, menu.day ? menu.day.index : null, (r) =>
+                onToast(r === 'ok' ? t('activity.deleted') : t('activity.saveError')),
+              );
             }}
           />
         ) : null}
@@ -646,6 +649,7 @@ function ActivityMenu({
   item,
   day,
   days,
+  readOnly,
   colorScheme,
   reduceMotion,
   insetsBottom,
@@ -657,6 +661,8 @@ function ActivityMenu({
   item: Item;
   day: BoardDay | null;
   days: readonly BoardDay[];
+  /** Offline (the device copy): only "navigate" works (Raz design decision 4). */
+  readOnly: boolean;
   colorScheme: ColorScheme;
   reduceMotion: boolean;
   insetsBottom: number;
@@ -703,19 +709,24 @@ function ActivityMenu({
       </Text>
       {step === 'actions' ? (
         <View>
-          {row(t('itinerary.menu.edit'), onEdit, 'menu-edit')}
+          {row(t('itinerary.menu.edit'), onEdit, 'menu-edit', readOnly)}
           {day
-            ? row(t('itinerary.menu.up'), () => onMove(day.date, at - 1), 'menu-up', at <= 0)
+            ? row(
+                t('itinerary.menu.up'),
+                () => onMove(day.date, at - 1),
+                'menu-up',
+                readOnly || at <= 0,
+              )
             : null}
           {day
             ? row(
                 t('itinerary.menu.down'),
                 () => onMove(day.date, at + 1),
                 'menu-down',
-                at >= day.items.length - 1,
+                readOnly || at >= day.items.length - 1,
               )
             : null}
-          {row(t('itinerary.menu.moveTo'), () => setStep('days'), 'menu-move')}
+          {row(t('itinerary.menu.moveTo'), () => setStep('days'), 'menu-move', readOnly)}
           {item.lat !== null && item.lng !== null
             ? row(
                 t('itinerary.menu.navigate'),
@@ -730,7 +741,7 @@ function ActivityMenu({
                 'menu-navigate',
               )
             : null}
-          {row(t('itinerary.menu.delete'), onDelete, 'menu-delete')}
+          {row(t('itinerary.menu.delete'), onDelete, 'menu-delete', readOnly)}
         </View>
       ) : (
         <ScrollView>
