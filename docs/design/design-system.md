@@ -204,6 +204,7 @@
 | `splitFlap` | 700 | Split-flap (12.3: 0.6–0.8 שנ') |
 | `flyToMin` / `flyTo` / `flyToMax` | 1200 / 1500 / 1800 | מעוף המצלמה (AC-4). קצר למדינה קרובה, ארוך לצד השני של העולם. |
 | `reduceFadeOut` / `reduceFadeIn` | 150 / 250 | המעבר שמחליף את המעוף כש"הפחתת תנועה" פעילה |
+| `cardTripsModeFade` | 100 + 100 | מעבר הכרטיס ל"מצב נסיעות" וחזרה: דהייה החוצה, החלפת הפריסה, דהייה פנימה. linear, גם בהפחתת תנועה ([`fix-my-trips-space`](fix-my-trips-space/README.md) 5) |
 
 ### 5.2 Easing
 

@@ -31,6 +31,7 @@ jest.mock('react-native-reanimated', () => {
     useAnimatedKeyboard: () => ({ height: { value: 0 }, state: { value: 0 } }),
     ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
     withTiming: jest.fn(<T>(target: T) => target),
+    useReducedMotion: () => false,
   };
 });
 

@@ -1,11 +1,19 @@
 /**
  * The coupon under the boarding pass (sprint 2 design 2): this country's
- * trips and "New trip". Rows open in place, one at a time, with the notes,
- * "Edit" and "Delete" (AC-4, AC-6). Asks the server only when the countries
+ * trips and "New trip". A row opens one at a time, with the notes, "Edit" and
+ * "Delete" (AC-4, AC-6), and only in the card's Trips mode, where the trips
+ * take the whole card (fix my-trips-space, ADR-017). Asks the server only when the countries
  * set says there are trips here, or isn't known yet (design 2.2, AC-10).
  */
 import NetInfo from '@react-native-community/netinfo';
-import { useEffect, useRef, useState, type ComponentRef, useContext } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+  type ReactElement,
+  useContext,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
@@ -19,6 +27,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { Button } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
@@ -81,6 +90,10 @@ interface Props {
   onAlertFlightShown?: () => void;
   /** A tracked flight saved: the alerts explainer may follow (sprint 6 design 2.2). */
   onTrackedFlightSaved?: () => void;
+  /** Fix my-trips-space 2.1: the card's Trips mode, as on screen. */
+  tripsMode?: boolean;
+  /** Enters (a row or the heading) or leaves (no rows left) Trips mode; GlobeScreen owns it. */
+  onTripsMode?: (on: boolean) => void;
 }
 
 export function CardTrips({
@@ -98,6 +111,8 @@ export function CardTrips({
   alertText = null,
   onAlertFlightShown,
   onTrackedFlightSaved,
+  tripsMode = false,
+  onTripsMode,
 }: Props) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
@@ -134,6 +149,18 @@ export function CardTrips({
     setAskedOpen(request);
     setOpen(initiallyOpen);
   }
+  // Fix my-trips-space 2.1: leaving Trips mode closes the open row.
+  const [wasTripsMode, setWasTripsMode] = useState(tripsMode);
+  // 6.2: focus goes to the open row on the way in, back to it on the way out.
+  const [focusTarget, setFocusTarget] = useState<{ id: string | null; n: number } | null>(null);
+  if (wasTripsMode !== tripsMode) {
+    setWasTripsMode(tripsMode);
+    setFocusTarget({ id: open, n: (focusTarget?.n ?? 0) + 1 });
+    if (!tripsMode) setOpen(null);
+  }
+  // A row opens only in Trips mode (2.2): during the fade in, nothing opens early.
+  const openId = tripsMode ? open : null;
+  const reduceMotion = useReducedMotion();
   const [deleting, setDeleting] = useState<string | null>(null);
   const [rowNotice, setRowNotice] = useState<{ id: string; text: string } | null>(null);
   const today = trips.today;
@@ -151,7 +178,16 @@ export function CardTrips({
   // The row can be laid out before the list: scroll once both are measured (Raz, S4-m15).
   const listTop = useRef<number | null>(null);
   const pendingRowY = useRef<number | null>(null);
+  const rowY = useRef(new Map<string, number>());
+  const tapScroll = useRef<string | null>(null);
+  useEffect(() => {
+    if (!tripsMode || outer || tapScroll.current === null || tapScroll.current !== open) return;
+    const y = rowY.current.get(open);
+    tapScroll.current = null;
+    if (y !== undefined) scroll.current?.scrollTo({ y, animated: !reduceMotion });
+  }, [tripsMode, open, outer, reduceMotion]);
   const onRowLayout = (id: string, y: number) => {
+    rowY.current.set(id, y);
     if (id !== initiallyOpen || scrolledTo.current === request) return;
     scrolledTo.current = request;
     // In scroll mode the card scrolls, not the list (design 1.3).
@@ -226,194 +262,319 @@ export function CardTrips({
     );
   };
 
-  const rows = (list: Trip[]) =>
-    list.map((trip) => {
-      const expanded = open === trip.id;
+  const hasRows = state.upcoming.length + state.past.length > 0;
+  const both = state.upcoming.length > 0 && state.past.length > 0;
+
+  // 2.3: no rows and no trip still on its way (loading, an error or offline
+  // with one asked for): back to the icons.
+  const waiting = initiallyOpen !== null && state.status !== 'ready' && state.status !== 'idle';
+  useEffect(() => {
+    if (tripsMode && !hasRows && !waiting) onTripsMode?.(false);
+  }, [tripsMode, hasRows, waiting, onTripsMode]);
+
+  const heads = useRef(new Map<string, ComponentRef<typeof Pressable>>());
+  const headingRef = useRef<ComponentRef<typeof Pressable>>(null);
+  useEffect(() => {
+    if (!focusTarget) return;
+    const node =
+      (focusTarget.id !== null ? heads.current.get(focusTarget.id) : undefined) ??
+      headingRef.current;
+    if (node) AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
+  }, [focusTarget]);
+
+  /** 2.2: into Trips mode, with this trip open and scrolled to the top of the list. */
+  const enterWith = (id: string | null) => {
+    setRowNotice(null);
+    setOpen(id);
+    tapScroll.current = id;
+    onTripsMode?.(true);
+  };
+
+  /** Every direct child of the list, so the sticky indices count them all (Raz b). */
+  const children: ReactElement[] = [];
+  let stickyHead = -1;
+  const rows = (list: Trip[]) => {
+    for (const trip of list) {
+      const expanded = openId === trip.id;
       const status = tripStatus(trip.startDate, trip.endDate, today);
       const active = status === 'active';
       const dates = formatRange(trip.startDate, trip.endDate, t);
       const people = travelerCount(trip.travelers);
-      return (
-        <View key={trip.id} onLayout={(e) => onRowLayout(trip.id, e.nativeEvent.layout.y)}>
-          <View
-            style={[
-              styles.rowWrap,
-              expanded && { backgroundColor: palette.openRow, borderRadius: radius.md },
+      if (expanded) stickyHead = children.length;
+      children.push(
+        <View
+          key={`head-${trip.id}`}
+          onLayout={(e) => onRowLayout(trip.id, e.nativeEvent.layout.y)}
+          style={[
+            styles.rowWrap,
+            expanded && {
+              backgroundColor: palette.openRow,
+              borderTopLeftRadius: radius.md,
+              borderTopRightRadius: radius.md,
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: palette.borderSubtle,
+            },
+          ]}
+        >
+          {active ? (
+            <View style={[styles.activeBar, { backgroundColor: palette.activeBar }]} />
+          ) : null}
+          <Pressable
+            ref={(node) => {
+              if (node) heads.current.set(trip.id, node);
+              else heads.current.delete(trip.id);
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ expanded, disabled: deleting === trip.id }}
+            accessibilityLabel={t(people >= 2 ? 'trips.rowA11yTravelers' : 'trips.rowA11yStatus', {
+              name: trip.title,
+              dates: formatRangeA11y(trip.startDate, trip.endDate, t),
+              status: t(`trips.status.${status}`),
+              n: people,
+            })}
+            accessibilityHint={tripsMode ? undefined : t('card.trips.rowOpenHint')}
+            disabled={deleting === trip.id}
+            onPress={() => {
+              // 2.2: in the destination view a row never opens in place.
+              if (!tripsMode) return enterWith(trip.id);
+              setRowNotice(null);
+              setOpen(expanded ? null : trip.id);
+            }}
+            style={({ pressed }) => [
+              styles.row,
+              pressed && !expanded && { backgroundColor: palette.pressed },
             ]}
+            testID={`card-trip-${trip.id}`}
           >
-            {active ? (
-              <View style={[styles.activeBar, { backgroundColor: palette.activeBar }]} />
-            ) : null}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ expanded, disabled: deleting === trip.id }}
-              accessibilityLabel={t(
-                people >= 2 ? 'trips.rowA11yTravelers' : 'trips.rowA11yStatus',
-                {
-                  name: trip.title,
-                  dates: formatRangeA11y(trip.startDate, trip.endDate, t),
-                  status: t(`trips.status.${status}`),
-                  n: people,
-                },
-              )}
-              disabled={deleting === trip.id}
-              onPress={() => {
-                setRowNotice(null);
-                setOpen(expanded ? null : trip.id);
-              }}
-              style={({ pressed }) => [
-                styles.row,
-                pressed && !expanded && { backgroundColor: palette.pressed },
-              ]}
-              testID={`card-trip-${trip.id}`}
-            >
-              <View style={styles.rowText}>
-                <Text
-                  style={[styles.bodyStrong, { color: palette.textPrimary }]}
-                  numberOfLines={2}
-                  maxFontSizeMultiplier={2}
-                >
-                  {trip.title}
-                </Text>
-                <Text style={[styles.footnote, styles.tabular, { color: palette.textSecondary }]}>
-                  {dates}
-                </Text>
-                <View style={styles.meta} importantForAccessibility="no-hide-descendants">
-                  <StatusTag status={status} colorScheme={colorScheme} />
-                  {people >= 2 ? (
-                    <View style={styles.people}>
-                      <PeopleIcon color={palette.textSecondary} />
-                      <Text style={[styles.footnote, { color: palette.textSecondary }]}>
-                        {t('trips.travelers', { n: people })}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-              {deleting === trip.id ? (
-                <ActivityIndicator size={20} color={palette.textTertiary} />
-              ) : (
-                <View style={expanded ? styles.flipped : undefined}>
-                  <ChevronDownIcon color={palette.textTertiary} />
-                </View>
-              )}
-            </Pressable>
-            {expanded ? (
-              <View style={styles.details}>
-                {/* Sprint 10 design 6.2: the passports first, red, orange, then the reminder. */}
-                <PassportBanners
-                  trip={trip}
-                  advisories={destination.data?.advisories}
-                  today={today}
-                  colorScheme={colorScheme}
-                  onToast={onToast}
-                />
-                {/* Sprint 4 design 8: entry and NSC warning first, not tappable. */}
-                <TripStatusLine
-                  advisory={destination.data?.advisories.get(trip.countryAdm0)}
-                  colorScheme={colorScheme}
-                />
-                {/* Sprint 5 design 9.1: flights after the status line, before the cities. */}
-                <FlightsSection
-                  trip={trip}
-                  colorScheme={colorScheme}
-                  readOnly={readOnly}
-                  onToast={onToast}
-                  openFlight={openFlight}
-                  alertText={alertText}
-                  onAlertFlightShown={onAlertFlightShown}
-                  onTrackedFlightSaved={onTrackedFlightSaved}
-                />
-                {/* Sprint 8 design 2.1: hotels, insurance and emergency after the flights. */}
-                <TripKitSections
-                  trip={trip}
-                  readOnly={readOnly}
-                  today={today}
-                  colorScheme={colorScheme}
-                  onToast={onToast}
-                />
-                {trip.cities.length > 0 ? (
-                  <View
-                    accessible
-                    accessibilityLabel={t('card.trips.citiesA11y', {
-                      list: trip.cities.map((city) => city.name).join(', '),
-                    })}
-                  >
-                    <Text style={[styles.caption, { color: palette.textSecondary }]}>
-                      {t('card.trips.cities')}
-                    </Text>
-                    <Text style={[styles.callout, { color: palette.textPrimary }]}>
-                      {trip.cities.map((city) => isolateOwn(city.name)).join(' · ')}
+            <View style={styles.rowText}>
+              <Text
+                style={[styles.bodyStrong, { color: palette.textPrimary }]}
+                numberOfLines={2}
+                maxFontSizeMultiplier={2}
+              >
+                {trip.title}
+              </Text>
+              <Text style={[styles.footnote, styles.tabular, { color: palette.textSecondary }]}>
+                {dates}
+              </Text>
+              <View style={styles.meta} importantForAccessibility="no-hide-descendants">
+                <StatusTag status={status} colorScheme={colorScheme} />
+                {people >= 2 ? (
+                  <View style={styles.people}>
+                    <PeopleIcon color={palette.textSecondary} />
+                    <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+                      {t('trips.travelers', { n: people })}
                     </Text>
                   </View>
                 ) : null}
-                <TripTemperature
-                  countryAdm0={trip.countryAdm0}
-                  startDate={trip.startDate}
-                  endDate={trip.endDate}
-                  cities={trip.cities}
-                  colorScheme={colorScheme}
-                />
-                {trip.notes ? <Notes text={trip.notes} colorScheme={colorScheme} /> : null}
-                {rowNotice?.id === trip.id ? (
-                  <InlineNotice text={rowNotice.text} colorScheme={colorScheme} />
-                ) : null}
-                {blockedAt === trip.id ? (
-                  <InlineNotice
-                    text={t('offline.readOnly')}
-                    colorScheme={colorScheme}
-                    testID="card-trip-readonly"
-                  />
-                ) : null}
-                <View style={styles.actions}>
-                  <Button
-                    kind="secondary"
-                    outlined={colorScheme === 'dark'}
-                    label={t('card.trips.edit')}
-                    icon={(color) => <PencilIcon color={color} size={20} />}
-                    disabled={deleting !== null}
-                    blocked={readOnly}
-                    onPress={guard(trip.id, () => onEditTrip(trip))}
-                    colorScheme={colorScheme}
-                    testID="card-trip-edit"
-                  />
-                  <Button
-                    kind="text"
-                    label={t('card.trips.duplicate')}
-                    icon={(color) => <CopyIcon color={color} size={20} />}
-                    disabled={deleting !== null}
-                    blocked={readOnly}
-                    onPress={guard(trip.id, () => onDuplicateTrip(trip))}
-                    colorScheme={colorScheme}
-                    testID="card-trip-duplicate"
-                  />
-                  <Button
-                    kind="text"
-                    label={t('card.trips.delete')}
-                    icon={(color) => <TrashIcon color={color} size={20} />}
-                    disabled={deleting !== null}
-                    blocked={readOnly}
-                    onPress={guard(trip.id, () => remove(trip))}
-                    colorScheme={colorScheme}
-                    testID="card-trip-delete"
-                  />
-                </View>
               </View>
-            ) : null}
-          </View>
-        </View>
+            </View>
+            {deleting === trip.id ? (
+              <ActivityIndicator size={20} color={palette.textTertiary} />
+            ) : (
+              <View style={expanded ? styles.flipped : undefined}>
+                <ChevronDownIcon color={palette.textTertiary} />
+              </View>
+            )}
+          </Pressable>
+        </View>,
       );
-    });
+      if (!expanded) continue;
+      children.push(
+        <View
+          key={`details-${trip.id}`}
+          style={[
+            styles.details,
+            {
+              backgroundColor: palette.openRow,
+              borderBottomLeftRadius: radius.md,
+              borderBottomRightRadius: radius.md,
+            },
+          ]}
+        >
+          {/* Sprint 10 design 6.2: the passports first, red, orange, then the reminder. */}
+          <PassportBanners
+            trip={trip}
+            advisories={destination.data?.advisories}
+            today={today}
+            colorScheme={colorScheme}
+            onToast={onToast}
+          />
+          {/* Sprint 4 design 8: entry and NSC warning first, not tappable. */}
+          <TripStatusLine
+            advisory={destination.data?.advisories.get(trip.countryAdm0)}
+            colorScheme={colorScheme}
+          />
+          {/* Sprint 5 design 9.1: flights after the status line, before the cities. */}
+          <FlightsSection
+            trip={trip}
+            colorScheme={colorScheme}
+            readOnly={readOnly}
+            onToast={onToast}
+            openFlight={openFlight}
+            alertText={alertText}
+            onAlertFlightShown={onAlertFlightShown}
+            onTrackedFlightSaved={onTrackedFlightSaved}
+          />
+          {/* Sprint 8 design 2.1: hotels, insurance and emergency after the flights. */}
+          <TripKitSections
+            trip={trip}
+            readOnly={readOnly}
+            today={today}
+            colorScheme={colorScheme}
+            onToast={onToast}
+          />
+          {trip.cities.length > 0 ? (
+            <View
+              accessible
+              accessibilityLabel={t('card.trips.citiesA11y', {
+                list: trip.cities.map((city) => city.name).join(', '),
+              })}
+            >
+              <Text style={[styles.caption, { color: palette.textSecondary }]}>
+                {t('card.trips.cities')}
+              </Text>
+              <Text style={[styles.callout, { color: palette.textPrimary }]}>
+                {trip.cities.map((city) => isolateOwn(city.name)).join(' · ')}
+              </Text>
+            </View>
+          ) : null}
+          <TripTemperature
+            countryAdm0={trip.countryAdm0}
+            startDate={trip.startDate}
+            endDate={trip.endDate}
+            cities={trip.cities}
+            colorScheme={colorScheme}
+          />
+          {trip.notes ? <Notes text={trip.notes} colorScheme={colorScheme} /> : null}
+          {rowNotice?.id === trip.id ? (
+            <InlineNotice text={rowNotice.text} colorScheme={colorScheme} />
+          ) : null}
+          {blockedAt === trip.id ? (
+            <InlineNotice
+              text={t('offline.readOnly')}
+              colorScheme={colorScheme}
+              testID="card-trip-readonly"
+            />
+          ) : null}
+          <View style={styles.actions}>
+            <Button
+              kind="secondary"
+              outlined={colorScheme === 'dark'}
+              label={t('card.trips.edit')}
+              icon={(color) => <PencilIcon color={color} size={20} />}
+              disabled={deleting !== null}
+              blocked={readOnly}
+              onPress={guard(trip.id, () => onEditTrip(trip))}
+              colorScheme={colorScheme}
+              testID="card-trip-edit"
+            />
+            <Button
+              kind="text"
+              label={t('card.trips.duplicate')}
+              icon={(color) => <CopyIcon color={color} size={20} />}
+              disabled={deleting !== null}
+              blocked={readOnly}
+              onPress={guard(trip.id, () => onDuplicateTrip(trip))}
+              colorScheme={colorScheme}
+              testID="card-trip-duplicate"
+            />
+            <Button
+              kind="text"
+              label={t('card.trips.delete')}
+              icon={(color) => <TrashIcon color={color} size={20} />}
+              disabled={deleting !== null}
+              blocked={readOnly}
+              onPress={guard(trip.id, () => remove(trip))}
+              colorScheme={colorScheme}
+              testID="card-trip-delete"
+            />
+          </View>
+        </View>,
+        // The next sticky child: it pushes the open head off at its trip's end (Raz b).
+        <View key={`end-${trip.id}`} style={styles.pusher} testID="card-trip-end" />,
+      );
+    }
+  };
 
-  const hasRows = state.upcoming.length + state.past.length > 0;
-  const both = state.upcoming.length > 0 && state.past.length > 0;
+  if (both) {
+    children.push(
+      <Text
+        key="upcoming"
+        style={[styles.caption, styles.section, { color: palette.textTertiary }]}
+      >
+        {t('card.trips.upcoming')}
+      </Text>,
+    );
+  }
+  rows(state.upcoming);
+  if (both) {
+    children.push(
+      <Text key="past" style={[styles.caption, styles.section, { color: palette.textTertiary }]}>
+        {t('card.trips.past')}
+      </Text>,
+    );
+  }
+  rows(state.past);
+  if (readOnly && trips.cache?.full) {
+    children.push(
+      <Text key="later" style={[styles.footnote, { color: palette.textTertiary }]}>
+        {t('offline.moreLater')}
+      </Text>,
+    );
+  }
+  if (state.loadingMore) {
+    children.push(
+      <View key="loading" style={styles.more}>
+        <ActivityIndicator size={20} color={palette.textTertiary} />
+      </View>,
+    );
+  } else if (state.moreError && !readOnly) {
+    children.push(
+      <View key="moreError" style={styles.message}>
+        <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+          {t('myTrips.moreError')}
+        </Text>
+        <Button
+          kind="text"
+          label={t('card.trips.retry')}
+          onPress={() => void loadMore()}
+          colorScheme={colorScheme}
+        />
+      </View>,
+    );
+  }
+  // 3.3: the open head and its pusher; none in scroll mode, where the card scrolls.
+  const sticky = tripsMode && !outer && stickyHead >= 0 ? [stickyHead, stickyHead + 2] : [];
 
   return (
-    <View style={styles.coupon} testID="card-trips">
+    <View style={[styles.coupon, tripsMode && styles.fill]} testID="card-trips">
       {hasRows ? (
-        <Text style={[styles.caption, { color: palette.textSecondary }]} accessibilityRole="header">
-          {t('card.trips.title')}
-        </Text>
+        // 3.2: in the destination view, the heading opens Trips mode; one trip opens with it.
+        <Pressable
+          ref={headingRef}
+          accessibilityRole={tripsMode ? 'header' : 'button'}
+          accessibilityHint={tripsMode ? undefined : t('card.trips.showAllHint')}
+          disabled={tripsMode}
+          onPress={() => {
+            const all = [...state.upcoming, ...state.past];
+            enterWith(all.length === 1 && !state.hasMore ? all[0]!.id : null);
+          }}
+          style={({ pressed }) => [
+            styles.heading,
+            pressed && !tripsMode && { backgroundColor: palette.pressed },
+          ]}
+          testID="card-trips-heading"
+        >
+          <Text style={[styles.headingText, { color: palette.textPrimary }]}>
+            {t('card.trips.title')}
+          </Text>
+          {tripsMode ? null : (
+            <View style={styles.flipped}>
+              <ChevronDownIcon color={palette.textTertiary} />
+            </View>
+          )}
+        </Pressable>
       ) : null}
       {showsCached && trips.cache ? (
         <View
@@ -466,48 +627,23 @@ export function CardTrips({
           }}
           scrollEnabled={!outer}
           style={outer ? undefined : { maxHeight: Math.max(maxListHeight, layout.tripRowMin) }}
+          stickyHeaderIndices={sticky}
+          testID="card-trips-list"
           nestedScrollEnabled
           onScroll={onScroll}
           scrollEventThrottle={100}
         >
-          {both ? (
-            <Text style={[styles.caption, styles.section, { color: palette.textTertiary }]}>
-              {t('card.trips.upcoming')}
-            </Text>
-          ) : null}
-          {rows(state.upcoming)}
-          {both ? (
-            <Text style={[styles.caption, styles.section, { color: palette.textTertiary }]}>
-              {t('card.trips.past')}
-            </Text>
-          ) : null}
-          {rows(state.past)}
-          {readOnly && trips.cache?.full ? (
-            <Text style={[styles.footnote, { color: palette.textTertiary }]}>
-              {t('offline.moreLater')}
-            </Text>
-          ) : null}
-          {state.loadingMore ? (
-            <View style={styles.more}>
-              <ActivityIndicator size={20} color={palette.textTertiary} />
-            </View>
-          ) : state.moreError && !readOnly ? (
-            <View style={styles.message}>
-              <Text style={[styles.footnote, { color: palette.textSecondary }]}>
-                {t('myTrips.moreError')}
-              </Text>
-              <Button
-                kind="text"
-                label={t('card.trips.retry')}
-                onPress={() => void loadMore()}
-                colorScheme={colorScheme}
-              />
-            </View>
-          ) : null}
+          {children}
         </ScrollView>
       ) : null}
 
-      <View style={hasRows || state.status !== 'idle' ? styles.ctaGap : undefined}>
+      <View
+        style={[
+          hasRows || state.status !== 'idle' ? styles.ctaGap : undefined,
+          // 3.3: "New trip" stays at the card's bottom in Trips mode.
+          tripsMode && styles.ctaBottom,
+        ]}
+      >
         {blockedAt === 'new' ? (
           <InlineNotice text={t('offline.readOnly')} colorScheme={colorScheme} />
         ) : null}
@@ -600,6 +736,18 @@ const styles = StyleSheet.create({
   caption: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, textAlign: 'left' },
   section: { marginTop: 8 },
   rowWrap: { overflow: 'hidden' },
+  fill: { flexGrow: 1 },
+  // Fix my-trips-space 3.2: "Your trips" is a 48dp row.
+  heading: {
+    minHeight: layout.cardTripsHeadingMin,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: radius.md,
+  },
+  headingText: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20, textAlign: 'left' },
+  pusher: { height: 0 },
+  ctaBottom: { marginTop: 'auto', paddingTop: 12 },
   activeBar: { position: 'absolute', top: 8, bottom: 8, start: 0, width: 3, borderRadius: 2 },
   row: {
     minHeight: layout.listRowMin,
