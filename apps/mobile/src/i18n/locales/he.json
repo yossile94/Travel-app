@@ -246,8 +246,8 @@
     "discardCancel": "המשך עריכה",
     "delete": "מחיקת הנסיעה",
     "charsLeft": "נשארו {{n}} תווים",
-    "cities": "ערים",
-    "citiesHint": "לפי סדר הביקור",
+    "cities": "באיזו עיר תהיו?",
+    "citiesHint": "לפי סדר הביקור. לפי העיר נציע מה לראות.",
     "addCity": "הוספת עיר",
     "cityRowA11y": "עיר {{n}} מתוך {{total}}: {{city}}",
     "cityFree": "כמו שנכתב",
@@ -270,7 +270,14 @@
     "duplicatedNoFlights": "שכפלנו את „{{name}}”. הטיסות לא הועתקו.",
     "hotelsOutside": "אי אפשר לשמור את התאריכים: המלונות האלה יהיו מחוץ לנסיעה. קודם משנים את התאריכים שלהם.",
     "hotelsOutsideField": "יש מלון מחוץ לתאריכים האלה.",
-    "hotelsOutsideRow": "{{name}} · {{range}}"
+    "hotelsOutsideRow": "{{name}} · {{range}}",
+    "askCityTitle": "באיזו עיר תהיו?",
+    "askCityBody": "כך נציע מה לראות לפי העיר. אפשר לשנות אחר כך בעריכת הנסיעה.",
+    "askCityTyped": "את {{city}} הוספתם בהקלדה, ולכן לא נוכל להציע לפיה. באיזו עיר מהרשימה תהיו?",
+    "askCityHint": "שומר את הנסיעה עם העיר הזו",
+    "askCitySearch": "חיפוש עיר אחרת",
+    "askCitySkip": "דילוג ושמירה בלי עיר",
+    "askCitySkipHint": "שומר את הנסיעה בלי עיר"
   },
   "months": {
     "1": "ינואר",

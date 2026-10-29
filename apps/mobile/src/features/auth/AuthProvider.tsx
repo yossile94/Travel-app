@@ -39,6 +39,7 @@ import { wipeKitDevice } from '@/features/kit/wipe';
 import { wipePassportDevice } from '@/features/passportAlerts/passportRunner';
 import { forgetPickedCities } from '@/features/places/pickedCities';
 import { clearSaved } from '@/features/places/savedPlaces';
+import { forgetAskedCities } from '@/features/trips/CityAskSheet';
 import { pushKeysOf, unregisterDevice } from '@/features/push/push';
 import { clearTripsCaches } from '@/features/trips/tripsCache';
 import { clearStoredSessions } from '@/lib/secureSessionStorage';
@@ -205,6 +206,7 @@ async function localSignOut(): Promise<void> {
     // Sprint 11: the saved places held in memory.
     clearSaved();
     forgetPickedCities();
+    await forgetAskedCities();
   }
 }
 
@@ -293,6 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Sprint 11: the saved places held in memory.
     clearSaved();
     forgetPickedCities();
+    await forgetAskedCities();
     if (!userId) return;
     await removeLocalAgreement(userId);
     await removeLocalChoices(userId);

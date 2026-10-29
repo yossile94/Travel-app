@@ -246,8 +246,8 @@
     "discardCancel": "Keep editing",
     "delete": "Delete trip",
     "charsLeft": "{{n}} characters left",
-    "cities": "Cities",
-    "citiesHint": "In the order you'll visit",
+    "cities": "Which city will you be in?",
+    "citiesHint": "In the order you visit. We'll suggest what to see by city.",
     "addCity": "Add a city",
     "cityRowA11y": "City {{n}} of {{total}}: {{city}}",
     "cityFree": "As written",
@@ -270,7 +270,14 @@
     "duplicatedNoFlights": "We duplicated \"{{name}}\". Flights weren't copied.",
     "hotelsOutside": "You can't save these dates: these hotels would fall outside the trip. Change their dates first.",
     "hotelsOutsideField": "A hotel falls outside these dates.",
-    "hotelsOutsideRow": "{{name}} · {{range}}"
+    "hotelsOutsideRow": "{{name}} · {{range}}",
+    "askCityTitle": "Which city will you be in?",
+    "askCityBody": "So we can suggest what to see by city. You can change it later by editing the trip.",
+    "askCityTyped": "You typed {{city}} yourself, so we can't suggest by it. Which city from the list will you be in?",
+    "askCityHint": "Saves the trip with this city",
+    "askCitySearch": "Search for another city",
+    "askCitySkip": "Skip and save without a city",
+    "askCitySkipHint": "Saves the trip without a city"
   },
   "months": {
     "1": "January",
