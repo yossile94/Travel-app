@@ -8,6 +8,10 @@
  * SecureStore's"). As in SecureStore's, only shared preferences are backed up,
  * its own excluded; the passport folder is excluded by name as well, so a
  * future "include files" can't bring it back by accident.
+ *
+ * Release builds run lint, which fails on an exclude outside every include
+ * (FullBackupContent). Here that is the point: the exclude is a guard for a
+ * future include, so the rule is ignored on that line only.
  */
 const fs = require('fs');
 const path = require('path');
@@ -18,11 +22,11 @@ const EXTRACTION = 'passport_data_extraction_rules';
 
 const rules = `  <include domain="sharedpref" path="."/>
   <exclude domain="sharedpref" path="SecureStore"/>
-  <exclude domain="file" path="passport/"/>`;
+  <exclude domain="file" path="passport/" tools:ignore="FullBackupContent"/>`;
 
 const backupXml = `<?xml version="1.0" encoding="utf-8"?>
 <!-- Auto Backup, Android 11 and lower (plugins/withPassportBackupRules.js) -->
-<full-backup-content>
+<full-backup-content xmlns:tools="http://schemas.android.com/tools">
 ${rules}
 </full-backup-content>
 `;
@@ -30,7 +34,7 @@ ${rules}
 const indent = (text) => text.replace(/^/gm, '  ');
 const extractionXml = `<?xml version="1.0" encoding="utf-8"?>
 <!-- Auto Backup and device transfer, Android 12 and higher (plugins/withPassportBackupRules.js) -->
-<data-extraction-rules>
+<data-extraction-rules xmlns:tools="http://schemas.android.com/tools">
   <cloud-backup>
 ${indent(rules)}
   </cloud-backup>
