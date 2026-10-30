@@ -29,7 +29,13 @@ const FRAMES_2 = 32;
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-const splashIcon = require('../../../assets/splash-icon.png');
+/**
+ * Design 1.1 (device check 30.10): the system splash and frame 0 show the opaque
+ * globe only, since the A73 draws no semi-transparent pixels there; the glow is
+ * its own image underneath, faded in from t=0.
+ */
+const splashGlobe = require('../../../assets/splash-icon-noglow.png');
+const splashGlow = require('../../../assets/splash-glow.png');
 
 /**
  * Raz 4: the dash starts a cap's width before the path, so frame 0 has no
@@ -73,6 +79,7 @@ export function LaunchOverlay({
   const dashOffset = useSharedValue<number>(dashHidden);
   const pinScale = useSharedValue(0);
   const pinOpacity = useSharedValue(0);
+  const glowOpacity = useSharedValue(0);
 
   const hidden = useRef(false);
   const frame = useRef<number | undefined>(undefined);
@@ -129,11 +136,33 @@ export function LaunchOverlay({
     });
   }, [reduceMotion, originOpacity, dashOffset, pinScale, pinOpacity]);
 
+  // The glow fades in from t=0, once its own image is there too (Raz): a glow that
+  // loads late still fades in, never pops. A change of opacity in place, so it runs
+  // with reduced motion and from an alert as well (design 1.5).
+  const glowLoaded = useRef(false);
+  const glowStarted = useRef(false);
+  const startGlow = useCallback(() => {
+    if (glowStarted.current || !glowLoaded.current || !hidden.current) return;
+    glowStarted.current = true;
+    glowOpacity.set(
+      withTiming(1, {
+        duration: motion.launchGlow,
+        easing: Easing.bezier(...easing.standard),
+        reduceMotion: ReduceMotion.Never,
+      }),
+    );
+  }, [glowOpacity]);
+  const onGlowLoad = useCallback(() => {
+    glowLoaded.current = true;
+    startGlow();
+  }, [startGlow]);
+
   const hide = useCallback(() => {
     if (hidden.current) return;
     hidden.current = true;
     SplashScreen.hide();
-  }, []);
+    startGlow();
+  }, [startGlow]);
 
   // The route plays over the globe only: never before the image is drawn, even when
   // the fallback hid the system splash first (device check 30.10: a slow image).
@@ -170,6 +199,7 @@ export function LaunchOverlay({
   }, []);
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glowOpacity.value }));
   const originProps = useAnimatedProps(() => ({ opacity: originOpacity.value }));
   const routeProps = useAnimatedProps(() => ({ strokeDashoffset: dashOffset.value }));
   const underlayProps = useAnimatedProps(() => ({ strokeDashoffset: dashOffset.value }));
@@ -187,9 +217,12 @@ export function LaunchOverlay({
       accessibilityElementsHidden
     >
       <View style={styles.frame}>
+        <Animated.View testID="launch-glow" style={[StyleSheet.absoluteFill, glowStyle]}>
+          <Image source={splashGlow} style={styles.frame} onLoad={onGlowLoad} fadeDuration={0} />
+        </Animated.View>
         <Image
           testID="launch-icon"
-          source={splashIcon}
+          source={splashGlobe}
           style={styles.frame}
           onLoad={onImageLoad}
           fadeDuration={0}

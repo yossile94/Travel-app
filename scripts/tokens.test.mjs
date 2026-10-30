@@ -268,6 +268,7 @@ describe('design tokens in the app', () => {
       ['launchRoute', 'motion.launch.routeDuration'],
       ['launchPinDelay', 'motion.launch.pinDelay'],
       ['launchPin', 'motion.launch.pinDuration'],
+      ['launchGlow', 'motion.launch.glowDuration'],
       ['launchCap', 'timing.launch.cap'],
       ['launchHideFallback', 'timing.launch.hideFallback'],
     ]) {

@@ -273,6 +273,8 @@ export const motion = {
   launchRoute: 900,
   launchPinDelay: 1000,
   launchPin: 350,
+  /** Design 1.3 (device check 30.10): the glow fades in from t=0. */
+  launchGlow: 400,
 } as const;
 
 /** Cubic-bezier control points (design-system 5.2), for Easing.bezier(...points). */
@@ -303,7 +305,7 @@ export const timing = {
 
 /**
  * Sprint 12 design 1.2, 4: the launch overlay. Every size except iconFrame and
- * iconCircle is in viewBox units, the pixels of splash-icon.png.
+ * iconCircle is in viewBox units, the pixels of the splash art (1024).
  */
 export const launch = {
   background: '#060B18',

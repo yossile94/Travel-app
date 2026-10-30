@@ -948,6 +948,23 @@ describe('GlobeScreen', () => {
       expect(sent()).toContain('error');
     });
 
+    it('an alert answered while the globe still loads lifts the overlay first (Dana B-1)', async () => {
+      mockMap.loads = false;
+      mockAuth.state = { status: 'signedOut' };
+      (Notifications.getLastNotificationResponse as jest.Mock).mockReturnValue({
+        notification: {
+          request: {
+            identifier: 'b1',
+            content: { title: '', body: '', data: { v: 1, type: 'flight_change', flightId: 'f1' } },
+          },
+        },
+      });
+      await render(<GlobeScreen />);
+      await act(async () => {});
+      // Signed out: the "not here" toast, which must not sit under the overlay.
+      expect(sent()).toEqual(['ready']);
+    });
+
     it('sends error at mount without a Mapbox token (design 1.4)', async () => {
       mockHasToken = false;
       await render(<GlobeScreen />);

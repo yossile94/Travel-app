@@ -34,7 +34,8 @@ describe('the app icon files (sprint 12 F-033)', () => {
       ['android-icon-foreground.png', 512],
       ['android-icon-background.png', 512],
       ['android-icon-monochrome.png', 432],
-      ['splash-icon.png', 1024],
+      ['splash-icon-noglow.png', 1024],
+      ['splash-glow.png', 1024],
     ]) {
       const { width, height } = header(file);
       assert.deepEqual([width, height], [size, size], file);
