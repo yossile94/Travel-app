@@ -144,12 +144,19 @@ export function LaunchOverlay({
     if (hidden.current) return;
     hidden.current = true;
     SplashScreen.hide();
-    play();
-  }, [play]);
+  }, []);
 
+  // The route plays over the globe only: never before the image is drawn, even when
+  // the fallback hid the system splash first (device check 30.10: a slow image).
+  const played = useRef(false);
   const onImageLoad = useCallback(() => {
-    frame.current = requestAnimationFrame(hide);
-  }, [hide]);
+    frame.current = requestAnimationFrame(() => {
+      hide();
+      if (played.current) return;
+      played.current = true;
+      play();
+    });
+  }, [hide, play]);
 
   useEffect(() => {
     launchShown.mark();

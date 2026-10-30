@@ -86,8 +86,11 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
     await mount();
     await act(async () => jest.advanceTimersByTime(timing.launchHideFallback));
     expect(hide).toHaveBeenCalledTimes(1);
+    // No route over an empty frame: it waits for the globe (device check 30.10).
+    expect(routeDrawn()).toBe(false);
     await imageDrawn();
     expect(hide).toHaveBeenCalledTimes(1);
+    expect(routeDrawn()).toBe(true);
   });
 
   it('fades when the globe is ready, and leaves after motion.short (AC-5ג)', async () => {
