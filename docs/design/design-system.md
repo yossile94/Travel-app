@@ -264,7 +264,7 @@
 |---|---|---|
 | `launch.background` | `#060B18` | רקע מסך המערכת, השכבה ושורש האפליקציה, בבהיר ובכהה |
 | `launch.iconFrame` / `iconCircle` | 288 / 192 dp | Android 12 ומעלה, בלי רקע לאייקון (נקבע ב-30.10). גם `imageWidth` של iOS |
-| `launch.viewBox` | 1024 | הגדלים שלמטה ביחידות viewBox, כלומר בפיקסלים של `splash-icon.png` |
+| `launch.viewBox` | 1024 | הגדלים שלמטה ביחידות viewBox, כלומר בפיקסלים של ציור הפתיחה (1024; `splash-icon-noglow.png` ו-`splash-glow.png`) |
 | `launch.route` / `launch.pin` | `#FF7A57` | = `highlightColor` |
 | `launch.routeUnderlay` / `routeUnderlayOpacity` | `#03060F` / 0.6 | הקו הכהה מתחת למסלול ומסביב לפין |
 | `launch.originColor` / `pinDotColor` | `#F3F6FC` | |

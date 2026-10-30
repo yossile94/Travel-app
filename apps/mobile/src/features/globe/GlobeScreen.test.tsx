@@ -965,6 +965,26 @@ describe('GlobeScreen', () => {
       expect(sent()).toEqual(['ready']);
     });
 
+    it('signed in, a flight alert: the overlay goes before the flight opens (Raz, B-1)', async () => {
+      mockMap.loads = false;
+      mockAuth.state = {
+        status: 'signedIn',
+        user: { id: 'u1', name: 'א', email: 'a@example.test' },
+      };
+      mockTrips.firstLoad = true;
+      (Notifications.getLastNotificationResponse as jest.Mock).mockReturnValue({
+        notification: {
+          request: {
+            identifier: 'b1-in',
+            content: { title: '', body: '', data: { v: 1, type: 'flight_change', flightId: 'f1' } },
+          },
+        },
+      });
+      await render(<GlobeScreen />);
+      await act(async () => {});
+      expect(sent()).toEqual(['ready']);
+    });
+
     it('sends error at mount without a Mapbox token (design 1.4)', async () => {
       mockHasToken = false;
       await render(<GlobeScreen />);

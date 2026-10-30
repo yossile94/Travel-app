@@ -16,6 +16,12 @@ export function markGlobeMounted() {
   mountedAt.mono = performance.now();
 }
 
+/** Sprint 12 AC-6 (Raz): the launch overlay has left; gfxinfo is read right after. */
+export function logLaunchGone() {
+  if (!enabled) return;
+  console.log(`[launch] gone wallClockMs=${Date.now()}`);
+}
+
 export function logGlobeReady(reason: 'idle' | 'fallback' = 'idle') {
   if (!enabled) return;
   const startup = (performance as { rnStartupTiming?: { startTime?: number } }).rnStartupTiming;
