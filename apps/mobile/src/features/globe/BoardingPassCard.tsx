@@ -27,11 +27,14 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import Svg, { Line, Path, Rect } from 'react-native-svg';
 
 import { Button } from '@/components/fields';
 import { ChevronDownIcon } from '@/components/icons';
+import { ScrollFade, useMoreBelow } from '@/components/ScrollFade';
 
 import {
   CardEntryLine,
@@ -110,6 +113,10 @@ interface Props {
     onNoticeHeight: (height: number) => void,
     /** Fix my-trips-space: the mode on screen, which follows `tripsMode` after the fade. */
     tripsMode: boolean,
+    /** Sprint 12 AC-12 (design 2.4, Raz 4d): the Trips-mode fade, for the coupon's own content. */
+    fade: SharedValue<number>,
+    /** Sprint 12 AC-13 (Raz 6): the card has finished coming in; it stays true. */
+    entered: boolean,
   ) => ReactNode;
   /** Today's local date, from the trips' shared "day changed" event (sprint 3 AC-6, AC-10). */
   today?: string;
@@ -162,6 +169,9 @@ export function BoardingPassCard({
   // fade: out (100), the layout swaps at once, in (100). A new card starts in
   // its mode with no fade.
   const [shown, setShown] = useState(tripsMode);
+  // Design 2.3 (4b): a card that opens in Trips mode never plays the flap, and
+  // one that opens with the icons plays it once; the switch doesn't change it.
+  const [openedInTripsMode] = useState(tripsMode);
   const [settling, setSettling] = useState(false);
   const fade = useSharedValue(1);
   useEffect(() => {
@@ -230,6 +240,8 @@ export function BoardingPassCard({
   const [content, setContent] = useState({ width: 0, height: 0 });
   const outerRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const [nearEnd, setNearEnd] = useState(0);
+  // Sprint 12 P-4 (Raz 15): in scroll mode the fade is at the card's bottom.
+  const moreBelow = useMoreBelow();
   const scrollToRow = useCallback(
     (y: number) =>
       outerRef.current?.scrollTo({ y: Math.max(0, couponTop + y - 16), animated: !reduceMotion }),
@@ -245,6 +257,8 @@ export function BoardingPassCard({
   // The fades are the reduced-motion version, so they run even then:
   // Reanimated's default (ReduceMotion.System) would skip them.
   const progress = useSharedValue(0);
+  // Design 3.2 (Raz 6): set from the entry animation's end, once; never unset.
+  const [entered, setEntered] = useState(false);
   useEffect(() => {
     if (hidden) {
       progress.set(
@@ -262,6 +276,10 @@ export function BoardingPassCard({
         reduceMotion
           ? { duration: motion.short, easing: Easing.linear, reduceMotion: ReduceMotion.Never }
           : { duration: motion.sheet, easing: DECELERATE },
+        (finished) => {
+          'worklet';
+          if (finished) scheduleOnRN(setEntered, true);
+        },
       ),
     );
   }, [progress, reduceMotion, hidden]);
@@ -302,12 +320,15 @@ export function BoardingPassCard({
         style={scrollMode ? { maxHeight: maxCardHeight } : undefined}
         onScroll={(event) => {
           if (!scrollMode) return;
+          moreBelow.onScroll(event);
           const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
           if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 48) {
             setNearEnd((n) => n + 1);
           }
         }}
         scrollEventThrottle={100}
+        onContentSizeChange={moreBelow.onContentSizeChange}
+        onLayout={moreBelow.onLayout}
         testID={scrollMode ? 'card-scroll-mode' : undefined}
       >
         <View
@@ -351,152 +372,150 @@ export function BoardingPassCard({
             </Svg>
           )}
 
-          <Animated.View style={[fullHeight ? styles.fill : styles.grow, fadeStyle]}>
-            {shown ? (
-              <View
-                style={styles.row}
-                onLayout={(event) => setPassHeight(event.nativeEvent.layout.height)}
-                testID="card-header-compact"
-              >
-                <View style={[styles.main, styles.mainCompact]}>
-                  <View style={[styles.strip, { backgroundColor: highlightColor }]} />
-                  <Text
-                    style={[
-                      styles.nameCompact,
-                      styles.clearOfClose,
-                      { color: palette.textPrimary },
-                    ]}
-                    accessibilityRole="header"
-                    accessibilityLabel={country.nameHe}
-                    numberOfLines={fontScale >= 1.3 ? 2 : 1}
-                    ellipsizeMode="tail"
-                    maxFontSizeMultiplier={1.6}
-                    testID="card-name"
-                  >
-                    {country.nameHe}
-                  </Text>
-                  <CardEntryLine
-                    ref={entryRef}
-                    country={country}
-                    advisory={safety.advisory}
-                    colorScheme={colorScheme}
-                    onOpen={() => setSafetyFrom('entry')}
-                  />
-                  <View style={styles.details}>
-                    <Button
-                      kind="text"
-                      label={t('card.tripsMode.details')}
-                      a11yHint={t('card.tripsMode.detailsHint')}
-                      icon={(color) => <ChevronDownIcon color={color} size={20} />}
-                      onPress={() => onExitTripsMode?.()}
-                      colorScheme={colorScheme}
-                      testID="card-destination-details"
-                    />
-                  </View>
-                </View>
-                <View style={[styles.stub, styles.stubCompact]}>
-                  <SplitFlap
-                    text={country.adm0}
-                    reduceMotion
-                    dark={dark}
-                    accessibilityLabel={t('card.code', { code: country.adm0 })}
-                  />
-                </View>
-              </View>
-            ) : (
-              <View
-                style={styles.row}
-                onLayout={(event) => setPassHeight(event.nativeEvent.layout.height)}
-                testID="card-header"
-              >
-                <View style={styles.main}>
-                  <View style={[styles.strip, { backgroundColor: highlightColor }]} />
-                  <Text style={[styles.label, { color: palette.textSecondary }]}>
-                    {t('card.destination')}
-                  </Text>
-                  {/* AC-11: at most two lines; long names step down a size, and the
-              full name stays in the label for the screen reader. */}
-                  <Text
-                    style={[
-                      styles.nameHe,
-                      country.nameHe.length > layout.cardNameStepDownChars && styles.nameHeLong,
-                      styles.clearOfClose,
-                      { color: palette.textPrimary },
-                    ]}
-                    accessibilityRole="header"
-                    accessibilityLabel={country.nameHe}
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                    maxFontSizeMultiplier={1.6}
-                    testID="card-name"
-                  >
-                    {country.nameHe}
-                  </Text>
-                  {/* The inner row is laid out left to right even in Hebrew: in an
-              RTL layout Android ellipsized the English name from the wrong end
-              ("H GEORGIA …", sprint 1 QA). The outer view keeps the app's
-              direction, so the space for the close button stays on its side. */}
-                  <View style={styles.clearOfClose}>
-                    <View
-                      style={styles.nameEnRow}
-                      onLayout={(event) => setNameEnWidth(event.nativeEvent.layout.width)}
-                    >
+          {/* Sprint 12 AC-12 (design 2.2, 2.3): the strip, the code and the
+              outline stay; only the texts and icons fade. */}
+          <View style={fullHeight ? styles.fill : styles.grow}>
+            <View
+              style={styles.row}
+              onLayout={(event) => setPassHeight(event.nativeEvent.layout.height)}
+              testID={shown ? 'card-header-compact' : 'card-header'}
+            >
+              <View style={[styles.main, shown && styles.mainCompact]}>
+                <View
+                  style={[styles.strip, { backgroundColor: highlightColor }]}
+                  testID="card-highlight-strip"
+                />
+                <Animated.View style={fadeStyle}>
+                  {shown ? (
+                    <>
                       <Text
                         style={[
-                          styles.nameEn,
-                          !spaceEnglishName(country.nameEn, fontScale, nameEnWidth) &&
-                            styles.nameEnTight,
-                          { color: palette.textSecondary },
+                          styles.nameCompact,
+                          styles.clearOfClose,
+                          { color: palette.textPrimary },
                         ]}
-                        accessibilityLabel={country.nameEn}
-                        numberOfLines={1}
+                        accessibilityRole="header"
+                        accessibilityLabel={country.nameHe}
+                        numberOfLines={fontScale >= 1.3 ? 2 : 1}
                         ellipsizeMode="tail"
-                        testID="card-name-en"
+                        maxFontSizeMultiplier={1.6}
+                        testID="card-name"
                       >
-                        {country.nameEn}
+                        {country.nameHe}
                       </Text>
-                    </View>
-                  </View>
-                  {/* Fix 4.2: banned or restricted entry only; no threat level on the card (Yossi). */}
-                  <CardEntryLine
-                    ref={entryRef}
-                    country={country}
-                    advisory={safety.advisory}
-                    colorScheme={colorScheme}
-                    onOpen={() => setSafetyFrom('entry')}
-                  />
-                  {match}
-                </View>
-
-                <View style={styles.stub}>
-                  <SplitFlap
-                    text={country.adm0}
-                    reduceMotion={reduceMotion}
-                    dark={dark}
-                    accessibilityLabel={t('card.code', { code: country.adm0 })}
-                  />
-                  <Svg width={80} height={30} style={styles.barcode} importantForAccessibility="no">
-                    {[
-                      0, 3, 5, 9, 12, 14, 18, 21, 23, 27, 30, 32, 36, 39, 41, 45, 48, 50, 54, 57,
-                    ].map((x, i) => (
-                      <Rect
-                        key={x}
-                        x={x * 1.4}
-                        y={0}
-                        width={i % 3 === 0 ? 3 : 1.5}
-                        height={30}
-                        fill={palette.textPrimary}
-                        opacity={0.85}
+                      <CardEntryLine
+                        ref={entryRef}
+                        country={country}
+                        advisory={safety.advisory}
+                        colorScheme={colorScheme}
+                        onOpen={() => setSafetyFrom('entry')}
                       />
-                    ))}
-                  </Svg>
-                </View>
+                      <View style={styles.details}>
+                        <Button
+                          kind="text"
+                          label={t('card.tripsMode.details')}
+                          a11yHint={t('card.tripsMode.detailsHint')}
+                          icon={(color) => <ChevronDownIcon color={color} size={20} />}
+                          onPress={() => onExitTripsMode?.()}
+                          colorScheme={colorScheme}
+                          testID="card-destination-details"
+                        />
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={[styles.label, { color: palette.textSecondary }]}>
+                        {t('card.destination')}
+                      </Text>
+                      {/* AC-11: at most two lines; long names step down a size, and the
+                          full name stays in the label for the screen reader. */}
+                      <Text
+                        style={[
+                          styles.nameHe,
+                          country.nameHe.length > layout.cardNameStepDownChars && styles.nameHeLong,
+                          styles.clearOfClose,
+                          { color: palette.textPrimary },
+                        ]}
+                        accessibilityRole="header"
+                        accessibilityLabel={country.nameHe}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                        maxFontSizeMultiplier={1.6}
+                        testID="card-name"
+                      >
+                        {country.nameHe}
+                      </Text>
+                      {/* The inner row is laid out left to right even in Hebrew: in an
+                          RTL layout Android ellipsized the English name from the wrong end
+                          ("H GEORGIA …", sprint 1 QA). The outer view keeps the app's
+                          direction, so the space for the close button stays on its side. */}
+                      <View style={styles.clearOfClose}>
+                        <View
+                          style={styles.nameEnRow}
+                          onLayout={(event) => setNameEnWidth(event.nativeEvent.layout.width)}
+                        >
+                          <Text
+                            style={[
+                              styles.nameEn,
+                              !spaceEnglishName(country.nameEn, fontScale, nameEnWidth) &&
+                                styles.nameEnTight,
+                              { color: palette.textSecondary },
+                            ]}
+                            accessibilityLabel={country.nameEn}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                            testID="card-name-en"
+                          >
+                            {country.nameEn}
+                          </Text>
+                        </View>
+                      </View>
+                      {/* Fix 4.2: banned or restricted entry only; no threat level on the card (Yossi). */}
+                      <CardEntryLine
+                        ref={entryRef}
+                        country={country}
+                        advisory={safety.advisory}
+                        colorScheme={colorScheme}
+                        onOpen={() => setSafetyFrom('entry')}
+                      />
+                      {match}
+                    </>
+                  )}
+                </Animated.View>
               </View>
-            )}
+
+              <View style={[styles.stub, shown && styles.stubCompact]}>
+                <SplitFlap
+                  text={country.adm0}
+                  reduceMotion={reduceMotion || openedInTripsMode}
+                  dark={dark}
+                  accessibilityLabel={t('card.code', { code: country.adm0 })}
+                />
+                {shown ? null : (
+                  <Animated.View style={[styles.barcode, fadeStyle]} testID="card-barcode">
+                    <Svg width={80} height={30} importantForAccessibility="no">
+                      {[
+                        0, 3, 5, 9, 12, 14, 18, 21, 23, 27, 30, 32, 36, 39, 41, 45, 48, 50, 54, 57,
+                      ].map((x, i) => (
+                        <Rect
+                          key={x}
+                          x={x * 1.4}
+                          y={0}
+                          width={i % 3 === 0 ? 3 : 1.5}
+                          height={30}
+                          fill={palette.textPrimary}
+                          opacity={0.85}
+                        />
+                      ))}
+                    </Svg>
+                  </Animated.View>
+                )}
+              </View>
+            </View>
 
             {shown ? null : (
-              <View
-                style={styles.tiles}
+              <Animated.View
+                style={[styles.tiles, fadeStyle]}
                 onLayout={(event) => setStripHeight(event.nativeEvent.layout.height)}
                 testID="card-strip"
               >
@@ -517,19 +536,28 @@ export function BoardingPassCard({
                   reduceMotion={reduceMotion}
                   insetsBottom={bottomInset}
                 />
-              </View>
+              </Animated.View>
             )}
 
+            {/* 4c: the coupon's slot is outside every fading view. */}
             <OuterScrollContext.Provider value={outer}>
               {coupon ? (
                 <View style={fullHeight ? styles.fill : undefined}>
-                  {coupon(scrollMode ? Infinity : maxListHeight, setNoticeHeight, shown)}
+                  {coupon(
+                    scrollMode ? Infinity : maxListHeight,
+                    setNoticeHeight,
+                    shown,
+                    fade,
+                    entered,
+                  )}
                 </View>
               ) : null}
             </OuterScrollContext.Provider>
-          </Animated.View>
+          </View>
         </View>
       </ScrollView>
+      {/* A sibling of the scroll, outside the Trips-mode fade (Raz 15). */}
+      {scrollMode ? <ScrollFade visible={moreBelow.more} color={palette.surfaceRaised} /> : null}
 
       <CardSafetySheet
         country={country}
@@ -623,7 +651,8 @@ const styles = StyleSheet.create({
   mainCompact: { paddingBottom: 4 },
   nameCompact: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 26, textAlign: 'left' },
   details: { alignItems: 'flex-start', marginHorizontal: -8 },
-  stubCompact: { paddingTop: 22, justifyContent: 'flex-start' },
+  // Sprint 12 Raz 3: the same stub, 54 + 36 = 90dp; the code sits on the details row.
+  stubCompact: { paddingBottom: 0, justifyContent: 'flex-start' },
   nameHe: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, marginTop: 4, textAlign: 'left' },
   nameHeLong: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
   nameEnRow: { direction: 'ltr' },

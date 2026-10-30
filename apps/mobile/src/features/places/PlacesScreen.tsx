@@ -26,7 +26,7 @@ import {
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/fields';
 import { InlineNotice, useToast } from '@/components/formControls';
-import { BackIcon, CloudOffIcon, NavigateIcon, SearchIcon } from '@/components/icons';
+import { BackIcon, CloudOffIcon, MapPinIcon, NavigateIcon, SearchIcon } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { dottedDate } from '@/features/destination/DestinationFields';
 import { isolateOwn } from '@/features/globe/BoardingPassCard';
@@ -303,6 +303,17 @@ export function PlacesScreen({
     ? ['city', ...(hotels.length ? (['hotel'] as Tab[]) : []), 'saved']
     : ['city'];
   const savedCount = saved.status === 'ready' ? saved.places.length : 0;
+  // Sprint 12 P-2: no places in this country and nothing saved: the controls
+  // change nothing, so only the empty state shows. Same condition as the
+  // 'country-none' empty state; with saved places every control stays (Raz 6).
+  // Raz 9 (sprint 12 review): only once the saved list is known, so controls don't blink away.
+  const bare =
+    places.status === 'ready' &&
+    places.places.length === 0 &&
+    (!tripId || saved.status === 'ready') &&
+    savedCount === 0;
+  // Raz 8: the hidden tabs take the active one back to "In the city".
+  if (bare && tab !== 'city') setTab('city');
 
   return (
     <Modal
@@ -339,7 +350,7 @@ export function PlacesScreen({
           </View>
         </View>
 
-        {picker ? (
+        {picker && !bare ? (
           <View>
             <Text style={[styles.flabel, { color: p.textSecondary }]}>
               {t('places.cityPicker')}
@@ -394,7 +405,7 @@ export function PlacesScreen({
           </View>
         ) : null}
 
-        {tabs.length > 1 ? (
+        {tabs.length > 1 && !bare ? (
           <View
             style={[styles.tabs, { borderBottomColor: p.borderSubtle }]}
             accessibilityRole="tablist"
@@ -545,23 +556,25 @@ export function PlacesScreen({
                 ) : null}
               </View>
             ) : null}
-            <ChipRow label={t('places.catLabel')} testID="places-categories">
-              {(['all', ...CATEGORIES] as const).map((c) => (
-                <Chip
-                  key={c}
-                  label={t(`places.cat.${c}`)}
-                  on={category === c}
-                  role="radio"
-                  colorScheme={colorScheme}
-                  onPress={() => {
-                    setCategory(c);
-                    setShown(PAGE_SIZE);
-                  }}
-                  testID={`places-cat-${c}`}
-                />
-              ))}
-            </ChipRow>
-            {tab === 'city' && selected?.kind === 'city' ? (
+            {bare ? null : (
+              <ChipRow label={t('places.catLabel')} testID="places-categories">
+                {(['all', ...CATEGORIES] as const).map((c) => (
+                  <Chip
+                    key={c}
+                    label={t(`places.cat.${c}`)}
+                    on={category === c}
+                    role="radio"
+                    colorScheme={colorScheme}
+                    onPress={() => {
+                      setCategory(c);
+                      setShown(PAGE_SIZE);
+                    }}
+                    testID={`places-cat-${c}`}
+                  />
+                ))}
+              </ChipRow>
+            )}
+            {tab === 'city' && selected?.kind === 'city' && !bare ? (
               <Text
                 style={[styles.footnote, styles.pad, { color: p.textSecondary }]}
                 testID="places-scope"
@@ -570,7 +583,10 @@ export function PlacesScreen({
               </Text>
             ) : null}
             {places.status === 'ready' && places.fromDevice && online === false ? (
-              <Text style={[styles.footnote, styles.pad, { color: p.textSecondary }]}>
+              <Text
+                style={[styles.footnote, styles.pad, { color: p.textSecondary }]}
+                testID="places-cached-at"
+              >
                 {t('offline.cachedAt', { when: dottedDate(places.savedAt) })}
               </Text>
             ) : null}
@@ -1273,8 +1289,28 @@ function EmptyState({
       'failed',
     );
   }
-  if (state.places.length === 0)
-    return text(t('places.emptyCountry', { country: area }), undefined, undefined, 'country-none');
+  if (state.places.length === 0) {
+    // Sprint 12 P-2: a pin, a heading and why; one element for the screen reader.
+    return (
+      <View
+        style={styles.countryNone}
+        testID="places-empty"
+        accessibilityValue={{ text: 'country-none' }}
+      >
+        <View importantForAccessibility="no">
+          <MapPinIcon color={p.textTertiary} size={40} />
+        </View>
+        <View accessible>
+          <Text style={[styles.emptyTitle, { color: p.textPrimary }]}>
+            {t('places.emptyCountry', { country: area })}
+          </Text>
+          <Text style={[styles.emptyWhy, { color: p.textSecondary }]}>
+            {t('places.emptyCountryWhy', { country: area })}
+          </Text>
+        </View>
+      </View>
+    );
+  }
   const seeCountry = (
     <Button
       kind="secondary"
@@ -1422,6 +1458,24 @@ const styles = StyleSheet.create({
   },
   loading: { marginTop: 32 },
   emptyBox: { padding: 24, gap: 8, alignItems: 'center' },
+  // Sprint 12 P-2: the country with no places yet.
+  countryNone: { paddingTop: 48, paddingHorizontal: 24, alignItems: 'center' },
+  emptyTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 17,
+    lineHeight: 22,
+    marginTop: 16,
+    maxWidth: 320,
+    textAlign: 'center',
+  },
+  emptyWhy: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 8,
+    maxWidth: 320,
+    textAlign: 'center',
+  },
   empty: { padding: 24, textAlign: 'center' },
   center: { textAlign: 'center' },
   footer: { marginTop: 12 },

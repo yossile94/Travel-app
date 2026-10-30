@@ -20,7 +20,7 @@ tags: [sprint-0, ac-4, fix-country-card]
 - back
 - back
 
-# Antarctica: no local time or currency; Safety alone, 112 wide.
+# Antarctica: no local time or currency; only action tiles (Safety, What to see; sprint 12 P-1).
 - openLink: travelapp://?lng=35.8855&lat=-79.8432&zoom=2
 - waitForAnimationToEnd
 - tapOn:

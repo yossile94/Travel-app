@@ -76,6 +76,8 @@ describe('BoardingPassCard', () => {
     expect(withTiming).toHaveBeenCalledWith(
       1,
       expect.objectContaining({ duration: motion.short, reduceMotion: 'never' }),
+      // Sprint 12 AC-13: its end reports that the card is in.
+      expect.any(Function),
     );
   });
 

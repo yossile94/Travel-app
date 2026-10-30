@@ -21,6 +21,8 @@ const PAGE = 500;
 /** D22: the build fails above this, so a country never needs more pages. */
 const MAX_PAGES = 3;
 const REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
+/** An empty list is kept an hour only: the country's places may come any day (sprint 12, Dana B-3). */
+const EMPTY_REFRESH_MS = 60 * 60 * 1000;
 const key = (adm0: string) => `places.v1.${adm0}`;
 
 interface Stored {
@@ -137,10 +139,13 @@ export function loadPlaces(adm0: string, now = Date.now()): Promise<void> {
     }
     const device = await readDevice(adm0);
     if (device) publish(adm0, device, true);
+    // An empty list goes stale within the hour: the country's places may have come
+    // since (sprint 12 device check: Japan stayed empty for a week after the load).
     const fresh =
       device &&
       device.version === PLACES_DATA_VERSION &&
-      now - Date.parse(device.savedAt) < REFRESH_MS;
+      now - Date.parse(device.savedAt) <
+        (device.wikidata.length > 0 ? REFRESH_MS : EMPTY_REFRESH_MS);
     const [wikidata, curated] = await Promise.all([
       fresh ? Promise.resolve(device.wikidata) : readWikidata(adm0).catch(() => null),
       readCurated(adm0).catch(() => null),

@@ -35,13 +35,22 @@ jest.mock('react-native-reanimated', () => {
     useAnimatedStyle: (factory: () => object) => factory(),
     useAnimatedKeyboard: () => ({ height: { value: 0 }, state: { value: 0 } }),
     ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
-    withTiming: jest.fn(<T>(target: T) => target),
+    // The animation ends at once, so a completion callback runs right away.
+    withTiming: jest.fn(<T>(target: T, _config?: unknown, done?: (finished: boolean) => void) => {
+      done?.(true);
+      return target;
+    }),
     withDelay: jest.fn(<T>(_delay: number, animation: T) => animation),
     useAnimatedProps: (factory: () => object) => factory(),
     createAnimatedComponent: <T>(component: T) => component,
     useReducedMotion: jest.fn(() => false),
   };
 });
+
+// Reanimated 4 hands worklet results back to JS through react-native-worklets.
+jest.mock('react-native-worklets', () => ({
+  scheduleOnRN: <A extends unknown[]>(fn: (...args: A) => void, ...args: A) => fn(...args),
+}));
 
 // Native modules from sprint 1 F-003a, replaced with their maintainers' Jest mocks.
 jest.mock('@react-native-async-storage/async-storage', () =>

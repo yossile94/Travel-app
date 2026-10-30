@@ -185,6 +185,10 @@ beforeEach(() => {
   });
 });
 
+// The first render loads the city list and the screen: under a full parallel run it
+// passed 5 s now and then (sprint 12). The tests themselves are quick.
+jest.setTimeout(15_000);
+
 describe('without a trip (design 3.1, 3.7.1)', () => {
   it('the largest city is picked, "other" and "whole country" last; one tab, no save', async () => {
     await show();
@@ -291,6 +295,70 @@ describe('with a trip (design 3.1, 5.2; Raz 29.10)', () => {
     await fireEvent.press(screen.getByTestId('places-tab-saved'));
     expect(screen.getByTestId('saved-row-wd:Q9')).toBeOnTheScreen();
     expect(screen.getByText(t('places.savedAllCities'))).toBeOnTheScreen();
+  });
+});
+
+describe('a country with no places yet (sprint 12 P-2)', () => {
+  const none = (fromDevice = false) => {
+    mockPlaces.state = { status: 'ready', places: [], savedAt: '2026-10-29T08:00:00Z', fromDevice };
+  };
+
+  it('nothing saved: only the empty state, no controls that change nothing', async () => {
+    none();
+    await show({ trip: trip({ cities: [] }), signedIn: true });
+    expect(screen.getByTestId('places-empty').props.accessibilityValue).toEqual({
+      text: 'country-none',
+    });
+    expect(screen.getByText(t('places.emptyCountryWhy', { country: 'תאילנד' }))).toBeOnTheScreen();
+    expect(screen.queryByTestId('places-city-picker')).toBeNull();
+    expect(screen.queryByTestId('places-no-trip-city')).toBeNull();
+    expect(screen.queryByTestId('places-categories')).toBeNull();
+    expect(screen.queryByTestId('places-scope')).toBeNull();
+    expect(screen.queryByTestId('places-tab-saved')).toBeNull();
+  });
+
+  it('with saved places: every control stays, and the way to them (Raz 6)', async () => {
+    none();
+    mockSaved.places = [{ ref: 'wd:Q9', name: 'שוק', lat: 13.8, lng: 100.55, createdAt: '' }];
+    await show({ trip: trip(), signedIn: true });
+    expect(screen.getByTestId('places-tab-saved')).toBeOnTheScreen();
+    expect(screen.getByTestId('places-categories')).toBeOnTheScreen();
+  });
+
+  it('on the saved tab when the last saved place goes: back to the city tab (Raz 8)', async () => {
+    none();
+    mockSaved.places = [{ ref: 'wd:Q9', name: 'שוק', lat: 13.8, lng: 100.55, createdAt: '' }];
+    const props = {
+      adm0: 'THA',
+      trip: trip(),
+      signedIn: true,
+      today: '2026-10-29',
+      colorScheme: 'light' as const,
+      reduceMotion: true,
+      insetsTop: 0,
+      insetsBottom: 0,
+      onClose: jest.fn(),
+    };
+    const view = await render(<PlacesScreen {...props} />);
+    await act(async () => {});
+    await fireEvent.press(screen.getByTestId('places-tab-saved'));
+    expect(screen.getByTestId('places-tab-saved').props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: true }),
+    );
+    mockSaved.places = [];
+    await view.rerender(<PlacesScreen {...props} />);
+    await act(async () => {});
+    expect(screen.queryByTestId('places-tab-saved')).toBeNull();
+    expect(screen.getByTestId('places-empty').props.accessibilityValue).toEqual({
+      text: 'country-none',
+    });
+  });
+
+  it('offline with the copy on the device: the saved-at line stays (John)', async () => {
+    online = false;
+    none(true);
+    await show({ trip: trip(), signedIn: true });
+    expect(screen.getByTestId('places-cached-at')).toBeOnTheScreen();
   });
 });
 

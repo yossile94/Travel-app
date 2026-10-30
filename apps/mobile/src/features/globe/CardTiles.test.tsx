@@ -2,7 +2,7 @@
 // strip's columns, the Safety tile with no threat level anywhere on the card,
 // the badges, the entry line, and which tiles show.
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
 import i18n from '@/i18n';
@@ -15,7 +15,7 @@ import type { Advisory, Destination } from '@/features/destination/destinationDa
 import type { Rate } from '@/features/destination/rateFormat';
 
 import { BoardingPassCard } from './BoardingPassCard';
-import { CardTiles, tileLayout } from './CardTiles';
+import { CardTiles, tileArrangement, tileLayout } from './CardTiles';
 import { countryByAdm0 } from './countryData';
 
 const t = i18n.t.bind(i18n);
@@ -63,6 +63,12 @@ jest.mock('@/features/climate/climateData', () => ({
   ...jest.requireActual('@/features/climate/climateData'),
   useClimate: () => ({ status: 'loading', showSkeleton: false }),
 }));
+/** Jest's window by default: 750 wide at font scale 2, which shows the list. */
+const mockWindow = { width: 750, height: 1334, scale: 2, fontScale: 2 };
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true,
+  default: () => mockWindow,
+}));
 const mockAuth = { status: 'signedIn' as string };
 jest.mock('@/features/auth/AuthProvider', () => ({
   useAuthIfAny: () => ({ state: { status: mockAuth.status } }),
@@ -96,6 +102,7 @@ const order = () =>
     .map((el) => el.props.testID as string);
 
 beforeEach(() => {
+  Object.assign(mockWindow, { width: 750, fontScale: 2 });
   mockDestination.state = { data: data(), failed: false };
   mockAuth.status = 'signedIn';
   jest.mocked(NetInfo.addEventListener).mockImplementation((listener) => {
@@ -147,6 +154,171 @@ describe('the strip (AC-3, fix 5.3, 5.4)', () => {
     const money = screen.getByTestId('card-tile-money');
     expect(money.props.accessibilityRole).toBeUndefined();
     expect(money.props.accessibilityLabel).toBe('מטבע: שקל חדש, ₪');
+  });
+});
+
+describe('data, then actions (sprint 12 P-1)', () => {
+  /** The strip as measured: the card's width less its margins and padding. */
+  const measure = (width: number) =>
+    fireEvent(screen.getByTestId('card-tiles'), 'layout', {
+      nativeEvent: { layout: { width, height: 76 } },
+    });
+
+  it.each([
+    // [width, font scale, tiles, expected]
+    [355, 1, 5, 'one-row'],
+    [334, 1, 5, 'two-rows'],
+    [355, 1.3, 5, 'two-rows'],
+    [355, 1.3, 4, 'one-row'],
+    [355, 1.6, 5, 'list'],
+    [355, 2, 1, 'list'],
+  ] as const)('%d wide at %d: %d tiles → %s', (width, scale, count, expected) => {
+    expect(tileArrangement(width, scale, count)).toBe(expected);
+  });
+
+  it('one row: time, currency, temperature, then Safety and What to see', async () => {
+    Object.assign(mockWindow, { width: 411, fontScale: 1 });
+    await render(
+      <CardTiles
+        country={countryByAdm0('THA')!}
+        safety={quiet}
+        colorScheme="light"
+        reduceMotion
+        insetsBottom={0}
+        today="2026-10-26"
+        city={null}
+        onOpenSafety={jest.fn()}
+        safetyRef={{ current: null }}
+        onOpenPlaces={jest.fn()}
+      />,
+    );
+    await measure(355);
+    expect(screen.getByTestId('card-tiles').props.accessibilityValue).toEqual({ text: 'tiles' });
+    expect(
+      screen
+        .getAllByTestId(/^card-tile-(safety|time|money|climate|places|emergency)$/)
+        .map((el) => el.props.testID as string),
+    ).toEqual([
+      'card-tile-time',
+      'card-tile-money',
+      'card-tile-climate',
+      'card-tile-safety',
+      'card-tile-places',
+    ]);
+    expect(screen.queryByTestId('card-tiles-actions')).toBeNull();
+  });
+
+  it('two rows: the data in one, the actions wide and low in the next', async () => {
+    Object.assign(mockWindow, { width: 411, fontScale: 1.3 });
+    await render(
+      <CardTiles
+        country={countryByAdm0('THA')!}
+        safety={quiet}
+        colorScheme="light"
+        reduceMotion
+        insetsBottom={0}
+        today="2026-10-26"
+        city={null}
+        onOpenSafety={jest.fn()}
+        safetyRef={{ current: null }}
+        onOpenPlaces={jest.fn()}
+      />,
+    );
+    await measure(355);
+    const ids = (row: string) =>
+      screen
+        .getByTestId(row)
+        .props.children.filter(Boolean)
+        .map((el: { props: { tile: { key: string } } }) => el.props.tile.key);
+    expect(ids('card-tiles-data')).toEqual(['time', 'money', 'climate']);
+    expect(ids('card-tiles-actions')).toEqual(['safety', 'places']);
+    // Wide and low, with no empty value line.
+    const safety = screen.getByTestId('card-tile-safety');
+    expect(JSON.stringify(safety.props.style)).toContain('"minHeight":56');
+  });
+
+  it('signed out: three actions, too narrow for the chevron', async () => {
+    mockAuth.status = 'signedOut';
+    Object.assign(mockWindow, { width: 411, fontScale: 1.3 });
+    await render(
+      <CardTiles
+        country={countryByAdm0('THA')!}
+        safety={quiet}
+        colorScheme="light"
+        reduceMotion
+        insetsBottom={0}
+        today="2026-10-26"
+        city={null}
+        onOpenSafety={jest.fn()}
+        safetyRef={{ current: null }}
+        onOpenPlaces={jest.fn()}
+      />,
+    );
+    await measure(355);
+    expect(screen.getByTestId('card-tiles-actions').props.children).toHaveLength(3);
+    expect(screen.queryByTestId('card-tile-chevron')).toBeNull();
+  });
+
+  it('two actions: wide enough for the chevron (polish-audit 1)', async () => {
+    Object.assign(mockWindow, { width: 411, fontScale: 1.3 });
+    await render(
+      <CardTiles
+        country={countryByAdm0('THA')!}
+        safety={quiet}
+        colorScheme="light"
+        reduceMotion
+        insetsBottom={0}
+        today="2026-10-26"
+        city={null}
+        onOpenSafety={jest.fn()}
+        safetyRef={{ current: null }}
+        onOpenPlaces={jest.fn()}
+      />,
+    );
+    await measure(355);
+    expect(screen.getAllByTestId('card-tile-chevron')).toHaveLength(2);
+  });
+
+  it('three data tiles too wide for a narrow strip split into rows (Raz 5)', async () => {
+    Object.assign(mockWindow, { width: 320, fontScale: 1.5 });
+    await tiles('THA');
+    await measure(264);
+    const time = StyleSheet.flatten(screen.getByTestId('card-tile-time').props.style);
+    // 264 at 1.5: two 96-wide columns, not three of 82.
+    expect(time.width).toBeGreaterThanOrEqual(64 * 1.5);
+  });
+
+  it('one data tile alone keeps the narrow width (John, Raz 3)', async () => {
+    Object.assign(mockWindow, { width: 411, fontScale: 1.3 });
+    await render(
+      <CardTiles
+        country={countryByAdm0('ATA')!}
+        safety={quiet}
+        colorScheme="light"
+        reduceMotion
+        insetsBottom={0}
+        today="2026-10-26"
+        city={null}
+        onOpenSafety={jest.fn()}
+        safetyRef={{ current: null }}
+        onOpenPlaces={jest.fn()}
+      />,
+    );
+    await measure(200);
+    const data = screen.queryByTestId('card-tiles-data');
+    if (data) {
+      for (const tile of data.props.children.filter(Boolean)) {
+        expect(tile.props.width).toBeLessThanOrEqual(112);
+      }
+    }
+    expect(screen.getByTestId('card-tiles-actions')).toBeOnTheScreen();
+  });
+
+  it('Israel: the data row only', async () => {
+    Object.assign(mockWindow, { width: 411, fontScale: 1 });
+    await tiles('ISR');
+    await measure(355);
+    expect(screen.queryByTestId('card-tiles-actions')).toBeNull();
   });
 });
 

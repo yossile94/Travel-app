@@ -98,6 +98,25 @@ describe('placesData (D22)', () => {
     expect(mockDb.ranges).toHaveLength(1);
   });
 
+  it('an empty copy is kept an hour, then read again (sprint 12, Dana B-3)', async () => {
+    const now = Date.parse('2026-10-30T08:00:00Z');
+    mockDb.count = 0;
+    await loadPlaces('JPN', now);
+    expect((await placesOf('JPN')).wikidata).toHaveLength(0);
+
+    resetPlacesForTests();
+    mockDb.ranges = [];
+    await loadPlaces('JPN', now + 30 * 60 * 1000);
+    expect(mockDb.ranges).toHaveLength(0);
+
+    resetPlacesForTests();
+    mockDb.ranges = [];
+    mockDb.count = 736;
+    await loadPlaces('JPN', now + 2 * 3600 * 1000);
+    expect(mockDb.ranges.length).toBeGreaterThan(0);
+    expect((await placesOf('JPN')).wikidata).toHaveLength(736);
+  });
+
   it('once a session: a second opening reads nothing', async () => {
     await loadPlaces('THA');
     await loadPlaces('THA');

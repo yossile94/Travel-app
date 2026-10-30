@@ -27,10 +27,15 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  type SharedValue,
+} from 'react-native-reanimated';
 
 import { Button } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
+import { ScrollFade, useMoreBelow } from '@/components/ScrollFade';
 import {
   ChevronDownIcon,
   CloudOffIcon,
@@ -94,6 +99,10 @@ interface Props {
   tripsMode?: boolean;
   /** Enters (a row or the heading) or leaves (no rows left) Trips mode; GlobeScreen owns it. */
   onTripsMode?: (on: boolean) => void;
+  /** Sprint 12 AC-12 (design 2.4): the card's Trips-mode fade, for this coupon's content. */
+  fade?: SharedValue<number>;
+  /** Sprint 12 AC-13: the card has finished coming in. */
+  entered?: boolean;
 }
 
 export function CardTrips({
@@ -113,6 +122,8 @@ export function CardTrips({
   onTrackedFlightSaved,
   tripsMode = false,
   onTripsMode,
+  fade,
+  entered = true,
 }: Props) {
   const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
@@ -144,13 +155,28 @@ export function CardTrips({
   const [open, setOpen] = useState<string | null>(initiallyOpen);
   // A new request opens the row again, even for the same trip (Raz, m1).
   const request = `${initiallyOpen ?? ''}:${openSeq}`;
+  // Sprint 12 AC-13 (design 3.2): a card that opens straight in Trips mode, or a
+  // new request while it is already there, sends the focus once. Whether the
+  // request came with a flight is kept from its first sight (Raz 5).
+  const withFlight = openFlight?.endsWith(`:${openSeq}`) === true;
+  const [focusRequest, setFocusRequest] = useState<{
+    request: string;
+    withFlight: boolean;
+    /** The trip was already open: its head is laid out and stays (a repeat tap, Raz). */
+    wasOpen: boolean;
+  } | null>(() =>
+    tripsMode && initiallyOpen !== null ? { request, withFlight, wasOpen: false } : null,
+  );
+  const [measuredFor, setMeasuredFor] = useState<string | null>(null);
+  // Fix my-trips-space 2.1: leaving Trips mode closes the open row.
+  const [wasTripsMode, setWasTripsMode] = useState(tripsMode);
   const [askedOpen, setAskedOpen] = useState(request);
   if (askedOpen !== request) {
     setAskedOpen(request);
     setOpen(initiallyOpen);
+    if (tripsMode && wasTripsMode && initiallyOpen !== null)
+      setFocusRequest({ request, withFlight, wasOpen: open === initiallyOpen });
   }
-  // Fix my-trips-space 2.1: leaving Trips mode closes the open row.
-  const [wasTripsMode, setWasTripsMode] = useState(tripsMode);
   // 6.2: focus goes to the open row on the way in, back to it on the way out.
   const [focusTarget, setFocusTarget] = useState<{ id: string | null; n: number } | null>(null);
   if (wasTripsMode !== tripsMode) {
@@ -176,7 +202,20 @@ export function CardTrips({
   // The card's scroll, in scroll mode (sprint 4 design 1.3): the list itself doesn't scroll.
   const outer = useContext(OuterScrollContext);
   // The row can be laid out before the list: scroll once both are measured (Raz, S4-m15).
-  const listTop = useRef<number | null>(null);
+  /** Sprint 12 (4f, Raz 4): the list sits in the fading wrapper; its top is the sum of both. */
+  const wrapperTop = useRef<number | null>(null);
+  const listY = useRef<number | null>(null);
+  const listTop = () =>
+    wrapperTop.current === null || listY.current === null
+      ? null
+      : wrapperTop.current + listY.current;
+  /** A row asked for before both were measured scrolls once they are. */
+  const scrollPending = () => {
+    const top = listTop();
+    if (!outer || top === null || pendingRowY.current === null) return;
+    outer.scrollToRow(top + pendingRowY.current);
+    pendingRowY.current = null;
+  };
   const pendingRowY = useRef<number | null>(null);
   const rowY = useRef(new Map<string, number>());
   const tapScroll = useRef<string | null>(null);
@@ -196,12 +235,17 @@ export function CardTrips({
   }, [tripsMode, open, outer, reduceMotion]);
   const onRowLayout = (id: string, y: number) => {
     rowY.current.set(id, y);
+    if (focusRequest !== null && id === initiallyOpen && measuredFor !== focusRequest.request) {
+      setMeasuredFor(focusRequest.request);
+    }
     if (id !== initiallyOpen || scrolledTo.current === request) return;
     scrolledTo.current = request;
     // In scroll mode the card scrolls, not the list (design 1.3).
     if (!outer) scroll.current?.scrollTo({ y, animated: false });
-    else if (listTop.current === null) pendingRowY.current = y;
-    else outer.scrollToRow(listTop.current + y);
+    else {
+      pendingRowY.current = y;
+      scrollPending();
+    }
   };
   // Scroll mode: the card's scroll nearing its end loads the next page (Raz, change 4).
   const nearEnd = outer?.nearEnd ?? 0;
@@ -209,7 +253,16 @@ export function CardTrips({
     if (nearEnd > 0 && !readOnly) void loadMore();
   }, [nearEnd, readOnly, loadMore]);
 
+  const contentStyle = useAnimatedStyle(() => ({ opacity: fade ? fade.value : 1 }));
+  // 4g: "New trip" fades only in scroll mode, where it has no fixed place.
+  const scrollMode = outer !== undefined;
+  const ctaStyle = useAnimatedStyle(() => ({ opacity: scrollMode && fade ? fade.value : 1 }));
+
+  // Sprint 12 P-4: the fade at the list's bottom while more is below.
+  const moreBelow = useMoreBelow();
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    // Raz 12: before the offline return, so a read-only list still updates it.
+    moreBelow.onScroll(event);
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     // Offline: no "load more" at all (design 10.4, Raz S4-m8).
     if (readOnly) return;
@@ -285,6 +338,46 @@ export function CardTrips({
 
   const heads = useRef(new Map<string, ComponentRef<typeof Pressable>>());
   const headingRef = useRef<ComponentRef<typeof View>>(null);
+  // AC-13 (design 3.3): once the card is in and the row measured. The ref is read now:
+  // the head remounts as it becomes sticky.
+  /** The request the focus was sent (or deliberately not sent) for: once each. */
+  const focusDone = useRef<string | null>(null);
+  useEffect(() => {
+    if (focusRequest === null || focusDone.current === focusRequest.request) return;
+    // Raz 1: leaving Trips mode ends the request; a later layout never sends it.
+    if (!tripsMode || focusRequest.request !== request) {
+      focusDone.current = focusRequest.request;
+      return;
+    }
+    if (!entered) return;
+    if (focusRequest.withFlight) {
+      // The flight sheet takes the focus (sprint 6); nothing steals it.
+      focusDone.current = request;
+      return;
+    }
+    const id = initiallyOpen;
+    const inList =
+      id !== null &&
+      (state.upcoming.some((x) => x.id === id) || state.past.some((x) => x.id === id));
+    let node: ComponentRef<typeof Pressable> | ComponentRef<typeof View> | null | undefined;
+    if (inList) {
+      // The open trip asked for again (a repeat tap on the pin) has no new layout to wait
+      // for; another trip waits for its head, which remounts as it becomes sticky.
+      if (measuredFor !== request && !(focusRequest.wasOpen && rowY.current.has(id))) return;
+      node = heads.current.get(id);
+    } else if (state.status === 'ready') {
+      node = headingRef.current;
+    } else if (state.status === 'error' || state.status === 'offline') {
+      // The message is a live region and says it.
+      focusDone.current = request;
+      return;
+    } else {
+      return;
+    }
+    focusDone.current = request;
+    if (node) AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
+  }, [focusRequest, request, tripsMode, entered, initiallyOpen, state, measuredFor]);
+
   useEffect(() => {
     if (!focusTarget) return;
     const node =
@@ -562,121 +655,139 @@ export function CardTrips({
 
   return (
     <View style={[styles.coupon, tripsMode && styles.fill]} testID="card-trips">
-      {hasRows ? (
-        // 3.2: in the destination view, the heading opens Trips mode; one trip opens with it.
-        tripsMode ? (
-          // Raz: the wrapper is the accessible header, so focus can land on it (6.2).
+      {/* Sprint 12 AC-12 (4e): one wrapper, always mounted, fades with the card. */}
+      <Animated.View
+        style={[tripsMode && styles.fadeFill, contentStyle]}
+        onLayout={(event) => {
+          wrapperTop.current = event.nativeEvent.layout.y;
+          scrollPending();
+        }}
+        testID="card-trips-content"
+      >
+        {hasRows ? (
+          // 3.2: in the destination view, the heading opens Trips mode; one trip opens with it.
+          tripsMode ? (
+            // Raz: the wrapper is the accessible header, so focus can land on it (6.2).
+            <View
+              ref={headingRef}
+              accessible
+              accessibilityRole="header"
+              accessibilityLabel={t('card.trips.title')}
+              style={styles.heading}
+              testID="card-trips-heading"
+            >
+              <Text style={[styles.headingText, { color: palette.textPrimary }]}>
+                {t('card.trips.title')}
+              </Text>
+            </View>
+          ) : (
+            <Pressable
+              ref={headingRef}
+              accessibilityRole="button"
+              accessibilityHint={t('card.trips.showAllHint')}
+              hitSlop={{ top: layout.cardTripsHeadingSlop, bottom: layout.cardTripsHeadingSlop }}
+              onPress={() => {
+                const all = [...state.upcoming, ...state.past];
+                enterWith(all.length === 1 && !state.hasMore ? all[0]!.id : null);
+              }}
+              style={({ pressed }) => [
+                styles.heading,
+                pressed && { backgroundColor: palette.pressed },
+              ]}
+              testID="card-trips-heading"
+            >
+              <Text style={[styles.headingText, { color: palette.textPrimary }]}>
+                {t('card.trips.title')}
+              </Text>
+              <View style={styles.flipped}>
+                <ChevronDownIcon color={palette.textTertiary} />
+              </View>
+            </Pressable>
+          )
+        ) : null}
+        {showsCached && trips.cache ? (
           <View
-            ref={headingRef}
-            accessible
-            accessibilityRole="header"
-            accessibilityLabel={t('card.trips.title')}
-            style={styles.heading}
-            testID="card-trips-heading"
+            style={[styles.message, styles.offline]}
+            accessibilityLiveRegion="polite"
+            onLayout={(event) => onNoticeHeight?.(event.nativeEvent.layout.height)}
           >
-            <Text style={[styles.headingText, { color: palette.textPrimary }]}>
-              {t('card.trips.title')}
+            <CloudOffIcon color={palette.textTertiary} size={16} />
+            <Text
+              style={[styles.footnote, styles.grow, { color: palette.textSecondary }]}
+              testID="card-trips-cached"
+            >
+              {t('offline.cachedAt', { when: cachedWhen(trips.cache.savedAt, t) })}
             </Text>
           </View>
-        ) : (
-          <Pressable
-            ref={headingRef}
-            accessibilityRole="button"
-            accessibilityHint={t('card.trips.showAllHint')}
-            hitSlop={{ top: layout.cardTripsHeadingSlop, bottom: layout.cardTripsHeadingSlop }}
-            onPress={() => {
-              const all = [...state.upcoming, ...state.past];
-              enterWith(all.length === 1 && !state.hasMore ? all[0]!.id : null);
-            }}
-            style={({ pressed }) => [
-              styles.heading,
-              pressed && { backgroundColor: palette.pressed },
-            ]}
-            testID="card-trips-heading"
-          >
-            <Text style={[styles.headingText, { color: palette.textPrimary }]}>
-              {t('card.trips.title')}
+        ) : null}
+
+        {state.status === 'loading' && state.showSkeleton ? (
+          <Skeleton colorScheme={colorScheme} />
+        ) : state.status === 'error' ? (
+          <View style={styles.message} accessibilityLiveRegion="polite">
+            <Text style={[styles.footnote, { color: palette.textSecondary }]}>
+              {t('card.trips.error')}
             </Text>
-            <View style={styles.flipped}>
-              <ChevronDownIcon color={palette.textTertiary} />
-            </View>
-          </Pressable>
-        )
-      ) : null}
-      {showsCached && trips.cache ? (
-        <View
-          style={[styles.message, styles.offline]}
-          accessibilityLiveRegion="polite"
-          onLayout={(event) => onNoticeHeight?.(event.nativeEvent.layout.height)}
-        >
-          <CloudOffIcon color={palette.textTertiary} size={16} />
-          <Text
-            style={[styles.footnote, styles.grow, { color: palette.textSecondary }]}
-            testID="card-trips-cached"
-          >
-            {t('offline.cachedAt', { when: cachedWhen(trips.cache.savedAt, t) })}
-          </Text>
-        </View>
-      ) : null}
+            <Button
+              kind="text"
+              label={t('card.trips.retry')}
+              onPress={() => void reload()}
+              colorScheme={colorScheme}
+            />
+          </View>
+        ) : state.status === 'offline' ? (
+          <View style={[styles.message, styles.offline]} accessibilityLiveRegion="polite">
+            <CloudOffIcon color={palette.textTertiary} size={20} />
+            <Text style={[styles.footnote, styles.grow, { color: palette.textSecondary }]}>
+              {t('card.trips.offline')}
+            </Text>
+          </View>
+        ) : null}
 
-      {state.status === 'loading' && state.showSkeleton ? (
-        <Skeleton colorScheme={colorScheme} />
-      ) : state.status === 'error' ? (
-        <View style={styles.message} accessibilityLiveRegion="polite">
-          <Text style={[styles.footnote, { color: palette.textSecondary }]}>
-            {t('card.trips.error')}
-          </Text>
-          <Button
-            kind="text"
-            label={t('card.trips.retry')}
-            onPress={() => void reload()}
-            colorScheme={colorScheme}
-          />
-        </View>
-      ) : state.status === 'offline' ? (
-        <View style={[styles.message, styles.offline]} accessibilityLiveRegion="polite">
-          <CloudOffIcon color={palette.textTertiary} size={20} />
-          <Text style={[styles.footnote, styles.grow, { color: palette.textSecondary }]}>
-            {t('card.trips.offline')}
-          </Text>
-        </View>
-      ) : null}
-
-      {hasRows ? (
-        <ScrollView
-          ref={scroll}
-          onLayout={(event) => {
-            listTop.current = event.nativeEvent.layout.y;
-            if (outer && pendingRowY.current !== null) {
-              outer.scrollToRow(listTop.current + pendingRowY.current);
-              pendingRowY.current = null;
+        {hasRows ? (
+          // P-4 (Raz 13): the list and its fade share a wrapper, which takes the
+          // height limit and gives way in Trips mode, so "New trip" stays in.
+          <View
+            onLayout={(event) => {
+              listY.current = event.nativeEvent.layout.y;
+              scrollPending();
+            }}
+            style={
+              outer
+                ? undefined
+                : [
+                    { maxHeight: Math.max(maxListHeight, layout.tripRowMin) },
+                    // Raz 3: in Trips mode the list gives way, so "New trip" is never pushed out.
+                    tripsMode && styles.shrink,
+                  ]
             }
-          }}
-          scrollEnabled={!outer}
-          style={
-            outer
-              ? undefined
-              : [
-                  { maxHeight: Math.max(maxListHeight, layout.tripRowMin) },
-                  // Raz 3: in Trips mode the list gives way, so "New trip" is never pushed out.
-                  tripsMode && styles.shrink,
-                ]
-          }
-          stickyHeaderIndices={sticky}
-          testID="card-trips-list"
-          nestedScrollEnabled
-          onScroll={onScroll}
-          scrollEventThrottle={100}
-        >
-          {children}
-        </ScrollView>
-      ) : null}
+          >
+            <ScrollView
+              ref={scroll}
+              scrollEnabled={!outer}
+              style={outer ? undefined : styles.shrink}
+              stickyHeaderIndices={sticky}
+              testID="card-trips-list"
+              nestedScrollEnabled
+              onScroll={onScroll}
+              onContentSizeChange={moreBelow.onContentSizeChange}
+              onLayout={moreBelow.onLayout}
+              scrollEventThrottle={100}
+            >
+              {children}
+            </ScrollView>
+            {/* In scroll mode the card scrolls, and its own fade shows (polish-audit 4). */}
+            {outer ? null : <ScrollFade visible={moreBelow.more} color={palette.surfaceRaised} />}
+          </View>
+        ) : null}
+      </Animated.View>
 
-      <View
+      <Animated.View
         style={[
           hasRows || state.status !== 'idle' ? styles.ctaGap : undefined,
           // 3.3: "New trip" stays at the card's bottom in Trips mode.
           tripsMode && styles.ctaBottom,
+          ctaStyle,
         ]}
       >
         {blockedAt === 'new' ? (
@@ -693,7 +804,7 @@ export function CardTrips({
           testID="card-new-trip"
           ref={newTripRef}
         />
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -774,6 +885,8 @@ const styles = StyleSheet.create({
   rowWrap: { overflow: 'hidden' },
   fill: { flex: 1 },
   shrink: { flexShrink: 1 },
+  // 4e: in Trips mode the wrapper still lets the list shrink, so "New trip" stays in.
+  fadeFill: { flex: 1, flexShrink: 1, minHeight: 0 },
   // Fix my-trips-space 3.2: "Your trips" is a 48dp row.
   heading: {
     minHeight: layout.cardTripsHeadingMin,

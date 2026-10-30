@@ -1426,6 +1426,7 @@
     "emptyRadius": "No places within {{n}} km of the hotel.",
     "widen": "Widen to {{n}} km",
     "emptyCountry": "We don't have places in {{country}} yet.",
+    "emptyCountryWhy": "We're adding countries one at a time, and haven't reached {{country}} yet.",
     "emptySaved": "You haven't saved places for this trip yet. Tap Save next to a place to save it.",
     "offlineNoCopy": "You need a connection to see the places the first time. After that they're kept on this device.",
     "loadError": "We couldn't load the places.",

@@ -3,6 +3,10 @@
  * area — Safety, time, currency, temperature, emergency — each opening its
  * details. A tile with no data isn't shown; Safety always is, outside Israel.
  * No threat level anywhere here (Yossi, 29.10): only in the Safety sheet.
+ *
+ * Sprint 12 P-1 (polish-audit 1): data tiles (time, currency, temperature) come
+ * before action tiles (Safety, What to see, emergency). When they don't all fit
+ * one row, the data keep a row and the actions get a row of wide, low tiles.
  */
 import { useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -62,16 +66,39 @@ export function tileLayout(
   count: number,
 ): { mode: 'tiles' | 'list'; cols: number } {
   if (fontScale >= layout.cardTilesListFromFontScale) return { mode: 'list', cols: 1 };
-  const min = layout.cardTileMinWidth;
-  const gap = layout.cardTileGap;
-  // The gaps count too: five 64-wide tiles need 352, not 320 (Raz review 1).
-  const maxCols = Math.max(
-    1,
-    Math.min(Math.floor(width / (min * fontScale)), Math.floor((width + gap) / (min + gap))),
-  );
+  const maxCols = maxColumns(width, fontScale);
   const rows = Math.ceil(Math.max(count, 1) / maxCols);
   return { mode: 'tiles', cols: Math.ceil(Math.max(count, 1) / rows) };
 }
+
+/** How many 64-wide tiles fit a strip `width` wide at this font scale. */
+function maxColumns(width: number, fontScale: number): number {
+  const min = layout.cardTileMinWidth;
+  const gap = layout.cardTileGap;
+  // The gaps count too: five 64-wide tiles need 352, not 320 (Raz review 1).
+  return Math.max(
+    1,
+    Math.min(Math.floor(width / (min * fontScale)), Math.floor((width + gap) / (min + gap))),
+  );
+}
+
+/**
+ * Sprint 12 P-1 (Raz 2): every tile in one row, data over actions in two rows,
+ * or the list from font scale 1.6.
+ */
+export function tileArrangement(
+  width: number,
+  fontScale: number,
+  count: number,
+): 'one-row' | 'two-rows' | 'list' {
+  if (fontScale >= layout.cardTilesListFromFontScale) return 'list';
+  return count <= maxColumns(width, fontScale) ? 'one-row' : 'two-rows';
+}
+
+const ACTIONS: ReadonlySet<Tile['key']> = new Set(['safety', 'places', 'emergency']);
+
+/** P-1: how a tile is drawn (Raz 4). */
+type Variant = 'data' | 'action' | 'actionWide' | 'list';
 
 interface Tile {
   key: 'safety' | 'time' | 'money' | 'climate' | 'places' | 'emergency';
@@ -317,15 +344,41 @@ export function CardTiles({
     });
   }
 
-  const { mode, cols } = tileLayout(width, fontScale, tiles.length);
-  const few = tiles.length <= 2;
+  const arrangement = tileArrangement(width, fontScale, tiles.length);
+  const mode = arrangement === 'list' ? 'list' : 'tiles';
+  // P-1 (John, Raz 1): in tiles, the data first, then the actions; the list keeps today's order.
+  const dataTiles = tiles.filter((x) => !ACTIONS.has(x.key));
+  const actionTiles = tiles.filter((x) => ACTIONS.has(x.key));
+  const ordered = mode === 'list' ? tiles : [...dataTiles, ...actionTiles];
   const gap = layout.cardTileGap;
+  const cols = arrangement === 'one-row' ? Math.max(tiles.length, 1) : 1;
   // Whole points: rounding never pushes the last tile to a new row (Raz review 6).
   const column = Math.floor((width - gap * (cols - 1)) / cols);
-  const tileWidth = few ? Math.min(layout.cardTileMaxWidthFew, column) : column;
+  const tileWidth = tiles.length <= 2 ? Math.min(layout.cardTileMaxWidthFew, column) : column;
+  // Two rows: the data share their row, split by tileLayout when they don't fit
+  // (a narrow screen at a large font, Raz 5); one alone keeps the narrow width (John).
+  const dataCols = tileLayout(width, fontScale, dataTiles.length).cols;
+  const dataWidth =
+    dataTiles.length < 2
+      ? Math.min(layout.cardTileMaxWidthFew, width)
+      : Math.floor((width - gap * (dataCols - 1)) / dataCols);
+  const actionWidth = Math.floor(
+    (width - gap * (actionTiles.length - 1)) / Math.max(actionTiles.length, 1),
+  );
   const fallback = useRef<ComponentRef<typeof Pressable>>(null);
   const refOf = (key: Tile['key']) =>
     key === 'safety' ? safetyRef : key === 'places' ? (placesRef ?? fallback) : refs[key];
+  const draw = (tile: Tile, variant: Variant, w: number) => (
+    <CardTile
+      key={tile.key}
+      tile={tile}
+      variant={variant}
+      width={w}
+      colorScheme={colorScheme}
+      reduceMotion={reduceMotion}
+      pressRef={refOf(tile.key)}
+    />
+  );
 
   return (
     <>
@@ -333,23 +386,30 @@ export function CardTiles({
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
         // Not drawn until measured, so the columns never jump (5.3).
         style={[
-          mode === 'list' ? styles.list : styles.grid,
+          arrangement === 'one-row' ? styles.grid : styles.list,
           { gap, opacity: measured > 0 ? 1 : 0 },
         ]}
         accessibilityValue={{ text: mode }}
         testID="card-tiles"
       >
-        {tiles.map((tile) => (
-          <CardTile
-            key={tile.key}
-            tile={tile}
-            list={mode === 'list'}
-            width={tileWidth}
-            colorScheme={colorScheme}
-            reduceMotion={reduceMotion}
-            pressRef={refOf(tile.key)}
-          />
-        ))}
+        {arrangement === 'list'
+          ? ordered.map((tile) => draw(tile, 'list', tileWidth))
+          : arrangement === 'one-row'
+            ? ordered.map((tile) =>
+                draw(tile, ACTIONS.has(tile.key) ? 'action' : 'data', tileWidth),
+              )
+            : [
+                dataTiles.length ? (
+                  <View key="data" style={[styles.grid, { gap }]} testID="card-tiles-data">
+                    {dataTiles.map((tile) => draw(tile, 'data', dataWidth))}
+                  </View>
+                ) : null,
+                actionTiles.length ? (
+                  <View key="actions" style={[styles.grid, { gap }]} testID="card-tiles-actions">
+                    {actionTiles.map((tile) => draw(tile, 'actionWide', actionWidth))}
+                  </View>
+                ) : null,
+              ]}
       </View>
 
       {time ? (
@@ -481,14 +541,14 @@ function SignedOutSos({
 
 function CardTile({
   tile,
-  list,
+  variant,
   width,
   colorScheme,
   reduceMotion,
   pressRef,
 }: {
   tile: Tile;
-  list: boolean;
+  variant: Variant;
   width: number;
   colorScheme: ColorScheme;
   reduceMotion: boolean;
@@ -496,6 +556,8 @@ function CardTile({
 }) {
   const palette = colors[colorScheme];
   const testID = `card-tile-${tile.key}`;
+  const list = variant === 'list';
+  const wide = variant === 'actionWide';
   const value = tile.value ? (
     <Text
       style={[list ? styles.listValue : styles.value, { color: palette.textPrimary }]}
@@ -504,14 +566,28 @@ function CardTile({
     >
       {tile.value}
     </Text>
-  ) : list ? null : (
-    // The same height as the others: Safety and emergency have no value (5.1).
+  ) : variant === 'data' ? (
+    // The same height as the others when a data tile has no value yet (5.1).
     <View style={styles.valueSpace} />
-  );
-  const badge = tile.badge ? (
-    <Badge kind={tile.badge} colorScheme={colorScheme} list={list} />
   ) : null;
-  const body = list ? (
+  const badge = tile.badge ? (
+    <Badge kind={tile.badge} colorScheme={colorScheme} list={list || wide} />
+  ) : null;
+  const body = wide ? (
+    <>
+      {tile.icon(palette.textPrimary)}
+      <Text style={[styles.wideLabel, { color: palette.textPrimary }]} numberOfLines={2}>
+        {tile.label}
+      </Text>
+      {badge}
+      {/* Not on a narrow tile: three actions side by side (polish-audit 1). */}
+      {tile.onPress && width >= layout.cardActionChevronMinWidth ? (
+        <View style={styles.chevron} testID="card-tile-chevron">
+          <ChevronEndIcon color={palette.textTertiary} size={16} />
+        </View>
+      ) : null}
+    </>
+  ) : list ? (
     <>
       {tile.icon(palette.textPrimary)}
       <Text style={[styles.listLabel, { color: palette.textPrimary }]}>{tile.label}</Text>
@@ -529,7 +605,15 @@ function CardTile({
       {badge}
     </>
   );
-  const shape = list ? styles.listRow : [styles.tile, { width, backgroundColor: palette.tag }];
+  const shape = list
+    ? styles.listRow
+    : wide
+      ? [styles.wide, { width, backgroundColor: palette.tag }]
+      : [
+          styles.tile,
+          variant === 'action' && styles.action,
+          { width, backgroundColor: palette.tag },
+        ];
   if (!tile.onPress) {
     return (
       <View style={shape} accessible accessibilityLabel={tile.a11y} testID={testID}>
@@ -549,7 +633,7 @@ function CardTile({
         shape,
         pressed && { backgroundColor: palette.tilePressed },
         // Reduced motion: the colour only (fix 11).
-        pressed && !list && !reduceMotion && styles.pressed,
+        pressed && !list && !reduceMotion && (wide ? styles.pressedWide : styles.pressed),
       ]}
       testID={testID}
     >
@@ -599,6 +683,27 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   pressed: { transform: [{ scale: 0.96 }] },
+  // P-1: the wide action tile moves less (polish-audit 1).
+  pressedWide: { transform: [{ scale: 0.98 }] },
+  // P-1: an action in the one row has no value: the icon and label sit in the middle.
+  action: { justifyContent: 'center', gap: 6 },
+  wide: {
+    minHeight: layout.listRowMin,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  wideLabel: {
+    flexShrink: 1,
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    lineHeight: 20,
+    textAlign: 'left',
+  },
+  chevron: { marginStart: 'auto' },
   listRow: {
     minHeight: layout.listRowMin,
     flexDirection: 'row',

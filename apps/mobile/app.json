@@ -3,7 +3,7 @@
     "name": "Travel App",
     "slug": "travel-app",
     "scheme": "travelapp",
-    "version": "0.1.0",
+    "version": "0.13.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,6 +16,7 @@
     },
     "android": {
       "package": "com.travelapp.companion",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#060B18",
         "foregroundImage": "./assets/android-icon-foreground.png",
