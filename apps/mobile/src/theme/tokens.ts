@@ -318,8 +318,6 @@ export const launch = {
   /** dp. The part of the frame the system shows: a circle two-thirds of it. */
   iconCircle: 192,
   viewBox: 1024,
-  /** The art inside splash-icon.png is drawn at this scale around its centre (device check 30.10). */
-  contentScale: 0.9,
   originSize: 26,
   routeWidth: 13,
   routeUnderlayWidth: 21,

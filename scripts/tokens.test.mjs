@@ -254,7 +254,6 @@ describe('design tokens in the app', () => {
       ['iconFrame', 'layout.launch.iconFrame'],
       ['iconCircle', 'layout.launch.iconCircle'],
       ['viewBox', 'layout.launch.viewBox'],
-      ['contentScale', 'layout.launch.contentScale'],
       ['originSize', 'layout.launch.originSize'],
       ['routeWidth', 'layout.launch.routeWidth'],
       ['routeUnderlayWidth', 'layout.launch.routeUnderlayWidth'],
