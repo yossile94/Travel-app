@@ -256,7 +256,6 @@ describe('design tokens in the app', () => {
       ['iconFrame', 'layout.launch.iconFrame'],
       ['iconCircle', 'layout.launch.iconCircle'],
       ['viewBox', 'layout.launch.viewBox'],
-      ['contentScale', 'layout.launch.contentScale'],
       ['originSize', 'layout.launch.originSize'],
       ['routeWidth', 'layout.launch.routeWidth'],
       ['routeUnderlayWidth', 'layout.launch.routeUnderlayWidth'],
@@ -271,6 +270,7 @@ describe('design tokens in the app', () => {
       ['launchRoute', 'motion.launch.routeDuration'],
       ['launchPinDelay', 'motion.launch.pinDelay'],
       ['launchPin', 'motion.launch.pinDuration'],
+      ['launchGlow', 'motion.launch.glowDuration'],
       ['launchCap', 'timing.launch.cap'],
       ['launchHideFallback', 'timing.launch.hideFallback'],
     ]) {

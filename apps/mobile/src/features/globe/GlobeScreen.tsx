@@ -876,14 +876,25 @@ export function GlobeScreen() {
     ready:
       auth.state.status === 'signedOut' || (auth.state.status === 'signedIn' && trips.firstLoad),
     signedIn: auth.state.status === 'signedIn',
-    onOpen: (id, text) => (tripForm ? setHeldAlert({ id, text }) : void openFromAlert(id, text)),
-    onSignedOut: () => showTripToast(t('flight.gone'), true),
+    // Sprint 12 (Dana B-1): an alert's answer, a sheet or a toast, is never under the
+    // launch overlay: the overlay goes first. From an alert it is still anyway (AC-8).
+    onOpen: (id, text) => {
+      launchSignals.send('ready');
+      if (tripForm) setHeldAlert({ id, text });
+      else void openFromAlert(id, text);
+    },
+    onSignedOut: () => {
+      launchSignals.send('ready');
+      showTripToast(t('flight.gone'), true);
+    },
     onOpenTrip: (tripId) => {
+      launchSignals.send('ready');
       const trip = trips.cache?.upcoming.find((x) => x.id === tripId);
       if (trip && !tripForm) openTripFromList(trip);
     },
     // Sprint 10 design 7.3: a passport reminder opens the account sheet on "My passports".
     onOpenPassports: () => {
+      launchSignals.send('ready');
       if (tripForm) return;
       setPassportsFromAlert(true);
       setAccountSheetOpen(true);

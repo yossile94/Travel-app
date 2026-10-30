@@ -82,6 +82,41 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
     expect(launchShown.get()).toBe(true);
   });
 
+  it('the glow fades in from t=0 once both images are there; hide() never waits for it', async () => {
+    const glowFade = () =>
+      r.withTiming.mock.calls.some(
+        ([target, config]) =>
+          target === 1 && (config as { duration?: number })?.duration === motion.launchGlow,
+      );
+    await mount();
+    await imageDrawn();
+    expect(hide).toHaveBeenCalledTimes(1);
+    expect(glowFade()).toBe(false);
+    await act(async () => {
+      fireEvent(
+        screen.getByTestId('launch-glow', { includeHiddenElements: true }).children[0] as never,
+        'load',
+      );
+    });
+    expect(glowFade()).toBe(true);
+  });
+
+  it('with reduce motion the glow still fades in: opacity in place (design 1.5)', async () => {
+    (r.useReducedMotion as jest.Mock).mockReturnValue(true);
+    await mount();
+    await act(async () => {
+      fireEvent(
+        screen.getByTestId('launch-glow', { includeHiddenElements: true }).children[0] as never,
+        'load',
+      );
+    });
+    await imageDrawn();
+    expect(r.withTiming).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ duration: motion.launchGlow, reduceMotion: 'never' }),
+    );
+  });
+
   it('hides the system splash after the fallback when the image never reports (design 1.3)', async () => {
     await mount();
     await act(async () => jest.advanceTimersByTime(timing.launchHideFallback));
@@ -180,12 +215,9 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
       {},
       ...[screen.getByTestId('launch-pin', { includeHiddenElements: true }).props.style].flat(2),
     );
-    // The art is drawn at contentScale around the frame's centre.
-    const at = (v: number) =>
-      launch.iconFrame / 2 +
-      (v - launch.viewBox / 2) * launch.contentScale * (launch.iconFrame / launch.viewBox);
-    expect(style.left + style.width / 2).toBeCloseTo(at(launch.pinAt[0]));
-    expect(style.top + style.height).toBeCloseTo(at(launch.pinAt[1]));
+    const u = launch.viewBox / launch.iconFrame;
+    expect(style.left + style.width / 2).toBeCloseTo(launch.pinAt[0] / u);
+    expect(style.top + style.height).toBeCloseTo(launch.pinAt[1] / u);
   });
 });
 

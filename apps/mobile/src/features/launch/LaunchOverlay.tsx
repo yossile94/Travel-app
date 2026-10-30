@@ -29,7 +29,13 @@ const FRAMES_2 = 32;
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-const splashIcon = require('../../../assets/splash-icon.png');
+/**
+ * Design 1.1 (device check 30.10): the system splash and frame 0 show the opaque
+ * globe only, since the A73 draws no semi-transparent pixels there; the glow is
+ * its own image underneath, faded in from t=0.
+ */
+const splashGlobe = require('../../../assets/splash-icon-noglow.png');
+const splashGlow = require('../../../assets/splash-glow.png');
 
 /**
  * Raz 4: the dash starts a cap's width before the path, so frame 0 has no
@@ -38,23 +44,12 @@ const splashIcon = require('../../../assets/splash-icon.png');
 const dashHidden = launch.routeLength + launch.routeUnderlayWidth;
 // Raz 10: the next dash starts a cap width after the path ends, so none shows at Bangkok.
 const dashArray = [launch.routeLength, launch.routeLength + 2 * launch.routeUnderlayWidth];
-/**
- * splash-icon.png is the design's art drawn at launch.contentScale around its
- * centre, so its glow fits the smallest circle a launcher shows (the A73 cuts at
- * 0.29 of the frame, device check 30.10). The route and the pin keep the design's
- * coordinates; a wider viewBox draws them at the same scale.
- */
-const box = launch.viewBox / launch.contentScale;
-const boxMin = (launch.viewBox - box) / 2;
-/** A point in the design's coordinates, in dp inside the frame. */
-const toDp = (v: number) => ((v - boxMin) * launch.iconFrame) / box;
-const pinSize = {
-  width: (launch.pinWidth * launch.iconFrame) / box,
-  height: (launch.pinHeight * launch.iconFrame) / box,
-};
+/** viewBox units per dp (design 1.2). */
+const u = launch.viewBox / launch.iconFrame;
+const pinSize = { width: launch.pinWidth / u, height: launch.pinHeight / u };
 const pinPosition = {
-  left: toDp(launch.pinAt[0]) - pinSize.width / 2,
-  top: toDp(launch.pinAt[1]) - pinSize.height,
+  left: (launch.pinAt[0] * launch.iconFrame) / launch.viewBox - pinSize.width / 2,
+  top: (launch.pinAt[1] * launch.iconFrame) / launch.viewBox - pinSize.height,
 };
 /** The route starts at the origin dot: Israel (design 1.2). */
 const [originX, originY] = launch.routePath.slice(1).split(' ').map(Number);
@@ -84,6 +79,7 @@ export function LaunchOverlay({
   const dashOffset = useSharedValue<number>(dashHidden);
   const pinScale = useSharedValue(0);
   const pinOpacity = useSharedValue(0);
+  const glowOpacity = useSharedValue(0);
 
   const hidden = useRef(false);
   const frame = useRef<number | undefined>(undefined);
@@ -140,11 +136,33 @@ export function LaunchOverlay({
     });
   }, [reduceMotion, originOpacity, dashOffset, pinScale, pinOpacity]);
 
+  // The glow fades in from t=0, once its own image is there too (Raz): a glow that
+  // loads late still fades in, never pops. A change of opacity in place, so it runs
+  // with reduced motion and from an alert as well (design 1.5).
+  const glowLoaded = useRef(false);
+  const glowStarted = useRef(false);
+  const startGlow = useCallback(() => {
+    if (glowStarted.current || !glowLoaded.current || !hidden.current) return;
+    glowStarted.current = true;
+    glowOpacity.set(
+      withTiming(1, {
+        duration: motion.launchGlow,
+        easing: Easing.bezier(...easing.standard),
+        reduceMotion: ReduceMotion.Never,
+      }),
+    );
+  }, [glowOpacity]);
+  const onGlowLoad = useCallback(() => {
+    glowLoaded.current = true;
+    startGlow();
+  }, [startGlow]);
+
   const hide = useCallback(() => {
     if (hidden.current) return;
     hidden.current = true;
     SplashScreen.hide();
-  }, []);
+    startGlow();
+  }, [startGlow]);
 
   // The route plays over the globe only: never before the image is drawn, even when
   // the fallback hid the system splash first (device check 30.10: a slow image).
@@ -181,6 +199,7 @@ export function LaunchOverlay({
   }, []);
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glowOpacity.value }));
   const originProps = useAnimatedProps(() => ({ opacity: originOpacity.value }));
   const routeProps = useAnimatedProps(() => ({ strokeDashoffset: dashOffset.value }));
   const underlayProps = useAnimatedProps(() => ({ strokeDashoffset: dashOffset.value }));
@@ -198,14 +217,17 @@ export function LaunchOverlay({
       accessibilityElementsHidden
     >
       <View style={styles.frame}>
+        <Animated.View testID="launch-glow" style={[StyleSheet.absoluteFill, glowStyle]}>
+          <Image source={splashGlow} style={styles.frame} onLoad={onGlowLoad} fadeDuration={0} />
+        </Animated.View>
         <Image
           testID="launch-icon"
-          source={splashIcon}
+          source={splashGlobe}
           style={styles.frame}
           onLoad={onImageLoad}
           fadeDuration={0}
         />
-        <Svg style={StyleSheet.absoluteFill} viewBox={`${boxMin} ${boxMin} ${box} ${box}`}>
+        <Svg style={StyleSheet.absoluteFill} viewBox={`0 0 ${launch.viewBox} ${launch.viewBox}`}>
           <AnimatedPath
             d={launch.routePath}
             fill="none"
