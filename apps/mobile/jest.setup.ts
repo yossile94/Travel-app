@@ -28,7 +28,7 @@ jest.mock('react-native-reanimated', () => {
 
   return {
     __esModule: true,
-    default: { View },
+    default: { View, createAnimatedComponent: <T>(component: T) => component },
     View,
     Easing: { linear: identity, bezier: () => identity },
     useSharedValue,
@@ -36,7 +36,10 @@ jest.mock('react-native-reanimated', () => {
     useAnimatedKeyboard: () => ({ height: { value: 0 }, state: { value: 0 } }),
     ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
     withTiming: jest.fn(<T>(target: T) => target),
-    useReducedMotion: () => false,
+    withDelay: jest.fn(<T>(_delay: number, animation: T) => animation),
+    useAnimatedProps: (factory: () => object) => factory(),
+    createAnimatedComponent: <T>(component: T) => component,
+    useReducedMotion: jest.fn(() => false),
   };
 });
 

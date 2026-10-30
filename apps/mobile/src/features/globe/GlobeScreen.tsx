@@ -69,7 +69,8 @@ import { GlobeSos } from '@/features/emergency/GlobeSos';
 import { useTrips } from '@/features/trips/TripsProvider';
 import { flightTracked, OPEN_TIMEOUT_MS, tripOfFlight } from '@/features/flights/flightsStore';
 import { PushExplainer } from '@/features/push/PushExplainer';
-import { launchedFromAlert, usePushOpen, type AlertText } from '@/features/push/usePushOpen';
+import { launchSignals } from '@/features/launch/launchSignals';
+import { launchAlertOnce, usePushOpen, type AlertText } from '@/features/push/usePushOpen';
 import { usePushSetup } from '@/features/push/usePushSetup';
 import { supabase } from '@/lib/supabase';
 import type { Trip } from '@/features/trips/tripsApi';
@@ -784,6 +785,8 @@ export function GlobeScreen() {
     globeReadyAt.current = Date.now();
     logGlobeReady(reason);
     setGlobeReady(true);
+    // Sprint 12 AC-5(ג): the launch overlay fades.
+    launchSignals.send('ready');
   }, []);
   const detailedMounted = Boolean(detailedCountries.url);
   const onMapIdle = useCallback(() => {
@@ -873,14 +876,25 @@ export function GlobeScreen() {
     ready:
       auth.state.status === 'signedOut' || (auth.state.status === 'signedIn' && trips.firstLoad),
     signedIn: auth.state.status === 'signedIn',
-    onOpen: (id, text) => (tripForm ? setHeldAlert({ id, text }) : void openFromAlert(id, text)),
-    onSignedOut: () => showTripToast(t('flight.gone'), true),
+    // Sprint 12 (Dana B-1): an alert's answer, a sheet or a toast, is never under the
+    // launch overlay: the overlay goes first. From an alert it is still anyway (AC-8).
+    onOpen: (id, text) => {
+      launchSignals.send('ready');
+      if (tripForm) setHeldAlert({ id, text });
+      else void openFromAlert(id, text);
+    },
+    onSignedOut: () => {
+      launchSignals.send('ready');
+      showTripToast(t('flight.gone'), true);
+    },
     onOpenTrip: (tripId) => {
+      launchSignals.send('ready');
       const trip = trips.cache?.upcoming.find((x) => x.id === tripId);
       if (trip && !tripForm) openTripFromList(trip);
     },
     // Sprint 10 design 7.3: a passport reminder opens the account sheet on "My passports".
     onOpenPassports: () => {
+      launchSignals.send('ready');
       if (tripForm) return;
       setPassportsFromAlert(true);
       setAccountSheetOpen(true);
@@ -985,8 +999,8 @@ export function GlobeScreen() {
   }, [auth.state.status]);
   // Opened from an alert: the alert wins (sprint 6 design 4.1 step 4).
   useEffect(() => {
-    void launchedFromAlert().then((fromAlert) => {
-      if (fromAlert) autoDecided.current = true;
+    void launchAlertOnce().then((alert) => {
+      if (alert === 'flight') autoDecided.current = true;
     });
   }, []);
   useEffect(() => {
@@ -1036,8 +1050,15 @@ export function GlobeScreen() {
   );
 
   useEffect(() => {
-    if (countries.error) console.error('[globe] could not load country borders', countries.error);
+    if (!countries.error) return;
+    console.error('[globe] could not load country borders', countries.error);
+    // Sprint 12 AC-5(ד): no globe is coming; the launch overlay goes.
+    launchSignals.send('error');
   }, [countries.error]);
+  useEffect(() => {
+    if (!hasMapboxToken) launchSignals.send('error');
+  }, []);
+  const onMapLoadingError = useCallback(() => launchSignals.send('error'), []);
 
   if (!hasMapboxToken) {
     return (
@@ -1086,6 +1107,7 @@ export function GlobeScreen() {
             styleJSON={STYLE_JSON}
             onDidFinishLoadingMap={onMapLoaded}
             onMapIdle={onMapIdle}
+            onMapLoadingError={onMapLoadingError}
             scaleBarEnabled={false}
             compassEnabled={false}
             pitchEnabled={false}
