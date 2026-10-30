@@ -38,12 +38,23 @@ const splashIcon = require('../../../assets/splash-icon.png');
 const dashHidden = launch.routeLength + launch.routeUnderlayWidth;
 // Raz 10: the next dash starts a cap width after the path ends, so none shows at Bangkok.
 const dashArray = [launch.routeLength, launch.routeLength + 2 * launch.routeUnderlayWidth];
-/** viewBox units per dp (design 1.2). */
-const u = launch.viewBox / launch.iconFrame;
-const pinSize = { width: launch.pinWidth / u, height: launch.pinHeight / u };
+/**
+ * splash-icon.png is the design's art drawn at launch.contentScale around its
+ * centre, so its glow fits the smallest circle a launcher shows (the A73 cuts at
+ * 0.29 of the frame, device check 30.10). The route and the pin keep the design's
+ * coordinates; a wider viewBox draws them at the same scale.
+ */
+const box = launch.viewBox / launch.contentScale;
+const boxMin = (launch.viewBox - box) / 2;
+/** A point in the design's coordinates, in dp inside the frame. */
+const toDp = (v: number) => ((v - boxMin) * launch.iconFrame) / box;
+const pinSize = {
+  width: (launch.pinWidth * launch.iconFrame) / box,
+  height: (launch.pinHeight * launch.iconFrame) / box,
+};
 const pinPosition = {
-  left: (launch.pinAt[0] * launch.iconFrame) / launch.viewBox - pinSize.width / 2,
-  top: (launch.pinAt[1] * launch.iconFrame) / launch.viewBox - pinSize.height,
+  left: toDp(launch.pinAt[0]) - pinSize.width / 2,
+  top: toDp(launch.pinAt[1]) - pinSize.height,
 };
 /** The route starts at the origin dot: Israel (design 1.2). */
 const [originX, originY] = launch.routePath.slice(1).split(' ').map(Number);
@@ -187,7 +198,7 @@ export function LaunchOverlay({
           onLoad={onImageLoad}
           fadeDuration={0}
         />
-        <Svg style={StyleSheet.absoluteFill} viewBox={`0 0 ${launch.viewBox} ${launch.viewBox}`}>
+        <Svg style={StyleSheet.absoluteFill} viewBox={`${boxMin} ${boxMin} ${box} ${box}`}>
           <AnimatedPath
             d={launch.routePath}
             fill="none"

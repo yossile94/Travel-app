@@ -177,9 +177,12 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
       {},
       ...[screen.getByTestId('launch-pin', { includeHiddenElements: true }).props.style].flat(2),
     );
-    const u = launch.viewBox / launch.iconFrame;
-    expect(style.left + style.width / 2).toBeCloseTo(launch.pinAt[0] / u);
-    expect(style.top + style.height).toBeCloseTo(launch.pinAt[1] / u);
+    // The art is drawn at contentScale around the frame's centre.
+    const at = (v: number) =>
+      launch.iconFrame / 2 +
+      (v - launch.viewBox / 2) * launch.contentScale * (launch.iconFrame / launch.viewBox);
+    expect(style.left + style.width / 2).toBeCloseTo(at(launch.pinAt[0]));
+    expect(style.top + style.height).toBeCloseTo(at(launch.pinAt[1]));
   });
 });
 
