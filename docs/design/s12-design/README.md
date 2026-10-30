@@ -20,8 +20,8 @@
 
 | | ערך |
 |---|---|
-| המסגרת של האייקון (`iconFrame`) | **240dp או 288dp**, ריבוע ממורכז בחלון כולו (כולל שורת המצב ושורת הניווט). 240 כשיש `windowSplashScreenIconBackgroundColor`, ו-288 בלעדיו. רז מעריך 288 (שאלה פתוחה 1) |
-| מה שנראה | עיגול בקוטר שני שלישים מהמסגרת: **160dp** או **192dp**. מה שמחוצה לו נחתך |
+| המסגרת של האייקון (`iconFrame`) | **288dp**, ריבוע ממורכז בחלון כולו (כולל שורת המצב ושורת הניווט). אצלנו אין `windowSplashScreenIconBackgroundColor` (נבדק ב-prebuild, 30.10), ולכן 288 ולא 240 |
+| מה שנראה | עיגול בקוטר שני שלישים מהמסגרת: **192dp**. מה שמחוצה לו נחתך |
 | הרקע | `#060B18` על כל המסך |
 
 **השכבה:**
@@ -123,7 +123,7 @@
 |---|---|
 | **הפעלה קרה רגילה** | 1.3, ואז 1.4 |
 | **הפחתת תנועה** (AC-7) | פריים 0 בלבד (הכדור, בלי מסלול ובלי פין), סטטי, ואז הדהייה של 1.4. נקבע לפי `useReducedMotion()` של Reanimated, שהוא סינכרוני, ולכן ידוע כבר בפריים 0 |
-| **הפעלה קרה מהתראה** (AC-8, רז 8) | בדיוק כמו בהפחתת תנועה: פריים 0 סטטי, ודהייה כשהגלובוס מוכן. **כל סוג של התראה**, כולל תזכורות ביטוח ודרכון (החלטת רז; הוא מעדכן את AC-8). הבדיקה היא `launchedFromAlert()` הקיים (`usePushOpen.ts:48`): היא מתחילה **פעם אחת ב-mount של השכבה**, וה-promise נשמר ברמת המודול. `GlobeScreen` (‏`GlobeScreen.tsx:988`) משתמש באותו promise ולא קורא שוב. האנימציה מתחילה רק כשה-promise נפתר ל-`false`. פריים 0 ממילא סטטי, ולכן אין המתנה גלויה |
+| **הפעלה קרה מהתראה** (AC-8, רז 8) | בדיוק כמו בהפחתת תנועה: פריים 0 סטטי, ודהייה כשהגלובוס מוכן. **כל סוג של התראה**, כולל תזכורות ביטוח ודרכון (החלטת רז; הוא מעדכן את AC-8). הבדיקה היא `launchAlertOnce()` ב-`usePushOpen.ts` (במקום `launchedFromAlert()`, 30.10): היא מתחילה **פעם אחת ב-mount של השכבה**, וה-promise נשמר ברמת המודול. היא מחזירה `'flight'`, `'other'` או `null`. השכבה מדלגת על האנימציה בכל התראה, ו-`GlobeScreen` משתמש באותו promise ועוצר את הפתיחה האוטומטית של הנסיעה רק ב-`'flight'`, כמו קודם. האנימציה מתחילה רק כשה-promise נפתר ל-`null`. פריים 0 ממילא סטטי, ולכן אין המתנה גלויה |
 | **הפעלה חמה** (האפליקציה בזיכרון) | השכבה לא נטענת. דגל ברמת המודול (`launchShown`) מונע הצגה חוזרת כל עוד ה-JS חי. `hide()` עדיין נקרא (1.3) |
 | **בלי רשת** | אותו דבר. אם המפה לא מגיעה ל-idle, הגיבוי של 5 שנ', השגיאה או התקרה של 8 שנ' מורידים את השכבה. המסכים שמתחת מטפלים במצב בלי רשת כמו היום |
 | **שגיאה, או אין טוקן של Mapbox** | דהייה מיד (1.4) |
@@ -271,7 +271,7 @@ View  (styles.fill / styles.grow, לא דוהה; ה-fill/grow נשארים כא�
 | `color.launch.pin` | `#FF7A57` | `launch.pin` | 5.5 |
 | `color.launch.pinDot` / `layout.launch.pinDotSize` | `#F3F6FC` / ‏21 | `launch.pinDotColor` / `pinDotSize` | 5.5 |
 | `color.launch.origin` / `layout.launch.originSize` | `#F3F6FC` / ‏26 | `launch.originColor` / `originSize` | 5.5 |
-| `layout.launch.iconFrame` / `iconCircle` | **240 / ‏160** עד ההכרעה (או 288 / ‏192, שאלה פתוחה 1). dp | `launch.iconFrame` / `iconCircle` | 5.5 |
+| `layout.launch.iconFrame` / `iconCircle` | **288 / ‏192** dp (שאלה 1 נסגרה, 30.10) | `launch.iconFrame` / `iconCircle` | 5.5 |
 | `layout.launch.viewBox` | 1024 (‏u = viewBox / iconFrame) | `launch.viewBox` | 5.5 |
 | `layout.launch.routeWidth` / `routeUnderlayWidth` | 13 / ‏21 | `launch.routeWidth` / `routeUnderlayWidth` | 5.5 |
 | `layout.launch.pinWidth` / `pinHeight` / `pinStroke` | 60 / ‏85 / ‏6 (= 1.5dp ב-240) | `launch.pinWidth` / `pinHeight` / `pinStroke` | 5.5 |
@@ -293,7 +293,8 @@ View  (styles.fill / styles.grow, לא דוהה; ה-fill/grow נשארים כא�
 
 ## 5. שאלות פתוחות
 
-1. **גודל המסגרת של מסך המערכת (לרז ולדורי).**
+1. **נסגרה (30.10): 288 / 192.** ‏prebuild לא כותב `windowSplashScreenIconBackgroundColor`. מה שנכתב כאן לפני ההכרעה:
+   **גודל המסגרת של מסך המערכת (לרז ולדורי).**
    - **240 / ‏160:** כשיש `windowSplashScreenIconBackgroundColor`.
    - **288 / ‏192:** בלעדיו. רז מעריך שזה המצב אצלנו.
    - **ההכרעה:** דורי מכריע בתחילת הפיתוח, ב-`prebuild` (מה הפלאגין של `expo-splash-screen` כותב ל-`styles.xml`) ובצילום ב-A73 (1.1).

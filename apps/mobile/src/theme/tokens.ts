@@ -267,6 +267,19 @@ export const motion = {
   discoverPanelResize: 300,
   discoverCityPin: 200,
   discoverAnnounceDelay: 600,
+  /** Sprint 12 design 1.3: the launch storyboard, from the frame the system splash hides. */
+  launchOrigin: 150,
+  launchRouteDelay: 150,
+  launchRoute: 900,
+  launchPinDelay: 1000,
+  launchPin: 350,
+} as const;
+
+/** Cubic-bezier control points (design-system 5.2), for Easing.bezier(...points). */
+export const easing = {
+  standard: [0.2, 0, 0, 1],
+  flyTo: [0.65, 0, 0.35, 1],
+  overshoot: [0.34, 1.56, 0.64, 1],
 } as const;
 
 /** Lengths in code points after trim, as Postgres char_length counts them (sprint 2 design 3.3). */
@@ -279,7 +292,44 @@ export const limits = {
   profileNameCounterFrom: 50,
 } as const;
 
-export const timing = { tripSaveTimeout: 15000, accountDeleteTimeout: 20000 } as const;
+export const timing = {
+  tripSaveTimeout: 15000,
+  accountDeleteTimeout: 20000,
+  /** Sprint 12 AC-5(ד): the launch overlay goes after this long, whatever happens. */
+  launchCap: 8000,
+  /** Sprint 12 design 1.3: hide the system splash even if the overlay image never reports onLoad. */
+  launchHideFallback: 300,
+} as const;
+
+/**
+ * Sprint 12 design 1.2, 4: the launch overlay. Every size except iconFrame and
+ * iconCircle is in viewBox units, the pixels of splash-icon.png.
+ */
+export const launch = {
+  background: '#060B18',
+  route: '#FF7A57',
+  routeUnderlay: '#03060F',
+  routeUnderlayOpacity: 0.6,
+  pin: '#FF7A57',
+  pinDotColor: '#F3F6FC',
+  originColor: '#F3F6FC',
+  /** dp. Android 12+ draws the splash icon in 288dp when it has no icon background (Q1, 30.10). */
+  iconFrame: 288,
+  /** dp. The part of the frame the system shows: a circle two-thirds of it. */
+  iconCircle: 192,
+  viewBox: 1024,
+  originSize: 26,
+  routeWidth: 13,
+  routeUnderlayWidth: 21,
+  pinWidth: 60,
+  pinHeight: 85,
+  pinStroke: 6,
+  pinDotSize: 21,
+  routePath: 'M422 458 Q590 391 698 536',
+  /** The arc's length, computed once (design 1.2); a unit test checks it. */
+  routeLength: 313,
+  pinAt: [698, 536],
+} as const;
 
 /** Sizes and positions of the controls over the globe (sprint 1 design 1). */
 export const layout = {

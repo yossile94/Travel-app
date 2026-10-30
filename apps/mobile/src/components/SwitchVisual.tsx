@@ -14,10 +14,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { CheckIcon } from '@/components/icons';
-import { colors, motion, radius, type ColorScheme } from '@/theme/tokens';
+import { colors, easing, motion, radius, type ColorScheme } from '@/theme/tokens';
 
-/** design-system 5.2 `standard`. */
-const STANDARD = Easing.bezier(0.2, 0, 0, 1);
+const STANDARD = Easing.bezier(...easing.standard);
 const TRACK = { width: 52, height: 32 };
 const THUMB_OFF = 16;
 const THUMB_ON = 24;
