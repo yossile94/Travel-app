@@ -241,4 +241,42 @@ describe('design tokens in the app', () => {
     expectValue('formBarHeight', 'size.formBar.height');
     expectValue('couponNotchRadius', 'layout.card.coupon.notchRadius');
   });
+
+  it('match the sprint 12 launch tokens', () => {
+    for (const [name, key] of [
+      ['background', 'color.launch.background'],
+      ['route', 'color.launch.route'],
+      ['routeUnderlay', 'color.launch.routeUnderlay'],
+      ['routeUnderlayOpacity', 'color.launch.routeUnderlayOpacity'],
+      ['pin', 'color.launch.pin'],
+      ['pinDotColor', 'color.launch.pinDot'],
+      ['originColor', 'color.launch.origin'],
+      ['iconFrame', 'layout.launch.iconFrame'],
+      ['iconCircle', 'layout.launch.iconCircle'],
+      ['viewBox', 'layout.launch.viewBox'],
+      ['originSize', 'layout.launch.originSize'],
+      ['routeWidth', 'layout.launch.routeWidth'],
+      ['routeUnderlayWidth', 'layout.launch.routeUnderlayWidth'],
+      ['pinWidth', 'layout.launch.pinWidth'],
+      ['pinHeight', 'layout.launch.pinHeight'],
+      ['pinStroke', 'layout.launch.pinStroke'],
+      ['pinDotSize', 'layout.launch.pinDotSize'],
+      ['routePath', 'layout.launch.routePath'],
+      ['routeLength', 'layout.launch.routeLength'],
+      ['launchOrigin', 'motion.launch.originDuration'],
+      ['launchRouteDelay', 'motion.launch.routeDelay'],
+      ['launchRoute', 'motion.launch.routeDuration'],
+      ['launchPinDelay', 'motion.launch.pinDelay'],
+      ['launchPin', 'motion.launch.pinDuration'],
+      ['launchCap', 'timing.launch.cap'],
+      ['launchHideFallback', 'timing.launch.hideFallback'],
+    ]) {
+      expectValue(name, key);
+    }
+    const list = (key) => `[${design[key].join(', ')}]`;
+    assert.ok(app.includes(`pinAt: ${list('layout.launch.pinAt')}`), 'launch.pinAt');
+    for (const name of ['standard', 'flyTo', 'overshoot']) {
+      assert.ok(app.includes(`${name}: ${list(`motion.easing.${name}`)}`), `easing.${name}`);
+    }
+  });
 });

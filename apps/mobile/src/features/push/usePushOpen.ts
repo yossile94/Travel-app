@@ -42,13 +42,29 @@ async function alreadyHandled(id: string): Promise<boolean> {
 }
 
 /**
- * A launch from an alert not yet handled: the active trip doesn't open by
- * itself (design 4.1 step 4). An alert handled before doesn't count (Raz review 8).
+ * Sprint 12 AC-8 (Raz 8): what kind of alert, not yet handled, cold-started the
+ * app: asked once per run, at the launch overlay's mount, and shared with the
+ * globe, so the answer can't change when the alert is marked handled meanwhile.
+ * Any alert skips the launch animation; only a flight alert stops the active
+ * trip opening by itself (sprint 6 design 4.1 step 4). An alert handled in an
+ * earlier run doesn't count (sprint 6 Raz review 8).
  */
-export async function launchedFromAlert(): Promise<boolean> {
-  const response = Notifications.getLastNotificationResponse();
-  const id = response?.notification.request.identifier;
-  return !!id && flightIdOf(response) !== null && !(await alreadyHandled(id));
+export type LaunchAlert = 'flight' | 'other' | null;
+let launchAlert: Promise<LaunchAlert> | undefined;
+
+export function launchAlertOnce(): Promise<LaunchAlert> {
+  launchAlert ??= (async (): Promise<LaunchAlert> => {
+    const response = Notifications.getLastNotificationResponse();
+    const id = response?.notification.request.identifier;
+    if (!id || (await alreadyHandled(id))) return null;
+    return flightIdOf(response) !== null ? 'flight' : 'other';
+  })().catch(() => null);
+  return launchAlert;
+}
+
+/** Tests start each case from a new run. */
+export function resetLaunchAlertForTests(): void {
+  launchAlert = undefined;
 }
 
 export function usePushOpen({

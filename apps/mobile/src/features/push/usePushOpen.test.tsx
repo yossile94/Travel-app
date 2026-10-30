@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, renderHook } from '@testing-library/react-native';
 import * as Notifications from 'expo-notifications';
 
-import { launchedFromAlert, usePushOpen } from './usePushOpen';
+import { launchAlertOnce, resetLaunchAlertForTests, usePushOpen } from './usePushOpen';
 
 jest.mock('@/lib/supabase', () => ({ supabase: null }));
 
@@ -31,7 +31,8 @@ beforeEach(async () => {
 describe('usePushOpen (design 4)', () => {
   it('opens the flight of the alert that started the app, once across launches', async () => {
     n.getLastNotificationResponse.mockReturnValue(response('a', flight));
-    expect(await launchedFromAlert()).toBe(true);
+    resetLaunchAlertForTests();
+    expect(await launchAlertOnce()).toBe('flight');
     const first = await mount();
     expect(first.onOpen).toHaveBeenCalledWith('f1', {
       title: 'LY81 delayed',
@@ -39,7 +40,8 @@ describe('usePushOpen (design 4)', () => {
     });
     await first.hook.unmount();
     // The next launch: Android still hands back the same response (Raz review 8).
-    expect(await launchedFromAlert()).toBe(false);
+    resetLaunchAlertForTests();
+    expect(await launchAlertOnce()).toBeNull();
   });
 
   it('a tap while signed out says the flight is not there (design 4.3)', async () => {
