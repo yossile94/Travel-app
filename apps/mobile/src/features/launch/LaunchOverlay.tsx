@@ -19,6 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 
+import { logLaunchGone } from '@/features/globe/perfLog';
 import { launchAlertOnce } from '@/features/push/usePushOpen';
 import { easing, launch, motion, timing } from '@/theme/tokens';
 
@@ -100,7 +101,10 @@ export function LaunchOverlay({
         reduceMotion: ReduceMotion.Never,
       }),
     );
-    later(onGone, motion.short + FRAMES_2);
+    later(() => {
+      logLaunchGone();
+      onGone();
+    }, motion.short + FRAMES_2);
   }, [onFadeStart, onGone, opacity]);
 
   // t=0 (design 1.3): the frame the system splash is hidden on.
@@ -140,9 +144,11 @@ export function LaunchOverlay({
   // loads late still fades in, never pops. A change of opacity in place, so it runs
   // with reduced motion and from an alert as well (design 1.5).
   const glowLoaded = useRef(false);
+  const globeDrawn = useRef(false);
   const glowStarted = useRef(false);
   const startGlow = useCallback(() => {
-    if (glowStarted.current || !glowLoaded.current || !hidden.current) return;
+    // Raz: over the globe only, never over an empty frame left by the hide fallback.
+    if (glowStarted.current || !glowLoaded.current || !globeDrawn.current) return;
     glowStarted.current = true;
     glowOpacity.set(
       withTiming(1, {
@@ -161,8 +167,7 @@ export function LaunchOverlay({
     if (hidden.current) return;
     hidden.current = true;
     SplashScreen.hide();
-    startGlow();
-  }, [startGlow]);
+  }, []);
 
   // The route plays over the globe only: never before the image is drawn, even when
   // the fallback hid the system splash first (device check 30.10: a slow image).
@@ -170,11 +175,13 @@ export function LaunchOverlay({
   const onImageLoad = useCallback(() => {
     frame.current = requestAnimationFrame(() => {
       hide();
+      globeDrawn.current = true;
+      startGlow();
       if (played.current) return;
       played.current = true;
       play();
     });
-  }, [hide, play]);
+  }, [hide, play, startGlow]);
 
   useEffect(() => {
     launchShown.mark();

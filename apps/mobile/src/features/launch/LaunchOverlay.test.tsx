@@ -101,6 +101,28 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
     expect(glowFade()).toBe(true);
   });
 
+  it('the glow never fades in over an empty frame: it waits for the globe (Raz)', async () => {
+    await mount();
+    await act(async () => {
+      fireEvent(
+        screen.getByTestId('launch-glow', { includeHiddenElements: true }).children[0] as never,
+        'load',
+      );
+      jest.advanceTimersByTime(timing.launchHideFallback);
+    });
+    expect(hide).toHaveBeenCalledTimes(1);
+    expect(
+      r.withTiming.mock.calls.some(
+        ([, config]) => (config as { duration?: number })?.duration === motion.launchGlow,
+      ),
+    ).toBe(false);
+    await imageDrawn();
+    expect(r.withTiming).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ duration: motion.launchGlow }),
+    );
+  });
+
   it('with reduce motion the glow still fades in: opacity in place (design 1.5)', async () => {
     (r.useReducedMotion as jest.Mock).mockReturnValue(true);
     await mount();
