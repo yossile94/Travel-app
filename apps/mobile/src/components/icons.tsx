@@ -341,6 +341,8 @@ export const ThermometerIcon = pathIcon('M10 13.8V5a2 2 0 114 0v8.8a4 4 0 11-4 0
 export const MapPinIcon = pathIcon(
   'M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21zM12 7a2.5 2.5 0 100 5 2.5 2.5 0 000-5z',
 );
+/** Check: inside the switch's thumb when on (sprint 12 P-3). Not mirrored in RTL. */
+export const CheckIcon = pathIcon('M5 12.5l4.5 4.5L19 7.5');
 /** Bed: a hotel. */
 export const BedIcon = pathIcon(
   'M3 7v12M3 13h18v6M21 13v-2a3 3 0 00-3-3h-7v5M7 11.5a1.5 1.5 0 100-.01',
@@ -349,8 +351,12 @@ export const BedIcon = pathIcon(
 export const CarIcon = pathIcon(
   'M5 17h14v-5l-2-5H7l-2 5zM5 12h14M7.5 14.5h.01M16.5 14.5h.01M6 17v2M18 17v2',
 );
-/** Compass arrow: directions in a maps app. */
-export const NavigateIcon = pathIcon('M12 2l7 19-7-4-7 4z');
+/**
+ * Navigation arrow, tilted 45°: directions in a maps app (sprint 12 P-5; the upright
+ * one read as the letter A). Not mirrored in RTL. Used by What to see, the daily
+ * board, the driver card and the hotels.
+ */
+export const NavigateIcon = pathIcon('M3 11l19-9-9 19-2-8z');
 /** Share. */
 export const ShareIcon = pathIcon(
   'M18 5.5a2.5 2.5 0 100 .01M6 12a2.5 2.5 0 100 .01M18 18.5a2.5 2.5 0 100 .01M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1',

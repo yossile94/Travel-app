@@ -240,5 +240,7 @@ describe('design tokens in the app', () => {
     expectValue('dateFieldMinWidth', 'size.dateField.minWidth');
     expectValue('formBarHeight', 'size.formBar.height');
     expectValue('couponNotchRadius', 'layout.card.coupon.notchRadius');
+    // Sprint 12 P-4.
+    expectValue('scrollFadeHeight', 'layout.scrollFadeHeight');
   });
 });

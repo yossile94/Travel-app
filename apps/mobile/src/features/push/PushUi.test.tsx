@@ -1,7 +1,7 @@
 import '@/i18n';
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Linking } from 'react-native';
+import { Linking, StyleSheet } from 'react-native';
 
 import { FlightAlertsRow } from './FlightAlertsRow';
 import { PushExplainer, sampleNumber } from './PushExplainer';
@@ -124,6 +124,35 @@ describe('FlightAlertsRow (design 6)', () => {
     await fireEvent.press(row);
     expect(open).toHaveBeenCalled();
     expect(m.setFlightAlerts).not.toHaveBeenCalled();
+  });
+
+  describe('the switch drawn by the app (sprint 12 P-3)', () => {
+    const drawn = () =>
+      screen.getByTestId('account-flight-alerts-switch', { includeHiddenElements: true });
+    const opacity = () => StyleSheet.flatten(drawn().props.style).opacity;
+
+    it('shows the state, takes no touches and is hidden from the screen reader', async () => {
+      await shown();
+      expect(drawn().props.accessibilityValue).toEqual({ text: 'off' });
+      expect(drawn().props.pointerEvents).toBe('none');
+      expect(drawn().props.importantForAccessibility).toBe('no-hide-descendants');
+      expect(opacity()).toBe(1);
+      m.flightAlertsOn.mockResolvedValue(true);
+      await fireEvent.press(screen.getByTestId('account-flight-alerts'));
+      expect(drawn().props.accessibilityValue).toEqual({ text: 'on' });
+    });
+
+    it('loading: 0.38 (John)', async () => {
+      m.flightAlertsOn.mockReturnValue(new Promise(() => {}));
+      await render(<FlightAlertsRow userId="u" visible colorScheme="light" />);
+      expect(opacity()).toBe(0.38);
+    });
+
+    it('blocked: 0.5', async () => {
+      m.permissionState.mockResolvedValue('denied');
+      await shown();
+      expect(opacity()).toBe(0.5);
+    });
   });
 
   it('never asked: the system prompt straight away', async () => {

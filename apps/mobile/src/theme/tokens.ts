@@ -327,6 +327,10 @@ export const layout = {
   cardTileMinWidth: 64,
   cardTileMinHeight: 76,
   cardTileMaxWidthFew: 112,
+  /** Sprint 12 P-1: a wide action tile narrower than this (three side by side) has no chevron. */
+  cardActionChevronMinWidth: 140,
+  /** Sprint 12 P-4: the fade at the bottom of a scrolling list while more is below. */
+  scrollFadeHeight: 24,
   cardTileGap: 8,
   cardTileBadge: 20,
   cardTilesListFromFontScale: 1.6,

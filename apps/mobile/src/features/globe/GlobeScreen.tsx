@@ -1246,10 +1246,12 @@ export function GlobeScreen() {
             auth.state.status === 'signedIn' ||
             auth.state.status === 'signedOut' ||
             auth.state.status === 'needsConsent'
-              ? (maxListHeight, onNoticeHeight, shownTripsMode) => (
+              ? (maxListHeight, onNoticeHeight, shownTripsMode, fade, entered) => (
                   <CardTrips
                     country={selectedCountry}
                     tripsMode={shownTripsMode}
+                    fade={fade}
+                    entered={entered}
                     onTripsMode={(on) => setTripsModeFor(on ? selectedCountry.adm0 : null)}
                     colorScheme={colorScheme}
                     maxListHeight={maxListHeight}

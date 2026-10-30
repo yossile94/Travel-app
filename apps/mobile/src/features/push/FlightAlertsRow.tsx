@@ -12,13 +12,13 @@ import {
   Linking,
   Pressable,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
 
 import { InlineNotice } from '@/components/formControls';
 import { BellIcon } from '@/components/icons';
+import { SwitchVisual } from '@/components/SwitchVisual';
 import { colors, fonts, type ColorScheme } from '@/theme/tokens';
 
 import {
@@ -196,15 +196,12 @@ export function FlightAlertsRow({
             />
           )}
         </View>
-        <Switch
-          value={checked}
-          disabled={row === 'loading'}
-          onValueChange={() => void press()}
-          trackColor={{ false: p.borderControl, true: p.primary }}
-          thumbColor={checked ? p.onPrimary : colorScheme === 'dark' ? p.textPrimary : '#FFFFFF'}
-          style={blocked ? styles.blocked : undefined}
-          importantForAccessibility="no-hide-descendants"
-          accessibilityElementsHidden
+        <SwitchVisual
+          on={checked}
+          colorScheme={colorScheme}
+          // Polish-audit 3 (John): loading wins, then blocked or offline.
+          opacity={row === 'loading' ? 0.38 : blocked ? 0.5 : 1}
+          testID="account-flight-alerts-switch"
         />
       </Pressable>
       {notice ? (
@@ -230,5 +227,4 @@ const styles = StyleSheet.create({
   body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 24, textAlign: 'left' },
   footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, textAlign: 'left' },
   skeleton: { width: 160, height: 12, borderRadius: 6, marginTop: 4 },
-  blocked: { opacity: 0.5 },
 });
