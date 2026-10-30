@@ -33,10 +33,11 @@ const splashIcon = require('../../../assets/splash-icon.png');
 
 /**
  * Raz 4: the dash starts a cap's width before the path, so frame 0 has no
- * round cap left on a zero-length dash at Israel. The gap is as long.
+ * round cap left on a zero-length dash at Israel.
  */
 const dashHidden = launch.routeLength + launch.routeUnderlayWidth;
-const dashArray = [launch.routeLength, dashHidden];
+// Raz 10: the next dash starts a cap width after the path ends, so none shows at Bangkok.
+const dashArray = [launch.routeLength, launch.routeLength + 2 * launch.routeUnderlayWidth];
 /** viewBox units per dp (design 1.2). */
 const u = launch.viewBox / launch.iconFrame;
 const pinSize = { width: launch.pinWidth / u, height: launch.pinHeight / u };

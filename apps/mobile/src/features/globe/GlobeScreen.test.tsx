@@ -1025,7 +1025,7 @@ describe('GlobeScreen', () => {
       });
       mockTrips.firstLoad = true;
       await view.rerender(<GlobeScreen />);
-      expect(screen.queryByText('בנסיעה עכשיו: יוון אוקטובר 2026')).toBeNull();
+      expect(screen.queryByText('יוון')).toBeNull();
       expect(screen.queryByTestId('country-card')).toBeNull();
     });
 
