@@ -6,9 +6,10 @@
 import '@/i18n';
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 
 import { hasMoreBelow } from '@/components/ScrollFade';
+import { OuterScrollContext } from '@/features/globe/BoardingPassCard';
 import { countryByAdm0 } from '@/features/globe/countryData';
 
 import { CardTrips } from './CardTrips';
@@ -67,6 +68,9 @@ const props = {
 };
 const focuses = () =>
   jest.mocked(AccessibilityInfo.sendAccessibilityEvent).mock.calls.filter(([, e]) => e === 'focus');
+/** Raz 2: where the focus went: the testID of the element the ref resolves to. */
+const target = (n: number) =>
+  (focuses()[n]?.[0] as unknown as { props?: { testID?: string } } | undefined)?.props?.testID;
 const rowLaidOut = (id: string) =>
   fireEvent(screen.getByTestId(`card-trip-${id}`), 'layout', {
     nativeEvent: { layout: { x: 0, y: 40, width: 300, height: 64 } },
@@ -90,6 +94,7 @@ describe('AC-13: the focus in a card that opens in Trips mode', () => {
     expect(focuses()).toHaveLength(0);
     await rerender(<CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={1} entered />);
     expect(focuses()).toHaveLength(1);
+    expect(target(0)).toBe('card-trip-t1');
     await rerender(<CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={1} entered />);
     expect(focuses()).toHaveLength(1);
   });
@@ -116,6 +121,7 @@ describe('AC-13: the focus in a card that opens in Trips mode', () => {
   it('a trip not in the list: "Your trips" takes it', async () => {
     await render(<CardTrips {...props} tripsMode initiallyOpen="gone" openSeq={1} entered />);
     expect(focuses()).toHaveLength(1);
+    expect(target(0)).toBe('card-trips-heading');
   });
 
   it('still loading: nothing until the rows come', async () => {
@@ -127,8 +133,40 @@ describe('AC-13: the focus in a card that opens in Trips mode', () => {
     expect(focuses()).toHaveLength(0);
     mockList.status = 'ready';
     mockList.upcoming = [trip({ id: 't1' })];
-    await rerender(<CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={2} entered />);
+    // Raz 2: the same request, now answered.
+    await rerender(<CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={1} entered />);
     await rowLaidOut('t1');
+    expect(focuses()).toHaveLength(1);
+    expect(target(0)).toBe('card-trip-t1');
+  });
+
+  it('a repeat tap on the pin of the open trip: once more, with no new layout (Raz 1)', async () => {
+    const { rerender } = await render(
+      <CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={1} entered />,
+    );
+    await rowLaidOut('t1');
+    expect(focuses()).toHaveLength(1);
+    await rerender(<CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={2} entered />);
+    expect(focuses()).toHaveLength(2);
+  });
+
+  it('a request left unanswered ends with Trips mode: no focus from a later layout (Raz 1)', async () => {
+    const { rerender } = await render(
+      <CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={1} entered={false} />,
+    );
+    await rerender(
+      <CardTrips {...props} tripsMode={false} initiallyOpen="t1" openSeq={1} entered />,
+    );
+    const before = focuses().length;
+    await rerender(<CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={1} entered />);
+    await rowLaidOut('t1');
+    // Only the existing 6.2 event of each switch, none from the old request.
+    expect(focuses().length - before).toBe(1);
+  });
+
+  it('from the destination view into Trips mode: one event (design 3.4)', async () => {
+    const { rerender } = await render(<CardTrips {...props} initiallyOpen={null} entered />);
+    await rerender(<CardTrips {...props} tripsMode initiallyOpen={null} entered />);
     expect(focuses()).toHaveLength(1);
   });
 
@@ -159,6 +197,39 @@ describe('AC-12: one wrapper fades; "New trip" stays', () => {
       expect(node).not.toBe(content);
       node = node.parent;
     }
+  });
+});
+
+describe('AC-12 in scroll mode', () => {
+  it('"New trip" fades with the content, having no fixed place (4g)', async () => {
+    const fade = { value: 0.25, get: () => 0.25, set: jest.fn() } as never;
+    await render(
+      <OuterScrollContext.Provider value={{ nearEnd: 0, scrollToRow: jest.fn() }}>
+        <CardTrips {...props} tripsMode fade={fade} entered />
+      </OuterScrollContext.Provider>,
+    );
+    const opacities: unknown[] = [];
+    for (let n = screen.getByTestId('card-new-trip').parent; n; n = n.parent) {
+      const style = StyleSheet.flatten(n.props.style) as { opacity?: number } | undefined;
+      if (style?.opacity !== undefined) opacities.push(style.opacity);
+    }
+    expect(opacities).toContain(0.25);
+  });
+
+  it('scrolls to the row with both offsets, whichever layout comes first (Raz 4)', async () => {
+    const scrollToRow = jest.fn();
+    await render(
+      <OuterScrollContext.Provider value={{ nearEnd: 0, scrollToRow }}>
+        <CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={1} entered />
+      </OuterScrollContext.Provider>,
+    );
+    const at = (y: number) => ({ nativeEvent: { layout: { x: 0, y, width: 300, height: 300 } } });
+    await rowLaidOut('t1');
+    // The list's own wrapper first, then the fading wrapper around it.
+    await fireEvent(screen.getByTestId('card-trips-list').parent!, 'layout', at(48));
+    expect(scrollToRow).not.toHaveBeenCalled();
+    await fireEvent(screen.getByTestId('card-trips-content'), 'layout', at(12));
+    expect(scrollToRow).toHaveBeenCalledWith(12 + 48 + 40);
   });
 });
 

@@ -355,11 +355,13 @@ export function CardTiles({
   // Whole points: rounding never pushes the last tile to a new row (Raz review 6).
   const column = Math.floor((width - gap * (cols - 1)) / cols);
   const tileWidth = tiles.length <= 2 ? Math.min(layout.cardTileMaxWidthFew, column) : column;
-  // Two rows: the data share their row; one alone keeps the narrow width (John, Raz 3).
+  // Two rows: the data share their row, split by tileLayout when they don't fit
+  // (a narrow screen at a large font, Raz 5); one alone keeps the narrow width (John).
+  const dataCols = tileLayout(width, fontScale, dataTiles.length).cols;
   const dataWidth =
     dataTiles.length < 2
       ? Math.min(layout.cardTileMaxWidthFew, width)
-      : Math.floor((width - gap * (dataTiles.length - 1)) / dataTiles.length);
+      : Math.floor((width - gap * (dataCols - 1)) / dataCols);
   const actionWidth = Math.floor(
     (width - gap * (actionTiles.length - 1)) / Math.max(actionTiles.length, 1),
   );
@@ -580,7 +582,7 @@ function CardTile({
       {badge}
       {/* Not on a narrow tile: three actions side by side (polish-audit 1). */}
       {tile.onPress && width >= layout.cardActionChevronMinWidth ? (
-        <View style={styles.chevron}>
+        <View style={styles.chevron} testID="card-tile-chevron">
           <ChevronEndIcon color={palette.textTertiary} size={16} />
         </View>
       ) : null}

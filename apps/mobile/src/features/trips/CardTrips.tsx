@@ -197,9 +197,20 @@ export function CardTrips({
   // The card's scroll, in scroll mode (sprint 4 design 1.3): the list itself doesn't scroll.
   const outer = useContext(OuterScrollContext);
   // The row can be laid out before the list: scroll once both are measured (Raz, S4-m15).
-  const listTop = useRef<number | null>(null);
-  /** Sprint 12 (4f): the list sits in the fading wrapper; its top counts the wrapper's. */
-  const wrapperTop = useRef(0);
+  /** Sprint 12 (4f, Raz 4): the list sits in the fading wrapper; its top is the sum of both. */
+  const wrapperTop = useRef<number | null>(null);
+  const listY = useRef<number | null>(null);
+  const listTop = () =>
+    wrapperTop.current === null || listY.current === null
+      ? null
+      : wrapperTop.current + listY.current;
+  /** A row asked for before both were measured scrolls once they are. */
+  const scrollPending = () => {
+    const top = listTop();
+    if (!outer || top === null || pendingRowY.current === null) return;
+    outer.scrollToRow(top + pendingRowY.current);
+    pendingRowY.current = null;
+  };
   const pendingRowY = useRef<number | null>(null);
   const rowY = useRef(new Map<string, number>());
   const tapScroll = useRef<string | null>(null);
@@ -226,8 +237,10 @@ export function CardTrips({
     scrolledTo.current = request;
     // In scroll mode the card scrolls, not the list (design 1.3).
     if (!outer) scroll.current?.scrollTo({ y, animated: false });
-    else if (listTop.current === null) pendingRowY.current = y;
-    else outer.scrollToRow(listTop.current + y);
+    else {
+      pendingRowY.current = y;
+      scrollPending();
+    }
   };
   // Scroll mode: the card's scroll nearing its end loads the next page (Raz, change 4).
   const nearEnd = outer?.nearEnd ?? 0;
@@ -241,10 +254,10 @@ export function CardTrips({
   const ctaStyle = useAnimatedStyle(() => ({ opacity: scrollMode && fade ? fade.value : 1 }));
 
   // Sprint 12 P-4: the fade at the list's bottom while more is below.
-  const fade4 = useMoreBelow();
+  const moreBelow = useMoreBelow();
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     // Raz 12: before the offline return, so a read-only list still updates it.
-    fade4.onScroll(event);
+    moreBelow.onScroll(event);
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     // Offline: no "load more" at all (design 10.4, Raz S4-m8).
     if (readOnly) return;
@@ -325,8 +338,13 @@ export function CardTrips({
   /** The request the focus was sent (or deliberately not sent) for: once each. */
   const focusDone = useRef<string | null>(null);
   useEffect(() => {
-    if (focusRequest === null || focusRequest.request !== request || !entered) return;
-    if (focusDone.current === request) return;
+    if (focusRequest === null || focusDone.current === focusRequest.request) return;
+    // Raz 1: leaving Trips mode ends the request; a later layout never sends it.
+    if (!tripsMode || focusRequest.request !== request) {
+      focusDone.current = focusRequest.request;
+      return;
+    }
+    if (!entered) return;
     if (focusRequest.withFlight) {
       // The flight sheet takes the focus (sprint 6); nothing steals it.
       focusDone.current = request;
@@ -338,7 +356,8 @@ export function CardTrips({
       (state.upcoming.some((x) => x.id === id) || state.past.some((x) => x.id === id));
     let node: ComponentRef<typeof Pressable> | ComponentRef<typeof View> | null | undefined;
     if (inList) {
-      if (measuredFor !== request) return;
+      // A row measured before (a repeat tap on the pin) has no new layout to wait for.
+      if (measuredFor !== request && !rowY.current.has(id)) return;
       node = heads.current.get(id);
     } else if (state.status === 'ready') {
       node = headingRef.current;
@@ -351,7 +370,7 @@ export function CardTrips({
     }
     focusDone.current = request;
     if (node) AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
-  }, [focusRequest, request, entered, initiallyOpen, state, measuredFor]);
+  }, [focusRequest, request, tripsMode, entered, initiallyOpen, state, measuredFor]);
 
   useEffect(() => {
     if (!focusTarget) return;
@@ -635,6 +654,7 @@ export function CardTrips({
         style={[tripsMode && styles.fadeFill, contentStyle]}
         onLayout={(event) => {
           wrapperTop.current = event.nativeEvent.layout.y;
+          scrollPending();
         }}
         testID="card-trips-content"
       >
@@ -723,11 +743,8 @@ export function CardTrips({
           // height limit and gives way in Trips mode, so "New trip" stays in.
           <View
             onLayout={(event) => {
-              listTop.current = wrapperTop.current + event.nativeEvent.layout.y;
-              if (outer && pendingRowY.current !== null) {
-                outer.scrollToRow(listTop.current + pendingRowY.current);
-                pendingRowY.current = null;
-              }
+              listY.current = event.nativeEvent.layout.y;
+              scrollPending();
             }}
             style={
               outer
@@ -747,14 +764,14 @@ export function CardTrips({
               testID="card-trips-list"
               nestedScrollEnabled
               onScroll={onScroll}
-              onContentSizeChange={fade4.onContentSizeChange}
-              onLayout={fade4.onLayout}
+              onContentSizeChange={moreBelow.onContentSizeChange}
+              onLayout={moreBelow.onLayout}
               scrollEventThrottle={100}
             >
               {children}
             </ScrollView>
             {/* In scroll mode the card scrolls, and its own fade shows (polish-audit 4). */}
-            {outer ? null : <ScrollFade visible={fade4.more} color={palette.surfaceRaised} />}
+            {outer ? null : <ScrollFade visible={moreBelow.more} color={palette.surfaceRaised} />}
           </View>
         ) : null}
       </Animated.View>

@@ -47,6 +47,7 @@ export function SwitchVisual({
   };
   // translateX keeps its physical axis in RTL, so "on" moves left in Hebrew (Raz 9).
   const travel = I18nManager.isRTL ? -TRAVEL : TRAVEL;
+  const fillStyle = useAnimatedStyle(() => ({ opacity: withTiming(on ? 1 : 0, timing) }));
   const thumbStyle = useAnimatedStyle(() => {
     const size = withTiming(on ? THUMB_ON : THUMB_OFF, timing);
     return {
@@ -59,18 +60,15 @@ export function SwitchVisual({
   return (
     <View
       testID={testID}
+      // For tests only: the element is hidden from the screen reader.
       accessibilityValue={{ text: on ? 'on' : 'off' }}
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
-      style={[
-        styles.track,
-        on
-          ? { backgroundColor: p.primary, borderColor: p.primary }
-          : { backgroundColor: 'transparent', borderColor: p.borderControl },
-        { opacity },
-      ]}
+      style={[styles.track, { borderColor: on ? p.primary : p.borderControl, opacity }]}
     >
+      {/* Raz 7: the fill fades in and out, so the track passes between the colours. */}
+      <Animated.View style={[styles.fill, { backgroundColor: p.primary }, fillStyle]} />
       <Animated.View
         style={[styles.thumb, { backgroundColor: on ? p.onPrimary : p.borderControl }, thumbStyle]}
       >
@@ -86,6 +84,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 2,
     justifyContent: 'center',
+  },
+  fill: {
+    position: 'absolute',
+    top: -2,
+    bottom: -2,
+    start: -2,
+    end: -2,
+    borderRadius: radius.pill,
   },
   // Centred 16dp from the start edge, inside the 2dp border.
   thumb: {

@@ -84,6 +84,7 @@ export function ScrollFade({ visible, color }: { visible: boolean; color: string
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
+      // For tests only: the element is hidden from the screen reader.
       accessibilityValue={{ text: visible ? 'more' : 'end' }}
       testID="scroll-fade"
     >

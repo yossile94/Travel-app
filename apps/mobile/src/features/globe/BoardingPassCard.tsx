@@ -241,7 +241,7 @@ export function BoardingPassCard({
   const outerRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const [nearEnd, setNearEnd] = useState(0);
   // Sprint 12 P-4 (Raz 15): in scroll mode the fade is at the card's bottom.
-  const fade4 = useMoreBelow();
+  const moreBelow = useMoreBelow();
   const scrollToRow = useCallback(
     (y: number) =>
       outerRef.current?.scrollTo({ y: Math.max(0, couponTop + y - 16), animated: !reduceMotion }),
@@ -320,15 +320,15 @@ export function BoardingPassCard({
         style={scrollMode ? { maxHeight: maxCardHeight } : undefined}
         onScroll={(event) => {
           if (!scrollMode) return;
-          fade4.onScroll(event);
+          moreBelow.onScroll(event);
           const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
           if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 48) {
             setNearEnd((n) => n + 1);
           }
         }}
         scrollEventThrottle={100}
-        onContentSizeChange={fade4.onContentSizeChange}
-        onLayout={fade4.onLayout}
+        onContentSizeChange={moreBelow.onContentSizeChange}
+        onLayout={moreBelow.onLayout}
         testID={scrollMode ? 'card-scroll-mode' : undefined}
       >
         <View
@@ -557,7 +557,7 @@ export function BoardingPassCard({
         </View>
       </ScrollView>
       {/* A sibling of the scroll, outside the Trips-mode fade (Raz 15). */}
-      {scrollMode ? <ScrollFade visible={fade4.more} color={palette.surfaceRaised} /> : null}
+      {scrollMode ? <ScrollFade visible={moreBelow.more} color={palette.surfaceRaised} /> : null}
 
       <CardSafetySheet
         country={country}

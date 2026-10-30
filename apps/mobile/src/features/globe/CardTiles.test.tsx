@@ -2,7 +2,7 @@
 // strip's columns, the Safety tile with no threat level anywhere on the card,
 // the badges, the entry line, and which tiles show.
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
 import i18n from '@/i18n';
@@ -256,7 +256,62 @@ describe('data, then actions (sprint 12 P-1)', () => {
     );
     await measure(355);
     expect(screen.getByTestId('card-tiles-actions').props.children).toHaveLength(3);
-    expect(screen.queryAllByTestId('card-tile-safety')).toHaveLength(1);
+    expect(screen.queryByTestId('card-tile-chevron')).toBeNull();
+  });
+
+  it('two actions: wide enough for the chevron (polish-audit 1)', async () => {
+    Object.assign(mockWindow, { width: 411, fontScale: 1.3 });
+    await render(
+      <CardTiles
+        country={countryByAdm0('THA')!}
+        safety={quiet}
+        colorScheme="light"
+        reduceMotion
+        insetsBottom={0}
+        today="2026-10-26"
+        city={null}
+        onOpenSafety={jest.fn()}
+        safetyRef={{ current: null }}
+        onOpenPlaces={jest.fn()}
+      />,
+    );
+    await measure(355);
+    expect(screen.getAllByTestId('card-tile-chevron')).toHaveLength(2);
+  });
+
+  it('three data tiles too wide for a narrow strip split into rows (Raz 5)', async () => {
+    Object.assign(mockWindow, { width: 320, fontScale: 1.5 });
+    await tiles('THA');
+    await measure(264);
+    const time = StyleSheet.flatten(screen.getByTestId('card-tile-time').props.style);
+    // 264 at 1.5: two 96-wide columns, not three of 82.
+    expect(time.width).toBeGreaterThanOrEqual(64 * 1.5);
+  });
+
+  it('one data tile alone keeps the narrow width (John, Raz 3)', async () => {
+    Object.assign(mockWindow, { width: 411, fontScale: 1.3 });
+    await render(
+      <CardTiles
+        country={countryByAdm0('ATA')!}
+        safety={quiet}
+        colorScheme="light"
+        reduceMotion
+        insetsBottom={0}
+        today="2026-10-26"
+        city={null}
+        onOpenSafety={jest.fn()}
+        safetyRef={{ current: null }}
+        onOpenPlaces={jest.fn()}
+      />,
+    );
+    await measure(200);
+    const data = screen.queryByTestId('card-tiles-data');
+    if (data) {
+      for (const tile of data.props.children.filter(Boolean)) {
+        expect(tile.props.width).toBeLessThanOrEqual(112);
+      }
+    }
+    expect(screen.getByTestId('card-tiles-actions')).toBeOnTheScreen();
   });
 
   it('Israel: the data row only', async () => {

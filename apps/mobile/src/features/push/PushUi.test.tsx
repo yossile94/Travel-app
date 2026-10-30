@@ -1,7 +1,7 @@
 import '@/i18n';
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Linking, StyleSheet } from 'react-native';
+import { I18nManager, Linking, StyleSheet } from 'react-native';
 
 import { FlightAlertsRow } from './FlightAlertsRow';
 import { PushExplainer, sampleNumber } from './PushExplainer';
@@ -146,6 +146,25 @@ describe('FlightAlertsRow (design 6)', () => {
       m.flightAlertsOn.mockReturnValue(new Promise(() => {}));
       await render(<FlightAlertsRow userId="u" visible colorScheme="light" />);
       expect(opacity()).toBe(0.38);
+    });
+
+    it.each([
+      [false, 16],
+      [true, -16],
+    ])('RTL %s: on moves the thumb %d to the end, and it grows to 24 (Raz 9)', async (rtl, x) => {
+      jest.replaceProperty(I18nManager, 'isRTL', rtl);
+      m.flightAlertsOn.mockResolvedValue(true);
+      await shown();
+      const thumb = StyleSheet.flatten(drawn().props.children[1].props.style);
+      expect(thumb.transform).toEqual([{ translateX: x }]);
+      expect([thumb.width, thumb.height]).toEqual([24, 24]);
+    });
+
+    it('off: the small thumb at the start', async () => {
+      await shown();
+      const thumb = StyleSheet.flatten(drawn().props.children[1].props.style);
+      expect(thumb.transform).toEqual([{ translateX: 0 }]);
+      expect([thumb.width, thumb.height]).toEqual([16, 16]);
     });
 
     it('blocked: 0.5', async () => {

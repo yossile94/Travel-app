@@ -306,7 +306,12 @@ export function PlacesScreen({
   // Sprint 12 P-2: no places in this country and nothing saved: the controls
   // change nothing, so only the empty state shows. Same condition as the
   // 'country-none' empty state; with saved places every control stays (Raz 6).
-  const bare = places.status === 'ready' && places.places.length === 0 && savedCount === 0;
+  // Raz 9 (sprint 12 review): only once the saved list is known, so controls don't blink away.
+  const bare =
+    places.status === 'ready' &&
+    places.places.length === 0 &&
+    (!tripId || saved.status === 'ready') &&
+    savedCount === 0;
   // Raz 8: the hidden tabs take the active one back to "In the city".
   if (bare && tab !== 'city') setTab('city');
 

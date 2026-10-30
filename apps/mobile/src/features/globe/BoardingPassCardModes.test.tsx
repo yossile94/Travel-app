@@ -3,7 +3,7 @@
  * and the outline stay; only the texts and icons fade. One SplitFlap for both
  * modes, which plays once at most.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import { StyleSheet, Text } from 'react-native';
 
 import '@/i18n';
@@ -52,6 +52,9 @@ function fadesUnderCard(testID: string): boolean {
   }
   return false;
 }
+
+/** The native view behind an element: the same one unless it remounted. */
+const hostOf = (el: unknown) => (el as { instance: unknown }).instance;
 
 async function intoTripsMode(rerender: (el: React.ReactElement) => Promise<void>) {
   await rerender(<BoardingPassCard {...props} tripsMode />);
@@ -104,8 +107,14 @@ describe('the switch to Trips mode (sprint 12 AC-12)', () => {
     const stub = screen.getByTestId('split-flap').parent!;
     const style = StyleSheet.flatten(stub.props.style) as Record<string, unknown>;
     expect(style).toEqual(expect.objectContaining({ paddingTop: 54, paddingBottom: 0 }));
-    await fireEvent(screen.getByTestId('card-header-compact'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 96 } },
-    });
+  });
+
+  it('the header row and the stub stay the same elements (4a)', async () => {
+    const { rerender } = await render(<BoardingPassCard {...props} />);
+    const strip = hostOf(screen.getByTestId('card-highlight-strip'));
+    const stub = hostOf(screen.getByTestId('split-flap').parent!);
+    await intoTripsMode(rerender);
+    expect(hostOf(screen.getByTestId('card-highlight-strip'))).toBe(strip);
+    expect(hostOf(screen.getByTestId('split-flap').parent!)).toBe(stub);
   });
 });
