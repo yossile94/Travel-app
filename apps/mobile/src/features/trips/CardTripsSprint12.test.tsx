@@ -150,6 +150,20 @@ describe('AC-13: the focus in a card that opens in Trips mode', () => {
     expect(focuses()).toHaveLength(2);
   });
 
+  it('another trip asked for: waits for its head to be laid out again (Raz, re-review 1)', async () => {
+    const { rerender } = await render(
+      <CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={1} entered />,
+    );
+    await rowLaidOut('t1');
+    // t2 measured while closed.
+    await rowLaidOut('t2');
+    await rerender(<CardTrips {...props} tripsMode initiallyOpen="t2" openSeq={2} entered />);
+    expect(focuses()).toHaveLength(1);
+    await rowLaidOut('t2');
+    expect(focuses()).toHaveLength(2);
+    expect(target(1)).toBe('card-trip-t2');
+  });
+
   it('a request left unanswered ends with Trips mode: no focus from a later layout (Raz 1)', async () => {
     const { rerender } = await render(
       <CardTrips {...props} tripsMode initiallyOpen="t1" openSeq={1} entered={false} />,

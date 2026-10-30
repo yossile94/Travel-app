@@ -159,8 +159,13 @@ export function CardTrips({
   // new request while it is already there, sends the focus once. Whether the
   // request came with a flight is kept from its first sight (Raz 5).
   const withFlight = openFlight?.endsWith(`:${openSeq}`) === true;
-  const [focusRequest, setFocusRequest] = useState<{ request: string; withFlight: boolean } | null>(
-    () => (tripsMode && initiallyOpen !== null ? { request, withFlight } : null),
+  const [focusRequest, setFocusRequest] = useState<{
+    request: string;
+    withFlight: boolean;
+    /** The trip was already open: its head is laid out and stays (a repeat tap, Raz). */
+    wasOpen: boolean;
+  } | null>(() =>
+    tripsMode && initiallyOpen !== null ? { request, withFlight, wasOpen: false } : null,
   );
   const [measuredFor, setMeasuredFor] = useState<string | null>(null);
   // Fix my-trips-space 2.1: leaving Trips mode closes the open row.
@@ -170,7 +175,7 @@ export function CardTrips({
     setAskedOpen(request);
     setOpen(initiallyOpen);
     if (tripsMode && wasTripsMode && initiallyOpen !== null)
-      setFocusRequest({ request, withFlight });
+      setFocusRequest({ request, withFlight, wasOpen: open === initiallyOpen });
   }
   // 6.2: focus goes to the open row on the way in, back to it on the way out.
   const [focusTarget, setFocusTarget] = useState<{ id: string | null; n: number } | null>(null);
@@ -356,8 +361,9 @@ export function CardTrips({
       (state.upcoming.some((x) => x.id === id) || state.past.some((x) => x.id === id));
     let node: ComponentRef<typeof Pressable> | ComponentRef<typeof View> | null | undefined;
     if (inList) {
-      // A row measured before (a repeat tap on the pin) has no new layout to wait for.
-      if (measuredFor !== request && !rowY.current.has(id)) return;
+      // The open trip asked for again (a repeat tap on the pin) has no new layout to wait
+      // for; another trip waits for its head, which remounts as it becomes sticky.
+      if (measuredFor !== request && !(focusRequest.wasOpen && rowY.current.has(id))) return;
       node = heads.current.get(id);
     } else if (state.status === 'ready') {
       node = headingRef.current;
