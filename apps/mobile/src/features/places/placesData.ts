@@ -137,9 +137,12 @@ export function loadPlaces(adm0: string, now = Date.now()): Promise<void> {
     }
     const device = await readDevice(adm0);
     if (device) publish(adm0, device, true);
+    // An empty list is never fresh: the country's places may have come since
+    // (sprint 12 device check: Japan stayed empty for a week after the load).
     const fresh =
       device &&
       device.version === PLACES_DATA_VERSION &&
+      device.wikidata.length > 0 &&
       now - Date.parse(device.savedAt) < REFRESH_MS;
     const [wikidata, curated] = await Promise.all([
       fresh ? Promise.resolve(device.wikidata) : readWikidata(adm0).catch(() => null),
