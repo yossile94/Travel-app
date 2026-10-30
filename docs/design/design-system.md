@@ -265,6 +265,7 @@
 | `launch.background` | `#060B18` | רקע מסך המערכת, השכבה ושורש האפליקציה, בבהיר ובכהה |
 | `launch.iconFrame` / `iconCircle` | 288 / 192 dp | Android 12 ומעלה, בלי רקע לאייקון (נקבע ב-30.10). גם `imageWidth` של iOS |
 | `launch.viewBox` | 1024 | הגדלים שלמטה ביחידות viewBox, כלומר בפיקסלים של `splash-icon.png` |
+| `launch.contentScale` | 0.9 | הציור בתוך `splash-icon.png` מוקטן פי 0.9 סביב המרכז (רדיוס התוכן 0.284), כי ה-A73 חותך את האייקון ברדיוס 0.29 מהמסגרת ולא ב-0.33. המסלול והפין נשארים בקואורדינטות המקוריות, ומצוירים באותו קנה מידה (בדיקה במכשיר, 30.10) |
 | `launch.route` / `launch.pin` | `#FF7A57` | = `highlightColor` |
 | `launch.routeUnderlay` / `routeUnderlayOpacity` | `#03060F` / 0.6 | הקו הכהה מתחת למסלול ומסביב לפין |
 | `launch.originColor` / `pinDotColor` | `#F3F6FC` | |
