@@ -4,10 +4,13 @@
  * gestures themselves are checked on the device (Maestro).
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import * as Notifications from 'expo-notifications';
 import { AccessibilityInfo, BackHandler } from 'react-native';
 import { withTiming } from 'react-native-reanimated';
 
 import '@/i18n';
+import { launchSignals, resetLaunchForTests } from '@/features/launch/launchSignals';
+import { resetLaunchAlertForTests } from '@/features/push/usePushOpen';
 import { motion } from '@/theme/tokens';
 
 import { CITY_ZOOM, HOME_ZOOM } from './camera';
@@ -41,7 +44,12 @@ const mockMap = {
   circles: {} as Record<string, { style: Record<string, unknown>; filter?: unknown }>,
   /** The filter each line layer was rendered with, by layer id. */
   lines: {} as Record<string, unknown>,
+  /** The map's loading-error handler, as last rendered (sprint 12 AC-5ד). */
+  loadingError: undefined as (() => void) | undefined,
 };
+/** Sprint 12 AC-5ד: the borders file fails, or there is no Mapbox token. */
+let mockCountriesError: Error | null = null;
+let mockHasToken = true;
 let mockReduceMotion: boolean | null = false;
 /** Every value the screen passed to useDetailedCountriesAsset. */
 const mockDetailedRequests: boolean[] = [];
@@ -73,6 +81,7 @@ jest.mock('@rnmapbox/maps', () => {
     props: {
       onDidFinishLoadingMap?: () => void;
       onMapIdle?: () => void;
+      onMapLoadingError?: () => void;
       gestureSettings?: object;
       children?: React.ReactNode;
     },
@@ -90,6 +99,7 @@ jest.mock('@rnmapbox/maps', () => {
       if (mockMap.idles-- > 0) onMapIdle?.();
     }, [onDidFinishLoadingMap, onMapIdle]);
     mockMap.gestures = props.gestureSettings;
+    mockMap.loadingError = props.onMapLoadingError;
     return React.createElement(View, { testID: 'map' }, props.children);
   });
   const Camera = React.forwardRef(function Camera(_props, ref) {
@@ -154,9 +164,17 @@ jest.mock('expo-status-bar', () => ({
     return null;
   },
 }));
-jest.mock('./mapbox', () => ({ hasMapboxToken: true, turnOffMapboxTelemetryOnce: jest.fn() }));
+jest.mock('./mapbox', () => ({
+  get hasMapboxToken() {
+    return mockHasToken;
+  },
+  turnOffMapboxTelemetryOnce: jest.fn(),
+}));
 jest.mock('./useCountriesAsset', () => ({
-  useCountriesAsset: () => ({ url: 'file:///countries.geojson', error: null }),
+  useCountriesAsset: () =>
+    mockCountriesError
+      ? { url: null, error: mockCountriesError }
+      : { url: 'file:///countries.geojson', error: null },
   useOceanMaskAsset: () => ({ url: 'file:///ocean-mask.geojson', error: null }),
   useDetailedCountriesAsset: (enabled: boolean) => (
     mockDetailedRequests.push(enabled),
@@ -306,6 +324,11 @@ beforeEach(() => {
   mockMap.fills = {};
   mockMap.lines = {};
   mockReduceMotion = false;
+  mockCountriesError = null;
+  mockHasToken = true;
+  resetLaunchForTests();
+  resetLaunchAlertForTests();
+  (Notifications.getLastNotificationResponse as jest.Mock).mockReturnValue(null);
   mockAuth.state = { status: 'unavailable' };
   mockAuth.notice = null;
   mockTrips.firstLoad = false;
@@ -891,6 +914,47 @@ describe('GlobeScreen', () => {
     });
   });
 
+  describe('the launch overlay signals (sprint 12 AC-5)', () => {
+    const sent = () => (launchSignals.send as jest.Mock).mock.calls.map(([signal]) => signal);
+    beforeEach(() => {
+      jest.spyOn(launchSignals, 'send');
+    });
+    afterEach(() => jest.restoreAllMocks());
+
+    it('sends ready when the map goes idle (AC-5ג)', async () => {
+      await render(<GlobeScreen />);
+      expect(sent()).toEqual(['ready']);
+    });
+
+    it('sends ready from the fallback, 5 s after the map loaded (AC-5ג)', async () => {
+      mockMap.idles = 0;
+      await render(<GlobeScreen />);
+      expect(sent()).toEqual([]);
+      await act(async () => jest.advanceTimersByTime(5_000));
+      expect(sent()).toEqual(['ready']);
+    });
+
+    it('sends error when the map fails to load (AC-5ד)', async () => {
+      mockMap.loads = false;
+      await render(<GlobeScreen />);
+      await act(async () => mockMap.loadingError?.());
+      expect(sent()).toEqual(['error']);
+    });
+
+    it('sends error when the borders file fails (AC-5ד)', async () => {
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+      mockCountriesError = new Error('no file');
+      await render(<GlobeScreen />);
+      expect(sent()).toContain('error');
+    });
+
+    it('sends error at mount without a Mapbox token (design 1.4)', async () => {
+      mockHasToken = false;
+      await render(<GlobeScreen />);
+      expect(sent()).toEqual(['error']);
+    });
+  });
+
   describe('the next trip (sprint 3 AC-7, AC-8)', () => {
     const signedIn = { id: 'u1', name: 'יוסי לוי', email: 'y@example.test' };
     const greece = {
@@ -918,6 +982,51 @@ describe('GlobeScreen', () => {
       const said = announce.mock.calls.map(([text]) => text);
       expect(said).toContain('בנסיעה עכשיו: יוון אוקטובר 2026');
       expect(said.some((text) => text.startsWith('נבחרה'))).toBe(false);
+    });
+
+    it('an insurance reminder at launch does not stop the active trip opening (sprint 12 AC-8)', async () => {
+      (Notifications.getLastNotificationResponse as jest.Mock).mockReturnValue({
+        notification: {
+          request: {
+            identifier: 'r1',
+            content: {
+              title: '',
+              body: '',
+              data: { v: 1, type: 'insurance_reminder', tripId: 'x' },
+            },
+          },
+        },
+      });
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.nextTrip = greece;
+      const view = await render(<GlobeScreen />);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      mockTrips.firstLoad = true;
+      await view.rerender(<GlobeScreen />);
+      expect(screen.getByText('יוון')).toBeOnTheScreen();
+    });
+
+    it('a flight alert at launch stops the active trip opening (sprint 6 design 4.1)', async () => {
+      (Notifications.getLastNotificationResponse as jest.Mock).mockReturnValue({
+        notification: {
+          request: {
+            identifier: 'f1',
+            content: { title: '', body: '', data: { v: 1, type: 'flight_change', flightId: 'f1' } },
+          },
+        },
+      });
+      mockAuth.state = { status: 'signedIn', user: signedIn };
+      mockTrips.nextTrip = greece;
+      const view = await render(<GlobeScreen />);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      mockTrips.firstLoad = true;
+      await view.rerender(<GlobeScreen />);
+      expect(screen.queryByText('בנסיעה עכשיו: יוון אוקטובר 2026')).toBeNull();
+      expect(screen.queryByTestId('country-card')).toBeNull();
     });
 
     it('does not open a trip that is only planned', async () => {

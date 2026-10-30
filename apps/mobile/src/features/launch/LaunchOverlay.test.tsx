@@ -43,6 +43,8 @@ const routeDrawn = () =>
     ([target, config]) =>
       target === 0 && (config as { duration?: number })?.duration === motion.launchRoute,
   );
+/** The pin's jump, delayed to motion.launchPinDelay (design 1.3). */
+const pinPlayed = () => r.withDelay.mock.calls.some(([delay]) => delay === motion.launchPinDelay);
 
 async function mount() {
   const onFadeStart = jest.fn();
@@ -76,6 +78,7 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
     await imageDrawn();
     expect(hide).toHaveBeenCalledTimes(1);
     expect(routeDrawn()).toBe(true);
+    expect(pinPlayed()).toBe(true);
     expect(launchShown.get()).toBe(true);
   });
 
@@ -100,7 +103,10 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
       expect.objectContaining({ duration: motion.short }),
     );
     expect(onGone).not.toHaveBeenCalled();
+    // Raz 5: two frames after motion.short, so the UI thread has finished the fade.
     await act(async () => jest.advanceTimersByTime(motion.short));
+    expect(onGone).not.toHaveBeenCalled();
+    await act(async () => jest.advanceTimersByTime(32));
     expect(onGone).toHaveBeenCalledTimes(1);
   });
 
@@ -139,6 +145,7 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
     await imageDrawn();
     expect(hide).toHaveBeenCalledTimes(1);
     expect(routeDrawn()).toBe(false);
+    expect(pinPlayed()).toBe(false);
   });
 
   it.each([
@@ -149,6 +156,7 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
     await mount();
     await imageDrawn();
     expect(routeDrawn()).toBe(false);
+    expect(pinPlayed()).toBe(false);
   });
 
   it('asks about the launch alert once, at mount (design 1.5)', async () => {

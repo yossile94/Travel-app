@@ -24,11 +24,19 @@ import { easing, launch, motion, timing } from '@/theme/tokens';
 
 import { launchShown, launchSignals } from './launchSignals';
 
+/** Raz 5: the UI thread starts an animation a frame or two after it is set. */
+const FRAMES_2 = 32;
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const splashIcon = require('../../../assets/splash-icon.png');
 
+/**
+ * Raz 4: the dash starts a cap's width before the path, so frame 0 has no
+ * round cap left on a zero-length dash at Israel. The gap is as long.
+ */
+const dashHidden = launch.routeLength + launch.routeUnderlayWidth;
+const dashArray = [launch.routeLength, dashHidden];
 /** viewBox units per dp (design 1.2). */
 const u = launch.viewBox / launch.iconFrame;
 const pinSize = { width: launch.pinWidth / u, height: launch.pinHeight / u };
@@ -61,11 +69,12 @@ export function LaunchOverlay({
 
   const opacity = useSharedValue(1);
   const originOpacity = useSharedValue(0);
-  const dashOffset = useSharedValue<number>(launch.routeLength);
+  const dashOffset = useSharedValue<number>(dashHidden);
   const pinScale = useSharedValue(0);
   const pinOpacity = useSharedValue(0);
 
   const hidden = useRef(false);
+  const frame = useRef<number | undefined>(undefined);
   const faded = useRef(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const later = (fn: () => void, ms: number) => timers.current.push(setTimeout(fn, ms));
@@ -83,7 +92,7 @@ export function LaunchOverlay({
         reduceMotion: ReduceMotion.Never,
       }),
     );
-    later(onGone, motion.short);
+    later(onGone, motion.short + FRAMES_2);
   }, [onFadeStart, onGone, opacity]);
 
   // t=0 (design 1.3): the frame the system splash is hidden on.
@@ -127,7 +136,7 @@ export function LaunchOverlay({
   }, [play]);
 
   const onImageLoad = useCallback(() => {
-    requestAnimationFrame(hide);
+    frame.current = requestAnimationFrame(hide);
   }, [hide]);
 
   useEffect(() => {
@@ -142,7 +151,11 @@ export function LaunchOverlay({
       unsubscribe();
       pending.forEach(clearTimeout);
       // Never leave the system splash up, whatever came first (design 1.3).
-      if (!hidden.current) SplashScreen.hide();
+      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
+      if (!hidden.current) {
+        hidden.current = true;
+        SplashScreen.hide();
+      }
     };
     // Mount only: the overlay lives once per run.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -181,7 +194,7 @@ export function LaunchOverlay({
             strokeOpacity={launch.routeUnderlayOpacity}
             strokeWidth={launch.routeUnderlayWidth}
             strokeLinecap="round"
-            strokeDasharray={[launch.routeLength, launch.routeLength]}
+            strokeDasharray={dashArray}
             animatedProps={underlayProps}
           />
           <AnimatedPath
@@ -190,7 +203,7 @@ export function LaunchOverlay({
             stroke={launch.route}
             strokeWidth={launch.routeWidth}
             strokeLinecap="round"
-            strokeDasharray={[launch.routeLength, launch.routeLength]}
+            strokeDasharray={dashArray}
             animatedProps={routeProps}
           />
           <AnimatedCircle
