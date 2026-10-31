@@ -49,12 +49,41 @@ update supabase_migrations.schema_migrations m
 set version = map.repo_version
 from map
 where m.name = map.name and m.version = map.dev_version;
--- Every name now carries the repo's version, and nothing else changed.
-select count(*) as rows, count(distinct version) as versions from supabase_migrations.schema_migrations;
+-- Dudi: checked inside the transaction; any mismatch rolls it all back.
+do $do$
+declare
+  changed int := (select count(*) from supabase_migrations.schema_migrations m
+                  where not exists (select 1 from supabase_migrations.schema_migrations_backup_20261031 b
+                                    where b.version = m.version));
+  total int := (select count(*) from supabase_migrations.schema_migrations);
+begin
+  if changed <> 22 or total <> 30
+     or (select count(distinct version) from supabase_migrations.schema_migrations) <> 30
+     or (select array_agg(version order by version) from supabase_migrations.schema_migrations)
+        <> array[/* the 30 versions of supabase/migrations, in order */] then
+    raise exception 'alignment check failed: changed=%, total=%', changed, total;
+  end if;
+end $do$;
 commit;```
+
+## הרצה (31.10.2026)
+
+- **ההרצה:** הורץ על `travel-app-dev`, עם הבדיקה ובה המערך המלא של 30 הגרסאות. הבדיקה עברה ו-22 שורות עודכנו.
+- **אחרי ההרצה:** `list_migrations` מחזיר בדיוק את 30 הגרסאות והשמות של הריפו.
+- **סקירה:** דודי סקר ואישר עם הערות, והן נכנסו.
+- **מה מוכח:** השמות והגרסאות. התוכן לא נבדק מול הקבצים. שלושה קבצים שונו אחרי שהוחלו ב-dev (`destination_data`, ‏`push`, ‏`connections`), והשינויים שקולים בהתנהגות.
 
 ## הכלל מעכשיו
 
-- **migration חדשה ב-dev:** לא עוברת דרך `apply_migration`. מריצים את קובץ הריפו עם `execute_sql`, ומוסיפים שורה ל-`schema_migrations` עם הגרסה והשם שבשם הקובץ.
+- **migration חדשה ב-dev:** לא עוברת דרך `apply_migration`. מריצים קריאה אחת ב-`execute_sql`, כדי ש-migration שנכשלה לא תירשם, ו-migration שהצליחה לא תישאר בלי רישום:
+
+  ```sql
+  begin;
+  -- the file's contents
+  insert into supabase_migrations.schema_migrations (version, name, statements)
+  values ('<version>', '<name>', array['<the file''s contents>']);
+  commit;
+  ```
 - **גרסת קובץ חדש:** גדולה מהגרסה האחרונה בריפו. כרגע זו `20261101100000`, ולכן גדולה ממנה.
-- **בדיקה אחרי כל פריסה:** כל שורה בהיסטוריה של dev קיימת כקובץ בריפו, באותה גרסה.
+- **בדיקה אחרי כל פריסה:** `list_migrations` (או `select version, name from supabase_migrations.schema_migrations order by version`) מחזיר בדיוק את רשימת הקבצים ב-`supabase/migrations`, גרסה ושם.
+- **מתי מוחקים את הגיבוי:** את `supabase_migrations.schema_migrations_backup_20261031` מוחקים אחרי הפריסה של `20261101100000` והבדיקה שאחריה. הוא לא חשוף ל-API.
