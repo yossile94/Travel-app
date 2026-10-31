@@ -84,7 +84,13 @@ import { GlobeLayers, LAYER } from './GlobeLayers';
 import { NEXT_TRIP_HIT, NextTripPin, type NextTripFeature } from './NextTripPin';
 import { loadClimate } from '@/features/climate/climateData';
 import { hasMapboxToken, turnOffMapboxTelemetryOnce } from './mapbox';
-import { logDiscover, logGlobeReady, markGlobeMounted, markMyTripsOpened } from './perfLog';
+import {
+  logDiscover,
+  logGlobeReady,
+  markGlobeMounted,
+  markMyTripsOpened,
+  markTransition,
+} from './perfLog';
 import { resolveTap, type TapHits } from './resolveTap';
 import { SystemScrims } from './SystemScrims';
 import { isTap, type TouchDown } from './tapGesture';
@@ -713,6 +719,7 @@ export function GlobeScreen() {
     async (point: [number, number]) => {
       const map = mapRef.current;
       if (!map) return;
+      markTransition('card');
       // A tap doesn't move the camera, so Mapbox doesn't cancel a running
       // rotation segment by itself; stop it so the globe holds still.
       if (rotationAllowedRef.current) stopRotation();
@@ -1256,7 +1263,10 @@ export function GlobeScreen() {
           topInset={insets.top}
           today={trips.today}
           city={selectedCity}
-          onOpenPlaces={() => setPlacesFor(selectedCountry.adm0)}
+          onOpenPlaces={() => {
+            markTransition('places');
+            setPlacesFor(selectedCountry.adm0);
+          }}
           tripsMode={tripsMode}
           onExitTripsMode={() => setTripsModeFor(null)}
           match={

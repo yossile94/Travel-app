@@ -61,3 +61,30 @@ export function logDiscover(ms: number, chips: number, results: number) {
   if (!enabled) return;
   console.log(`[perf] discover_compute_ms=${Math.round(ms)} chips=${chips} results=${results}`);
 }
+
+/**
+ * Sprint 13 AC-9 (spec 11.1, 300ms): from the tap to the first layout of what
+ * it opens. A mark older than 5s is a tap that opened nothing new; dropped.
+ */
+export type Transition = 'card' | 'trip' | 'itinerary' | 'flight' | 'places';
+const transitions = new Map<Transition, number>();
+
+export function markTransition(name: Transition) {
+  if (!enabled) return;
+  transitions.set(name, performance.now());
+}
+
+export function logTransition(name: Transition) {
+  if (!enabled) return;
+  const start = transitions.get(name);
+  if (start === undefined) return;
+  transitions.delete(name);
+  const ms = Math.round(performance.now() - start);
+  if (ms <= 5000) console.log(`[perf] transition ${name} ms=${ms}`);
+}
+
+/** Sprint 13 AC-3: the flight sheet's first layout, paired with the tap time from adb. */
+export function logFlightSheetShown() {
+  if (!enabled) return;
+  console.log(`[perf] flight-sheet wallClockMs=${Date.now()}`);
+}

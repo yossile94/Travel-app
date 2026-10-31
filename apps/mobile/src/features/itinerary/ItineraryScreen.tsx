@@ -38,6 +38,7 @@ import { countryName } from '@/features/trips/countryName';
 import { countryByAdm0 } from '@/features/globe/countryData';
 import type { Trip } from '@/features/trips/tripsApi';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
+import { logTransition } from '@/features/globe/perfLog';
 
 import { ActivityScreen, confirmDelete, type ActivityTarget } from './ActivityScreen';
 import { dayHeading } from './dayText';
@@ -142,6 +143,7 @@ export function ItineraryScreen({
     >
       <View
         style={[styles.screen, { backgroundColor: p.canvas, paddingTop: insetsTop }]}
+        onLayout={() => logTransition('itinerary')}
         testID="itinerary-screen"
       >
         <StatusBar style={colorScheme === 'light' ? 'dark' : 'light'} />
