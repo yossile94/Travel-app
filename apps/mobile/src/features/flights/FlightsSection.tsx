@@ -34,6 +34,7 @@ import { useReduceMotion } from '@/features/globe/useReduceMotion';
 import { cachedWhen } from '@/features/trips/tripsCache';
 import { formatDate } from '@/features/trips/tripDates';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
+import { logFlightSheetShown, logTransition, markTransition } from '@/features/globe/perfLog';
 
 import {
   byDeparture,
@@ -607,7 +608,10 @@ export function FlightsSection({
             flight={item.flight}
             now={now}
             colorScheme={colorScheme}
-            onOpen={() => setSheet(item.flight.id)}
+            onOpen={() => {
+              markTransition('flight');
+              setSheet(item.flight.id);
+            }}
           />
         ) : (
           <View key={item.legs[0]!.id} testID={`card-route-${item.legs[0]!.id}`}>
@@ -624,7 +628,10 @@ export function FlightsSection({
                   flight={f}
                   now={now}
                   colorScheme={colorScheme}
-                  onOpen={() => setSheet(f.id)}
+                  onOpen={() => {
+                    markTransition('flight');
+                    setSheet(f.id);
+                  }}
                   leg={{ i: i + 1, n: item.legs.length }}
                 />
               </View>
@@ -981,7 +988,13 @@ function FlightSheet({
       testID="flight-sheet"
     >
       {f ? (
-        <ScrollView contentContainerStyle={styles.sheetBody}>
+        <ScrollView
+          contentContainerStyle={styles.sheetBody}
+          onLayout={() => {
+            logTransition('flight');
+            logFlightSheetShown();
+          }}
+        >
           <Text style={[styles.title2, { color: p.textPrimary }]} accessibilityRole="header">
             {`${isolateLtr(f.number)} · ${t(`flight.dir.${f.direction}`)}`}
           </Text>

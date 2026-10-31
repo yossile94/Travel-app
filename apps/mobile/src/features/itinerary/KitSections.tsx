@@ -20,6 +20,7 @@ import { countryName } from '@/features/trips/countryName';
 import type { Trip } from '@/features/trips/tripsApi';
 import { useReduceMotion } from '@/features/globe/useReduceMotion';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
+import { markTransition } from '@/features/globe/perfLog';
 
 import { dayHeading } from './dayText';
 import { boardCounts, flightAnchors, itineraryDays } from './itineraryModel';
@@ -46,6 +47,10 @@ export function ItinerarySection({
   const state = useBoard(trip.id);
   const flights = useTripFlights(trip.id).flights;
   const [open, setOpen] = useState(false);
+  const openBoard = () => {
+    markTransition('itinerary');
+    setOpen(true);
+  };
   const board = useMemo(
     () =>
       itineraryDays({
@@ -127,7 +132,7 @@ export function ItinerarySection({
             onPress={() =>
               offline && state.status === 'failed'
                 ? onToast(t('offline.readOnlyHint'))
-                : setOpen(true)
+                : openBoard()
             }
             colorScheme={colorScheme}
             testID="kit-itinerary-open"

@@ -44,6 +44,7 @@ import {
 } from '@/features/destination/CardDestination';
 import { todayPg } from '@/features/trips/tripDates';
 import { colors, fonts, highlightColor, layout, motion, type ColorScheme } from '@/theme/tokens';
+import { logTransition } from './perfLog';
 
 import { boardingPassPath } from './boardingPassPath';
 import { CardTiles } from './CardTiles';
@@ -293,7 +294,13 @@ export function BoardingPassCard({
         },
   );
 
+  // AC-9 (Raz): the card's first layout only, not every height change.
+  const laidOut = useRef(false);
   const onLayout = (event: LayoutChangeEvent) => {
+    if (!laidOut.current) {
+      laidOut.current = true;
+      logTransition('card');
+    }
     const { width, height } = event.nativeEvent.layout;
     setSize({ width, height });
     onHeight?.(height);
