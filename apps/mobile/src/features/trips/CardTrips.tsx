@@ -57,6 +57,7 @@ import { TripKitSections } from '@/features/kit/TripKitSections';
 import { isolateOwn, OuterScrollContext } from '@/features/globe/BoardingPassCard';
 import type { CountryInfo } from '@/features/globe/countryData';
 import { colors, fonts, layout, motion, radius, timing, type ColorScheme } from '@/theme/tokens';
+import { logTransition, markTransition } from '@/features/globe/perfLog';
 
 import { countryName } from './countryName';
 import {
@@ -388,6 +389,8 @@ export function CardTrips({
 
   /** 2.2: into Trips mode, with this trip open and scrolled to the top of the list. */
   const enterWith = (id: string | null) => {
+    // AC-9 (Raz 1): from the destination view, this is the card-to-trip transition.
+    if (id !== null) markTransition('trip');
     setRowNotice(null);
     setOpen(id);
     tapScroll.current = id;
@@ -442,6 +445,7 @@ export function CardTrips({
               // 2.2: in the destination view a row never opens in place.
               if (!tripsMode) return enterWith(trip.id);
               setRowNotice(null);
+              if (!expanded) markTransition('trip');
               setOpen(expanded ? null : trip.id);
               // Raz 2: the head remounts as it becomes (or stops being) sticky.
               setFocusTarget({ id: trip.id, n: (focusTarget?.n ?? 0) + 1 });
@@ -489,6 +493,7 @@ export function CardTrips({
       children.push(
         <View
           key={`details-${trip.id}`}
+          onLayout={() => logTransition('trip')}
           style={[
             styles.details,
             {
