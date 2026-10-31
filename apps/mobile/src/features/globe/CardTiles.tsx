@@ -95,6 +95,16 @@ export function tileArrangement(
   return count <= maxColumns(width, fontScale) ? 'one-row' : 'two-rows';
 }
 
+/**
+ * Each tile's width when `count` tiles wrap in `cols` columns: the last row's
+ * tiles share the whole row, so no hole is left beside them (sprint 13 AC-8).
+ */
+export function rowWidths(count: number, cols: number, width: number, gap: number): number[] {
+  const share = (n: number) => Math.floor((width - gap * (n - 1)) / n);
+  const lastRow = count % cols || cols;
+  return Array.from({ length: count }, (_, i) => share(i >= count - lastRow ? lastRow : cols));
+}
+
 const ACTIONS: ReadonlySet<Tile['key']> = new Set(['safety', 'places', 'emergency']);
 
 /** P-1: how a tile is drawn (Raz 4). */
@@ -358,10 +368,10 @@ export function CardTiles({
   // Two rows: the data share their row, split by tileLayout when they don't fit
   // (a narrow screen at a large font, Raz 5); one alone keeps the narrow width (John).
   const dataCols = tileLayout(width, fontScale, dataTiles.length).cols;
-  const dataWidth =
+  const dataWidths =
     dataTiles.length < 2
-      ? Math.min(layout.cardTileMaxWidthFew, width)
-      : Math.floor((width - gap * (dataCols - 1)) / dataCols);
+      ? [Math.min(layout.cardTileMaxWidthFew, width)]
+      : rowWidths(dataTiles.length, dataCols, width, gap);
   const actionWidth = Math.floor(
     (width - gap * (actionTiles.length - 1)) / Math.max(actionTiles.length, 1),
   );
@@ -401,7 +411,7 @@ export function CardTiles({
             : [
                 dataTiles.length ? (
                   <View key="data" style={[styles.grid, { gap }]} testID="card-tiles-data">
-                    {dataTiles.map((tile) => draw(tile, 'data', dataWidth))}
+                    {dataTiles.map((tile, i) => draw(tile, 'data', dataWidths[i]!))}
                   </View>
                 ) : null,
                 actionTiles.length ? (

@@ -1,3 +1,6 @@
+import { createInstance } from 'i18next';
+
+import i18n from './index';
 import en from './locales/en.json';
 import he from './locales/he.json';
 
@@ -11,7 +14,52 @@ function keys(object: object, prefix = ''): string[] {
 
 describe('translations', () => {
   it('has the same keys in Hebrew and English', () => {
-    expect(keys(en).sort()).toEqual(keys(he).sort());
+    // Hebrew alone has the forms for 2 ("_two") and, on older ICU, "_many".
+    expect(keys(en).sort()).toEqual(
+      keys(he)
+        .filter((k) => !k.endsWith('_two') && !k.endsWith('_many'))
+        .sort(),
+    );
+  });
+
+  it('every Hebrew plural has its forms for 2 and "many", or they fall back to English', () => {
+    // Raz (sprint 13): "two". Dana (sprint 13): Android 13 and older (CLDR 41)
+    // also give Hebrew "many" for 20, 30, 40...
+    const all = keys(he);
+    const missing = all
+      .filter((k) => k.endsWith('_other'))
+      .flatMap((k) => [k.replace(/_other$/, '_two'), k.replace(/_other$/, '_many')])
+      .filter((k) => !all.includes(k));
+    expect(missing).toEqual([]);
+  });
+
+  it('Dana (sprint 13): where ICU says "many" (Android 13 and older), 20 days stay Hebrew', async () => {
+    class OldIcu extends Intl.PluralRules {
+      override select(n: number) {
+        return n >= 20 && n % 10 === 0 ? 'many' : super.select(n);
+      }
+    }
+    const real = Object.getOwnPropertyDescriptor(Intl, 'PluralRules')!;
+    Object.defineProperty(Intl, 'PluralRules', { ...real, value: OldIcu });
+    try {
+      const old = createInstance();
+      await old.init({
+        lng: 'he',
+        fallbackLng: 'en',
+        resources: { he: { translation: he }, en: { translation: en } },
+      });
+      expect(old.t('itinerary.summaryDays', { count: 20 })).toBe('20 ימים');
+      expect(old.t('planner.previewPlan', { count: 30 })).toBe('30 ימים ריקים יתוכננו.');
+    } finally {
+      Object.defineProperty(Intl, 'PluralRules', real);
+    }
+  });
+
+  it('two days in Hebrew read in Hebrew', () => {
+    expect(i18n.t('itinerary.summaryDays', { count: 2, lng: 'he' })).toBe('יומיים');
+    expect(i18n.t('planner.doneItems', { count: 2, lng: 'he' })).toBe('2 פעילויות');
+    expect(i18n.t('itinerary.summaryDays', { count: 1, lng: 'he' })).toBe('יום אחד');
+    expect(i18n.t('itinerary.summaryDays', { count: 5, lng: 'he' })).toBe('5 ימים');
   });
 
   it('has no empty strings', () => {

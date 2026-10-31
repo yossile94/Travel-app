@@ -29,20 +29,22 @@ import { InlineNotice, useToast } from '@/components/formControls';
 import { BackIcon, CloudOffIcon, MapPinIcon, NavigateIcon, SearchIcon } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { dottedDate } from '@/features/destination/DestinationFields';
-import { isolateOwn } from '@/features/globe/BoardingPassCard';
+import { isolateLtr, isolateOwn } from '@/features/globe/BoardingPassCard';
 import { countryByAdm0 } from '@/features/globe/countryData';
 import { dayHeading } from '@/features/itinerary/dayText';
 import { DAY_MAX } from '@/features/itinerary/itineraryModel';
 import { tripDays } from '@/features/itinerary/planner';
 import { saveItem, useBoard } from '@/features/itinerary/itineraryStore';
 import { saveHotel } from '@/features/kit/kitApi';
-import { byCheckIn, hotelPayload, type Hotel } from '@/features/kit/kitModel';
-import { refreshTripKit, useTripKit } from '@/features/kit/kitStore';
+import { nightsText } from '@/features/kit/HotelsSection';
+import { byCheckIn, hotelPayload, numRange, type Hotel } from '@/features/kit/kitModel';
+import { refreshTripKit, refreshTripKitNow, tripKitNow, useTripKit } from '@/features/kit/kitStore';
 import { MapPointPicker } from '@/features/kit/MapPointPicker';
 import { cityAreas, cityPoint } from '@/features/trips/citiesData';
 import { CitySearchScreen } from '@/features/trips/CitiesSection';
 import { entryOf, type CityEntry } from '@/features/trips/citySearch';
 import { countryName } from '@/features/trips/countryName';
+import { formatDate } from '@/features/trips/tripDates';
 import type { Trip } from '@/features/trips/tripsApi';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
 import { logTransition } from '@/features/globe/perfLog';
@@ -157,6 +159,8 @@ export function PlacesScreen({
   // AC-5 (Raz 29.10): a hotel picked by hand stays until the city changes.
   const [manualHotel, setManualHotel] = useState<string | null>(null);
   const [pinning, setPinning] = useState<Hotel | null>(null);
+  // AC-7 (sprint 13): with several hotels and no point yet, which one to place.
+  const [choosingHotel, setChoosingHotel] = useState(false);
   const [pinBusy, setPinBusy] = useState(false);
 
   const hotels = kit.hotels;
@@ -270,9 +274,22 @@ export function PlacesScreen({
     else onToast(t('places.saveError'));
   };
   // Design 3.4: the point is saved at once through save_hotel, the hotel otherwise as it is.
-  const pinHotel = async (hotel: Hotel, point: [number, number]) => {
+  const pinHotel = async (picked: Hotel, point: [number, number]) => {
     if (!tripId) return;
     setPinBusy(true);
+    // Sprint 11 review: the rest of the hotel is sent as the server has it now,
+    // never from an older device copy.
+    const fromServer = await refreshTripKitNow(tripId);
+    const fresh = tripKitNow(tripId);
+    const stale = !fromServer || !fresh;
+    const hotel = stale ? null : fresh.hotels.find((h) => h.id === picked.id);
+    if (!hotel) {
+      setPinBusy(false);
+      onToast(
+        t(!stale ? 'hotel.gone' : online === false ? 'offline.readOnlyHint' : 'hotel.saveError'),
+      );
+      return;
+    }
     const payload = {
       ...hotelPayload({
         name: hotel.name,
@@ -295,6 +312,8 @@ export function PlacesScreen({
     setPinBusy(false);
     if (result === 'ok') onToast(t('places.hotelPointSaved', { name: hotel.name }));
     else if (result === 'offline') onToast(t('offline.readOnlyHint'));
+    else if (result === 'gone') onToast(t('hotel.gone'));
+    else if (result === 'dates') onToast(t('places.hotelDatesOutside', { name: hotel.name }));
     else if (result !== 'consent') onToast(t('hotel.saveError'));
   };
   const navigate = (target: { lat: number; lng: number; name: string }) =>
@@ -541,16 +560,16 @@ export function PlacesScreen({
                 {unpinned ? (
                   <Button
                     kind="secondary"
-                    // Raz: with several hotels, the button names the one it places.
-                    label={
-                      hotels.length > 1
-                        ? t('places.hotelPickFor', { name: isolateOwn(unpinned.name) })
-                        : t('hotel.pointChoose')
-                    }
+                    // AC-7 (sprint 13): with several hotels, a sheet asks which one first.
+                    label={hotels.length > 1 ? t('places.hotelPickWhich') : t('hotel.pointChoose')}
                     busy={pinBusy}
                     blocked={online === false}
                     onPress={() =>
-                      online === false ? onToast(t('offline.readOnlyHint')) : setPinning(unpinned)
+                      online === false
+                        ? onToast(t('offline.readOnlyHint'))
+                        : hotels.length > 1
+                          ? setChoosingHotel(true)
+                          : setPinning(unpinned)
                     }
                     colorScheme={colorScheme}
                     testID="places-hotel-no-point-pick"
@@ -678,6 +697,20 @@ export function PlacesScreen({
             onClose={() => setAddingToDay(null)}
             onToast={onToast}
             overlay={toast.render(insetsTop + 16)}
+          />
+        ) : null}
+
+        {choosingHotel ? (
+          <HotelPickSheet
+            hotels={byCheckIn(hotels)}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsBottom={insetsBottom}
+            onClose={() => setChoosingHotel(false)}
+            onPick={(hotel) => {
+              setChoosingHotel(false);
+              setPinning(hotel);
+            }}
           />
         ) : null}
 
@@ -1128,6 +1161,70 @@ function SavedList({
         </View>
       )}
     />
+  );
+}
+
+/** AC-7 (sprint 13): "which hotel?" — each hotel with its dates; picking one opens the map. */
+function HotelPickSheet({
+  hotels,
+  colorScheme,
+  reduceMotion,
+  insetsBottom,
+  onClose,
+  onPick,
+}: {
+  hotels: readonly Hotel[];
+  colorScheme: ColorScheme;
+  reduceMotion: boolean;
+  insetsBottom: number;
+  onClose: () => void;
+  onPick: (hotel: Hotel) => void;
+}) {
+  const { t } = useTranslation();
+  const p = colors[colorScheme];
+  return (
+    <BottomSheet
+      visible
+      colorScheme={colorScheme}
+      reduceMotion={reduceMotion}
+      insetsBottom={insetsBottom}
+      onClose={onClose}
+      maxHeight={640}
+      testID="places-hotel-pick"
+    >
+      <Text style={[styles.title2, { color: p.textPrimary }]} accessibilityRole="header">
+        {t('places.hotelPickTitle')}
+      </Text>
+      <ScrollView>
+        {hotels.map((h) => (
+          <Pressable
+            key={h.id}
+            accessibilityRole="button"
+            accessibilityLabel={t('hotels.rowA11y', {
+              name: h.name,
+              in: formatDate(h.checkIn, t),
+              out: formatDate(h.checkOut, t),
+              nights: nightsText(h, t),
+            })}
+            onPress={() => onPick(h)}
+            style={({ pressed }) => [
+              styles.menuRow,
+              { borderBottomColor: p.borderSubtle },
+              pressed && { backgroundColor: p.pressed },
+            ]}
+            testID={`places-hotel-pick-${h.id}`}
+          >
+            <Text style={[styles.body, { color: p.textPrimary }]}>{isolateOwn(h.name)}</Text>
+            <Text style={[styles.footnote, { color: p.textSecondary }]}>
+              {t('hotels.rowDates', {
+                range: isolateLtr(numRange(h.checkIn, h.checkOut)),
+                nights: nightsText(h, t),
+              })}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </BottomSheet>
   );
 }
 

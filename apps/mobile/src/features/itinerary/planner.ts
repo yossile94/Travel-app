@@ -68,6 +68,8 @@ export type DayKind =
   | 'arrivalEvening'
   | 'planned'
   | 'noPlaces'
+  /** No city and no hotel that night (QA B7): add one to plan it, not a lack of places. */
+  | 'noNight'
   | 'placesUsed'
   | 'beyondLimit';
 
@@ -156,7 +158,9 @@ export function planTrip(input: PlannerInput): PlanResult {
     if (slots.length === 0 && !airportAt) return days.push({ day, kind: 'arrivalEvening' });
 
     const night = input.nightPoint(day);
-    // No city and no hotel that night: no known place at the destination (D23).
+    // No city and no hotel that night: nothing to plan around (D23, QA B7).
+    // The departure day still gets its airport item.
+    if (!night && !airportAt) return days.push({ day, kind: 'noNight' });
     const near = night ? input.places.filter((p) => km([p.lng, p.lat], night) <= REACH_KM) : [];
     const pool = near.filter((p) => !used.has(p.ref)).sort(byPopularity);
     // The day's anchor is the best place left near the night; the rest stay near it.

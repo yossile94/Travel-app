@@ -104,15 +104,20 @@ const hotel = (
   point,
 });
 const mockHotels = { list: [] as ReturnType<typeof hotel>[] };
+const mockKit = () => ({
+  hotels: mockHotels.list,
+  insurance: null,
+  status: 'ready',
+  fromCache: false,
+});
 jest.mock('@/features/kit/kitStore', () => ({
-  useTripKit: () => ({
-    hotels: mockHotels.list,
-    insurance: null,
-    status: 'ready',
-    fromCache: false,
-  }),
-  refreshTripKit: jest.fn(async () => {}),
+  useTripKit: () => mockKit(),
+  tripKitNow: () => mockFresh.kit ?? mockKit(),
+  refreshTripKit: jest.fn(async () => true),
+  refreshTripKitNow: jest.fn(async () => mockFresh.fromServer),
 }));
+/** What a refresh right before the write reads; null: the same as on screen. */
+const mockFresh = { kit: null as ReturnType<typeof mockKit> | null, fromServer: true };
 const mockConsent = jest.fn(async () => true);
 jest.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => ({ recheckConsent: mockConsent }),
@@ -171,6 +176,8 @@ beforeEach(() => {
   forgetPickedCities();
   online = true;
   mockHotels.list = [];
+  mockFresh.kit = null;
+  mockFresh.fromServer = true;
   mockSaved.places = [];
   mockPlaces.state = {
     status: 'ready',
@@ -496,7 +503,7 @@ describe('"near the hotel" (AC-5, design 3.4; QA B4)', () => {
     expect(screen.getByTestId('places-hotel-h1').props.accessibilityState?.checked).toBe(true);
   });
 
-  it('several hotels and no point: the button names the hotel; the whole hotel is sent back', async () => {
+  it('AC-7: several hotels and no point: "which hotel?", then the whole hotel is sent back', async () => {
     mockHotels.list = [
       {
         ...hotel('h1', 'Amari', null, '2026-12-20'),
@@ -508,8 +515,12 @@ describe('"near the hotel" (AC-5, design 3.4; QA B4)', () => {
     ];
     await show({ trip: trip(), signedIn: true, today: '2026-12-21' });
     await fireEvent.press(screen.getByTestId('places-tab-hotel'));
-    expect(screen.getByTestId('places-hotel-no-point-pick')).toHaveTextContent(/Amari/);
     await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
+    expect(screen.getByTestId('places-hotel-pick-h2')).toHaveTextContent(/Krabi Inn/);
+    // Raz 5: the dates as the hotels section shows them, and read as words.
+    expect(screen.getByTestId('places-hotel-pick-h1')).toHaveTextContent(/20.12/);
+    expect(screen.getByTestId('places-hotel-pick-h1').props.accessibilityLabel).toMatch(/Amari/);
+    await fireEvent.press(screen.getByTestId('places-hotel-pick-h1'));
     await fireEvent.changeText(screen.getByTestId('map-point-type'), '13.7465, 100.4927');
     await fireEvent(screen.getByTestId('map-point-type'), 'submitEditing');
     await fireEvent.press(screen.getByTestId('map-point-choose'));
@@ -525,6 +536,60 @@ describe('"near the hotel" (AC-5, design 3.4; QA B4)', () => {
       lat: 13.7465,
       lng: 100.4927,
     });
+  });
+
+  it('the point is saved with the hotel as the server has it now, not the device copy', async () => {
+    mockHotels.list = [hotel('h1', 'Amari', null)];
+    mockFresh.kit = { ...mockKit(), hotels: [{ ...hotel('h1', 'Amari Watergate', null) }] };
+    await show({ trip: trip(), signedIn: true });
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
+    await fireEvent.changeText(screen.getByTestId('map-point-type'), '13.7465, 100.4927');
+    await fireEvent(screen.getByTestId('map-point-type'), 'submitEditing');
+    await fireEvent.press(screen.getByTestId('map-point-choose'));
+    await act(async () => {});
+    expect(kitApi.saveHotel).toHaveBeenCalledWith(
+      'h1',
+      'trip-1',
+      expect.objectContaining({ name: 'Amari Watergate' }),
+    );
+  });
+
+  it('a hotel deleted meanwhile, or outside the dates, each says so', async () => {
+    mockHotels.list = [hotel('h1', 'Amari', null)];
+    mockFresh.kit = { ...mockKit(), hotels: [] };
+    await show({ trip: trip(), signedIn: true });
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
+    await fireEvent.changeText(screen.getByTestId('map-point-type'), '13.7465, 100.4927');
+    await fireEvent(screen.getByTestId('map-point-type'), 'submitEditing');
+    await fireEvent.press(screen.getByTestId('map-point-choose'));
+    await act(async () => {});
+    expect(kitApi.saveHotel).not.toHaveBeenCalled();
+    toasted(t('hotel.gone'));
+
+    mockFresh.kit = null;
+    kitApi.saveHotel.mockResolvedValueOnce('dates');
+    await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
+    await fireEvent.changeText(screen.getByTestId('map-point-type'), '13.7465, 100.4927');
+    await fireEvent(screen.getByTestId('map-point-type'), 'submitEditing');
+    await fireEvent.press(screen.getByTestId('map-point-choose'));
+    await act(async () => {});
+    toasted(t('places.hotelDatesOutside', { name: 'Amari' }));
+  });
+
+  it('Raz 3: a refresh that failed (not offline) never sends the device copy', async () => {
+    mockHotels.list = [hotel('h1', 'Amari', null)];
+    mockFresh.fromServer = false;
+    await show({ trip: trip(), signedIn: true });
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
+    await fireEvent.changeText(screen.getByTestId('map-point-type'), '13.7465, 100.4927');
+    await fireEvent(screen.getByTestId('map-point-type'), 'submitEditing');
+    await fireEvent.press(screen.getByTestId('map-point-choose'));
+    await act(async () => {});
+    expect(kitApi.saveHotel).not.toHaveBeenCalled();
+    toasted(t('hotel.saveError'));
   });
 
   it('an expired consent brings up the gate and retries once (Raz)', async () => {

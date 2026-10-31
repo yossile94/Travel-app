@@ -1,8 +1,15 @@
 // Sprint 11 F-029 (D22; Raz design approval 8; design 7): a country's places
 // read in pages, kept on the device, refreshed weekly or on a new version.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { renderHook } from '@testing-library/react-native';
 
-import { loadPlaces, PLACES_DATA_VERSION, resetPlacesForTests, retryPlaces } from './placesData';
+import {
+  loadPlaces,
+  PLACES_DATA_VERSION,
+  resetPlacesForTests,
+  retryPlaces,
+  usePlaces,
+} from './placesData';
 
 /** A country of `count` places, most popular first, as the server returns them. */
 const mockDb = {
@@ -96,6 +103,24 @@ describe('placesData (D22)', () => {
     );
     await loadPlaces('THA', now + 8 * 24 * 3600 * 1000);
     expect(mockDb.ranges).toHaveLength(1);
+  });
+
+  it('QA B8 (Raz): a Hebrew title in a device copy from before is cleaned when shown', async () => {
+    const now = Date.parse('2026-10-29T12:00:00Z');
+    await loadPlaces('THA', now);
+    const stored = await placesOf('THA');
+    const [first, ...rest] = stored.wikidata as { nameHe: string | null }[];
+    await AsyncStorage.setItem(
+      'places.v1.THA',
+      JSON.stringify({ ...stored, wikidata: [{ ...first, nameHe: 'בנגקוק/פראטונאם' }, ...rest] }),
+    );
+    resetPlacesForTests();
+    mockDb.ranges = [];
+    await loadPlaces('THA', now + 3600 * 1000);
+    expect(mockDb.ranges).toHaveLength(0);
+    const { result } = await renderHook(() => usePlaces('THA'));
+    const state = result.current;
+    expect(state.status === 'ready' && state.places.map((p) => p.nameHe)).toContain('פראטונאם');
   });
 
   it('an empty copy is kept an hour, then read again (sprint 12, Dana B-3)', async () => {

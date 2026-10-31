@@ -20,7 +20,7 @@ import Animated, {
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { logLaunchGone } from '@/features/globe/perfLog';
-import { launchAlertOnce } from '@/features/push/usePushOpen';
+import { forgetLaunchAlert, launchAlertOnce } from '@/features/push/usePushOpen';
 import { easing, launch, motion, timing } from '@/theme/tokens';
 
 import { launchShown, launchSignals } from './launchSignals';
@@ -103,6 +103,7 @@ export function LaunchOverlay({
     );
     later(() => {
       logLaunchGone();
+      forgetLaunchAlert();
       onGone();
     }, motion.short + FRAMES_2);
   }, [onFadeStart, onGone, opacity]);
@@ -194,6 +195,8 @@ export function LaunchOverlay({
     return () => {
       unsubscribe();
       pending.forEach(clearTimeout);
+      // Raz 6: gone before its fade, the answer still belongs to this launch only.
+      forgetLaunchAlert();
       // Never leave the system splash up, whatever came first (design 1.3).
       if (frame.current !== undefined) cancelAnimationFrame(frame.current);
       if (!hidden.current) {

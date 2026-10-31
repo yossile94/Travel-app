@@ -3,7 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import * as Reanimated from 'react-native-reanimated';
 
-import { resetLaunchAlertForTests } from '@/features/push/usePushOpen';
+import { launchAlertOnce, resetLaunchAlertForTests } from '@/features/push/usePushOpen';
 import { launch, motion, timing } from '@/theme/tokens';
 
 import { LaunchOverlay } from './LaunchOverlay';
@@ -223,6 +223,24 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
     await mount();
     await imageDrawn();
     expect(n.getLastNotificationResponse).toHaveBeenCalledTimes(1);
+  });
+
+  it('Dana B-2: once the overlay is gone, the launch alert is asked again', async () => {
+    const { onGone } = await mount();
+    await imageDrawn();
+    await act(async () => launchSignals.send('ready'));
+    await act(async () => jest.advanceTimersByTime(motion.short + 32));
+    expect(onGone).toHaveBeenCalledTimes(1);
+    await launchAlertOnce();
+    expect(n.getLastNotificationResponse).toHaveBeenCalledTimes(2);
+  });
+
+  it('Raz 6: unmounted before its fade, the launch alert is forgotten too', async () => {
+    await mount();
+    await imageDrawn();
+    await act(async () => screen.unmount());
+    await launchAlertOnce();
+    expect(n.getLastNotificationResponse).toHaveBeenCalledTimes(2);
   });
 
   it('unmounting before the splash was hidden still hides it (design 1.3)', async () => {

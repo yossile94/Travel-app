@@ -105,4 +105,31 @@ describe('the whole input (D1, D23)', () => {
     expect(plan.items.find((i) => i.day === '2027-01-03')?.placeRef).toBe('wd:Q2');
     expect(plan.days.find((d) => d.day === '2027-01-02')?.kind).toBe('placesUsed');
   });
+
+  it('QA B6: the night city decides, rounded as the card shows it', () => {
+    const board = itineraryDays({
+      trip,
+      anchors: { arrival: null, departure: null },
+      items: [],
+      today: '2026-12-01',
+    });
+    const input = planInput({
+      trip,
+      board,
+      anchors: { arrival: null, departure: null },
+      hotels: [],
+      places: [],
+      today: '2026-12-01',
+      pointOf,
+      // The country is cool; Bangkok's own January is 23.5°, shown as 24°.
+      normals: Array.from({ length: 12 }, () => 1800),
+      cityNormals: (id) => (id === 1 ? Array.from({ length: 12 }, () => 2350) : null),
+      pace: 'calm',
+      language: 'he',
+      airportTitle: 'יציאה לשדה התעופה',
+      newId: (i) => `id-${i}`,
+    });
+    expect(input.tropical('2027-01-01')).toBe(true);
+    expect(input.tropical('2027-01-03')).toBe(false);
+  });
 });

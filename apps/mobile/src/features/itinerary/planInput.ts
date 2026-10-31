@@ -4,6 +4,7 @@
  * flights' anchors, the hotels, the bundled cities and climate, and the
  * country's places. Pure: "today" and the ids come in.
  */
+import { roundTemp } from '@/features/climate/tempFormat';
 import type { Hotel } from '@/features/kit/kitModel';
 import { nightCityId, type Place, type PlaceCategory } from '@/features/places/placesModel';
 import type { Trip } from '@/features/trips/tripsApi';
@@ -11,8 +12,11 @@ import type { Trip } from '@/features/trips/tripsApi';
 import { busyDays, type Anchors, type Board } from './itineraryModel';
 import type { Category, Pace, PlannerInput, PlannerPlace } from './planner';
 
-/** Scope ח2: a day is tropical when that month's daily average is 24° or more. */
-export const TROPICAL_FROM_HUNDREDTHS = 2400;
+/**
+ * Scope ח2: a day is tropical when that month's daily average is 24° or more,
+ * in the whole degrees the card shows (QA B6: 23.5° counts, as in discover).
+ */
+export const TROPICAL_FROM_DEGREES = 24;
 
 /**
  * Night by night (ח3): a hotel with a point that covers the night, else the
@@ -65,6 +69,8 @@ export function planInput(args: {
   pointOf: (id: number) => [number, number] | null;
   /** The country's monthly daily averages, in hundredths of a degree; null when unknown. */
   normals: readonly number[] | null;
+  /** A city's own normals (QA B6: the night's city decides); null when it has none. */
+  cityNormals?: (cityId: number) => readonly number[] | null;
   pace: Pace;
   language: string;
   airportTitle: string;
@@ -82,9 +88,12 @@ export function planInput(args: {
     busyDays: busyDays(args.board),
     places: plannerPlaces(args.places, args.language),
     nightPoint: (day) => night(day)?.point ?? null,
-    tropical: (day) =>
-      args.normals !== null &&
-      (args.normals[Number(day.slice(5, 7)) - 1] ?? 0) >= TROPICAL_FROM_HUNDREDTHS,
+    tropical: (day) => {
+      const cityId = night(day)?.cityId ?? null;
+      const normals = (cityId !== null && args.cityNormals?.(cityId)) || args.normals;
+      const month = normals?.[Number(day.slice(5, 7)) - 1];
+      return month !== undefined && roundTemp(month) >= TROPICAL_FROM_DEGREES;
+    },
     pace: args.pace,
     airportTitle: args.airportTitle,
     newId: args.newId,
