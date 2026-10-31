@@ -45,6 +45,7 @@ import { entryOf, type CityEntry } from '@/features/trips/citySearch';
 import { countryName } from '@/features/trips/countryName';
 import type { Trip } from '@/features/trips/tripsApi';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
+import { logTransition } from '@/features/globe/perfLog';
 
 import { BookmarkIcon } from './icons';
 import { pickedCity, rememberCity } from './pickedCities';
@@ -325,6 +326,7 @@ export function PlacesScreen({
     >
       <View
         style={[styles.screen, { backgroundColor: p.canvas, paddingTop: insetsTop }]}
+        onLayout={() => logTransition('places')}
         testID="places-screen"
       >
         <StatusBar style={colorScheme === 'light' ? 'dark' : 'light'} />
