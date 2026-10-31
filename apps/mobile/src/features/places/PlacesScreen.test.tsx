@@ -194,7 +194,9 @@ beforeEach(() => {
 
 // The first render loads the city list and the screen: under a full parallel run it
 // passed 5 s now and then (sprint 12). The tests themselves are quick.
-jest.setTimeout(15_000);
+// v0.14.1 (Raz 8, Dana 7): the first test also pays for loading the modules; under a
+// full parallel run that took over 15s.
+jest.setTimeout(40_000);
 
 describe('without a trip (design 3.1, 3.7.1)', () => {
   it('the largest city is picked, "other" and "whole country" last; one tab, no save', async () => {

@@ -139,6 +139,25 @@ describe('TripsProvider offline (sprint 4 F-015)', () => {
     expect(result.current.nextTrip).toEqual(saved.nextTrip);
   });
 
+  it('v0.14.1 (Raz, Dana R1): no answer while connected tries again, and editing comes back', async () => {
+    jest.useFakeTimers();
+    try {
+      jest.mocked(NetInfo.fetch).mockResolvedValue({ isConnected: true } as never);
+      mockSaved = saved;
+      const { result } = await renderHook(() => useTrips(), { wrapper });
+      await act(async () => result.current.start());
+      await offline(0);
+      expect(result.current.fromCache).toBe(true);
+      // No NetInfo event comes (still "connected"): the retry reloads by itself.
+      await act(async () => jest.advanceTimersByTimeAsync(30_000));
+      expect(mockAnswers).toHaveLength(2);
+      await answer(1, ['THA']);
+      expect(result.current.fromCache).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('the network dropping after a load is read only; its return reloads and clears it', async () => {
     let netListener: (net: { isConnected: boolean }) => void = () => {};
     jest.mocked(NetInfo.addEventListener).mockImplementation((listener) => {

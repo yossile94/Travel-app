@@ -1348,7 +1348,6 @@
     "kitSubAll": "By city, near the hotel and by category",
     "kitSubCities": "By city and by category",
     "kitSaved": "Saved for this trip",
-    "kitSavedA11y": "{{n}} places saved for this trip",
     "title": "What to see in {{country}}",
     "tabCity": "In the city",
     "cityPicker": "City",
@@ -1433,7 +1432,9 @@
     "kitSavedHelp": "Save places to add them to days in your itinerary.",
     "hotelPickWhich": "Choose a hotel and place it on the map",
     "hotelPickTitle": "Which hotel?",
-    "hotelDatesOutside": "{{name}}'s dates are no longer within the trip. Fix them in the travel kit."
+    "hotelDatesOutside": "{{name}}'s dates are no longer within the trip. Fix them in the travel kit.",
+    "kitSavedA11y_one": "1 place saved for this trip",
+    "kitSavedA11y_other": "{{count}} places saved for this trip"
   },
   "itinerary": {
     "kitTitle": "Itinerary",
@@ -1470,7 +1471,6 @@
     "rowHint": "Opens editing. More actions available",
     "outOfRange": "Outside the trip dates ({{n}})",
     "outOfRangeWhy": "After the dates changed, these activities are no longer in the trip.",
-    "outOfRangeNotice": "{{n}} activities are outside the trip dates.",
     "outOfRangeGo": "Go to them",
     "before": "{{date}} · before the trip",
     "after": "{{date}} · after the trip",
@@ -1501,7 +1501,9 @@
     "summaryPlanned_one": "1 planned",
     "summaryPlanned_other": "{{count}} planned",
     "summaryItems_one": "1 activity",
-    "summaryItems_other": "{{count}} activities"
+    "summaryItems_other": "{{count}} activities",
+    "outOfRangeNotice_one": "1 activity is outside the trip dates.",
+    "outOfRangeNotice_other": "{{count}} activities are outside the trip dates."
   },
   "activity": {
     "titleNew": "New activity",
@@ -1556,8 +1558,6 @@
     "previewShort": "The first and last days are short, following the flights.",
     "limitation": "The planner doesn't know opening hours or closing days. Check before you go.",
     "over60": "For trips longer than 60 days, we'll plan only the first 60.",
-    "go": "Plan {{n}} days",
-    "goOne": "Plan 1 day",
     "busy": "Planning…",
     "downloading": "Downloading places…",
     "noEmpty": "There are no empty days to plan.",
@@ -1578,7 +1578,7 @@
       "placesUsed": "Day {{n}}, we've already scheduled every well-known place near {{city}}",
       "filledMeanwhile": "Day {{n}}, filled meanwhile from another device",
       "overLimit": "Days {{from}}–{{to}}, after the first 60",
-      "noNight": "Day {{n}}, the trip has no city or hotel"
+      "noNight": "Day {{n}}, no city from the list or hotel on the map"
     },
     "tropical": "On hot days we didn't plan outdoor activities between 12:00 and 15:00.",
     "closeResult": "Close the summary",
@@ -1587,11 +1587,15 @@
     "previewPlan_other": "{{count}} empty days will be planned.",
     "previewKept_one": "1 day with activities won't change.",
     "previewKept_other": "{{count}} days with activities won't change.",
-    "needCity": "To plan, add a city or a hotel to the trip.",
+    "needCity": "To plan, choose a city from the list for the trip, or place the hotel on the map.",
     "doneDays_one": "Planned 1 day",
     "doneDays_other": "Planned {{count}} days",
     "doneItems_one": "1 activity",
-    "doneItems_other": "{{count}} activities"
+    "doneItems_other": "{{count}} activities",
+    "go_one": "Plan 1 day",
+    "go_other": "Plan {{count}} days",
+    "placesFailed": "We couldn't download the destination's places, so planning isn't possible right now.",
+    "retry": "Try again"
   },
   "mapPoint": {
     "title": "Hotel location",
@@ -1607,5 +1611,10 @@
     "typePlaceholder": "Enter coordinates, e.g. 13.7563, 100.5018",
     "typeA11y": "Enter coordinates",
     "typeError": "Enter a latitude and a longitude, e.g. 13.7563, 100.5018."
+  },
+  "appError": {
+    "title": "Something went wrong",
+    "body": "This screen ran into an error. Try again; if it happens again, close and reopen the app.",
+    "retry": "Try again"
   }
 }

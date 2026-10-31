@@ -6,6 +6,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
+import { isNetworkError } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 
 import type { Flight, FlightSnapshot } from './flightModel';
@@ -80,17 +81,28 @@ export async function loadFlights(
   if (!supabase) return { ok: false, reason: 'error' };
   if (tripIds.length === 0) return { ok: true, value: [] };
   if (!(await online())) return { ok: false, reason: 'offline' };
-  const { data, error } = await supabase.rpc('flights_for_trips', {
+  const { data, error, status } = await supabase.rpc('flights_for_trips', {
     p_trip_ids: tripIds.slice(0, 50),
   });
   if (error || !Array.isArray(data)) {
     log('load', error);
-    return { ok: false, reason: 'error' };
+    // v0.14.1 (Dana 1): no answer is offline, so the device copy shows.
+    return { ok: false, reason: isNetworkError(error, status) ? 'offline' : 'error' };
   }
   return { ok: true, value: data as Flight[] };
 }
 
 type SavedFields = Omit<Flight, 'id' | 'tripId' | 'watch'>;
+
+/** v0.14.1 (Raz 1): a write that hangs on a weak network ends as 'offline', like the kit's. */
+const WRITE_TIMEOUT_MS = 15_000;
+async function rpcWithin(fn: string, args: Record<string, unknown>) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<'timeout'>(
+    (r) => (timer = setTimeout(() => r('timeout'), WRITE_TIMEOUT_MS)),
+  );
+  return Promise.race([supabase!.rpc(fn, args), late]).finally(() => clearTimeout(timer));
+}
 
 /** One flight, with the id made when the screen opened (AC-5: a retry writes the same row). */
 export async function saveFlight(
@@ -100,11 +112,9 @@ export async function saveFlight(
 ): Promise<FlightWrite> {
   if (!supabase) return 'error';
   if (!(await online())) return 'offline';
-  const { data, error } = await supabase.rpc('save_flight', {
-    p_id: id,
-    p_trip_id: tripId,
-    p_flight: flight,
-  });
+  const answer = await rpcWithin('save_flight', { p_id: id, p_trip_id: tripId, p_flight: flight });
+  if (answer === 'timeout') return 'offline';
+  const { data, error } = answer;
   if (error) {
     const { code, hint } = error as { code?: string; hint?: string };
     if (code === '42501' && hint === 'consent_required') return 'consent';
@@ -119,7 +129,9 @@ export async function saveFlight(
 export async function deleteFlight(id: string): Promise<FlightWrite> {
   if (!supabase) return 'error';
   if (!(await online())) return 'offline';
-  const { data, error } = await supabase.rpc('delete_flight', { p_id: id });
+  const answer = await rpcWithin('delete_flight', { p_id: id });
+  if (answer === 'timeout') return 'offline';
+  const { data, error } = answer;
   if (error) {
     log('delete', error);
     return 'error';

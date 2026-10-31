@@ -154,6 +154,22 @@ export function loadPlaces(adm0: string, now = Date.now()): Promise<void> {
       fresh ? Promise.resolve(device.wikidata) : readWikidata(adm0).catch(() => null),
       readCurated(adm0).catch(() => null),
     ]);
+    // v0.14.1 (Raz 7): the country's places came and only the curated ones
+    // failed: show the places now, and keep no copy, so the next opening asks again.
+    if (wikidata && !curated && !device) {
+      publish(
+        adm0,
+        {
+          version: PLACES_DATA_VERSION,
+          savedAt: new Date(now).toISOString(),
+          wikidata,
+          curated: [],
+        },
+        false,
+      );
+      loading.delete(adm0);
+      return;
+    }
     if (!wikidata || !curated) {
       if (!device) {
         states.set(adm0, { status: 'failed' });

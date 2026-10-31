@@ -87,3 +87,25 @@ describe('millisecondsToNextMinute', () => {
     expect(millisecondsToNextMinute(new Date(Date.UTC(2026, 0, 1, 0, 0, 0)))).toBe(60_000);
   });
 });
+
+describe('zones an old device does not know (v0.14.1, Raz 3)', () => {
+  it('a newer name falls back to its older one with the same clock', () => {
+    const Real = Intl.DateTimeFormat;
+    const old = jest.spyOn(Intl, 'DateTimeFormat').mockImplementation(((
+      locales?: string | string[],
+      options?: Intl.DateTimeFormatOptions,
+    ) => {
+      if (options?.timeZone === 'Europe/Kyiv') throw new RangeError('Invalid time zone');
+      return new Real(locales, options);
+    }) as typeof Intl.DateTimeFormat);
+    try {
+      expect(zonedClock('Europe/Kyiv', ISRAEL_WINTER).offsetMinutes).toBe(120);
+    } finally {
+      old.mockRestore();
+    }
+  });
+
+  it('a zone with no older name still throws, for the caller to handle', () => {
+    expect(() => zonedClock('Mars/Olympus_Mons', ISRAEL_WINTER)).toThrow(RangeError);
+  });
+});

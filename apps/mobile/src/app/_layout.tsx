@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { ErrorScreen } from '@/components/ErrorScreen';
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { clearViews } from '@/features/kit/policyFile';
 import { LaunchOverlay } from '@/features/launch/LaunchOverlay';
@@ -24,6 +25,9 @@ clearViews();
 void vault.clearCaptures().catch(() => {});
 // Sprint 10 AC-12, AC-13: a save in the passport wallet checks the trips and plans the reminders.
 startPassportAlerts();
+
+/** v0.14.1 (Raz 2): a screen that throws shows ErrorScreen, not a closed app. */
+export const ErrorBoundary = ErrorScreen;
 
 export default function RootLayout() {
   // A warm start (the JS still alive) shows no overlay (design 1.5).

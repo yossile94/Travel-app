@@ -11,6 +11,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 import { forgetCachedTrips, readTripCopy, writeTripCopy } from '@/features/trips/tripCopies';
 import { tripsCacheGeneration } from '@/features/trips/tripsCache';
+import { isNetworkError } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 
 import type { Item } from './itineraryModel';
@@ -71,7 +72,7 @@ export async function loadBoard(tripId: string): Promise<void> {
     notify();
   };
   if (!supabase || !(await online())) return fallBack(true);
-  const { data, error } = await supabase
+  const { data, error, status } = await supabase
     .from('itinerary_items')
     .select(
       'id, trip_id, day_date, time_of_day, title, note, place_ref, place_name, lat, lng, source, sort_order',
@@ -82,7 +83,8 @@ export async function loadBoard(tripId: string): Promise<void> {
     .limit(600);
   if (error) {
     log('load', error);
-    return fallBack(false);
+    // v0.14.1 (Dana 1): no answer is offline, so the device copy shows.
+    return fallBack(isNetworkError(error, status));
   }
   if (!current()) return;
   const items = data.map(fromRow);

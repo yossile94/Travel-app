@@ -8,6 +8,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useRetryWhileUnreached } from '@/lib/useRetryWhileUnreached';
 import { motion } from '@/theme/tokens';
 
 import { todayPg } from './tripDates';
@@ -252,6 +253,13 @@ export function useTripList({
       wasConnected = connected;
     });
   }, [enabled, fetchFirst]);
+
+  // v0.14.1 (Raz): the saved copy or a stale list while "connected": try again.
+  useRetryWhileUnreached(
+    enabled &&
+      (state.fromCache === true || state.offlineStale === true || state.status === 'offline'),
+    () => void fetchFirst(),
+  );
 
   return { state, reload, loadMore };
 }

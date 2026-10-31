@@ -241,7 +241,7 @@ export function PlacesSection({
             `⁦${count}⁩`,
             () => setOpen('saved'),
             'kit-places-saved',
-            t('places.kitSavedA11y', { n: count }),
+            t('places.kitSavedA11y', { count }),
           )
         ) : (
           <Text style={[styles.footnote, styles.help, { color: p.textSecondary }]}>

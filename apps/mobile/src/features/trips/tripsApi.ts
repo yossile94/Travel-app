@@ -8,6 +8,7 @@ import { forgetTripKit } from '@/features/kit/kitStore';
 import { removePolicy } from '@/features/kit/policyFile';
 import NetInfo from '@react-native-community/netinfo';
 
+import { isNetworkError } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 
 /** How a traveler is related to the user (sprint 3 AC-1); the labels are translated. */
@@ -143,13 +144,14 @@ export async function loadTripPage({
       `start_date.${op}.${cursor.startDate},and(start_date.eq.${cursor.startDate},id.${op}.${cursor.id})`,
     );
   }
-  const { data, error } = await query
+  const { data, error, status } = await query
     .order('start_date', { ascending: upcoming })
     .order('id', { ascending: upcoming })
     .limit(pageSize);
   if (error || !data) {
     logFailure(`load ${section}`, error);
-    return { ok: false, reason: 'error' };
+    // v0.14.1 (Dana 1): no answer is offline, so the device copy shows.
+    return { ok: false, reason: isNetworkError(error, status) ? 'offline' : 'error' };
   }
   const trips = (data as unknown as TripRow[]).map(fromRow);
   const last = trips.at(-1);
@@ -166,10 +168,10 @@ export async function loadTripPage({
 export async function loadTripCountries(): Promise<LoadResult<Set<string>>> {
   if (!supabase) return { ok: false, reason: 'error' };
   if (!(await online())) return { ok: false, reason: 'offline' };
-  const { data, error } = await supabase.rpc('my_trip_countries');
+  const { data, error, status } = await supabase.rpc('my_trip_countries');
   if (error || !Array.isArray(data)) {
     logFailure('countries', error);
-    return { ok: false, reason: 'error' };
+    return { ok: false, reason: isNetworkError(error, status) ? 'offline' : 'error' };
   }
   return { ok: true, value: new Set(data as string[]) };
 }
