@@ -1,0 +1,127 @@
+<!doctype html>
+<!--
+  Sprint 13 AC-18: the account-deletion page Google Play requires for an app
+  that creates accounts. DRAFT: not published until Yossi decides (sprint-13.md,
+  open questions); hosting is free (GitHub Pages). [Bracketed] text waits for
+  the lawyer and the support address.
+-->
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>מחיקת חשבון · Delete your account</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #0f172a;
+        --muted: #475569;
+        --line: #e2e8f0;
+        --accent: #1d4ed8;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #060b18;
+          --fg: #f1f5f9;
+          --muted: #cbd5e1;
+          --line: #1e293b;
+          --accent: #93c5fd;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 17px/1.6 system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      }
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 32px 16px 64px;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 1.2rem;
+        margin: 32px 0 8px;
+      }
+      p,
+      li {
+        color: var(--muted);
+      }
+      a {
+        color: var(--accent);
+      }
+      section + section {
+        border-top: 1px solid var(--line);
+        margin-top: 40px;
+        padding-top: 8px;
+      }
+      .draft {
+        border: 2px dashed #b45309;
+        padding: 8px 12px;
+        color: #b45309;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="draft">טיוטה, לבדיקת עו"ד. לא לפרסום. · Draft, not for publication.</p>
+
+      <section lang="he" dir="rtl">
+        <h1>מחיקת חשבון ומידע</h1>
+        <p>
+          אפשר למחוק את החשבון ואת כל המידע שלו בכל עת. המחיקה מוחקת מהשרת, מיד, את החשבון, הנסיעות,
+          הטיסות, המלונות, הביטוח, הלוח היומי, המקומות השמורים וטוקן ההתראות.
+        </p>
+        <h2>מתוך האפליקציה (הדרך המהירה)</h2>
+        <ol>
+          <li>פותחים את האפליקציה ומקישים על כפתור החשבון בפינה.</li>
+          <li>בוחרים "מחיקת חשבון".</li>
+          <li>מאשרים שוב עם חשבון Google. זה מוודא שרק בעל החשבון מוחק אותו.</li>
+        </ol>
+        <h2>בלי האפליקציה</h2>
+        <p>
+          שלחו מייל אל <a href="mailto:[privacy@example]">[כתובת מייל לפרטיות]</a> מכתובת ה-Google
+          שאיתה נרשמתם, עם הנושא "מחיקת חשבון". נמחק את החשבון תוך [X] ימים ונאשר במייל.
+        </p>
+        <h2>מה נשאר</h2>
+        <ul>
+          <li>מידע שנשמר רק במכשיר, כמו הדרכון וקובץ הפוליסה, נמחק כשמסירים את האפליקציה.</li>
+          <li>בגיבויים של השרת המידע נמחק תוך [X] ימים.</li>
+          <li>[יומן הסכמות: תקופה ובסיס חוקי, לעו"ד]</li>
+        </ul>
+      </section>
+
+      <section lang="en" dir="ltr">
+        <h1>Delete your account and data</h1>
+        <p>
+          You can delete your account and all its data at any time. Deleting removes your account,
+          trips, flights, hotels, insurance, day plans, saved places and notification token from our
+          server at once.
+        </p>
+        <h2>In the app (fastest)</h2>
+        <ol>
+          <li>Open the app and tap the account button in the corner.</li>
+          <li>Choose "Delete account".</li>
+          <li>Confirm again with your Google account, so only its owner can delete it.</li>
+        </ol>
+        <h2>Without the app</h2>
+        <p>
+          Email <a href="mailto:[privacy@example]">[privacy address]</a> from the Google address you
+          signed up with, subject "Delete my account". We delete it within [X] days and confirm by
+          email.
+        </p>
+        <h2>What remains</h2>
+        <ul>
+          <li>Data kept only on your device (passport, policy file) goes when you uninstall the app.</li>
+          <li>Server backups are cleared within [X] days.</li>
+          <li>[Consent log: period and legal basis, per counsel]</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
