@@ -12,8 +12,8 @@
 | `delete-account` | false (*) | משתמש מחובר: ‏`auth.getUser` על הטוקן, ואימות מחדש עם ID token של Google מאותו חשבון, עד 60 דקות | `POST` בלבד. בלי ID token מוחזר 400. חשבון אחר מחזיר 403 |
 | `flight-watch` | false | `pg_cron` בלבד: ‏`CRON_SECRET` בכותרת (`hasCronSecret`) | `POST` בלבד. בלי סוד מוחזר 401 |
 | `flight-coverage` | false | `pg_cron` בלבד: ‏`CRON_SECRET` | `POST` בלבד. ‏`action` וחלון מאומתים (`bad_action`, ‏`bad_window`) |
-| `rates-daily` | false | כל אחד, אבל רק מרענן נתונים ציבוריים | `POST` בלבד. ריצה נתפסת קודם במסד (`claim_job_run`, פעם בשעה לכל היותר), ולכן קריאה זרה לא עושה כלום |
-| `advisories-daily` | false | כמו `rates-daily` | כמו `rates-daily`. טקסט מוגבל ל-4000 תווים |
+| `rates-daily` | false | `pg_cron` בלבד: ‏`CRON_SECRET` (נוסף בספרינט 13, דודי 2) | `POST` בלבד. בלי סוד מוחזר 401. ריצה נתפסת קודם במסד (`claim_job_run`, פעם בשעה לכל היותר) |
+| `advisories-daily` | false | `pg_cron` בלבד: ‏`CRON_SECRET` (נוסף בספרינט 13) | כמו `rates-daily`. טקסט מוגבל ל-4000 תווים |
 
 (*) ב-`delete-account` הפרויקט חותם טוקנים במפתח שהשער של Supabase לא מאמת, ולכן הפונקציה בודקת את הסשן בעצמה (ADR-006, סעיף 6).
 
@@ -23,10 +23,11 @@
 
 ### הריפו
 - **gitleaks** רץ ב-CI על כל PR, על הקומיטים החדשים.
-- **workflow חדש** (`security-scan.yml`) מריץ gitleaks על כל היסטוריית הריפו:
+- **workflow חדש** (`security-scan.yml`) מריץ gitleaks על כל הקומיטים בכל הענפים:
   - פעם בשבוע.
   - לפי דרישה.
-  - **הריצה הראשונה:** ראו "הרצה" בהמשך.
+  - ב-PR שמשנה אותו.
+  - **הריצה הראשונה:** ב-PR 23. התוצאה רשומה ב"הרצה" בהמשך.
 - **מה לא נכנס ל-Git:** ‏`.env.local` ו-`google-services.json`. שניהם ב-`.gitignore`.
 
 ### ה-APK (נסרק ב-31.10, ‏v0.13.0)
@@ -77,5 +78,5 @@
 
 ## הרצה
 
-- **gitleaks על כל ההיסטוריה:** ‏`gh workflow run security-scan.yml`, אחרי המיזוג ל-main.
+- **gitleaks על כל ההיסטוריה:** ‏`gh workflow run security-scan.yml`.
 - **ה-APK:** הסריקה רצה מהשורה. הדפוסים מופיעים בטבלה שלמעלה, והתוצאות נשמרות בדוח הספרינט.

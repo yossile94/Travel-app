@@ -1,11 +1,13 @@
 /**
  * rates-daily (sprint 4 F-012, ADR-008): once a day, pg_cron calls this to
  * store the latest exchange rates: the Bank of Israel, then ExchangeRate-API
- * (free, no key) for the rest. verify_jwt is off and the call carries no
- * secret: it only refreshes public data, and a run is claimed in the
- * database first (at most one an hour). Only the latest rate per currency is kept (ER-API terms).
+ * (free, no key) for the rest. verify_jwt is off; the call carries the cron
+ * secret (sprint 13, AC-14), and a run is claimed in the database first (at
+ * most one an hour). Only the latest rate per currency is kept (ER-API terms).
  */
 import { createClient } from '@supabase/supabase-js';
+
+import { hasCronSecret } from '../_shared/cronAuth.ts';
 
 import { ratesFrom, type BoiRate, type ErApiAnswer } from './rates.ts';
 
@@ -39,6 +41,7 @@ async function getJson<T>(url: string): Promise<T> {
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
+  if (!(await hasCronSecret(req))) return json(401, { error: 'unauthorized' });
 
   // One run an hour at most, claimed atomically (ADR-008): parallel or
   // repeated calls, and calls after a failed run, are no-ops.
