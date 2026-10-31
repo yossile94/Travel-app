@@ -24,6 +24,7 @@ import { kitsOf, prefetchKit } from '@/features/kit/kitStore';
 import { passportTripsLoaded } from '@/features/passportAlerts/passportRunner';
 import { setCachedTrips } from '@/features/trips/tripCopies';
 import { prefetchPlaces } from '@/features/places/placesData';
+import { useRetryWhileUnreached } from '@/lib/useRetryWhileUnreached';
 
 import { loadTripCountries, loadTripPage, type Trip } from './tripsApi';
 import {
@@ -220,6 +221,10 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       wasConnected = connected;
     });
   }, [started, userId, reload]);
+
+  // v0.14.1 (Raz): on the device copy while "connected" (no internet, a timeout):
+  // try again, so editing doesn't stay blocked until a restart.
+  useRetryWhileUnreached(started && !!userId && fromCache, () => void reload());
 
   const changed = useCallback(
     (country?: { adm0: string; has: boolean | null }) => {

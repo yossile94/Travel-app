@@ -5,7 +5,7 @@
  * and a server that doesn't answer (a paused project, a gateway error).
  */
 
-/** Database requests (PostgREST and RPC) give up after this; auth and functions keep their own. */
+/** Database requests (PostgREST and RPC, reads and writes) give up after this; auth and functions keep their own. */
 export const DB_TIMEOUT_MS = 20_000;
 
 /** HTTP answers that mean the server wasn't reached, not that the request was wrong. */

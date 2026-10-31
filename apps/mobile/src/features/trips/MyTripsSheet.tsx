@@ -211,6 +211,14 @@ export function MyTripsSheet({ visible, onOpenTrip, insetsTop, ...sheet }: Props
           <CloudOffIcon color={palette.textTertiary} size={48} />,
           t('myTrips.offline'),
           t('myTrips.offlineBody'),
+          // v0.14.1 (Dana R1): "offline" now also means a server that didn't answer.
+          <Button
+            kind="secondary"
+            label={t('myTrips.retry')}
+            onPress={() => void reload()}
+            colorScheme={sheet.colorScheme}
+            testID="my-trips-offline-retry"
+          />,
         )
       ) : state.status === 'error' ? (
         centered(

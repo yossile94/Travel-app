@@ -175,7 +175,6 @@ export function withLeg(
   };
 }
 
-/** Step 1: a flight number and a date no more than 355 days ahead (design 6). */
 /**
  * v0.14.1 (Raz 4): a new departure date moves the arrival date by as many
  * days, so a flight keeps its length (no "+2" from an edit, no false "arrives
@@ -191,6 +190,7 @@ export function withDepartureDate(
   return { date: picked, depDate: picked, arrDate };
 }
 
+/** Step 1: a flight number and a date no more than 355 days ahead (design 6). */
 export function checkSearch(values: FlightFormValues, today: string): Errors {
   const errors: Errors = {};
   if (!normalizeFlightNumber(values.numberInput)) errors.number = 'number';

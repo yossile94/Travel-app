@@ -4,6 +4,7 @@
  * ErrorBoundary export; "try again" re-renders the screens.
  */
 import type { ErrorBoundaryProps } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, useColorScheme, View } from 'react-native';
@@ -18,6 +19,8 @@ export function ErrorScreen({ error, retry }: ErrorBoundaryProps) {
   const p = colors[scheme];
   const insets = useSafeAreaInsets();
   useEffect(() => {
+    // Dana R3: an error before the launch overlay must not leave the system splash up.
+    SplashScreen.hide();
     // The kind only: a message can carry what the user typed.
     console.error('[app] render error', error.name);
   }, [error]);
