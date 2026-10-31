@@ -1,4 +1,4 @@
-import i18next from 'i18next';
+import { createInstance } from 'i18next';
 
 import i18n from './index';
 import en from './locales/en.json';
@@ -34,15 +34,15 @@ describe('translations', () => {
   });
 
   it('Dana (sprint 13): where ICU says "many" (Android 13 and older), 20 days stay Hebrew', async () => {
-    const Real = Intl.PluralRules;
-    class OldIcu extends Real {
-      select(n: number) {
+    class OldIcu extends Intl.PluralRules {
+      override select(n: number) {
         return n >= 20 && n % 10 === 0 ? 'many' : super.select(n);
       }
     }
-    Intl.PluralRules = OldIcu as typeof Intl.PluralRules;
+    const real = Object.getOwnPropertyDescriptor(Intl, 'PluralRules')!;
+    Object.defineProperty(Intl, 'PluralRules', { ...real, value: OldIcu });
     try {
-      const old = i18next.createInstance();
+      const old = createInstance();
       await old.init({
         lng: 'he',
         fallbackLng: 'en',
@@ -51,7 +51,7 @@ describe('translations', () => {
       expect(old.t('itinerary.summaryDays', { count: 20 })).toBe('20 ימים');
       expect(old.t('planner.previewPlan', { count: 30 })).toBe('30 ימים ריקים יתוכננו.');
     } finally {
-      Intl.PluralRules = Real;
+      Object.defineProperty(Intl, 'PluralRules', real);
     }
   });
 
