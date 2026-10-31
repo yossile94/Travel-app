@@ -93,11 +93,14 @@ const split = (kit: Kit, ids: string[]): Entry[] =>
     insurance: kit.insurance.find((i) => i.tripId === tripId) ?? null,
   }));
 
-const inFlight = new Map<string, Promise<void>>();
+const inFlight = new Map<string, Promise<boolean>>();
 const again = new Set<string>();
 
-/** Reads a trip's kit; offline or failing, falls back to the device copy. */
-export function refreshTripKit(tripId: string): Promise<void> {
+/**
+ * Reads a trip's kit; offline or failing, falls back to the device copy.
+ * Resolves true when this read came from the server.
+ */
+export function refreshTripKit(tripId: string): Promise<boolean> {
   const running = inFlight.get(tripId);
   if (running) {
     again.add(tripId);
@@ -112,13 +115,13 @@ export function refreshTripKit(tripId: string): Promise<void> {
     const result = await loadKit([tripId]);
     const user = await userId();
     // Signed out while reading: nothing of that user comes back into memory (Raz review 4).
-    if (tripsCacheGeneration() !== generation) return;
+    if (tripsCacheGeneration() !== generation) return false;
     if (result.ok) {
       const [entry] = split(result.value, [tripId]);
       state.set(tripId, { ...entry!, status: 'ready', fromCache: false });
       notify();
       if (user) await writeCache(user, [entry!], generation);
-      return;
+      return true;
     }
     const cached = user ? (await readCache(user))?.trips.find((t) => t.tripId === tripId) : null;
     const prev = state.get(tripId);
@@ -134,16 +137,28 @@ export function refreshTripKit(tripId: string): Promise<void> {
         hotels: prev?.hotels ?? [],
         insurance: prev?.insurance ?? null,
         status: prev?.status === 'ready' ? 'ready' : 'error',
-        fromCache: result.reason === 'offline' && prev?.status === 'ready',
+        // Raz (sprint 13): a failed read keeps what was shown, device copy included.
+        fromCache:
+          Boolean(prev?.fromCache) || (result.reason === 'offline' && prev?.status === 'ready'),
       });
     }
     notify();
+    return false;
   })().finally(() => {
     inFlight.delete(tripId);
     if (again.delete(tripId) && tripsCacheGeneration() === generation) void refreshTripKit(tripId);
   });
   inFlight.set(tripId, run);
   return run;
+}
+
+/**
+ * A read that starts after this call (Raz, sprint 13): one already running may
+ * have started before what the caller is about to write.
+ */
+export async function refreshTripKitNow(tripId: string): Promise<boolean> {
+  await inFlight.get(tripId)?.catch(() => false);
+  return refreshTripKit(tripId);
 }
 
 export function useTripKit(tripId: string | null): TripKit {

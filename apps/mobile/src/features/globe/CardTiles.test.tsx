@@ -15,7 +15,7 @@ import type { Advisory, Destination } from '@/features/destination/destinationDa
 import type { Rate } from '@/features/destination/rateFormat';
 
 import { BoardingPassCard } from './BoardingPassCard';
-import { CardTiles, tileArrangement, tileLayout } from './CardTiles';
+import { CardTiles, rowWidths, tileArrangement, tileLayout } from './CardTiles';
 import { countryByAdm0 } from './countryData';
 
 const t = i18n.t.bind(i18n);
@@ -176,6 +176,12 @@ describe('data, then actions (sprint 12 P-1)', () => {
     expect(tileArrangement(width, scale, count)).toBe(expected);
   });
 
+  it('sprint 13 AC-8: three data tiles in two columns leave no hole; the last one takes the row', () => {
+    expect(rowWidths(3, 2, 300, 8)).toEqual([146, 146, 300]);
+    expect(rowWidths(4, 2, 300, 8)).toEqual([146, 146, 146, 146]);
+    expect(rowWidths(3, 3, 300, 8)).toEqual([94, 94, 94]);
+  });
+
   it('one row: time, currency, temperature, then Safety and What to see', async () => {
     Object.assign(mockWindow, { width: 411, fontScale: 1 });
     await render(
@@ -235,6 +241,30 @@ describe('data, then actions (sprint 12 P-1)', () => {
     // Wide and low, with no empty value line.
     const safety = screen.getByTestId('card-tile-safety');
     expect(JSON.stringify(safety.props.style)).toContain('"minHeight":56');
+  });
+
+  it('sprint 13 AC-8: narrow at a large font, the last data tile takes its row', async () => {
+    Object.assign(mockWindow, { width: 320, fontScale: 1.5 });
+    await render(
+      <CardTiles
+        country={countryByAdm0('THA')!}
+        safety={quiet}
+        colorScheme="light"
+        reduceMotion
+        insetsBottom={0}
+        today="2026-10-26"
+        city={null}
+        onOpenSafety={jest.fn()}
+        safetyRef={{ current: null }}
+        onOpenPlaces={jest.fn()}
+      />,
+    );
+    await measure(230);
+    const widths = screen
+      .getByTestId('card-tiles-data')
+      .props.children.filter(Boolean)
+      .map((tile: { props: { width: number } }) => tile.props.width);
+    expect(widths).toEqual([111, 111, 230]);
   });
 
   it('signed out: three actions, too narrow for the chevron', async () => {

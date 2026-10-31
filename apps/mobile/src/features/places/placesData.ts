@@ -13,7 +13,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 import { supabase } from '@/lib/supabase';
 
-import { mergeCurated, type CuratedCategory, type Place } from './placesModel';
+import { mergeCurated, placeNameHe, type CuratedCategory, type Place } from './placesModel';
 
 /** Bumped with every new places data migration (scripts/build-places.mjs). */
 export const PLACES_DATA_VERSION = 1;
@@ -117,7 +117,11 @@ async function readDevice(adm0: string): Promise<Stored | null> {
 function publish(adm0: string, stored: Stored, fromDevice: boolean) {
   states.set(adm0, {
     status: 'ready',
-    places: mergeCurated(stored.wikidata, stored.curated),
+    // QA B8 (Raz): cleaned when shown, so a device copy from before gets it too.
+    places: mergeCurated(
+      stored.wikidata.map((p) => ({ ...p, nameHe: placeNameHe(p.nameHe, p.nameEn) })),
+      stored.curated,
+    ),
     savedAt: stored.savedAt,
     fromDevice,
   });

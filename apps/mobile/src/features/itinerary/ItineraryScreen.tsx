@@ -428,6 +428,7 @@ export function ItineraryScreen({
                   climate.status === 'ready'
                     ? (climate.climate.area(trip.countryAdm0)?.normals ?? null)
                     : null,
+                cityNormals: (id) => (climate.status === 'ready' ? climate.climate.city(id) : null),
                 pace,
                 language: i18n.language,
                 airportTitle: t('planner.airportTitle'),
@@ -473,7 +474,7 @@ export function ItineraryScreen({
                   cityOf,
                 ),
               );
-              onToast(t('planner.done', { n: filled.size }));
+              onToast(t('planner.doneDays', { count: filled.size }));
               return { kind: 'done' as const };
             }}
             preview={(pace) => {
@@ -497,6 +498,7 @@ export function ItineraryScreen({
               return {
                 days: plan.days.filter((d) => d.kind === 'planned').length,
                 kept: plan.days.filter((d) => d.kind === 'busy').length,
+                noNight: plan.days.filter((d) => d.kind === 'noNight').length,
                 over60: plan.days.some((d) => d.kind === 'beyondLimit'),
               };
             }}
@@ -524,7 +526,10 @@ function resultLines(
 ): string[] {
   const lines = [
     filledDays
-      ? t('planner.doneDetail', { n: filledDays, items: inserted })
+      ? t('planner.doneDetail', {
+          days: t('planner.doneDays', { count: filledDays }),
+          items: t('planner.doneItems', { count: inserted }),
+        })
       : t('planner.doneNone'),
   ];
   const reasons: string[] = [];
@@ -544,6 +549,8 @@ function resultLines(
       reasons.push(
         city ? t('planner.skip.noPlaces', { n, city }) : t('planner.skip.noPlacesTrip', { n }),
       );
+    } else if (d.kind === 'noNight') {
+      reasons.push(t('planner.skip.noNight', { n }));
     } else if (k) reasons.push(t(k, { n, city }));
   }
   for (const s of serverSkipped) {
@@ -757,8 +764,15 @@ function ActivityMenu({
         <ScrollView>
           {days.map((d) => {
             const isFull = d.items.length >= DAY_MAX && d.date !== day?.date;
+            // QA B8: the activity's own day is marked.
+            const note =
+              d.date === day?.date
+                ? 'itinerary.menu.current'
+                : isFull
+                  ? 'itinerary.menu.full'
+                  : null;
             return row(
-              `${dayHeading(t, i18n.language, d.index, d.date)}${isFull ? ` · ${t('itinerary.menu.full')}` : ''}`,
+              `${dayHeading(t, i18n.language, d.index, d.date)}${note ? ` · ${t(note)}` : ''}`,
               () => onMove(d.date, d.items.length),
               `menu-day-${d.date}`,
               isFull,
@@ -780,7 +794,7 @@ function AutoPlanSheet({
   onClose,
 }: {
   onPlan: (pace: Pace) => Promise<{ kind: 'done' } | { kind: 'error'; text: string }>;
-  preview: (pace: Pace) => { days: number; kept: number; over60: boolean } | null;
+  preview: (pace: Pace) => { days: number; kept: number; noNight: number; over60: boolean } | null;
   colorScheme: ColorScheme;
   reduceMotion: boolean;
   insetsBottom: number;
@@ -843,9 +857,21 @@ function AutoPlanSheet({
             </Pressable>
           ))}
         </View>
-        {counts ? (
+        {counts && counts.days === 0 ? (
+          // QA B7: say why nothing can be planned, and don't offer "plan 0 days".
           <Text style={[styles.callout, { color: p.textPrimary }]} testID="planner-preview">
-            {t('planner.preview', { n: counts.days, kept: counts.kept })}
+            {t(counts.noNight ? 'planner.needCity' : 'planner.noEmpty')}
+          </Text>
+        ) : counts ? (
+          <Text style={[styles.callout, { color: p.textPrimary }]} testID="planner-preview">
+            {[
+              t('planner.previewPlan', { count: counts.days }),
+              counts.kept ? t('planner.previewKept', { count: counts.kept }) : '',
+              // Raz 8: some days still wait for a city or a hotel.
+              counts.noNight ? t('planner.needCity') : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
           </Text>
         ) : (
           <Text style={[styles.callout, { color: p.textSecondary }]}>
@@ -861,17 +887,19 @@ function AutoPlanSheet({
         {error ? (
           <InlineNotice text={error} colorScheme={colorScheme} testID="planner-error" />
         ) : null}
-        <Button
-          kind="primary"
-          label={
-            counts?.days === 1 ? t('planner.goOne') : t('planner.go', { n: counts?.days ?? 0 })
-          }
-          busy={busy}
-          busyLabel={t('planner.busy')}
-          onPress={() => void go()}
-          colorScheme={colorScheme}
-          testID="planner-go"
-        />
+        {counts?.days === 0 ? null : (
+          <Button
+            kind="primary"
+            label={
+              counts?.days === 1 ? t('planner.goOne') : t('planner.go', { n: counts?.days ?? 0 })
+            }
+            busy={busy}
+            busyLabel={t('planner.busy')}
+            onPress={() => void go()}
+            colorScheme={colorScheme}
+            testID="planner-go"
+          />
+        )}
       </ScrollView>
     </BottomSheet>
   );

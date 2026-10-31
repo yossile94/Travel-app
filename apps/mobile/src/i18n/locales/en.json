@@ -1388,7 +1388,6 @@
     "hotelFar": "No hotel near {{city}}. Distances are from the city centre.",
     "hotelNoPoint": "Choose the hotel's location on the map to see places near it.",
     "kosherNote": "Kashrut details and hours may change. Check with the source before you go.",
-    "hotelPickFor": "Choose where {{name}} is on the map",
     "hotelChooser": "Which hotel",
     "hotelPointSaved": "Saved the location of {{name}}",
     "hotelNoPointNoCity": "Choose the hotel's location on the map to see places near it. Meanwhile, you can see places by city in the \"In the city\" tab.",
@@ -1431,14 +1430,17 @@
     "offlineNoCopy": "You need a connection to see the places the first time. After that they're kept on this device.",
     "loadError": "We couldn't load the places.",
     "retry": "Try again",
-    "kitSavedHelp": "Save places to add them to days in your itinerary."
+    "kitSavedHelp": "Save places to add them to days in your itinerary.",
+    "hotelPickWhich": "Choose a hotel and place it on the map",
+    "hotelPickTitle": "Which hotel?",
+    "hotelDatesOutside": "{{name}}'s dates are no longer within the trip. Fix them in the travel kit."
   },
   "itinerary": {
     "kitTitle": "Itinerary",
     "title": "Itinerary",
     "open": "Open the itinerary",
-    "summary": "{{days}} days · {{planned}} planned",
-    "summaryPast": "{{days}} days · {{n}} activities",
+    "summary": "{{days}} · {{planned}}",
+    "summaryPast": "{{days}} · {{n}}",
     "todayPrefix": "Today · {{day}}",
     "noneToday": "Nothing planned for today.",
     "kitEmpty": "No activities yet. Add your own, or plan the empty days automatically.",
@@ -1486,13 +1488,20 @@
       "delete": "Delete",
       "position": "Position {{i}} of {{n}}",
       "full": "Full (30)",
-      "downA11y": "Move down"
+      "downA11y": "Move down",
+      "current": "this activity's day"
     },
     "moved": "Moved to day {{n}}",
     "movedA11y": "{{title}}, position {{i}} of {{n}} on day {{day}}",
     "moveError": "We couldn't move it. Try again.",
     "drag": "Drag to reorder",
-    "dragHint": "You can also use the actions menu"
+    "dragHint": "You can also use the actions menu",
+    "summaryDays_one": "1 day",
+    "summaryDays_other": "{{count}} days",
+    "summaryPlanned_one": "1 planned",
+    "summaryPlanned_other": "{{count}} planned",
+    "summaryItems_one": "1 activity",
+    "summaryItems_other": "{{count}} activities"
   },
   "activity": {
     "titleNew": "New activity",
@@ -1544,7 +1553,6 @@
     "relaxedSub": "2 activities a day",
     "intense": "Packed",
     "intenseSub": "3 activities a day",
-    "preview": "{{n}} empty days will be planned. {{kept}} days with activities won't change.",
     "previewShort": "The first and last days are short, following the flights.",
     "limitation": "The planner doesn't know opening hours or closing days. Check before you go.",
     "over60": "For trips longer than 60 days, we'll plan only the first 60.",
@@ -1557,8 +1565,7 @@
     "offline": "You need a connection to plan. Nothing changed.",
     "overTripLimit": "Planning would go over the trip's 600 activities. Delete some and try again.",
     "error": "We couldn't plan. Nothing changed. Try again.",
-    "done": "Planned {{n}} days",
-    "doneDetail": "Planned {{n}} days · {{items}} activities",
+    "doneDetail": "{{days}} · {{items}}",
     "doneNone": "No days were planned.",
     "skipped": "We left these alone:",
     "skip": {
@@ -1570,11 +1577,21 @@
       "noPlacesTrip": "Day {{n}}, no well-known places at the destination",
       "placesUsed": "Day {{n}}, we've already scheduled every well-known place near {{city}}",
       "filledMeanwhile": "Day {{n}}, filled meanwhile from another device",
-      "overLimit": "Days {{from}}–{{to}}, after the first 60"
+      "overLimit": "Days {{from}}–{{to}}, after the first 60",
+      "noNight": "Day {{n}}, the trip has no city or hotel"
     },
     "tropical": "On hot days we didn't plan outdoor activities between 12:00 and 15:00.",
     "closeResult": "Close the summary",
-    "airportTitle": "Leave for the airport"
+    "airportTitle": "Leave for the airport",
+    "previewPlan_one": "1 empty day will be planned.",
+    "previewPlan_other": "{{count}} empty days will be planned.",
+    "previewKept_one": "1 day with activities won't change.",
+    "previewKept_other": "{{count}} days with activities won't change.",
+    "needCity": "To plan, add a city or a hotel to the trip.",
+    "doneDays_one": "Planned 1 day",
+    "doneDays_other": "Planned {{count}} days",
+    "doneItems_one": "1 activity",
+    "doneItems_other": "{{count}} activities"
   },
   "mapPoint": {
     "title": "Hotel location",

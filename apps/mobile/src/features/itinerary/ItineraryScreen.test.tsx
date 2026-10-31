@@ -95,10 +95,10 @@ const item = (id: string, day: string, sortOrder: number, over: Partial<Item> = 
   ...over,
 });
 
-const show = async (today = '2027-01-06') => {
+const show = async (today = '2027-01-06', shown: Trip = trip) => {
   await render(
     <ItineraryScreen
-      trip={trip}
+      trip={shown}
       today={today}
       colorScheme="light"
       reduceMotion
@@ -183,6 +183,12 @@ describe('adding, moving (AC-9, AC-10)', () => {
     );
     await fireEvent.press(screen.getByTestId('activity-menu-b'));
     await fireEvent.press(screen.getByTestId('menu-move'));
+    expect(screen.getByTestId('menu-day-2027-01-06')).toHaveTextContent(
+      t('itinerary.menu.current'),
+      {
+        exact: false,
+      },
+    );
     await fireEvent.press(screen.getByTestId('menu-day-2027-01-07'));
     await waitFor(() =>
       expect(store.moveItem).toHaveBeenCalledWith('trip-1', 'b', '2027-01-07', 1),
@@ -202,7 +208,7 @@ describe('planning automatically (AC-14 – AC-16)', () => {
     await fireEvent.press(screen.getByTestId('planner-button'));
     // Day 6 is busy; days 5 and 7 can be filled from the two Bangkok places.
     expect(screen.getByTestId('planner-preview')).toHaveTextContent(
-      t('planner.preview', { n: 1, kept: 1 }),
+      `${t('planner.previewPlan', { count: 1 })} ${t('planner.previewKept', { count: 1 })}`,
     );
     await fireEvent.press(screen.getByTestId('planner-go'));
     await waitFor(() => expect(store.applyPlan).toHaveBeenCalledTimes(1));
@@ -210,6 +216,17 @@ describe('planning automatically (AC-14 – AC-16)', () => {
     expect(sent.every((i) => i.day !== '2027-01-06')).toBe(true);
     expect(screen.getByTestId('planner-result')).toBeOnTheScreen();
     toasted(/תכננו/);
+  });
+});
+
+describe('planning a trip with no city or hotel (QA B7)', () => {
+  it('says to add a city or a hotel, and offers no "plan 0 days"', async () => {
+    await show('2026-12-01', { ...trip, cities: [] });
+    await fireEvent.press(screen.getByTestId('planner-button'));
+    expect(screen.getByTestId('planner-preview')).toHaveTextContent(t('planner.needCity'));
+    // Raz 2: no button at all, so no "plan 0 days".
+    expect(screen.queryByTestId('planner-go')).toBeNull();
+    expect(screen.getByTestId('planner-sheet')).not.toHaveTextContent(t('planner.go', { n: 0 }));
   });
 });
 

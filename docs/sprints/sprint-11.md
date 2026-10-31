@@ -189,6 +189,7 @@
 - **D1, המתכנן:** פונקציה טהורה ב-TS במכשיר. הקלט מפורש ("היום" כפרמטר, בלי אקראיות), שוויון נשבר לפי `id`, ותאריכים כמחרוזות מקומיות.
 - **D2, החלה אטומית:** `apply_auto_plan(trip_id, items[])` נועל את הנסיעה (`for update`), מכניס רק לימים שעדיין ריקים, ומחזיר את הימים שדולגו.
 - **D3, כתיבה:** RPC עם שער הסכמה, כמו `save_hotel`: ‏`save_itinerary_item`, ‏`move_itinerary_item`, ‏`delete_itinerary_item`, ‏`save_place`, ‏`unsave_place`.
+  - **עדכון (ספרינט 13, ADR-019):** המחיקה וההסרה (`delete_itinerary_item`, ‏`unsave_place`) עובדות בלי שער הסכמה. השער חל רק על יצירה ועריכה.
   - מזהים נוצרים במכשיר (UUID).
   - התקרות נאכפות ב-RPC תחת נעילה.
   - מפתח זר `(trip_id, user_id)` עם cascade.
