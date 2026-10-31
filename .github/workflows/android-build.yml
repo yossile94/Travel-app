@@ -1,0 +1,48 @@
+# Sprint 13 (infra for F-037, F-042): the Android release build in CI, so a
+# change that breaks it (as lint did from sprint 10 to v0.12.2, PR 16) fails
+# its PR. A build takes ~20 minutes, so it runs only when the native side can
+# change, weekly, and on demand. No secrets: Mapbox's Maven needs no token, no
+# Firebase file (Push only), and the release is signed with the debug key
+# (plugins/withUploadSigning.js falls back when no upload key is set).
+name: Android build
+
+on:
+  pull_request:
+    paths:
+      - apps/mobile/app.json
+      - apps/mobile/app.config.js
+      - apps/mobile/plugins/**
+      - apps/mobile/assets/**
+      - apps/mobile/package.json
+      - package-lock.json
+      - .github/workflows/android-build.yml
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  assemble:
+    name: assembleRelease (arm64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - name: Prebuild
+        working-directory: apps/mobile
+        run: npx expo prebuild -p android --clean --no-install
+      - name: Release build (lint included)
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --console=plain
