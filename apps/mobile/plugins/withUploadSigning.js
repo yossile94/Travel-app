@@ -23,6 +23,8 @@ const UPLOAD = `        ${MARKER}
                 storePassword TRAVELAPP_UPLOAD_STORE_PASSWORD
                 keyAlias TRAVELAPP_UPLOAD_KEY_ALIAS
                 keyPassword TRAVELAPP_UPLOAD_KEY_PASSWORD
+            } else if (gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) {
+                logger.warn('travel-app: no TRAVELAPP_UPLOAD_* in gradle.properties; the release is signed with the debug key (ADR-020)')
             }
         }`;
 

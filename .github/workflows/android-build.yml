@@ -12,6 +12,7 @@ on:
       - apps/mobile/app.json
       - apps/mobile/app.config.js
       - apps/mobile/plugins/**
+      - apps/mobile/modules/**
       - apps/mobile/assets/**
       - apps/mobile/package.json
       - package-lock.json

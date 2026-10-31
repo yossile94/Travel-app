@@ -40,6 +40,36 @@ TRAVELAPP_UPLOAD_KEY_ALIAS=upload
 TRAVELAPP_UPLOAD_KEY_PASSWORD=<הסיסמה>
 ```
 
+## מיד אחרי היצירה: חובה, לפני הבנייה הראשונה (רז)
+
+1. **ה-SHA-1 של המפתח:**
+
+   ```powershell
+   & "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -list -v -keystore "C:\Users\HP\secrets\travel-app-upload.jks" -alias upload
+   ```
+
+2. **מוסיפים את ה-SHA-1** ל-OAuth client מסוג Android ב-Google Cloud Console, ול-Firebase (Project settings ← Add fingerprint). זה בחינם, ולא תלוי בחשבון Play.
+   - **בלי השלב הזה,** כל release שנבנה במחשב הזה ייחתם ב-upload key, וההתחברות עם Google תיכשל (`DEVELOPER_ERROR`).
+3. **ב-A73:** ה-APK שמותקן היום חתום ב-debug key. בנייה חתומה ב-upload key לא תותקן מעליו.
+   - **צריך להסיר את האפליקציה קודם.** ההסרה מוחקת את הדרכון המקומי ואת קובץ הפוליסה, ולכן כדאי לצלם אותם לפני כן.
+
+## בניית AAB ובדיקה (AC-16)
+
+```bash
+cd apps/mobile/android && ./gradlew bundleRelease -PreactNativeArchitectures=arm64-v8a
+```
+
+- **האימות:** `apksigner verify --print-certs` על APK שנוצר מה-AAB, או `keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab`. ה-SHA-1 צריך להיות של ה-upload key.
+- **ההתקנה ב-A73 עם bundletool:**
+
+  ```bash
+  java -jar bundletool.jar build-apks --bundle=app-release.aab --output=app.apks --connected-device --ks=<the upload keystore> --ks-key-alias=upload
+  java -jar bundletool.jar install-apks --apks=app.apks
+  ```
+
+- **מקור bundletool:** קובץ jar רשמי של Google (github.com/google/bundletool/releases). ההורדה באישור של יוסי.
+- **בדיקת עשן:** הגלובוס נטען, ההתחברות עם Google עובדת, והתראה מגיעה. ההתראה נבדקת עם התסריט שב-`docs/setup/push-test.md`.
+
 ## חלופות שנשקלו
 
 - **חתימה ב-EAS (Expo מנהלת את המפתח):** הבניות בענן מוגבלות בתוכנית החינמית, ושדרוג הוא בתשלום. בנוסף, המפתח נשמר אצל צד שלישי.

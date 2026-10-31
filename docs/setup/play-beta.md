@@ -3,12 +3,14 @@
 הצעדים לביצוע **אחרי** שיוסי פותח חשבון Google Play Console (‏25$ חד-פעמי). הכול כבר מוכן, ראו "מה מוכן". ליד כל צעד כתוב מי מבצע אותו. **Claude לא מזין סיסמאות, לא יוצר חשבונות ולא רוכש.**
 
 ## מה מוכן (ספרינט 13)
-- **AAB חתום ב-upload key:** ‏`travel-app-v0.14.0.aab`. ה-upload key ו-ADR-020 מתארים איך הוא נוצר ואיפה הגיבוי.
+- **upload key:** הקוד מוכן (`plugins/withUploadSigning.js`). **ממתין:** יוסי יוצר את המפתח לפי ADR-020, ואז נבנה את ה-AAB ונבדוק אותו.
 - **טקסטים ונכסים:** ‏`docs/release/play-store-listing.md`, ‏`docs/release/assets/`.
 - **Data safety:** ‏`docs/release/data-safety-draft.md`.
 - **טיוטות:** מדיניות פרטיות, תנאי שימוש ודף מחיקה (`docs/legal/`). **ממתינות לעו"ד.**
 
 ## הצעדים
+
+0. **Claude, לפני כל AAB:** מעלים את `version` (SemVer) ואת `android.versionCode` ב-`app.json`. ‏Play דוחה versionCode שלא עלה. היום הערכים הם 0.13.0 ו-2, ול-v0.14.0 הם יהיו 0.14.0 ו-3.
 
 1. **יוסי: פתיחת החשבון.** ‏play.google.com/console, חשבון **אישי** או **ארגוני**.
    - **בחשבון אישי חדש** Play מחייב בדיקה סגורה עם **12 בודקים לפחות, במשך 14 ימים ברצף**, לפני שאפשר לבקש production.
@@ -25,7 +27,7 @@
 6. **יוסי: SHA-1 של App Signing.** אחרי ההעלאה, מעתיקים ב-Setup ← App signing את ה-SHA-1 של **App signing key certificate**, ומוסיפים אותו:
    - **ב-Google Cloud Console:** ‏OAuth client מסוג Android לחבילה `com.travelapp.companion`. בלי זה **ההתחברות עם Google לא תעבוד אצל הבודקים**.
    - **ב-Firebase:** Project settings ← האפליקציה ← Add fingerprint.
-   - **מומלץ:** להוסיף גם את ה-SHA-1 של ה-upload key, לבדיקה מקומית של ה-AAB.
+   - **ה-SHA-1 של ה-upload key:** כבר נוסף כשהמפתח נוצר. זה צעד חובה ב-ADR-020.
 7. **יוסי: מסך ההסכמה של Google (OAuth consent screen).** היום הוא במצב Testing. כל בודק צריך להיות ברשימת Test users, עד 100.
    - **לבטא:** להוסיף את הבודקים.
    - **לפני production:** להעביר ל-"In production". עם scopes בסיסיים (email, ‏profile) זה בחינם ובלי אימות.
