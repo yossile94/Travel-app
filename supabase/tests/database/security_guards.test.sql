@@ -98,21 +98,7 @@ select is(
           or has_table_privilege('authenticated', c.oid, 'select'))
      and not (c.relkind = 'v' and exists (
        select 1 from unnest(coalesce(c.reloptions, '{}')) o
-       where o ~* '^security_invoker=(true|on|1|yes)
-  null,
-  'every view users can read runs with their rights; no readable materialized view'
-);
-
--- Dudi 2: the daily jobs go only to the two daily functions, with the secret.
-select throws_ok(
-  $$select public.call_daily_job('flight-watch')$$,
-  'call_daily_job: flight-watch is not a daily job',
-  'call_daily_job calls only the daily functions'
-);
-
-select * from finish();
-rollback;
-))),
+       where o ~* '^security_invoker=(true|on|1|yes)$'))),
   null,
   'every view users can read runs with their rights; no readable materialized view'
 );
