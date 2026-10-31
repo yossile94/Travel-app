@@ -113,10 +113,11 @@ const mockKit = () => ({
 jest.mock('@/features/kit/kitStore', () => ({
   useTripKit: () => mockKit(),
   tripKitNow: () => mockFresh.kit ?? mockKit(),
-  refreshTripKit: jest.fn(async () => {}),
+  refreshTripKit: jest.fn(async () => true),
+  refreshTripKitNow: jest.fn(async () => mockFresh.fromServer),
 }));
 /** What a refresh right before the write reads; null: the same as on screen. */
-const mockFresh = { kit: null as ReturnType<typeof mockKit> | null };
+const mockFresh = { kit: null as ReturnType<typeof mockKit> | null, fromServer: true };
 const mockConsent = jest.fn(async () => true);
 jest.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => ({ recheckConsent: mockConsent }),
@@ -176,6 +177,7 @@ beforeEach(() => {
   online = true;
   mockHotels.list = [];
   mockFresh.kit = null;
+  mockFresh.fromServer = true;
   mockSaved.places = [];
   mockPlaces.state = {
     status: 'ready',
@@ -515,6 +517,9 @@ describe('"near the hotel" (AC-5, design 3.4; QA B4)', () => {
     await fireEvent.press(screen.getByTestId('places-tab-hotel'));
     await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
     expect(screen.getByTestId('places-hotel-pick-h2')).toHaveTextContent(/Krabi Inn/);
+    // Raz 5: the dates as the hotels section shows them, and read as words.
+    expect(screen.getByTestId('places-hotel-pick-h1')).toHaveTextContent(/20.12/);
+    expect(screen.getByTestId('places-hotel-pick-h1').props.accessibilityLabel).toMatch(/Amari/);
     await fireEvent.press(screen.getByTestId('places-hotel-pick-h1'));
     await fireEvent.changeText(screen.getByTestId('map-point-type'), '13.7465, 100.4927');
     await fireEvent(screen.getByTestId('map-point-type'), 'submitEditing');
@@ -571,6 +576,20 @@ describe('"near the hotel" (AC-5, design 3.4; QA B4)', () => {
     await fireEvent.press(screen.getByTestId('map-point-choose'));
     await act(async () => {});
     toasted(t('places.hotelDatesOutside', { name: 'Amari' }));
+  });
+
+  it('Raz 3: a refresh that failed (not offline) never sends the device copy', async () => {
+    mockHotels.list = [hotel('h1', 'Amari', null)];
+    mockFresh.fromServer = false;
+    await show({ trip: trip(), signedIn: true });
+    await fireEvent.press(screen.getByTestId('places-tab-hotel'));
+    await fireEvent.press(screen.getByTestId('places-hotel-no-point-pick'));
+    await fireEvent.changeText(screen.getByTestId('map-point-type'), '13.7465, 100.4927');
+    await fireEvent(screen.getByTestId('map-point-type'), 'submitEditing');
+    await fireEvent.press(screen.getByTestId('map-point-choose'));
+    await act(async () => {});
+    expect(kitApi.saveHotel).not.toHaveBeenCalled();
+    toasted(t('hotel.saveError'));
   });
 
   it('an expired consent brings up the gate and retries once (Raz)', async () => {

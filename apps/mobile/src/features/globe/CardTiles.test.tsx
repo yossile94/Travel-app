@@ -243,6 +243,30 @@ describe('data, then actions (sprint 12 P-1)', () => {
     expect(JSON.stringify(safety.props.style)).toContain('"minHeight":56');
   });
 
+  it('sprint 13 AC-8: narrow at a large font, the last data tile takes its row', async () => {
+    Object.assign(mockWindow, { width: 320, fontScale: 1.5 });
+    await render(
+      <CardTiles
+        country={countryByAdm0('THA')!}
+        safety={quiet}
+        colorScheme="light"
+        reduceMotion
+        insetsBottom={0}
+        today="2026-10-26"
+        city={null}
+        onOpenSafety={jest.fn()}
+        safetyRef={{ current: null }}
+        onOpenPlaces={jest.fn()}
+      />,
+    );
+    await measure(230);
+    const widths = screen
+      .getByTestId('card-tiles-data')
+      .props.children.filter(Boolean)
+      .map((tile: { props: { width: number } }) => tile.props.width);
+    expect(widths).toEqual([111, 111, 230]);
+  });
+
   it('signed out: three actions, too narrow for the chevron', async () => {
     mockAuth.status = 'signedOut';
     Object.assign(mockWindow, { width: 411, fontScale: 1.3 });

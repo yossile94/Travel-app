@@ -1,3 +1,4 @@
+import i18n from './index';
 import en from './locales/en.json';
 import he from './locales/he.json';
 
@@ -11,7 +12,28 @@ function keys(object: object, prefix = ''): string[] {
 
 describe('translations', () => {
   it('has the same keys in Hebrew and English', () => {
-    expect(keys(en).sort()).toEqual(keys(he).sort());
+    // Hebrew alone has a plural form for 2 ("_two").
+    expect(keys(en).sort()).toEqual(
+      keys(he)
+        .filter((k) => !k.endsWith('_two'))
+        .sort(),
+    );
+  });
+
+  it('every Hebrew plural has its form for 2, or 2 falls back to English (Raz, sprint 13)', () => {
+    const all = keys(he);
+    const missing = all
+      .filter((k) => k.endsWith('_other'))
+      .map((k) => k.replace(/_other$/, '_two'))
+      .filter((k) => !all.includes(k));
+    expect(missing).toEqual([]);
+  });
+
+  it('two days in Hebrew read in Hebrew', () => {
+    expect(i18n.t('itinerary.summaryDays', { count: 2, lng: 'he' })).toBe('יומיים');
+    expect(i18n.t('planner.doneItems', { count: 2, lng: 'he' })).toBe('2 פעילויות');
+    expect(i18n.t('itinerary.summaryDays', { count: 1, lng: 'he' })).toBe('יום אחד');
+    expect(i18n.t('itinerary.summaryDays', { count: 5, lng: 'he' })).toBe('5 ימים');
   });
 
   it('has no empty strings', () => {

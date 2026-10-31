@@ -71,7 +71,8 @@ export async function writeTripCopy(
   if (!keep.has(tripId) || tripsCacheGeneration() !== startedIn) return;
   try {
     await secureSessionStorage.setItem(keyOf(kind, tripId), JSON.stringify(value));
-    if (tripsCacheGeneration() !== startedIn) {
+    // A clear, or the trip leaving the kept ones while this wrote (Raz 7), removes it.
+    if (tripsCacheGeneration() !== startedIn || !keep.has(tripId)) {
       await secureSessionStorage.removeItem(keyOf(kind, tripId)).catch(() => {});
     }
   } catch (error) {

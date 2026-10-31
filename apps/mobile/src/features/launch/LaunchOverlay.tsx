@@ -195,6 +195,8 @@ export function LaunchOverlay({
     return () => {
       unsubscribe();
       pending.forEach(clearTimeout);
+      // Raz 6: gone before its fade, the answer still belongs to this launch only.
+      forgetLaunchAlert();
       // Never leave the system splash up, whatever came first (design 1.3).
       if (frame.current !== undefined) cancelAnimationFrame(frame.current);
       if (!hidden.current) {

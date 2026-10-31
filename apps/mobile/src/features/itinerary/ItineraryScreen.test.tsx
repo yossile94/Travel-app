@@ -224,7 +224,9 @@ describe('planning a trip with no city or hotel (QA B7)', () => {
     await show('2026-12-01', { ...trip, cities: [] });
     await fireEvent.press(screen.getByTestId('planner-button'));
     expect(screen.getByTestId('planner-preview')).toHaveTextContent(t('planner.needCity'));
-    expect(screen.getByTestId('planner-go').props.accessibilityState.disabled).toBe(true);
+    // Raz 2: no button at all, so no "plan 0 days".
+    expect(screen.queryByTestId('planner-go')).toBeNull();
+    expect(screen.getByTestId('planner-sheet')).not.toHaveTextContent(t('planner.go', { n: 0 }));
   });
 });
 

@@ -235,6 +235,14 @@ describe('LaunchOverlay (sprint 12 F-034)', () => {
     expect(n.getLastNotificationResponse).toHaveBeenCalledTimes(2);
   });
 
+  it('Raz 6: unmounted before its fade, the launch alert is forgotten too', async () => {
+    await mount();
+    await imageDrawn();
+    await act(async () => screen.unmount());
+    await launchAlertOnce();
+    expect(n.getLastNotificationResponse).toHaveBeenCalledTimes(2);
+  });
+
   it('unmounting before the splash was hidden still hides it (design 1.3)', async () => {
     await mount();
     await act(async () => screen.unmount());

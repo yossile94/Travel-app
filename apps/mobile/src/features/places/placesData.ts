@@ -45,7 +45,7 @@ const notify = () => listeners.forEach((l) => l());
 
 const fromRow = (r: Record<string, unknown>): Place => ({
   ref: `wd:${r.wikidata_id as string}`,
-  nameHe: placeNameHe((r.name_he as string | null) ?? null, r.name_en as string),
+  nameHe: (r.name_he as string | null) ?? null,
   nameEn: r.name_en as string,
   lat: r.lat as number,
   lng: r.lng as number,
@@ -117,7 +117,11 @@ async function readDevice(adm0: string): Promise<Stored | null> {
 function publish(adm0: string, stored: Stored, fromDevice: boolean) {
   states.set(adm0, {
     status: 'ready',
-    places: mergeCurated(stored.wikidata, stored.curated),
+    // QA B8 (Raz): cleaned when shown, so a device copy from before gets it too.
+    places: mergeCurated(
+      stored.wikidata.map((p) => ({ ...p, nameHe: placeNameHe(p.nameHe, p.nameEn) })),
+      stored.curated,
+    ),
     savedAt: stored.savedAt,
     fromDevice,
   });

@@ -1501,7 +1501,10 @@
     "summaryPlanned_one": "יום אחד מתוכנן",
     "summaryPlanned_other": "{{count}} מתוכננים",
     "summaryItems_one": "פעילות אחת",
-    "summaryItems_other": "{{count}} פעילויות"
+    "summaryItems_other": "{{count}} פעילויות",
+    "summaryDays_two": "יומיים",
+    "summaryPlanned_two": "2 מתוכננים",
+    "summaryItems_two": "2 פעילויות"
   },
   "activity": {
     "titleNew": "פעילות חדשה",
@@ -1591,7 +1594,11 @@
     "doneDays_one": "תכננו יום אחד",
     "doneDays_other": "תכננו {{count}} ימים",
     "doneItems_one": "פעילות אחת",
-    "doneItems_other": "{{count}} פעילויות"
+    "doneItems_other": "{{count}} פעילויות",
+    "previewPlan_two": "יומיים ריקים יתוכננו.",
+    "previewKept_two": "יומיים עם פעילויות לא ישתנו.",
+    "doneDays_two": "תכננו יומיים",
+    "doneItems_two": "2 פעילויות"
   },
   "mapPoint": {
     "title": "מיקום המלון",

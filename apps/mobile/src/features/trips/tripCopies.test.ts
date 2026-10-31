@@ -44,3 +44,12 @@ it('a trip beyond the first six loses its copy too', async () => {
   await setCachedTrips(ids);
   expect(await readTripCopy('itinerary', 'g')).toBeNull();
 });
+
+it('Raz 7: a copy written while its trip left the kept ones is removed', async () => {
+  await setCachedTrips(['t1']);
+  const g = tripsCacheGeneration();
+  const writing = writeTripCopy('itinerary', 't1', { items: [1] }, g);
+  void setCachedTrips(['t2']);
+  await writing;
+  expect(await AsyncStorage.getItem('trips-cache.itinerary.t1')).toBeNull();
+});

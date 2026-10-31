@@ -867,6 +867,8 @@ function AutoPlanSheet({
             {[
               t('planner.previewPlan', { count: counts.days }),
               counts.kept ? t('planner.previewKept', { count: counts.kept }) : '',
+              // Raz 8: some days still wait for a city or a hotel.
+              counts.noNight ? t('planner.needCity') : '',
             ]
               .filter(Boolean)
               .join(' ')}
@@ -885,18 +887,19 @@ function AutoPlanSheet({
         {error ? (
           <InlineNotice text={error} colorScheme={colorScheme} testID="planner-error" />
         ) : null}
-        <Button
-          kind="primary"
-          label={
-            counts?.days === 1 ? t('planner.goOne') : t('planner.go', { n: counts?.days ?? 0 })
-          }
-          busy={busy}
-          busyLabel={t('planner.busy')}
-          disabled={counts?.days === 0}
-          onPress={() => void go()}
-          colorScheme={colorScheme}
-          testID="planner-go"
-        />
+        {counts?.days === 0 ? null : (
+          <Button
+            kind="primary"
+            label={
+              counts?.days === 1 ? t('planner.goOne') : t('planner.go', { n: counts?.days ?? 0 })
+            }
+            busy={busy}
+            busyLabel={t('planner.busy')}
+            onPress={() => void go()}
+            colorScheme={colorScheme}
+            testID="planner-go"
+          />
+        )}
       </ScrollView>
     </BottomSheet>
   );

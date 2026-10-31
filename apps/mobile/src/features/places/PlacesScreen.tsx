@@ -29,20 +29,22 @@ import { InlineNotice, useToast } from '@/components/formControls';
 import { BackIcon, CloudOffIcon, MapPinIcon, NavigateIcon, SearchIcon } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { dottedDate } from '@/features/destination/DestinationFields';
-import { isolateOwn } from '@/features/globe/BoardingPassCard';
+import { isolateLtr, isolateOwn } from '@/features/globe/BoardingPassCard';
 import { countryByAdm0 } from '@/features/globe/countryData';
 import { dayHeading } from '@/features/itinerary/dayText';
 import { DAY_MAX } from '@/features/itinerary/itineraryModel';
 import { tripDays } from '@/features/itinerary/planner';
 import { saveItem, useBoard } from '@/features/itinerary/itineraryStore';
 import { saveHotel } from '@/features/kit/kitApi';
-import { byCheckIn, hotelPayload, type Hotel } from '@/features/kit/kitModel';
-import { refreshTripKit, tripKitNow, useTripKit } from '@/features/kit/kitStore';
+import { nightsText } from '@/features/kit/HotelsSection';
+import { byCheckIn, hotelPayload, numRange, type Hotel } from '@/features/kit/kitModel';
+import { refreshTripKit, refreshTripKitNow, tripKitNow, useTripKit } from '@/features/kit/kitStore';
 import { MapPointPicker } from '@/features/kit/MapPointPicker';
 import { cityAreas, cityPoint } from '@/features/trips/citiesData';
 import { CitySearchScreen } from '@/features/trips/CitiesSection';
 import { entryOf, type CityEntry } from '@/features/trips/citySearch';
 import { countryName } from '@/features/trips/countryName';
+import { formatDate } from '@/features/trips/tripDates';
 import type { Trip } from '@/features/trips/tripsApi';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
 
@@ -276,13 +278,15 @@ export function PlacesScreen({
     setPinBusy(true);
     // Sprint 11 review: the rest of the hotel is sent as the server has it now,
     // never from an older device copy.
-    await refreshTripKit(tripId);
+    const fromServer = await refreshTripKitNow(tripId);
     const fresh = tripKitNow(tripId);
-    const stale = !fresh || fresh.fromCache;
+    const stale = !fromServer || !fresh;
     const hotel = stale ? null : fresh.hotels.find((h) => h.id === picked.id);
     if (!hotel) {
       setPinBusy(false);
-      onToast(t(stale ? 'offline.readOnlyHint' : 'hotel.gone'));
+      onToast(
+        t(!stale ? 'hotel.gone' : online === false ? 'offline.readOnlyHint' : 'hotel.saveError'),
+      );
       return;
     }
     const payload = {
@@ -1158,10 +1162,6 @@ function SavedList({
   );
 }
 
-/**
- * Design 6 (AC-6; Raz ח4): a saved place to a day of the board, at the end of
- * the day, with its name and no time. A full day (30) is shown and disabled.
- */
 /** AC-7 (sprint 13): "which hotel?" — each hotel with its dates; picking one opens the map. */
 function HotelPickSheet({
   hotels,
@@ -1198,6 +1198,12 @@ function HotelPickSheet({
           <Pressable
             key={h.id}
             accessibilityRole="button"
+            accessibilityLabel={t('hotels.rowA11y', {
+              name: h.name,
+              in: formatDate(h.checkIn, t),
+              out: formatDate(h.checkOut, t),
+              nights: nightsText(h, t),
+            })}
             onPress={() => onPick(h)}
             style={({ pressed }) => [
               styles.menuRow,
@@ -1208,7 +1214,10 @@ function HotelPickSheet({
           >
             <Text style={[styles.body, { color: p.textPrimary }]}>{isolateOwn(h.name)}</Text>
             <Text style={[styles.footnote, { color: p.textSecondary }]}>
-              {`${dottedDate(h.checkIn)}–${dottedDate(h.checkOut)}`}
+              {t('hotels.rowDates', {
+                range: isolateLtr(numRange(h.checkIn, h.checkOut)),
+                nights: nightsText(h, t),
+              })}
             </Text>
           </Pressable>
         ))}
@@ -1217,6 +1226,10 @@ function HotelPickSheet({
   );
 }
 
+/**
+ * Design 6 (AC-6; Raz ח4): a saved place to a day of the board, at the end of
+ * the day, with its name and no time. A full day (30) is shown and disabled.
+ */
 function AddToDaySheet({
   place,
   trip,
