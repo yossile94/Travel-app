@@ -134,8 +134,14 @@ export function ItinerarySection({
           />
           <Text style={[styles.footnote, { color: p.textSecondary }]}>
             {past
-              ? t('itinerary.summaryPast', { days: counts.days, n: board.total })
-              : t('itinerary.summary', { days: counts.days, planned: counts.planned })}
+              ? t('itinerary.summaryPast', {
+                  days: t('itinerary.summaryDays', { count: counts.days }),
+                  n: t('itinerary.summaryItems', { count: board.total }),
+                })
+              : t('itinerary.summary', {
+                  days: t('itinerary.summaryDays', { count: counts.days }),
+                  planned: t('itinerary.summaryPlanned', { count: counts.planned }),
+                })}
           </Text>
         </View>
       </View>

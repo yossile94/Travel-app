@@ -13,7 +13,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 import { supabase } from '@/lib/supabase';
 
-import { mergeCurated, type CuratedCategory, type Place } from './placesModel';
+import { mergeCurated, placeNameHe, type CuratedCategory, type Place } from './placesModel';
 
 /** Bumped with every new places data migration (scripts/build-places.mjs). */
 export const PLACES_DATA_VERSION = 1;
@@ -45,7 +45,7 @@ const notify = () => listeners.forEach((l) => l());
 
 const fromRow = (r: Record<string, unknown>): Place => ({
   ref: `wd:${r.wikidata_id as string}`,
-  nameHe: (r.name_he as string | null) ?? null,
+  nameHe: placeNameHe((r.name_he as string | null) ?? null, r.name_en as string),
   nameEn: r.name_en as string,
   lat: r.lat as number,
   lng: r.lng as number,

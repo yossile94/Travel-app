@@ -15,7 +15,7 @@ import type { Advisory, Destination } from '@/features/destination/destinationDa
 import type { Rate } from '@/features/destination/rateFormat';
 
 import { BoardingPassCard } from './BoardingPassCard';
-import { CardTiles, tileArrangement, tileLayout } from './CardTiles';
+import { CardTiles, rowWidths, tileArrangement, tileLayout } from './CardTiles';
 import { countryByAdm0 } from './countryData';
 
 const t = i18n.t.bind(i18n);
@@ -174,6 +174,12 @@ describe('data, then actions (sprint 12 P-1)', () => {
     [355, 2, 1, 'list'],
   ] as const)('%d wide at %d: %d tiles → %s', (width, scale, count, expected) => {
     expect(tileArrangement(width, scale, count)).toBe(expected);
+  });
+
+  it('sprint 13 AC-8: three data tiles in two columns leave no hole; the last one takes the row', () => {
+    expect(rowWidths(3, 2, 300, 8)).toEqual([146, 146, 300]);
+    expect(rowWidths(4, 2, 300, 8)).toEqual([146, 146, 146, 146]);
+    expect(rowWidths(3, 3, 300, 8)).toEqual([94, 94, 94]);
   });
 
   it('one row: time, currency, temperature, then Safety and What to see', async () => {

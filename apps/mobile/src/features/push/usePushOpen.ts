@@ -62,10 +62,17 @@ export function launchAlertOnce(): Promise<LaunchAlert> {
   return launchAlert;
 }
 
-/** Tests start each case from a new run. */
-export function resetLaunchAlertForTests(): void {
+/**
+ * Dana B-2 (sprint 12): the answer belongs to this launch, not to the whole JS
+ * run. Once the launch overlay is gone it is asked again, and by then the alert
+ * that opened the app has been handled.
+ */
+export function forgetLaunchAlert(): void {
   launchAlert = undefined;
 }
+
+/** Tests start each case from a new run. */
+export const resetLaunchAlertForTests = forgetLaunchAlert;
 
 export function usePushOpen({
   ready,

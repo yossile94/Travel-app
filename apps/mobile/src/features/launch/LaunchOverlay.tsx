@@ -20,7 +20,7 @@ import Animated, {
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { logLaunchGone } from '@/features/globe/perfLog';
-import { launchAlertOnce } from '@/features/push/usePushOpen';
+import { forgetLaunchAlert, launchAlertOnce } from '@/features/push/usePushOpen';
 import { easing, launch, motion, timing } from '@/theme/tokens';
 
 import { launchShown, launchSignals } from './launchSignals';
@@ -103,6 +103,7 @@ export function LaunchOverlay({
     );
     later(() => {
       logLaunchGone();
+      forgetLaunchAlert();
       onGone();
     }, motion.short + FRAMES_2);
   }, [onFadeStart, onGone, opacity]);

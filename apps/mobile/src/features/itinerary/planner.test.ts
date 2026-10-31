@@ -161,6 +161,12 @@ describe('places (AC-16)', () => {
     expect(r.days.every((d) => d.kind === 'noPlaces')).toBe(true);
   });
 
+  it('QA B7: a night with no city and no hotel is its own kind, not a lack of places', () => {
+    const r = planTrip({ ...base, nightPoint: () => null, arrival: null, departure: null });
+    expect(r.items).toEqual([]);
+    expect(r.days.every((d) => d.kind === 'noNight')).toBe(true);
+  });
+
   it('an evening landing is its own kind, not a lack of places', () => {
     const r = planTrip({ ...base, arrival: { date: '2027-01-05', time: '19:30', flightHours: 4 } });
     expect(r.days[0]).toEqual({ day: '2027-01-05', kind: 'arrivalEvening' });

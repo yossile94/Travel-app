@@ -307,3 +307,15 @@ export function nightCityId(
   const index = daysBetween(trip.startDate, today);
   return listed[Math.min(listed.length - 1, Math.floor((index * listed.length) / days))]!;
 }
+
+/**
+ * QA B8: a Hebrew name from Wikidata is often a Wikipedia title — "בנגקוק/פראטונאם",
+ * "בריטניק (אונייה)". The place is shown as itself: no "city/" prefix, no
+ * trailing disambiguation, unless the English name has the same slash.
+ */
+export function placeNameHe(nameHe: string | null, nameEn: string): string | null {
+  if (!nameHe) return null;
+  let name = nameHe.trim().replace(/\s*\([^()]*\)$/, '');
+  if (name.includes('/') && !nameEn.includes('/')) name = name.slice(name.lastIndexOf('/') + 1);
+  return name.trim() || nameHe;
+}

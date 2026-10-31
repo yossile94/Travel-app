@@ -10,6 +10,7 @@ import {
   distanceKm,
   formatDistance,
   nightCityId,
+  placeNameHe,
   mergeCurated,
   placesInCity,
   placesNear,
@@ -278,5 +279,20 @@ describe("tonight's city (design 3.7.3)", () => {
       nightCityId(trip({ cities: [{ geonameId: null, name: 'x' }] }), [], '2026-12-25', pointOf),
     ).toBeNull();
     expect(nightCityId(t3, [], '2026-12-25', pointOf)).toBeNull();
+  });
+});
+
+describe('placeNameHe (QA B8)', () => {
+  it('drops the city prefix and the trailing disambiguation', () => {
+    expect(placeNameHe('בנגקוק/פראטונאם', 'Pratunam Market')).toBe('פראטונאם');
+    expect(placeNameHe('בריטניק (אונייה)', 'HMHS Britannic')).toBe('בריטניק');
+    expect(placeNameHe('קווסטקון (מוזיאון מדע וטכנולוגיה)', 'Questacon')).toBe('קווסטקון');
+  });
+  it('keeps a slash that is part of the name, and plain names as they are', () => {
+    expect(placeNameHe('הפארק הלאומי אאורקי/הר קוק', 'Aoraki / Mount Cook National Park')).toBe(
+      'הפארק הלאומי אאורקי/הר קוק',
+    );
+    expect(placeNameHe('ואט פו', 'Wat Pho')).toBe('ואט פו');
+    expect(placeNameHe(null, 'Wat Pho')).toBeNull();
   });
 });

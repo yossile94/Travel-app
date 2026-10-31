@@ -37,7 +37,7 @@ import { tripDays } from '@/features/itinerary/planner';
 import { saveItem, useBoard } from '@/features/itinerary/itineraryStore';
 import { saveHotel } from '@/features/kit/kitApi';
 import { byCheckIn, hotelPayload, type Hotel } from '@/features/kit/kitModel';
-import { refreshTripKit, useTripKit } from '@/features/kit/kitStore';
+import { refreshTripKit, tripKitNow, useTripKit } from '@/features/kit/kitStore';
 import { MapPointPicker } from '@/features/kit/MapPointPicker';
 import { cityAreas, cityPoint } from '@/features/trips/citiesData';
 import { CitySearchScreen } from '@/features/trips/CitiesSection';
@@ -156,6 +156,8 @@ export function PlacesScreen({
   // AC-5 (Raz 29.10): a hotel picked by hand stays until the city changes.
   const [manualHotel, setManualHotel] = useState<string | null>(null);
   const [pinning, setPinning] = useState<Hotel | null>(null);
+  // AC-7 (sprint 13): with several hotels and no point yet, which one to place.
+  const [choosingHotel, setChoosingHotel] = useState(false);
   const [pinBusy, setPinBusy] = useState(false);
 
   const hotels = kit.hotels;
@@ -269,9 +271,20 @@ export function PlacesScreen({
     else onToast(t('places.saveError'));
   };
   // Design 3.4: the point is saved at once through save_hotel, the hotel otherwise as it is.
-  const pinHotel = async (hotel: Hotel, point: [number, number]) => {
+  const pinHotel = async (picked: Hotel, point: [number, number]) => {
     if (!tripId) return;
     setPinBusy(true);
+    // Sprint 11 review: the rest of the hotel is sent as the server has it now,
+    // never from an older device copy.
+    await refreshTripKit(tripId);
+    const fresh = tripKitNow(tripId);
+    const stale = !fresh || fresh.fromCache;
+    const hotel = stale ? null : fresh.hotels.find((h) => h.id === picked.id);
+    if (!hotel) {
+      setPinBusy(false);
+      onToast(t(stale ? 'offline.readOnlyHint' : 'hotel.gone'));
+      return;
+    }
     const payload = {
       ...hotelPayload({
         name: hotel.name,
@@ -294,6 +307,8 @@ export function PlacesScreen({
     setPinBusy(false);
     if (result === 'ok') onToast(t('places.hotelPointSaved', { name: hotel.name }));
     else if (result === 'offline') onToast(t('offline.readOnlyHint'));
+    else if (result === 'gone') onToast(t('hotel.gone'));
+    else if (result === 'dates') onToast(t('places.hotelDatesOutside', { name: hotel.name }));
     else if (result !== 'consent') onToast(t('hotel.saveError'));
   };
   const navigate = (target: { lat: number; lng: number; name: string }) =>
@@ -539,16 +554,16 @@ export function PlacesScreen({
                 {unpinned ? (
                   <Button
                     kind="secondary"
-                    // Raz: with several hotels, the button names the one it places.
-                    label={
-                      hotels.length > 1
-                        ? t('places.hotelPickFor', { name: isolateOwn(unpinned.name) })
-                        : t('hotel.pointChoose')
-                    }
+                    // AC-7 (sprint 13): with several hotels, a sheet asks which one first.
+                    label={hotels.length > 1 ? t('places.hotelPickWhich') : t('hotel.pointChoose')}
                     busy={pinBusy}
                     blocked={online === false}
                     onPress={() =>
-                      online === false ? onToast(t('offline.readOnlyHint')) : setPinning(unpinned)
+                      online === false
+                        ? onToast(t('offline.readOnlyHint'))
+                        : hotels.length > 1
+                          ? setChoosingHotel(true)
+                          : setPinning(unpinned)
                     }
                     colorScheme={colorScheme}
                     testID="places-hotel-no-point-pick"
@@ -676,6 +691,20 @@ export function PlacesScreen({
             onClose={() => setAddingToDay(null)}
             onToast={onToast}
             overlay={toast.render(insetsTop + 16)}
+          />
+        ) : null}
+
+        {choosingHotel ? (
+          <HotelPickSheet
+            hotels={byCheckIn(hotels)}
+            colorScheme={colorScheme}
+            reduceMotion={reduceMotion}
+            insetsBottom={insetsBottom}
+            onClose={() => setChoosingHotel(false)}
+            onPick={(hotel) => {
+              setChoosingHotel(false);
+              setPinning(hotel);
+            }}
           />
         ) : null}
 
@@ -1133,6 +1162,61 @@ function SavedList({
  * Design 6 (AC-6; Raz ח4): a saved place to a day of the board, at the end of
  * the day, with its name and no time. A full day (30) is shown and disabled.
  */
+/** AC-7 (sprint 13): "which hotel?" — each hotel with its dates; picking one opens the map. */
+function HotelPickSheet({
+  hotels,
+  colorScheme,
+  reduceMotion,
+  insetsBottom,
+  onClose,
+  onPick,
+}: {
+  hotels: readonly Hotel[];
+  colorScheme: ColorScheme;
+  reduceMotion: boolean;
+  insetsBottom: number;
+  onClose: () => void;
+  onPick: (hotel: Hotel) => void;
+}) {
+  const { t } = useTranslation();
+  const p = colors[colorScheme];
+  return (
+    <BottomSheet
+      visible
+      colorScheme={colorScheme}
+      reduceMotion={reduceMotion}
+      insetsBottom={insetsBottom}
+      onClose={onClose}
+      maxHeight={640}
+      testID="places-hotel-pick"
+    >
+      <Text style={[styles.title2, { color: p.textPrimary }]} accessibilityRole="header">
+        {t('places.hotelPickTitle')}
+      </Text>
+      <ScrollView>
+        {hotels.map((h) => (
+          <Pressable
+            key={h.id}
+            accessibilityRole="button"
+            onPress={() => onPick(h)}
+            style={({ pressed }) => [
+              styles.menuRow,
+              { borderBottomColor: p.borderSubtle },
+              pressed && { backgroundColor: p.pressed },
+            ]}
+            testID={`places-hotel-pick-${h.id}`}
+          >
+            <Text style={[styles.body, { color: p.textPrimary }]}>{isolateOwn(h.name)}</Text>
+            <Text style={[styles.footnote, { color: p.textSecondary }]}>
+              {`${dottedDate(h.checkIn)}–${dottedDate(h.checkOut)}`}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </BottomSheet>
+  );
+}
+
 function AddToDaySheet({
   place,
   trip,
