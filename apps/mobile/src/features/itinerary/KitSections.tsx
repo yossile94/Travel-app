@@ -47,6 +47,10 @@ export function ItinerarySection({
   const state = useBoard(trip.id);
   const flights = useTripFlights(trip.id).flights;
   const [open, setOpen] = useState(false);
+  const openBoard = () => {
+    markTransition('itinerary');
+    setOpen(true);
+  };
   const board = useMemo(
     () =>
       itineraryDays({
@@ -128,7 +132,7 @@ export function ItinerarySection({
             onPress={() =>
               offline && state.status === 'failed'
                 ? onToast(t('offline.readOnlyHint'))
-                : (markTransition('itinerary'), setOpen(true))
+                : openBoard()
             }
             colorScheme={colorScheme}
             testID="kit-itinerary-open"

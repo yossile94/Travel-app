@@ -250,6 +250,10 @@ export function GlobeScreen() {
 
   const selectedAdm0 = selection.selected?.adm0 ?? null;
   const selectedCountry = selectedAdm0 ? countryByAdm0(selectedAdm0) : undefined;
+  const selectedAdm0Ref = useRef(selectedAdm0);
+  useEffect(() => {
+    selectedAdm0Ref.current = selectedAdm0;
+  }, [selectedAdm0]);
   /** Sprint 9 AC-12: a city chosen in search; its pin shows once the camera arrives. */
   const selectedCity = selection.selected?.city ?? null;
   const pinShown = Boolean(selectedCity) && !selection.flying && !selection.pinHidden;
@@ -719,7 +723,7 @@ export function GlobeScreen() {
     async (point: [number, number]) => {
       const map = mapRef.current;
       if (!map) return;
-      markTransition('card');
+      const tappedAt = performance.now();
       // A tap doesn't move the camera, so Mapbox doesn't cancel a running
       // rotation segment by itself; stop it so the globe holds still.
       if (rotationAllowedRef.current) stopRotation();
@@ -764,6 +768,8 @@ export function GlobeScreen() {
 
       const result = resolveTap(hits);
       if (result.type === 'select' && countryByAdm0(result.adm0)) {
+        // AC-9 (Raz): measured only when a new card opens.
+        if (result.adm0 !== selectedAdm0Ref.current) markTransition('card', tappedAt);
         dispatch({ type: 'countryTapped', country: { adm0: result.adm0 } });
       } else if (result.type === 'ocean') {
         dispatch({ type: 'oceanTapped' });

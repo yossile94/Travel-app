@@ -294,8 +294,13 @@ export function BoardingPassCard({
         },
   );
 
+  // AC-9 (Raz): the card's first layout only, not every height change.
+  const laidOut = useRef(false);
   const onLayout = (event: LayoutChangeEvent) => {
-    logTransition('card');
+    if (!laidOut.current) {
+      laidOut.current = true;
+      logTransition('card');
+    }
     const { width, height } = event.nativeEvent.layout;
     setSize({ width, height });
     onHeight?.(height);

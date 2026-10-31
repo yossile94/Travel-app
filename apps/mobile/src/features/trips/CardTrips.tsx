@@ -389,6 +389,8 @@ export function CardTrips({
 
   /** 2.2: into Trips mode, with this trip open and scrolled to the top of the list. */
   const enterWith = (id: string | null) => {
+    // AC-9 (Raz 1): from the destination view, this is the card-to-trip transition.
+    if (id !== null) markTransition('trip');
     setRowNotice(null);
     setOpen(id);
     tapScroll.current = id;
