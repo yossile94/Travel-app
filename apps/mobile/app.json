@@ -3,7 +3,7 @@
     "name": "Travel App",
     "slug": "travel-app",
     "scheme": "travelapp",
-    "version": "0.13.0",
+    "version": "0.14.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,7 +16,12 @@
     },
     "android": {
       "package": "com.travelapp.companion",
-      "versionCode": 2,
+      "versionCode": 3,
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#060B18",
         "foregroundImage": "./assets/android-icon-foreground.png",
