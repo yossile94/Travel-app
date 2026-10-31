@@ -19,18 +19,42 @@ export interface ZonedClock {
 
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
+/**
+ * v0.14.1 (Raz 3): zones newer than an old device's tzdata, under the older
+ * name that keeps the same clock, so a flight or a day still draws there.
+ */
+const OLDER_NAME: Record<string, string> = {
+  'America/Ciudad_Juarez': 'America/Denver',
+  'America/Nuuk': 'America/Godthab',
+  'Asia/Qostanay': 'Asia/Almaty',
+  'Europe/Kyiv': 'Europe/Kiev',
+  'Pacific/Kanton': 'Pacific/Enderbury',
+};
+
+function makeFormatter(timeZone: string): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function formatterFor(timeZone: string): Intl.DateTimeFormat {
   let formatter = formatters.get(timeZone);
   if (!formatter) {
-    formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hour12: false,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    try {
+      formatter = makeFormatter(timeZone);
+    } catch (error) {
+      // An older name with the same clock; with none, the caller decides (the
+      // card hides the time; a screen that doesn't catch shows ErrorScreen).
+      const older = OLDER_NAME[timeZone];
+      if (!older) throw error;
+      formatter = makeFormatter(older);
+    }
     formatters.set(timeZone, formatter);
   }
   return formatter;

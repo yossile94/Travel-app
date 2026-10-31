@@ -13,6 +13,10 @@ import {
 } from './DestinationFields';
 import type { Rate } from './rateFormat';
 
+// v0.14.1 (Raz 8, Dana 7): the first test also pays for loading the modules; under a
+// full parallel run that took over 5s.
+jest.setTimeout(30_000);
+
 const t = i18n.t.bind(i18n);
 const DAY = 24 * 60 * 60 * 1000;
 const daysAgo = (n: number) => new Date(Date.now() - n * DAY).toISOString();

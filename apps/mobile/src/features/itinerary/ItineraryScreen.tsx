@@ -30,7 +30,7 @@ import { useTripFlights } from '@/features/flights/flightsStore';
 import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import { useTripKit } from '@/features/kit/kitStore';
 import { navigateUrl } from '@/features/places/PlacesScreen';
-import { usePlaces } from '@/features/places/placesData';
+import { retryPlaces, usePlaces } from '@/features/places/placesData';
 import { nightCityId } from '@/features/places/placesModel';
 import { useSaved } from '@/features/places/savedPlaces';
 import { cityPoint } from '@/features/trips/citiesData';
@@ -193,7 +193,7 @@ export function ItineraryScreen({
                 ) : null}
                 {board.outOfRange.length ? (
                   <InlineNotice
-                    text={t('itinerary.outOfRangeNotice', { n: board.outOfRange.length })}
+                    text={t('itinerary.outOfRangeNotice', { count: board.outOfRange.length })}
                     colorScheme={colorScheme}
                     testID="itinerary-out-notice"
                   />
@@ -413,6 +413,8 @@ export function ItineraryScreen({
 
         {planning ? (
           <AutoPlanSheet
+            placesFailed={places.status === 'failed'}
+            onRetryPlaces={() => void retryPlaces(trip.countryAdm0)}
             onPlan={async (pace) => {
               if (places.status !== 'ready')
                 return { kind: 'error' as const, text: t('planner.downloading') };
@@ -788,6 +790,8 @@ function ActivityMenu({
 
 /** Design 11.1: the pace, the preview count, the limitation, and the one button. */
 function AutoPlanSheet({
+  placesFailed,
+  onRetryPlaces,
   onPlan,
   preview,
   colorScheme,
@@ -795,6 +799,8 @@ function AutoPlanSheet({
   insetsBottom,
   onClose,
 }: {
+  placesFailed: boolean;
+  onRetryPlaces: () => void;
   onPlan: (pace: Pace) => Promise<{ kind: 'done' } | { kind: 'error'; text: string }>;
   preview: (pace: Pace) => { days: number; kept: number; noNight: number; over60: boolean } | null;
   colorScheme: ColorScheme;
@@ -875,6 +881,22 @@ function AutoPlanSheet({
               .filter(Boolean)
               .join(' ')}
           </Text>
+        ) : placesFailed ? (
+          // v0.14.1 (Dana 3): a failed download says so, with a retry, never "plan 0 days".
+          <View style={styles.gap}>
+            <InlineNotice
+              text={t('planner.placesFailed')}
+              colorScheme={colorScheme}
+              testID="planner-places-failed"
+            />
+            <Button
+              kind="secondary"
+              label={t('planner.retry')}
+              onPress={onRetryPlaces}
+              colorScheme={colorScheme}
+              testID="planner-places-retry"
+            />
+          </View>
         ) : (
           <Text style={[styles.callout, { color: p.textSecondary }]}>
             {t('planner.downloading')}
@@ -889,12 +911,10 @@ function AutoPlanSheet({
         {error ? (
           <InlineNotice text={error} colorScheme={colorScheme} testID="planner-error" />
         ) : null}
-        {counts?.days === 0 ? null : (
+        {!counts || counts.days === 0 ? null : (
           <Button
             kind="primary"
-            label={
-              counts?.days === 1 ? t('planner.goOne') : t('planner.go', { n: counts?.days ?? 0 })
-            }
+            label={t('planner.go', { count: counts.days })}
             busy={busy}
             busyLabel={t('planner.busy')}
             onPress={() => void go()}

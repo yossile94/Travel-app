@@ -8,6 +8,7 @@ import NetInfo from '@react-native-community/netinfo';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { isNetworkError } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 import { limits } from '@/theme/tokens';
 
@@ -77,12 +78,13 @@ export async function loadDisplayName(userId: string): Promise<string | null> {
 export async function saveDisplayName(userId: string, name: string): Promise<SaveResult> {
   if (!supabase) return 'error';
   if (!(await online())) return 'offline';
-  const { error } = await supabase
+  const { error, status } = await supabase
     .from('profiles')
     .upsert({ id: userId, display_name: name.trim() }, { onConflict: 'id' });
   if (error) {
     logFailure('rename', error);
-    return 'error';
+    // v0.14.1 (Raz 5): a save that hangs ends (the client's 20s) as offline.
+    return isNetworkError(error, status) ? 'offline' : 'error';
   }
   return 'ok';
 }

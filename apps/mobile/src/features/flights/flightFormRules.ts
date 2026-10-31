@@ -15,7 +15,7 @@ import {
   type Flight,
   type FlightSnapshot,
 } from './flightModel';
-import { zonedWall, zonedWallToUtc, type WallResult } from './flightTime';
+import { dayOffset, zonedWall, zonedWallToUtc, type WallResult } from './flightTime';
 
 /** An airport as the form holds it: enough to save, without the bundled list. */
 export interface PickedAirport {
@@ -176,6 +176,21 @@ export function withLeg(
 }
 
 /** Step 1: a flight number and a date no more than 355 days ahead (design 6). */
+/**
+ * v0.14.1 (Raz 4): a new departure date moves the arrival date by as many
+ * days, so a flight keeps its length (no "+2" from an edit, no false "arrives
+ * before it leaves"). No arrival date yet: the same day.
+ */
+export function withDepartureDate(
+  values: Pick<FlightFormValues, 'date' | 'depDate' | 'arrDate'>,
+  picked: string,
+): Pick<FlightFormValues, 'date' | 'depDate' | 'arrDate'> {
+  const before = values.depDate ?? values.date;
+  const arrDate =
+    values.arrDate && before ? addDays(values.arrDate, dayOffset(before, picked)) : picked;
+  return { date: picked, depDate: picked, arrDate };
+}
+
 export function checkSearch(values: FlightFormValues, today: string): Errors {
   const errors: Errors = {};
   if (!normalizeFlightNumber(values.numberInput)) errors.number = 'number';

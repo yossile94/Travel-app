@@ -50,6 +50,7 @@ import {
   type PickedAirport,
   continuedDirection,
   draftLeg,
+  withDepartureDate,
 } from './flightFormRules';
 import {
   DAYS_AHEAD,
@@ -197,15 +198,10 @@ export function FlightScreen({
       negativeButton: { label: t('datePicker.cancel') },
       onValueChange: (_event, date) => {
         const picked = toPgDate(date);
-        if (field === 'date') {
-          // The departure date of step 1 is also the departure date of step 2.
-          update({
-            date: picked,
-            depDate: picked,
-            arrDate: values.arrTime ? values.arrDate : picked,
-          });
-        } else if (field === 'depDate') update({ depDate: picked, date: picked });
-        else update({ arrDate: picked });
+        // The departure date of step 1 is also the departure date of step 2;
+        // the arrival moves with it (v0.14.1, Raz 4).
+        if (field === 'arrDate') update({ arrDate: picked });
+        else update(withDepartureDate(values, picked));
       },
     });
   };

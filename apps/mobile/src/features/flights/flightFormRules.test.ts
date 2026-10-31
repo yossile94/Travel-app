@@ -8,6 +8,7 @@ import {
   toSaved,
   valuesOf,
   warnings,
+  withDepartureDate,
   withLeg,
   type FlightFormValues,
 } from './flightFormRules';
@@ -143,6 +144,32 @@ describe('flight form rules (sprint 5 design 2, 4, 6)', () => {
       depTime: '23:40',
       arrTime: '17:15',
       arrDate: '2026-12-21',
+    });
+  });
+});
+
+describe('withDepartureDate (v0.14.1, Raz 4)', () => {
+  it('moves the arrival date by as many days as the departure moved', () => {
+    expect(
+      withDepartureDate(
+        { date: '2026-12-10', depDate: '2026-12-10', arrDate: '2026-12-10' },
+        '2026-12-08',
+      ),
+    ).toEqual({ date: '2026-12-08', depDate: '2026-12-08', arrDate: '2026-12-08' });
+    // An overnight flight keeps its night.
+    expect(
+      withDepartureDate(
+        { date: '2026-12-10', depDate: '2026-12-10', arrDate: '2026-12-11' },
+        '2026-12-20',
+      ),
+    ).toEqual({ date: '2026-12-20', depDate: '2026-12-20', arrDate: '2026-12-21' });
+  });
+
+  it('with no arrival date yet, the arrival is the same day', () => {
+    expect(withDepartureDate({ date: null, depDate: null, arrDate: null }, '2026-12-20')).toEqual({
+      date: '2026-12-20',
+      depDate: '2026-12-20',
+      arrDate: '2026-12-20',
     });
   });
 });

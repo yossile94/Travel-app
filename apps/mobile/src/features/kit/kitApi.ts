@@ -5,6 +5,7 @@
  */
 import NetInfo from '@react-native-community/netinfo';
 
+import { isNetworkError } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 
 import type { Hotel, hotelPayload, Insurance, insurancePayload } from './kitModel';
@@ -101,7 +102,11 @@ export async function loadKit(
   ]);
   if (hotels.error || insurance.error) {
     log('load', hotels.error ?? insurance.error);
-    return { ok: false, reason: 'error' };
+    // v0.14.1 (Dana 1): no answer is offline, so the device copy shows.
+    const unreached =
+      isNetworkError(hotels.error, hotels.status) ||
+      isNetworkError(insurance.error, insurance.status);
+    return { ok: false, reason: unreached ? 'offline' : 'error' };
   }
   return {
     ok: true,

@@ -17,6 +17,7 @@ const mockDb = {
   ranges: [] as [number, number][],
   curated: [] as unknown[],
   fail: false,
+  failCurated: false,
 };
 const row = (i: number) => ({
   wikidata_id: `Q${1000 + i}`,
@@ -43,7 +44,7 @@ jest.mock('@/lib/supabase', () => ({
         },
         then: (resolve: (v: unknown) => void) =>
           resolve(
-            table === 'curated_places' && !mockDb.fail
+            table === 'curated_places' && !mockDb.fail && !mockDb.failCurated
               ? { data: mockDb.curated, error: null }
               : { data: null, error: { code: 'PGRST' } },
           ),
@@ -63,7 +64,7 @@ const placesOf = async (adm0: string) =>
 beforeEach(async () => {
   resetPlacesForTests();
   await AsyncStorage.clear();
-  Object.assign(mockDb, { count: 3, ranges: [], curated: [], fail: false });
+  Object.assign(mockDb, { count: 3, ranges: [], curated: [], fail: false, failCurated: false });
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 });
 afterEach(() => jest.restoreAllMocks());
@@ -121,6 +122,14 @@ describe('placesData (D22)', () => {
     const { result } = await renderHook(() => usePlaces('THA'));
     const state = result.current;
     expect(state.status === 'ready' && state.places.map((p) => p.nameHe)).toContain('פראטונאם');
+  });
+
+  it('Raz 7 (v0.14.1): curated failing alone still shows the places, and keeps no copy', async () => {
+    mockDb.failCurated = true;
+    await loadPlaces('THA');
+    const { result } = await renderHook(() => usePlaces('THA'));
+    expect(result.current.status).toBe('ready');
+    expect(await AsyncStorage.getItem('places.v1.THA')).toBeNull();
   });
 
   it('an empty copy is kept an hour, then read again (sprint 12, Dana B-3)', async () => {

@@ -7,6 +7,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AppState } from 'react-native';
 
+import { fetchWithTimeout } from './network';
 import { secureSessionStorage } from './secureSessionStorage';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -22,6 +23,8 @@ export const supabase: SupabaseClient | null =
           // Native app: no session in a URL to pick up.
           detectSessionInUrl: false,
         },
+        // v0.14.1 (Raz 5, Dana 1): database requests give up after 20s; auth is untouched.
+        global: { fetch: fetchWithTimeout() },
       })
     : null;
 

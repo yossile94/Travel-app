@@ -33,32 +33,39 @@ jest.mock('@/features/kit/kitStore', () => ({
 jest.mock('@/features/places/savedPlaces', () => ({
   useSaved: () => ({ status: 'ready', places: [] }),
 }));
+/** v0.14.1 (Dana 3): a failed download, when set. */
+const mockPlacesState = { failed: false };
+const mockRetryPlaces = jest.fn();
 jest.mock('@/features/places/placesData', () => ({
-  usePlaces: () => ({
-    status: 'ready',
-    savedAt: '',
-    fromDevice: false,
-    places: [
-      {
-        ref: 'wd:Q1',
-        nameHe: 'הארמון הגדול',
-        nameEn: 'Grand Palace',
-        lat: BKK[1],
-        lng: BKK[0],
-        category: 'culture',
-        popularity: 90,
-      },
-      {
-        ref: 'wd:Q2',
-        nameHe: null,
-        nameEn: 'Wat Pho',
-        lat: BKK[1],
-        lng: BKK[0],
-        category: 'culture',
-        popularity: 80,
-      },
-    ],
-  }),
+  retryPlaces: (...a: unknown[]) => mockRetryPlaces(...a),
+  usePlaces: () =>
+    mockPlacesState.failed
+      ? { status: 'failed' }
+      : {
+          status: 'ready',
+          savedAt: '',
+          fromDevice: false,
+          places: [
+            {
+              ref: 'wd:Q1',
+              nameHe: 'הארמון הגדול',
+              nameEn: 'Grand Palace',
+              lat: BKK[1],
+              lng: BKK[0],
+              category: 'culture',
+              popularity: 90,
+            },
+            {
+              ref: 'wd:Q2',
+              nameHe: null,
+              nameEn: 'Wat Pho',
+              lat: BKK[1],
+              lng: BKK[0],
+              category: 'culture',
+              popularity: 80,
+            },
+          ],
+        },
 }));
 jest.mock('@/features/climate/climateData', () => ({
   useClimate: () => ({ status: 'failed' }),
@@ -226,7 +233,24 @@ describe('planning a trip with no city or hotel (QA B7)', () => {
     expect(screen.getByTestId('planner-preview')).toHaveTextContent(t('planner.needCity'));
     // Raz 2: no button at all, so no "plan 0 days".
     expect(screen.queryByTestId('planner-go')).toBeNull();
-    expect(screen.getByTestId('planner-sheet')).not.toHaveTextContent(t('planner.go', { n: 0 }));
+    expect(screen.getByTestId('planner-sheet')).not.toHaveTextContent(
+      t('planner.go', { count: 0 }),
+    );
+  });
+});
+
+describe('the places could not be downloaded (v0.14.1, Dana 3)', () => {
+  afterEach(() => {
+    mockPlacesState.failed = false;
+  });
+  it('says so with a retry, and no plan button', async () => {
+    mockPlacesState.failed = true;
+    await show('2026-12-01');
+    await fireEvent.press(screen.getByTestId('planner-button'));
+    expect(screen.getByTestId('planner-places-failed')).toBeOnTheScreen();
+    expect(screen.queryByTestId('planner-go')).toBeNull();
+    await fireEvent.press(screen.getByTestId('planner-places-retry'));
+    expect(mockRetryPlaces).toHaveBeenCalledWith('THA');
   });
 });
 
