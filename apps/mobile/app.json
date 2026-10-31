@@ -87,6 +87,7 @@
       "@react-native-community/datetimepicker",
       "expo-sharing",
       "./plugins/withPassportBackupRules",
+      "./plugins/withUploadSigning",
       [
         "expo-camera",
         {
