@@ -4,7 +4,7 @@
  * the row opens the hotel's sheet (address, phone, the hidden booking number,
  * the insurance hotline, edit and delete). Adding and editing need a network.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,6 +40,7 @@ import {
   numRange,
 } from './kitModel';
 import { refreshTripKit } from './kitStore';
+import { refreshExpiredPoints } from './pointRefresh';
 import { formatPhone, telUrl } from './phone';
 import { DialRow, openUrl, SecretRow, SectionTitle, styles } from './kitUi';
 
@@ -157,6 +158,14 @@ export function HotelsSection({
   const open = sorted.find((h) => h.id === sheet) ?? null;
   const today = todayPg();
   const guard = (action: () => void) => () => (offline ? setBlocked(true) : action());
+
+  // Sprint 14 AC-3 (ADR-021): a Google point past 30 days is fetched again.
+  useEffect(() => {
+    if (status !== 'ready' || offline) return;
+    void refreshExpiredPoints(hotels).then((saved) => {
+      if (saved) void refreshTripKit(trip.id);
+    });
+  }, [hotels, status, offline, trip.id]);
   const go = (url: string) => void openUrl(url).then((ok) => !ok && onToast(t('app.noHandler')));
 
   const remove = (h: Hotel) =>

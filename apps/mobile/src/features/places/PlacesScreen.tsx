@@ -293,6 +293,7 @@ export function PlacesScreen({
     const payload = {
       ...hotelPayload({
         name: hotel.name,
+        nameLocal: hotel.nameLocal ?? '',
         addressEn: hotel.addressEn,
         addressLocal: hotel.addressLocal ?? '',
         phone: hotel.phone ?? '',

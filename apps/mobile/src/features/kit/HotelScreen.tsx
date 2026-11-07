@@ -2,6 +2,10 @@
  * Sprint 8 design 4: adding or editing a hotel (AC-1). A full screen like
  * FlightScreen: no steps, errors from the first save on, the server's limit
  * and the trip's dates held there too (save_hotel).
+ *
+ * Sprint 14 F-043 (design 1): the Google search on top fills the fields, which
+ * stay editable; nothing is saved until "Save". The link (place id, when the
+ * point came, what the user changed after) is saved with the hotel (ADR-021).
  */
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as Crypto from 'expo-crypto';
@@ -34,6 +38,18 @@ import { alignFor } from './DriverCard';
 import { MapPointPicker, pointText } from './MapPointPicker';
 import { countryByAdm0 } from '@/features/globe/countryData';
 import { FormShell, styles } from './kitUi';
+import { localLanguageFor, regionsFor } from './countryLanguage';
+import {
+  applyFill,
+  editedFields,
+  type FillField,
+  fromGoogle,
+  googleFill,
+  type GoogleFill,
+  samePointAs,
+} from './placeFill';
+import type { PickedPlace } from './placesApi';
+import { PlaceSearchField } from './PlaceSearchField';
 
 export interface KitTrip {
   id: string;
@@ -50,6 +66,7 @@ const formOf = (
   h
     ? {
         name: h.name,
+        nameLocal: h.nameLocal ?? '',
         addressEn: h.addressEn,
         addressLocal: h.addressLocal ?? '',
         phone: h.phone ?? '',
@@ -57,7 +74,15 @@ const formOf = (
         checkOut: h.checkOut,
         bookingRef: h.bookingRef ?? '',
       }
-    : { name: '', addressEn: '', addressLocal: '', phone: '', bookingRef: '', ...defaults };
+    : {
+        name: '',
+        nameLocal: '',
+        addressEn: '',
+        addressLocal: '',
+        phone: '',
+        bookingRef: '',
+        ...defaults,
+      };
 
 /** A counter from `from` code points on (design 4.2). */
 const counter = (v: string, from: number, max: number) => {
@@ -95,6 +120,15 @@ export function HotelScreen({
   // Sprint 11 D9 (design 8.1): the point on the map, saved with the hotel.
   const [point, setPoint] = useState<[number, number] | null>(hotel?.point ?? null);
   const [picking, setPicking] = useState(false);
+  // Sprint 14 F-043: the latest Google pick in this screen, and the saved link.
+  const [fill, setFill] = useState<GoogleFill | null>(null);
+  const [link, setLink] = useState<{ placeId: string; fetchedAt: string; name: string } | null>(
+    () =>
+      hotel?.placeId && hotel.placeFetchedAt
+        ? { placeId: hotel.placeId, fetchedAt: hotel.placeFetchedAt, name: hotel.name }
+        : null,
+  );
+  const [regions] = useState(() => regionsFor([trip.countryAdm0]));
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<'offline' | 'limit' | 'dates' | 'gone' | 'error' | null>(
@@ -108,7 +142,9 @@ export function HotelScreen({
     if (!e) return undefined;
     if (e === 'tooLong') {
       if (field === 'bookingRef') return t('hotel.err.bookingRef');
-      return t('form.err.tooLong', { max: field === 'name' ? LIMITS.hotelName : LIMITS.address });
+      return t('form.err.tooLong', {
+        max: field === 'name' || field === 'nameLocal' ? LIMITS.hotelName : LIMITS.address,
+      });
     }
     if (e === 'phone') return t('phone.err');
     if (e === 'outsideTrip') return t('hotel.err.outsideTrip', { range });
@@ -116,6 +152,18 @@ export function HotelScreen({
     return t(`hotel.err.${field}`);
   };
   const set = (patch: Partial<HotelForm>) => setValues((v) => ({ ...v, ...patch }));
+  /** Design 1.5: "Filled in from Google" while the field holds Google's value. */
+  const helpOf = (field: FillField, help?: string) =>
+    fromGoogle(values, fill, field) ? t('hotel.fromGoogle') : help;
+
+  const picked = (place: PickedPlace) => {
+    const next = googleFill(place);
+    const applied = applyFill(values, point, next, fill);
+    setValues(applied.form);
+    setPoint(applied.point);
+    setFill(next);
+    setLink({ placeId: next.placeId, fetchedAt: next.fetchedAt, name: next.name });
+  };
 
   const pick = (field: 'checkIn' | 'checkOut') => {
     DateTimePickerAndroid.open({
@@ -160,7 +208,18 @@ export function HotelScreen({
     }
     setBusy(true);
     setNotice(null);
-    const payload = { ...hotelPayload(values), lat: point?.[1] ?? null, lng: point?.[0] ?? null };
+    const payload = {
+      ...hotelPayload(values),
+      lat: point?.[1] ?? null,
+      lng: point?.[0] ?? null,
+      ...(link
+        ? {
+            placeId: link.placeId,
+            placeFetchedAt: link.fetchedAt,
+            placeEdited: editedFields(values, point, fill, hotel),
+          }
+        : { placeId: null, placeEdited: [] }),
+    };
     let result = await saveHotel(id, trip.id, payload);
     if (result === 'consent' && (await recheckConsent())) {
       result = await saveHotel(id, trip.id, payload);
@@ -227,21 +286,41 @@ export function HotelScreen({
         </>
       }
     >
+      <PlaceSearchField
+        regions={regions}
+        localLanguage={localLanguageFor(trip.countryAdm0)}
+        linkedName={link?.name ?? null}
+        colorScheme={colorScheme}
+        onPicked={picked}
+      />
       <TextField
         ref={(r) => void (refs.current.name = r)}
         label={t('hotel.name')}
         value={values.name}
         onChangeText={(name) => set({ name })}
         autoCapitalize="words"
+        help={helpOf('name')}
         error={text('name', errors.name)}
         counter={counter(values.name, 64, LIMITS.hotelName)}
         colorScheme={colorScheme}
         testID="hotel-name"
       />
       <TextField
+        ref={(r) => void (refs.current.nameLocal = r)}
+        label={t('hotel.nameLocal')}
+        help={helpOf('nameLocal', t('hotel.nameLocalHelp'))}
+        value={values.nameLocal}
+        onChangeText={(nameLocal) => set({ nameLocal })}
+        style={{ textAlign: 'auto' }}
+        error={text('nameLocal', errors.nameLocal)}
+        counter={counter(values.nameLocal, 64, LIMITS.hotelName)}
+        colorScheme={colorScheme}
+        testID="hotel-name-local"
+      />
+      <TextField
         ref={(r) => void (refs.current.addressEn = r)}
         label={t('hotel.addressEn')}
-        help={t('hotel.addressEnHelp')}
+        help={helpOf('addressEn', t('hotel.addressEnHelp'))}
         value={values.addressEn}
         onChangeText={(addressEn) => set({ addressEn })}
         multiline
@@ -254,7 +333,7 @@ export function HotelScreen({
       <TextField
         ref={(r) => void (refs.current.addressLocal = r)}
         label={t('hotel.addressLocal')}
-        help={t('hotel.addressLocalHelp')}
+        help={helpOf('addressLocal', t('hotel.addressLocalHelp'))}
         value={values.addressLocal}
         onChangeText={(addressLocal) => set({ addressLocal })}
         multiline
@@ -267,7 +346,7 @@ export function HotelScreen({
       <TextField
         ref={(r) => void (refs.current.phone = r)}
         label={t('hotel.phone')}
-        help={t('hotel.phoneHelp')}
+        help={helpOf('phone', t('hotel.phoneHelp'))}
         value={values.phone}
         onChangeText={(phone) => set({ phone })}
         keyboardType="phone-pad"
@@ -314,7 +393,9 @@ export function HotelScreen({
       <View style={{ gap: 8 }} testID="hotel-point">
         <Text style={[styles.footnote, { color: p.textSecondary }]}>{t('hotel.point')}</Text>
         <Text style={[styles.footnote, { color: p.textPrimary }]} testID="hotel-point-value">
-          {point ? `${t('hotel.pointSet')} · ${pointText(point)}` : t('hotel.pointNone')}
+          {point
+            ? `${t(fill?.point && samePointAs(point, fill.point) ? 'hotel.pointFromGoogle' : 'hotel.pointSet')} · ${pointText(point)}`
+            : t('hotel.pointNone')}
         </Text>
         <Button
           kind="secondary"

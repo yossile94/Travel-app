@@ -13,6 +13,7 @@ import { tripsCacheGeneration } from '@/features/trips/tripsCache';
 
 import { loadKit, type Kit } from './kitApi';
 import type { Hotel, Insurance } from './kitModel';
+import { withLivePoint } from './placeFill';
 
 export interface TripKit {
   hotels: Hotel[];
@@ -127,7 +128,8 @@ export function refreshTripKit(tripId: string): Promise<boolean> {
     const prev = state.get(tripId);
     if (cached && result.reason === 'offline') {
       state.set(tripId, {
-        hotels: cached.hotels,
+        // ADR-021: offline past 30 days, a Google point isn't used on the device.
+        hotels: cached.hotels.map((h) => withLivePoint(h, new Date())),
         insurance: cached.insurance,
         status: 'ready',
         fromCache: true,

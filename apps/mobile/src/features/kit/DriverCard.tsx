@@ -26,8 +26,11 @@ import { colors, fonts, layout } from '@/theme/tokens';
 
 import type { Hotel } from './kitModel';
 import { formatPhone, telUrl } from './phone';
+import { GoogleAttribution } from './PlaceSearchField';
 
 export const STEPS = [44, 36, 30, 24] as const;
+/** Sprint 14 (design 1.7): the local name, a step below the address at each step. */
+export const NAME_STEPS = [36, 30, 26, 24] as const;
 export const MAX_LINES = 8;
 
 /** The next step after a layout of `lines` at step `i`; the same step when it fits or is the last. */
@@ -62,7 +65,7 @@ export const mapsUrl = (h: Pick<Hotel, 'name' | 'addressEn'>) =>
 
 /** The shared text (design 21.3): no labels, never the booking number (AC-6). */
 export const shareText = (h: Hotel) =>
-  [h.name, h.addressLocal, h.addressEn, h.phone ? formatPhone(h.phone) : null]
+  [h.name, h.nameLocal, h.addressLocal, h.addressEn, h.phone ? formatPhone(h.phone) : null]
     .filter(Boolean)
     .join('\n');
 
@@ -86,6 +89,9 @@ export function DriverCard({
   const p = colors.light;
   const big = hotel.addressLocal || hotel.addressEn;
   const dir = textDirection(big);
+  // Sprint 14 (design 1.7): the driver reads the place's name first.
+  const localName = hotel.nameLocal || null;
+  const nameDir = localName ? textDirection(localName) : dir;
   const [step, setStep] = useState(0);
   const [measured, setMeasured] = useState(false);
   const size = STEPS[step] ?? 24;
@@ -95,6 +101,13 @@ export function DriverCard({
     lineHeight: Math.round(size * 1.25),
     writingDirection: dir,
     textAlign: alignFor(dir),
+  };
+  const nameSize = NAME_STEPS[step] ?? 24;
+  const nameStyle = {
+    fontSize: nameSize,
+    lineHeight: Math.round(nameSize * 1.25),
+    writingDirection: nameDir,
+    textAlign: alignFor(nameDir),
   };
 
   return (
@@ -132,7 +145,26 @@ export function DriverCard({
                 else setStep(next);
               }}
             >
-              {big}
+              {localName
+                ? `${localName}
+${big}`
+                : big}
+            </Text>
+          ) : null}
+          {localName ? (
+            <Text
+              style={[
+                styles.localName,
+                nameStyle,
+                { color: p.textPrimary },
+                !measured && styles.hidden,
+              ]}
+              allowFontScaling={false}
+              selectable
+              accessibilityLabel={`${t('driver.localNameA11y')}, ${localName}`}
+              testID="driver-card-local-name"
+            >
+              {localName}
             </Text>
           ) : null}
           <Text
@@ -182,6 +214,7 @@ export function DriverCard({
               {isolateLtr(formatPhone(hotel.phone))}
             </Text>
           ) : null}
+          {hotel.placeId ? <GoogleAttribution colorScheme="light" /> : null}
         </ScrollView>
         <View
           style={[styles.bar, { paddingBottom: insetsBottom + 12, borderTopColor: p.borderSubtle }]}
@@ -237,6 +270,7 @@ const styles = StyleSheet.create({
   },
   content: { paddingHorizontal: 24, paddingVertical: 16, gap: 12 },
   big: { fontFamily: fonts.medium },
+  localName: { fontFamily: fonts.semibold, marginBottom: 8 },
   measure: { position: 'absolute', opacity: 0, start: 24, end: 24, top: 16 },
   hidden: { opacity: 0 },
   rule: { height: 1, marginVertical: 8 },
