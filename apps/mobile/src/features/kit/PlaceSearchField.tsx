@@ -250,7 +250,7 @@ export function PlaceSearchField({
           />
           {shown.kind === 'loading' && !loadingFirst ? (
             <ActivityIndicator size="small" color={p.textSecondary} />
-          ) : query ? (
+          ) : query && picking === null ? (
             <Pressable
               onPress={clear}
               accessibilityRole="button"
