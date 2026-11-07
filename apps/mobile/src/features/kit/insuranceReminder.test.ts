@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 
 import {
@@ -5,6 +6,7 @@ import {
   pruneInsuranceReminders,
   reminderAt,
   reminderTripOf,
+  rescheduleInLanguage,
   syncInsuranceReminder,
 } from './insuranceReminder';
 
@@ -102,5 +104,44 @@ describe('the insurance reminder (AC-10, design 11)', () => {
       ({ notification: { request: { content: { data } } } }) as never;
     expect(reminderTripOf(response({ v: 1, type: 'insurance_reminder', tripId: 't1' }))).toBe('t1');
     expect(reminderTripOf(response({ v: 1, type: 'flight_change', flightId: 'f' }))).toBeNull();
+  });
+});
+
+describe('a new device language (sprint 14 AC-6, Raz PR 34)', () => {
+  const trips = new Map([
+    [trip.id, { startDate: '2027-01-10', countryAdm0: 'THA', insured: false }],
+    [
+      '10000000-0000-4000-8000-000000000002',
+      { startDate: '2027-02-10', countryAdm0: 'JPN', insured: false },
+    ],
+  ]);
+  const textFor = jest.fn((adm0: string) => ({ ...text, title: `No insurance for ${adm0}` }));
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    n.getAllScheduledNotificationsAsync.mockResolvedValue([
+      { identifier: `insurance-reminder:${trip.id}` },
+      { identifier: 'passport-expiry:x' },
+    ] as never);
+  });
+
+  it('schedules the reminders this device has again, in the new language, once', async () => {
+    expect(await rescheduleInLanguage('en', trips, textFor)).toBe(1);
+    expect(textFor).toHaveBeenCalledWith('THA');
+    expect(n.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+    expect(n.scheduleNotificationAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identifier: `insurance-reminder:${trip.id}`,
+        content: expect.objectContaining({ title: 'No insurance for THA' }),
+      }),
+    );
+    jest.clearAllMocks();
+    expect(await rescheduleInLanguage('en', trips, textFor)).toBe(0);
+    expect(n.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('a Hebrew device keeps the reminders it has (they were Hebrew)', async () => {
+    expect(await rescheduleInLanguage('he', trips, textFor)).toBe(0);
+    expect(n.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 });

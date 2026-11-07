@@ -45,7 +45,10 @@
       [
         "expo-localization",
         {
-          "supportsRTL": true
+          "supportsRTL": true,
+          "supportedLocales": {
+            "ios": ["he", "en"]
+          }
         }
       ],
       "@rnmapbox/maps",

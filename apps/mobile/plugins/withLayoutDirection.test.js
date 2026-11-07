@@ -58,3 +58,21 @@ describe('withLayoutDirection', () => {
     expect(source).toContain('getBoolean(key, true)');
   });
 });
+
+describe('the config the plugin depends on (Raz, PR 34)', () => {
+  const { expo } = require('../app.json');
+  const localization = expo.plugins.find((p) => Array.isArray(p) && p[0] === 'expo-localization');
+
+  it('leaves expo-localization at its defaults, so it never overrides the plugin', () => {
+    // A non-default value would make expo-localization set RTL itself on every launch (ADR-022).
+    expect(localization[1].forcesRTL).toBeUndefined();
+    expect(localization[1].supportsRTL).not.toBe(false);
+    expect(expo.extra.forcesRTL).toBeUndefined();
+    expect(expo.extra.supportsRTL).not.toBe(false);
+  });
+
+  it('runs the plugin, and tells iOS the app speaks Hebrew and English only', () => {
+    expect(expo.plugins).toContain('./plugins/withLayoutDirection');
+    expect(localization[1].supportedLocales).toEqual({ ios: ['he', 'en'] });
+  });
+});
