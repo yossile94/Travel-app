@@ -225,6 +225,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   map: { flex: 1 },
+  // Physical on purpose: the pin marks the map's centre in either direction.
   pin: { position: 'absolute', top: '50%', left: '50%', marginLeft: -20, marginTop: -40 },
   zoom: { position: 'absolute', start: 12, top: 12, gap: 8 },
   zoomButton: {
