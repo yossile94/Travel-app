@@ -45,7 +45,10 @@ Deno.serve(async (req) => {
           p_user: userId,
           p_kind: kind,
         });
-        if (error) console.error('[places] quota failed', error.code);
+        if (error) {
+          console.error('[places] quota failed', error.code);
+          throw new Error('quota check failed');
+        }
         return data === true;
       },
       now: () => new Date(),

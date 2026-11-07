@@ -303,3 +303,98 @@ Deno.test(
     );
   },
 );
+
+Deno.test("Google's own quota is 'quota' in every mode (Raz 1)", async () => {
+  const full = { ok: false as const, notFound: false, quota: true };
+  const { deps } = setup({
+    autocomplete: () => Promise.resolve(full),
+    details: () => Promise.resolve(full),
+  });
+  const quota = { error: 'quota' };
+  assertEquals((await places(deps, 'u1', search)).body, quota);
+  assertEquals(
+    (
+      await places(deps, 'u1', {
+        mode: 'pick',
+        placeId: PLACE,
+        session: SESSION,
+        localLanguage: 'th',
+      })
+    ).body,
+    quota,
+  );
+  assertEquals((await places(deps, 'u1', { mode: 'refresh', placeId: PLACE })).body, quota);
+});
+
+Deno.test("a database that can't count is a failure, not 'quota' (Raz 4)", async () => {
+  const { deps, calls } = setup();
+  const broken = { ...deps, take: () => Promise.reject(new Error('db')) };
+  assertEquals((await places(broken, 'u1', search)).body, { error: 'provider' });
+  assertEquals(calls, []);
+});
+
+Deno.test('language codes with a region pass, as Google uses them (Raz 3)', async () => {
+  const { deps, calls } = setup();
+  for (const lang of ['zh-TW', 'zh-HK', 'pt-BR', 'sr-Latn']) {
+    const answer = await places(deps, 'u1', {
+      mode: 'pick',
+      placeId: PLACE,
+      session: SESSION,
+      localLanguage: lang,
+    });
+    assertEquals(answer.status, 200, lang);
+  }
+  assertEquals((await places(deps, 'u1', { ...search, language: 'zh-tw' })).status, 400);
+  assertEquals(calls.length > 0, true);
+});
+
+Deno.test(
+  "the Google client reports its quota and logs only the status and Google's reason (Raz 2)",
+  async () => {
+    const warned: unknown[][] = [];
+    const warn = console.warn;
+    console.warn = (...args: unknown[]) => void warned.push(args);
+    try {
+      const fetcher = ((url: string) =>
+        Promise.resolve(
+          url.endsWith(':autocomplete')
+            ? Response.json({ error: { status: 'RESOURCE_EXHAUSTED' } }, { status: 429 })
+            : Response.json({ error: { status: 'PERMISSION_DENIED' } }, { status: 403 }),
+        )) as typeof fetch;
+      const google = googlePlaces('KEY', fetcher);
+      assertEquals(
+        await google.autocomplete({
+          input: 'secret hotel',
+          session: SESSION,
+          regions: ['TH'],
+          language: 'he',
+        }),
+        { ok: false, notFound: false, quota: true },
+      );
+      assertEquals(
+        await google.details({
+          placeId: PLACE,
+          language: 'th',
+          session: SESSION,
+          fields: PICK_FIELDS,
+        }),
+        { ok: false, notFound: false, quota: false },
+      );
+      assertEquals(warned, [
+        ['[places] google', 'autocomplete', 429, 'RESOURCE_EXHAUSTED'],
+        ['[places] google', 'details', 403, 'PERMISSION_DENIED'],
+      ]);
+      const timedOut = googlePlaces('KEY', (() =>
+        Promise.reject(Object.assign(new Error('t'), { name: 'TimeoutError' }))) as typeof fetch);
+      await timedOut.details({
+        placeId: PLACE,
+        language: 'en',
+        session: null,
+        fields: REFRESH_FIELDS,
+      });
+      assertEquals(warned[2], ['[places] google', 'details', 'timeout']);
+    } finally {
+      console.warn = warn;
+    }
+  },
+);

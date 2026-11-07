@@ -18,7 +18,8 @@ export const PICKS_PER_DAY = 20;
 const PLACE_ID = /^[A-Za-z0-9_-]{10,300}$/;
 const SESSION = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const REGION = /^[A-Z]{2}$/;
-const LANGUAGE = /^[a-z]{2,3}(-[A-Z][a-z]{3})?$/;
+// Google's codes: "th", "zh-TW", "pt-BR", "sr-Latn" (Raz 3).
+const LANGUAGE = /^[a-z]{2,3}(-([A-Z]{2}|[A-Z][a-z]{3}))?$/;
 
 export type Suggestion = { placeId: string; name: string; place: string };
 export type Picked = {
@@ -34,7 +35,10 @@ export type Picked = {
 };
 
 /** What Google answered, already reduced to the fields asked for. */
-export type GoogleAnswer<T> = { ok: true; value: T } | { ok: false; notFound: boolean };
+export type GoogleAnswer<T> =
+  | { ok: true; value: T }
+  /** quota: Google's own limit (the daily cap Yossi sets in the console), Raz 1. */
+  | { ok: false; notFound: boolean; quota?: boolean };
 
 export type PlaceDetails = {
   id: string;
@@ -64,7 +68,10 @@ export type Kind = 'search' | 'pick' | 'refresh';
 export type PlacesDeps = {
   /** Null when the key isn't set yet (AC-5 "unavailable"). */
   provider: PlacesProvider | null;
-  /** The user's daily count and the project's monthly budget, in one step. */
+  /**
+   * The user's daily count and the project's monthly budget, in one step.
+   * Rejects when the database can't answer: that is a failure, not "quota" (Raz 4).
+   */
   take(userId: string, kind: Kind): Promise<boolean>;
   now(): Date;
 };
@@ -98,6 +105,9 @@ export const REFRESH_FIELDS = ['id', 'location'];
 const str = (v: unknown) => (typeof v === 'string' ? v : null);
 const trimmed = (v: string | undefined) => (v && v.trim() ? v.trim() : null);
 
+/** A Google failure as the app reads it: its own quota is "quota" (Raz 1). */
+const fromGoogle = (a: { notFound: boolean; quota?: boolean }) => (a.quota ? quota : failed);
+
 export async function places(
   deps: PlacesDeps,
   userId: string,
@@ -127,14 +137,16 @@ export async function places(
     ) {
       return bad;
     }
-    if (!(await deps.take(userId, 'search'))) return quota;
+    const taken = await deps.take(userId, 'search').catch(() => null);
+    if (taken === null) return failed;
+    if (!taken) return quota;
     const answer = await provider.autocomplete({
       input,
       session,
       regions: regions as string[],
       language,
     });
-    if (!answer.ok) return failed;
+    if (!answer.ok) return fromGoogle(answer);
     return { status: 200, body: { suggestions: answer.value.slice(0, 5) } };
   }
 
@@ -142,14 +154,17 @@ export async function places(
   if (!placeId || !PLACE_ID.test(placeId)) return bad;
 
   if (mode === 'refresh') {
-    if (!(await deps.take(userId, 'refresh'))) return quota;
+    const taken = await deps.take(userId, 'refresh').catch(() => null);
+    if (taken === null) return failed;
+    if (!taken) return quota;
     const answer = await provider.details({
       placeId,
       language: 'en',
       session: null,
       fields: REFRESH_FIELDS,
     });
-    if (!answer.ok) return answer.notFound ? { status: 200, body: { gone: true } } : failed;
+    if (!answer.ok)
+      return answer.notFound ? { status: 200, body: { gone: true } } : fromGoogle(answer);
     const loc = answer.value.location;
     if (!loc) return { status: 200, body: { gone: true } };
     return {
@@ -168,9 +183,11 @@ export async function places(
   const session = str(body.session);
   const local = str(body.localLanguage);
   if (!session || !SESSION.test(session) || !local || !LANGUAGE.test(local)) return bad;
-  if (!(await deps.take(userId, 'pick'))) return quota;
+  const taken = await deps.take(userId, 'pick').catch(() => null);
+  if (taken === null) return failed;
+  if (!taken) return quota;
   const first = await provider.details({ placeId, language: local, session, fields: PICK_FIELDS });
-  if (!first.ok) return first.notFound ? { status: 200, body: { gone: true } } : failed;
+  if (!first.ok) return first.notFound ? { status: 200, body: { gone: true } } : fromGoogle(first);
   const d = first.value;
   let nameEn = trimmed(d.displayName);
   let addressEn = trimmed(d.formattedAddress);
@@ -206,13 +223,14 @@ export async function places(
 /** Places API (New) over fetch. The key never leaves the server. */
 export function googlePlaces(key: string, fetcher: typeof fetch = fetch): PlacesProvider {
   const base = 'https://places.googleapis.com/v1';
-  const timeout = () => AbortSignal.timeout(8_000);
+  // Type-ahead gives up sooner than a pick (Raz 6).
+  const timeout = (ms: number) => AbortSignal.timeout(ms);
   return {
     async autocomplete({ input, session, regions, language }) {
       try {
         const res = await fetcher(`${base}/places:autocomplete`, {
           method: 'POST',
-          signal: timeout(),
+          signal: timeout(4_000),
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': key,
@@ -227,7 +245,7 @@ export function googlePlaces(key: string, fetcher: typeof fetch = fetch): Places
             languageCode: language,
           }),
         });
-        if (!res.ok) return { ok: false, notFound: false };
+        if (!res.ok) return await failure('autocomplete', res);
         const json = (await res.json()) as {
           suggestions?: {
             placePrediction?: {
@@ -251,8 +269,8 @@ export function googlePlaces(key: string, fetcher: typeof fetch = fetch): Places
           });
         }
         return { ok: true, value };
-      } catch {
-        return { ok: false, notFound: false };
+      } catch (e) {
+        return thrown('autocomplete', e);
       }
     },
     async details({ placeId, language, session, fields }) {
@@ -260,11 +278,11 @@ export function googlePlaces(key: string, fetcher: typeof fetch = fetch): Places
         const query = new URLSearchParams({ languageCode: language });
         if (session) query.set('sessionToken', session);
         const res = await fetcher(`${base}/places/${encodeURIComponent(placeId)}?${query}`, {
-          signal: timeout(),
+          signal: timeout(8_000),
           headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': fields.join(',') },
         });
         if (res.status === 404) return { ok: false, notFound: true };
-        if (!res.ok) return { ok: false, notFound: false };
+        if (!res.ok) return await failure('details', res);
         const json = (await res.json()) as {
           id?: string;
           displayName?: { text?: string };
@@ -282,9 +300,39 @@ export function googlePlaces(key: string, fetcher: typeof fetch = fetch): Places
             location: json.location,
           },
         };
-      } catch {
-        return { ok: false, notFound: false };
+      } catch (e) {
+        return thrown('details', e);
       }
     },
   };
+}
+
+/**
+ * Raz 2: a wrong key, an API not enabled or billing off must be visible in
+ * the function's logs. The status and Google's reason only: never the URL,
+ * what was typed, the place id or the session.
+ */
+async function failure(
+  call: string,
+  res: Response,
+): Promise<{ ok: false; notFound: false; quota: boolean }> {
+  let reason = 'unknown';
+  try {
+    const body = (await res.json()) as { error?: { status?: string } };
+    reason = body.error?.status ?? reason;
+  } catch {
+    // Not JSON: the status says enough.
+  }
+  console.warn('[places] google', call, res.status, reason);
+  return { ok: false, notFound: false, quota: res.status === 429 };
+}
+
+function thrown(call: string, e: unknown): { ok: false; notFound: false } {
+  const name = (e as { name?: string } | null)?.name;
+  console.warn(
+    '[places] google',
+    call,
+    name === 'TimeoutError' || name === 'AbortError' ? 'timeout' : 'network',
+  );
+  return { ok: false, notFound: false };
 }
