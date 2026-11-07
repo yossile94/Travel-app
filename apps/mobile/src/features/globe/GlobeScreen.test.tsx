@@ -8,9 +8,9 @@ import * as Notifications from 'expo-notifications';
 import { AccessibilityInfo, BackHandler } from 'react-native';
 import { withTiming } from 'react-native-reanimated';
 
-import '@/i18n';
 import { launchSignals, resetLaunchForTests } from '@/features/launch/launchSignals';
 import { resetLaunchAlertForTests } from '@/features/push/usePushOpen';
+import i18n from '@/i18n';
 import { motion } from '@/theme/tokens';
 
 import { CITY_ZOOM, HOME_ZOOM } from './camera';
@@ -983,6 +983,44 @@ describe('GlobeScreen', () => {
       await render(<GlobeScreen />);
       await act(async () => {});
       expect(sent()).toEqual(['ready']);
+    });
+
+    it('sprint 14 AC-10 (Raz 6): a flight alert waits for a failed first load, then opens', async () => {
+      const flightsStore = jest.requireActual<typeof import('@/features/flights/flightsStore')>(
+        '@/features/flights/flightsStore',
+      );
+      const open = jest.spyOn(flightsStore, 'tripOfFlight').mockResolvedValue('gone');
+      mockAuth.state = {
+        status: 'signedIn',
+        user: { id: 'u1', name: 'א', email: 'a@example.test' },
+      };
+      const trips = mockTrips as typeof mockTrips & { firstLoadFailed?: boolean };
+      trips.firstLoadFailed = true;
+      (Notifications.getLastNotificationResponse as jest.Mock).mockReturnValue({
+        notification: {
+          request: {
+            identifier: 'ac10',
+            content: { title: '', body: '', data: { v: 1, type: 'flight_change', flightId: 'f1' } },
+          },
+        },
+      });
+      try {
+        const { rerender } = await render(<GlobeScreen />);
+        await act(async () => {});
+        expect(screen.getByText(i18n.t('push.openWaiting'))).toBeOnTheScreen();
+        expect(sent()).toContain('ready');
+        expect(open).not.toHaveBeenCalled();
+        // The retry gets the trips: the alert is handled, once.
+        trips.firstLoadFailed = false;
+        trips.firstLoad = true;
+        await rerender(<GlobeScreen />);
+        await act(async () => {});
+        expect(open).toHaveBeenCalledTimes(1);
+        expect(open).toHaveBeenCalledWith('f1');
+      } finally {
+        trips.firstLoadFailed = false;
+        open.mockRestore();
+      }
     });
 
     it('sends error at mount without a Mapbox token (design 1.4)', async () => {

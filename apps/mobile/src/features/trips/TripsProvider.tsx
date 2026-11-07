@@ -273,7 +273,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       changes,
       changed,
       firstLoad,
-      firstLoadFailed,
+      // Only before any load got through: a later failure is not a first one (Raz).
+      firstLoadFailed: firstLoadFailed && !firstLoad,
       start,
       cache,
       fromCache,

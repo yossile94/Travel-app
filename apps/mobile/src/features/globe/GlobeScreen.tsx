@@ -886,8 +886,9 @@ export function GlobeScreen() {
     return () => clearTimeout(timer);
   }, [heldAlert, tripForm, openFromAlert]);
   // Sprint 14 AC-10 (Raz 6): an alert tapped while the first load got nothing
-  // isn't lost: the overlay goes, a message says the flight opens once the
-  // trips arrive, and the load is tried again (TripsProvider) until it does.
+  // isn't lost: a message says the flight opens once the trips arrive, and the
+  // load is tried again (TripsProvider) until it does. The overlay is already
+  // gone by then (the trips start after the globe); 'ready' is only a guard.
   const waitingForTrips =
     auth.state.status === 'signedIn' && trips.firstLoadFailed && !trips.firstLoad;
   useEffect(() => {
