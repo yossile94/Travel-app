@@ -36,6 +36,10 @@ interface HotelRow {
   booking_ref: string | null;
   lat?: number | null;
   lng?: number | null;
+  name_local?: string | null;
+  place_id?: string | null;
+  place_fetched_at?: string | null;
+  place_edited?: string[] | null;
 }
 
 interface InsuranceRow {
@@ -61,6 +65,10 @@ export const hotelFromRow = (r: HotelRow): Hotel => ({
     r.lat !== null && r.lat !== undefined && r.lng !== null && r.lng !== undefined
       ? [r.lng, r.lat]
       : null,
+  nameLocal: r.name_local ?? null,
+  placeId: r.place_id ?? null,
+  placeFetchedAt: r.place_fetched_at ?? null,
+  placeEdited: r.place_edited ?? [],
 });
 
 export const insuranceFromRow = (r: InsuranceRow): Insurance => ({
@@ -89,7 +97,8 @@ export async function loadKit(
     supabase
       .from('hotels')
       .select(
-        'id, trip_id, name, address_en, address_local, phone, check_in, check_out, booking_ref, lat, lng',
+        'id, trip_id, name, address_en, address_local, phone, check_in, check_out, booking_ref, lat, lng, ' +
+          'name_local, place_id, place_fetched_at, place_edited',
       )
       .in('trip_id', ids)
       .order('check_in')
@@ -111,7 +120,7 @@ export async function loadKit(
   return {
     ok: true,
     value: {
-      hotels: (hotels.data as HotelRow[]).map(hotelFromRow),
+      hotels: (hotels.data as unknown as HotelRow[]).map(hotelFromRow),
       insurance: (insurance.data as InsuranceRow[]).map(insuranceFromRow),
     },
   };
@@ -139,7 +148,16 @@ async function call(step: string, fn: string, args: Record<string, unknown>): Pr
 }
 
 /** One hotel, with the id made when the screen opened (a retry writes the same row). */
-export const saveHotel = (id: string, tripId: string, hotel: ReturnType<typeof hotelPayload>) =>
+export type HotelSave = ReturnType<typeof hotelPayload> & {
+  lat?: number | null;
+  lng?: number | null;
+  /** Sprint 14 F-043: the Google link (ADR-021); an older save sends none and keeps it. */
+  placeId?: string | null;
+  placeFetchedAt?: string | null;
+  placeEdited?: string[];
+};
+
+export const saveHotel = (id: string, tripId: string, hotel: HotelSave) =>
   call('save hotel', 'save_hotel', { p_id: id, p_trip_id: tripId, p_hotel: hotel });
 
 /** Never gated by consent. 'gone': already deleted. */

@@ -19,6 +19,14 @@ export interface Hotel {
   bookingRef: string | null;
   /** Sprint 11 D9: a point picked on the map, [lng, lat]; null when none. */
   point?: [number, number] | null;
+  /** Sprint 14 F-043: the name in the country's language, for the driver card. */
+  nameLocal?: string | null;
+  /** Google's id when the hotel was picked from the search (ADR-021). */
+  placeId?: string | null;
+  /** When the point came from Google; it is good for 30 days. */
+  placeFetchedAt?: string | null;
+  /** The fields the user changed after the pick; 'point' keeps a moved point. */
+  placeEdited?: string[];
 }
 
 export interface Insurance {
@@ -67,6 +75,7 @@ export function hotelDefaults(
 
 export interface HotelForm {
   name: string;
+  nameLocal: string;
   addressEn: string;
   addressLocal: string;
   phone: string;
@@ -76,9 +85,17 @@ export interface HotelForm {
 }
 
 export type HotelField =
-  'name' | 'addressEn' | 'addressLocal' | 'phone' | 'checkIn' | 'checkOut' | 'bookingRef';
+  | 'name'
+  | 'nameLocal'
+  | 'addressEn'
+  | 'addressLocal'
+  | 'phone'
+  | 'checkIn'
+  | 'checkOut'
+  | 'bookingRef';
 export const HOTEL_FIELDS: readonly HotelField[] = [
   'name',
+  'nameLocal',
   'addressEn',
   'addressLocal',
   'phone',
@@ -98,6 +115,7 @@ export function hotelErrors(
   const name = v.name.trim();
   if (!name) e.name = 'required';
   else if (codePointLength(name) > LIMITS.hotelName) e.name = 'tooLong';
+  if (codePointLength(v.nameLocal.trim()) > LIMITS.hotelName) e.nameLocal = 'tooLong';
   const en = v.addressEn.trim();
   if (!en) e.addressEn = 'required';
   else if (codePointLength(en) > LIMITS.address) e.addressEn = 'tooLong';
@@ -128,6 +146,7 @@ export function hotelPayload(v: HotelForm) {
   const opt = (s: string) => cleanText(s) || null;
   return {
     name: cleanText(v.name),
+    nameLocal: opt(v.nameLocal),
     addressEn: cleanText(v.addressEn),
     addressLocal: opt(v.addressLocal),
     phone: v.phone.trim() ? normalizePhone(v.phone) : null,

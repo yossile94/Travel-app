@@ -529,6 +529,7 @@ describe('"near the hotel" (AC-5, design 3.4; QA B4)', () => {
     await act(async () => {});
     expect(kitApi.saveHotel).toHaveBeenCalledWith('h1', 'trip-1', {
       name: 'Amari',
+      nameLocal: null,
       addressEn: 'Somewhere 1',
       addressLocal: 'ถนน 1',
       phone: '+6621234567',
