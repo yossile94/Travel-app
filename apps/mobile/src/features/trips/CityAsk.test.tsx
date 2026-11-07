@@ -19,6 +19,7 @@ jest.mock('@/features/auth/AuthProvider', () => ({
   }),
 }));
 jest.mock('@/features/kit/insuranceReminder', () => ({
+  reminderText: jest.requireActual('@/features/kit/insuranceReminder').reminderText,
   syncInsuranceReminder: jest.fn(async () => {}),
   cancelInsuranceReminder: jest.fn(async () => {}),
 }));

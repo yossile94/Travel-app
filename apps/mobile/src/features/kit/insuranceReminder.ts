@@ -9,8 +9,11 @@ import { AndroidImportance, AndroidNotificationVisibility } from 'expo-notificat
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
+import { countryByAdm0 } from '@/features/globe/countryData';
+import { countryName } from '@/features/trips/countryName';
 import { fromPgDate, todayPg } from '@/features/trips/tripDates';
 
+import { countryWords } from './hebrewPrefix';
 import { reminderDay } from './kitModel';
 
 export const REMINDERS_CHANNEL_ID = 'trip-reminders';
@@ -158,12 +161,17 @@ export async function rescheduleInLanguage(
     const was = (await AsyncStorage.getItem(LANGUAGE_KEY)) ?? 'he';
     if (was === language) return 0;
     let count = 0;
+    let skipped = 0;
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     for (const n of scheduled) {
       if (!n.identifier.startsWith(PREFIX)) continue;
       const tripId = n.identifier.slice(PREFIX.length);
       const trip = trips.get(tripId);
-      if (!trip) continue;
+      if (!trip) {
+        // Not in the loaded list (over 50): the next load tries again.
+        skipped++;
+        continue;
+      }
       const done = await syncInsuranceReminder(
         { id: tripId, startDate: trip.startDate },
         trip.insured,
@@ -171,9 +179,26 @@ export async function rescheduleInLanguage(
       );
       if (done === 'scheduled') count++;
     }
-    await AsyncStorage.setItem(LANGUAGE_KEY, language);
+    if (skipped === 0) await AsyncStorage.setItem(LANGUAGE_KEY, language);
     return count;
   } catch {
     return 0;
   }
+}
+
+/** The reminder's words for a trip, in the language of the moment (design 11.1). */
+export function reminderText(
+  t: (k: string, o?: Record<string, unknown>) => string,
+  language: string,
+  countryAdm0: string,
+): ReminderText {
+  const country = countryByAdm0(countryAdm0);
+  const words = countryWords(country ? countryName(country, language) : countryAdm0, language);
+  // Design 11.1 (sprint 6 3.1): an RLM leads Hebrew titles, so a country in Latin script stays in place.
+  const rlm = language === 'he' ? String.fromCharCode(0x200f) : '';
+  return {
+    title: rlm + t('reminder.insurance.title', words),
+    body: rlm + t('reminder.insurance.body'),
+    channel: { name: t('channel.reminders.name'), description: t('channel.reminders.description') },
+  };
 }

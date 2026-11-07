@@ -140,6 +140,14 @@ describe('a new device language (sprint 14 AC-6, Raz PR 34)', () => {
     expect(n.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 
+  it('a reminder whose trip is not in the list yet keeps the change open (Raz, PR 34)', async () => {
+    n.getAllScheduledNotificationsAsync.mockResolvedValue([
+      { identifier: 'insurance-reminder:not-loaded' },
+    ] as never);
+    expect(await rescheduleInLanguage('en', trips, textFor)).toBe(0);
+    expect(await AsyncStorage.getItem('insurance-reminder:language')).toBeNull();
+  });
+
   it('a Hebrew device keeps the reminders it has (they were Hebrew)', async () => {
     expect(await rescheduleInLanguage('he', trips, textFor)).toBe(0);
     expect(n.scheduleNotificationAsync).not.toHaveBeenCalled();

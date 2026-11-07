@@ -18,6 +18,7 @@ jest.mock('./kitApi', () => ({
 }));
 jest.mock('./kitStore', () => ({ refreshTripKit: jest.fn() }));
 jest.mock('./insuranceReminder', () => ({
+  reminderText: jest.requireActual('./insuranceReminder').reminderText,
   syncInsuranceReminder: jest.fn(async () => 'scheduled'),
 }));
 jest.mock('./policyFile', () => ({

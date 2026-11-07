@@ -19,8 +19,11 @@ import {
 
 import { useAuth } from '@/features/auth/AuthProvider';
 import { prefetchFlights } from '@/features/flights/flightsStore';
-import { pruneInsuranceReminders, rescheduleInLanguage } from '@/features/kit/insuranceReminder';
-import { reminderText } from '@/features/kit/InsuranceSection';
+import {
+  pruneInsuranceReminders,
+  reminderText,
+  rescheduleInLanguage,
+} from '@/features/kit/insuranceReminder';
 import { kitsOf, prefetchKit } from '@/features/kit/kitStore';
 import { passportTripsLoaded } from '@/features/passportAlerts/passportRunner';
 import { setCachedTrips } from '@/features/trips/tripCopies';
