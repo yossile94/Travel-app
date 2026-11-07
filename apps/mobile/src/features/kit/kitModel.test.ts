@@ -28,6 +28,7 @@ const hotel = (id: string, checkIn: string, checkOut: string, name = id): Hotel 
 });
 const form = (o: Partial<HotelForm> = {}): HotelForm => ({
   name: 'Amari Watergate',
+  nameLocal: '',
   addressEn: '847 Phetchaburi Road, Bangkok',
   addressLocal: '',
   phone: '',
