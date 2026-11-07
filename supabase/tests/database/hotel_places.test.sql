@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(41);
 
 insert into auth.users (id, email)
 values ('00000000-0000-4000-8000-0000000014a1', 'a14@example.test');
@@ -126,6 +126,44 @@ select is(
   'the text stays: it is the user''s entry'
 );
 
+-- -------------------------------- older apps, and the rule on the saved row (Dudi 3)
+update public.hotels set lat = 13.78, lng = 100.5 where id = '30000000-0000-4000-8000-0000000014a2';
+select pg_temp.sign_in('00000000-0000-4000-8000-0000000014a1');
+select is(
+  public.save_hotel('30000000-0000-4000-8000-0000000014a2', '10000000-0000-4000-8000-0000000014a1',
+    pg_temp.hotel()),
+  'ok', 'an older app saves a hotel whose Google point is past 30 days'
+);
+select is(
+  (select lat from public.hotels where id = '30000000-0000-4000-8000-0000000014a2'), null,
+  'and the expired point it sent is not written back'
+);
+select is(
+  public.save_hotel('30000000-0000-4000-8000-0000000014a3', '10000000-0000-4000-8000-0000000014a1',
+    pg_temp.place(now(), '{"placeId": "ChIJthirdHotelPlaceId"}')),
+  'ok', 'a third hotel with a fresh Google point'
+);
+select is(
+  public.save_hotel('30000000-0000-4000-8000-0000000014a3', '10000000-0000-4000-8000-0000000014a1',
+    pg_temp.hotel('{"lat": 13.9, "lng": 100.6}')),
+  'ok', 'an older app moves its point'
+);
+select is(
+  (select place_edited from public.hotels where id = '30000000-0000-4000-8000-0000000014a3'),
+  array['point'], 'the moved point is marked as the user''s own'
+);
+select is(
+  public.save_hotel('30000000-0000-4000-8000-0000000014a3', '10000000-0000-4000-8000-0000000014a1',
+    pg_temp.hotel('{"placeId": null}')),
+  'ok', 'a save that drops the place id'
+);
+select results_eq(
+  $$select place_id, place_fetched_at from public.hotels where id = '30000000-0000-4000-8000-0000000014a3'$$,
+  $$values (null::text, null::timestamptz)$$,
+  'clears the place id and its time together'
+);
+reset role;
+
 -- ---------------------------------------------------------------- budget
 select ok(
   (select bool_and(relrowsecurity) from pg_class
@@ -134,6 +172,8 @@ select ok(
 );
 select table_privs_are('public', 'places_calls', 'authenticated', array[]::text[], 'users: no counters');
 select table_privs_are('public', 'places_month', 'anon', array[]::text[], 'anon: no budget');
+select table_privs_are('public', 'places_calls', 'anon', array[]::text[], 'anon: no counters');
+select table_privs_are('public', 'places_month', 'authenticated', array[]::text[], 'users: no budget');
 select ok(
   not has_function_privilege('authenticated', 'public.take_places_call(uuid,text)', 'EXECUTE')
   and not has_function_privilege('anon', 'public.take_places_call(uuid,text)', 'EXECUTE')
@@ -154,11 +194,11 @@ select is(public.take_places_call('00000000-0000-4000-8000-0000000014a1', 'pick'
 select is(public.take_places_call('00000000-0000-4000-8000-0000000014a1', 'search'), true,
   'searches have their own count');
 select is(
-  (select picks from public.places_month where month = date_trunc('month', now() at time zone 'utc')::date),
+  (select picks from public.places_month where month = date_trunc('month', now() at time zone 'America/Los_Angeles')::date),
   20, 'a refused pick spends nothing from the month'
 );
 update public.places_month set searches = 9000
-where month = date_trunc('month', now() at time zone 'utc')::date;
+where month = date_trunc('month', now() at time zone 'America/Los_Angeles')::date;
 select is(public.take_places_call('00000000-0000-4000-8000-0000000014a1', 'search'), false,
   'the project''s monthly cap refuses every user');
 select is(
@@ -171,6 +211,12 @@ select throws_ok(
 );
 select is((select cap from public.provider_caps where provider = 'places_pick'), 800,
   'the pick cap is a setting under Enterprise''s free 1,000');
+
+delete from auth.users where id = '00000000-0000-4000-8000-0000000014a1';
+select is(
+  (select count(*) from public.places_calls where user_id = '00000000-0000-4000-8000-0000000014a1'),
+  0::bigint, 'a deleted account''s counts go with it'
+);
 
 select * from finish();
 rollback;
