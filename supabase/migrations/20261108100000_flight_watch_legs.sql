@@ -4,16 +4,30 @@
 -- flight number with a stop came back with one leg. The worker now keeps
 -- every passenger leg of its last answer; the search answers with all of
 -- them, still without a provider call. No change to the units spent.
+--
+-- Deploy order (Dudi 1): this migration first, then flight-watch and
+-- flight-lookup (a new worker on the old schema gets PGRST202).
+-- Rollback (Dudi 3): drop function public.apply_flight_check(bigint,
+-- timestamptz, text, timestamptz, smallint, jsonb, jsonb, timestamptz, jsonb,
+-- jsonb); recreate the 9-arg one from 20261028090000_push.sql with its revoke
+-- and grant; alter table public.flight_watch drop column last_legs. The old
+-- worker works with the new function, so code alone can roll back first.
 
 alter table public.flight_watch
   add column last_legs jsonb constraint flight_watch_last_legs_check
-    check (last_legs is null or (jsonb_typeof(last_legs) = 'array' and jsonb_array_length(last_legs) between 1 and 8));
+    check (last_legs is null or (
+      jsonb_typeof(last_legs) = 'array'
+      and jsonb_array_length(last_legs) between 1 and 8
+      -- A misbehaving provider can't grow the row (Dudi 4).
+      and pg_column_size(last_legs) <= 32768
+    ));
 
 comment on column public.flight_watch.last_legs is
   'Every passenger leg of the last provider answer, for the add-flight search (sprint 14 AC-12).';
 
 drop function public.apply_flight_check(bigint, timestamptz, text, timestamptz, smallint, jsonb, jsonb, timestamptz, jsonb);
--- 20261028090000_push.sql's, with p_legs; a worker that doesn't send it keeps the saved legs.
+-- 20261028090000_push.sql's, with p_legs. A worker that doesn't send it clears
+-- the legs with each new snapshot, and the search falls back to the tracked leg.
 create function public.apply_flight_check(
   p_id bigint,
   p_lock timestamptz,
