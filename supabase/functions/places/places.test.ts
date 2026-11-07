@@ -310,7 +310,7 @@ Deno.test("Google's own quota is 'quota' in every mode (Raz 1)", async () => {
     autocomplete: () => Promise.resolve(full),
     details: () => Promise.resolve(full),
   });
-  const quota = { error: 'quota' };
+  const quota = { error: 'quota' } as const;
   assertEquals((await places(deps, 'u1', search)).body, quota);
   assertEquals(
     (
