@@ -102,3 +102,40 @@ npx eas-cli whoami
 4. לפתוח את Docker Desktop ולחכות שיופיע "Engine running".
 5. **אם מופיעה שגיאה על וירטואליזציה (Virtualization):** צריך להפעיל אותה בהגדרות ה-BIOS של המחשב. האפשרות נקראת Intel VT-x או AMD-V / SVM. אם תצטרך, אדריך אותך צעד אחר צעד.
 6. להגיד לי שזה מוכן, ואני אבדוק שהכול עובד.
+
+---
+
+## ספרינט 14
+
+### 8. Google Places (חיפוש מלון)
+
+**למה:** חיפוש המלון בטופס ממלא אוטומטית את השם, הכתובת בשפה המקומית, הטלפון והמיקום. בלי המפתח, החיפוש מוסתר והטופס הידני עובד כמו היום.
+
+**עלות:** בכל חודש יש מכסה חינמית (בערך 1,000 בחירות של מלון). השרת עוצר את החיפוש ב-800 בחירות בחודש, כך שבתוך המכסה **אין חיוב**. אבל Google דורשת חשבון חיוב פעיל.
+
+**אתה מבצע את כל הצעדים. אני לא מזין כרטיס ולא מפתח.**
+
+1. **חשבון חיוב:**
+   - ב-[console.cloud.google.com](https://console.cloud.google.com) בוחרים את **אותו פרויקט** של ההתחברות עם Google.
+   - Billing ← Link a billing account, ומוסיפים כרטיס.
+2. **הפעלת ה-API:** APIs & Services ← Library ← **Places API (New)** ← Enable.
+3. **התראת תקציב:** Billing ← Budgets & alerts ← Create budget. מומלץ 10$ לחודש, עם התראות במייל ב-50%, 90% ו-100%.
+4. **מכסה יומית:**
+   - APIs & Services ← Places API (New) ← Quotas.
+   - מגבילים את "Place Details" ל-100 ביום ואת "Autocomplete" ל-1,000 ביום.
+   - כשמכסה נגמרת, החיפוש מציג "לא זמין כרגע", והטופס הידני ממשיך לעבוד.
+5. **מפתח מוגבל:**
+   - APIs & Services ← Credentials ← Create credentials ← API key.
+   - ב-Edit API key:
+     - **API restrictions:** Restrict key ← רק **Places API (New)**.
+     - **Application restrictions:** None. הקריאה יוצאת מהשרת של Supabase, לא מהאפליקציה.
+   - מעתיקים את המפתח. **לא שולחים אותו בצ'אט.**
+6. **שמירה ב-Supabase** (בטרמינל של הפרויקט). מחליפים את `<המפתח>` במפתח שהעתקת:
+
+```bash
+npx supabase secrets set GOOGLE_PLACES_KEY=<המפתח> --project-ref xjnflplzqmcsodqyiyyj
+```
+
+7. **מודיעים לי.** אבדוק שהחיפוש עובד מהטלפון.
+
+**לפני שהמפתח עולה לאוויר:** צריך גם את הלוגו הרשמי של Google Maps (קובץ SVG חינמי מהמדריך של Google), כדי להחליף את הטקסט "Google Maps". מחכה לאישור שלך להוריד אותו (`docs/sprints/sprint-14.md`).
