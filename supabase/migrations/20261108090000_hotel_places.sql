@@ -143,6 +143,52 @@ $$;
 revoke execute on function public.save_hotel(uuid, uuid, jsonb) from public, anon;
 grant execute on function public.save_hotel(uuid, uuid, jsonb) to authenticated;
 
+-- ---------------------------------------------------- refresh_hotel_point
+-- Raz (app review 2): the 30-day refresh changes the point and the link only,
+-- so it never writes an older copy of the hotel over an edit made meanwhile,
+-- and isn't refused for the trip's dates or consent (it adds nothing new of
+-- the user's). A point the user moved is never touched. p_place_id null:
+-- Google no longer knows the place; the text stays, the link and point go.
+create function public.refresh_hotel_point(
+  p_id uuid,
+  p_place_id text,
+  p_lat double precision,
+  p_lng double precision,
+  p_fetched_at timestamptz
+)
+  returns text
+  language plpgsql
+  security definer
+  set search_path = ''
+as $
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'sign in required' using errcode = '42501';
+  end if;
+  if p_place_id is not null and (
+    p_lat is null or p_lng is null or p_fetched_at is null
+    or p_fetched_at > now() + interval '5 minutes'
+  ) then
+    raise exception 'bad point' using errcode = '22023';
+  end if;
+  update public.hotels h
+    set place_id = p_place_id,
+        place_fetched_at = case when p_place_id is null then null else p_fetched_at end,
+        lat = case when p_place_id is null then null else p_lat end,
+        lng = case when p_place_id is null then null else p_lng end,
+        updated_at = now()
+  where h.id = p_id and h.user_id = uid and h.place_id is not null
+    and not ('point' = any (h.place_edited));
+  return case when found then 'ok' else 'gone' end;
+end;
+$;
+revoke execute on function public.refresh_hotel_point(uuid, text, double precision, double precision, timestamptz)
+  from public, anon;
+grant execute on function public.refresh_hotel_point(uuid, text, double precision, double precision, timestamptz)
+  to authenticated;
+
 -- ------------------------------------------------------------ the budget
 alter table public.provider_caps drop constraint provider_caps_provider_check;
 alter table public.provider_caps add constraint provider_caps_provider_check

@@ -4,10 +4,11 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(41);
+select plan(49);
 
 insert into auth.users (id, email)
-values ('00000000-0000-4000-8000-0000000014a1', 'a14@example.test');
+values ('00000000-0000-4000-8000-0000000014a1', 'a14@example.test'),
+       ('00000000-0000-4000-8000-00000000014b', 'b14@example.test');
 
 create function pg_temp.sign_in(user_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', user_id, 'role', 'authenticated')::text, true);
@@ -163,6 +164,50 @@ select results_eq(
   'clears the place id and its time together'
 );
 reset role;
+
+-- ------------------------------------------- refresh_hotel_point (Raz app 2)
+update public.hotels
+  set lat = null, lng = null, place_fetched_at = now() - interval '40 days',
+      place_id = 'ChIJsecondHotelPlaceId', place_edited = '{}', phone = '+6622066999'
+where id = '30000000-0000-4000-8000-0000000014a2';
+select pg_temp.sign_in('00000000-0000-4000-8000-0000000014a1');
+select is(
+  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', 'ChIJrefreshedPlaceId', 13.8, 100.6, now()),
+  'ok', 'a point cleared after 30 days is fetched again'
+);
+select results_eq(
+  $select place_id, lat, phone from public.hotels where id = '30000000-0000-4000-8000-0000000014a2'$,
+  $values ('ChIJrefreshedPlaceId'::text, 13.8::double precision, '+6622066999'::text)$,
+  'only the link and the point change'
+);
+select is(
+  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a1', 'ChIJrefreshedPlaceId', 1, 2, now()),
+  'gone', 'a point the user moved is never refreshed'
+);
+select is(
+  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', null, null, null, null),
+  'ok', 'a place Google no longer knows'
+);
+select results_eq(
+  $select place_id, lat, name_local from public.hotels where id = '30000000-0000-4000-8000-0000000014a2'$,
+  $values (null::text, null::double precision, 'โรงแรมสยาม'::text)$,
+  'drops the link and the point, and keeps the text'
+);
+select throws_ok(
+  $select public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', 'ChIJx1234567890', null, null, now())$,
+  '22023', null, 'a refresh without a point is refused'
+);
+reset role;
+select pg_temp.sign_in('00000000-0000-4000-8000-00000000014b');
+select is(
+  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a1', 'ChIJrefreshedPlaceId', 1, 2, now()),
+  'gone', 'another user can''t refresh someone''s hotel'
+);
+reset role;
+select ok(
+  not has_function_privilege('anon', 'public.refresh_hotel_point(uuid,text,double precision,double precision,timestamptz)', 'EXECUTE'),
+  'signed-out clients cannot refresh'
+);
 
 -- ---------------------------------------------------------------- budget
 select ok(
