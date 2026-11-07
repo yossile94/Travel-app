@@ -5,7 +5,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(50);
+select plan(55);
 
 insert into auth.users (id, email)
 values
@@ -189,7 +189,7 @@ select ok(
 select table_privs_are('public', 'flight_lookups', 'authenticated', array[]::text[], 'users: no quota rows');
 select ok(
   not has_function_privilege('authenticated', 'public.claim_flight_watches(integer)', 'EXECUTE')
-  and not has_function_privilege('authenticated', 'public.apply_flight_check(bigint,timestamptz,text,timestamptz,smallint,jsonb,jsonb,timestamptz,jsonb)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.apply_flight_check(bigint,timestamptz,text,timestamptz,smallint,jsonb,jsonb,timestamptz,jsonb,jsonb)', 'EXECUTE')
   and not has_function_privilege('anon', 'public.delete_flight(uuid)', 'EXECUTE'),
   'only the service role runs the queue; signed-out clients delete nothing'
 );
@@ -220,8 +220,31 @@ select is((select last_snapshot from public.flight_watch where flight_number = '
 select public.apply_flight_check(
   w.id, w.locked_until, 'active', now() + interval '15 minutes', 0::smallint,
   '{"status":"Delayed","departure":{"scheduledUtc":"2030-01-01T10:00:00Z"},"arrival":{}}', null, null,
-  '[{"field":"dep_time","old":"a","new":"b"}]')
+  '[{"field":"dep_time","old":"a","new":"b"}]',
+  '[{"number":"LY541","leg":1},{"number":"LY541","leg":2}]')
 from public.flight_watch w where w.flight_number = 'LY541';
+select is((select jsonb_array_length(last_legs) from public.flight_watch where flight_number = 'LY541'), 2,
+  'every leg of the answer is kept for the search (sprint 14 AC-12)');
+-- Dudi 5: the bounds, no leftover 9-arg overload, and an older worker's call.
+select hasnt_function('public', 'apply_flight_check',
+  array['bigint', 'timestamp with time zone', 'text', 'timestamp with time zone', 'smallint', 'jsonb', 'jsonb',
+        'timestamp with time zone', 'jsonb'],
+  'no 9-argument apply_flight_check is left beside the new one');
+select throws_ok(
+  $$update public.flight_watch set last_legs = (select jsonb_agg(n) from generate_series(1, 9) n)
+    where flight_number = 'LY541'$$,
+  '23514', null, 'at most 8 legs');
+select throws_ok(
+  $$update public.flight_watch set last_legs = '{"number":"LY541"}' where flight_number = 'LY541'$$,
+  '23514', null, 'the legs are an array');
+update public.flight_watch set next_check_at = now() - interval '1 minute' where flight_number = 'LY541';
+select count(*) from public.claim_flight_watches(10);
+select public.apply_flight_check(
+  w.id, w.locked_until, 'active', now() + interval '15 minutes', 0::smallint,
+  '{"status":"Expected","departure":{"scheduledUtc":"2030-01-01T10:00:00Z"},"arrival":{}}', null, null, '[]')
+from public.flight_watch w where w.flight_number = 'LY541';
+select is((select last_legs from public.flight_watch where flight_number = 'LY541'), null,
+  'an older worker''s snapshot clears the legs, so the two never mix answers');
 select is((select count(*)::integer from public.flight_events e join public.flight_watch w on w.id = e.watch_id
   where w.flight_number = 'LY541'), 1, 'the claiming run writes its change');
 select is((select sched_dep_utc from public.flight_watch where flight_number = 'LY541'),

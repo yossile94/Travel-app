@@ -69,6 +69,7 @@ function deps(): Deps {
             p_notified: c.notified ?? null,
             p_landed: c.landed ?? null,
             p_events: c.events ?? [],
+            p_legs: c.legs?.length ? c.legs : null,
           },
           [],
         ),
