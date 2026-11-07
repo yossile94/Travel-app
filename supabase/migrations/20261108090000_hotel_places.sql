@@ -22,7 +22,7 @@ alter table public.hotels
   add column name_local text constraint hotels_name_local_check
     check (char_length(name_local) between 1 and 120 and public.text_is_clean(name_local)),
   add column place_id text constraint hotels_place_id_check
-    check (place_id ~ '^[A-Za-z0-9_-]{10,300}$'),
+    check (char_length(place_id) between 10 and 300 and place_id ~ '^[A-Za-z0-9_-]+$'),
   add column place_fetched_at timestamptz,
   add column place_edited text[] not null default '{}' constraint hotels_place_edited_check
     check (place_edited <@ array['name', 'nameLocal', 'addressEn', 'addressLocal', 'phone', 'point']),

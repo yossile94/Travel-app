@@ -41,7 +41,10 @@ Deno.serve(async (req) => {
     {
       provider: key ? googlePlaces(key) : null,
       async take(userId, kind) {
-        const { data, error } = await admin.rpc('take_places_call', { p_user: userId, p_kind: kind });
+        const { data, error } = await admin.rpc('take_places_call', {
+          p_user: userId,
+          p_kind: kind,
+        });
         if (error) console.error('[places] quota failed', error.code);
         return data === true;
       },

@@ -72,7 +72,10 @@ export type PlacesDeps = {
 export type PlacesAnswer =
   | { status: 200; body: { suggestions: Suggestion[] } }
   | { status: 200; body: { place: Picked } }
-  | { status: 200; body: { refreshed: { placeId: string; lat: number; lng: number; fetchedAt: string } } }
+  | {
+      status: 200;
+      body: { refreshed: { placeId: string; lat: number; lng: number; fetchedAt: string } };
+    }
   | { status: 200; body: { gone: true } }
   | { status: 400; body: { error: 'bad_request' } }
   | { status: 429; body: { error: 'quota' } }
@@ -82,7 +85,13 @@ const bad = { status: 400, body: { error: 'bad_request' } } as const;
 const quota = { status: 429, body: { error: 'quota' } } as const;
 const failed = { status: 503, body: { error: 'provider' } } as const;
 
-export const PICK_FIELDS = ['id', 'displayName', 'formattedAddress', 'location', 'internationalPhoneNumber'];
+export const PICK_FIELDS = [
+  'id',
+  'displayName',
+  'formattedAddress',
+  'location',
+  'internationalPhoneNumber',
+];
 export const ENGLISH_FIELDS = ['displayName', 'formattedAddress'];
 export const REFRESH_FIELDS = ['id', 'location'];
 
@@ -105,16 +114,26 @@ export async function places(
     const language = str(body.language);
     const regions = Array.isArray(body.regions) ? body.regions : null;
     if (
-      input.length < 3 || input.length > 100 ||
-      !session || !SESSION.test(session) ||
-      !language || !LANGUAGE.test(language) ||
-      !regions || regions.length < 1 || regions.length > 15 ||
+      input.length < 3 ||
+      input.length > 100 ||
+      !session ||
+      !SESSION.test(session) ||
+      !language ||
+      !LANGUAGE.test(language) ||
+      !regions ||
+      regions.length < 1 ||
+      regions.length > 15 ||
       !regions.every((r) => typeof r === 'string' && REGION.test(r))
     ) {
       return bad;
     }
     if (!(await deps.take(userId, 'search'))) return quota;
-    const answer = await provider.autocomplete({ input, session, regions: regions as string[], language });
+    const answer = await provider.autocomplete({
+      input,
+      session,
+      regions: regions as string[],
+      language,
+    });
     if (!answer.ok) return failed;
     return { status: 200, body: { suggestions: answer.value.slice(0, 5) } };
   }
@@ -124,7 +143,12 @@ export async function places(
 
   if (mode === 'refresh') {
     if (!(await deps.take(userId, 'refresh'))) return quota;
-    const answer = await provider.details({ placeId, language: 'en', session: null, fields: REFRESH_FIELDS });
+    const answer = await provider.details({
+      placeId,
+      language: 'en',
+      session: null,
+      fields: REFRESH_FIELDS,
+    });
     if (!answer.ok) return answer.notFound ? { status: 200, body: { gone: true } } : failed;
     const loc = answer.value.location;
     if (!loc) return { status: 200, body: { gone: true } };
@@ -151,7 +175,12 @@ export async function places(
   let nameEn = trimmed(d.displayName);
   let addressEn = trimmed(d.formattedAddress);
   if (local.split('-')[0] !== 'en') {
-    const english = await provider.details({ placeId, language: 'en', session: null, fields: ENGLISH_FIELDS });
+    const english = await provider.details({
+      placeId,
+      language: 'en',
+      session: null,
+      fields: ENGLISH_FIELDS,
+    });
     // Without the English half the local one still fills the card.
     nameEn = english.ok ? trimmed(english.value.displayName) : null;
     addressEn = english.ok ? trimmed(english.value.formattedAddress) : null;
@@ -203,7 +232,10 @@ export function googlePlaces(key: string, fetcher: typeof fetch = fetch): Places
           suggestions?: {
             placePrediction?: {
               placeId?: string;
-              structuredFormat?: { mainText?: { text?: string }; secondaryText?: { text?: string } };
+              structuredFormat?: {
+                mainText?: { text?: string };
+                secondaryText?: { text?: string };
+              };
             };
           }[];
         };
@@ -212,7 +244,11 @@ export function googlePlaces(key: string, fetcher: typeof fetch = fetch): Places
           const p = s.placePrediction;
           const name = p?.structuredFormat?.mainText?.text;
           if (!p?.placeId || !name) continue;
-          value.push({ placeId: p.placeId, name, place: p.structuredFormat?.secondaryText?.text ?? '' });
+          value.push({
+            placeId: p.placeId,
+            name,
+            place: p.structuredFormat?.secondaryText?.text ?? '',
+          });
         }
         return { ok: true, value };
       } catch {
