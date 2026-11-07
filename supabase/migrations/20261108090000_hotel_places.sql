@@ -149,8 +149,12 @@ grant execute on function public.save_hotel(uuid, uuid, jsonb) to authenticated;
 -- and isn't refused for the trip's dates or consent (it adds nothing new of
 -- the user's). A point the user moved is never touched. p_place_id null:
 -- Google no longer knows the place; the text stays, the link and point go.
+-- p_from_place_id: the place that was refreshed; a hotel picked again
+-- meanwhile isn't touched (Dudi 2). The time must be within Google's 30 days
+-- (Dudi 3; like save_hotel's, it comes from the app: ADR-021, accepted risk).
 create function public.refresh_hotel_point(
   p_id uuid,
+  p_from_place_id text,
   p_place_id text,
   p_lat double precision,
   p_lng double precision,
@@ -160,7 +164,7 @@ create function public.refresh_hotel_point(
   language plpgsql
   security definer
   set search_path = ''
-as $
+as $$
 declare
   uid uuid := auth.uid();
 begin
@@ -170,6 +174,7 @@ begin
   if p_place_id is not null and (
     p_lat is null or p_lng is null or p_fetched_at is null
     or p_fetched_at > now() + interval '5 minutes'
+    or p_fetched_at < now() - interval '30 days'
   ) then
     raise exception 'bad point' using errcode = '22023';
   end if;
@@ -179,14 +184,14 @@ begin
         lat = case when p_place_id is null then null else p_lat end,
         lng = case when p_place_id is null then null else p_lng end,
         updated_at = now()
-  where h.id = p_id and h.user_id = uid and h.place_id is not null
+  where h.id = p_id and h.user_id = uid and h.place_id = p_from_place_id
     and not ('point' = any (h.place_edited));
   return case when found then 'ok' else 'gone' end;
 end;
-$;
-revoke execute on function public.refresh_hotel_point(uuid, text, double precision, double precision, timestamptz)
+$$;
+revoke execute on function public.refresh_hotel_point(uuid, text, text, double precision, double precision, timestamptz)
   from public, anon;
-grant execute on function public.refresh_hotel_point(uuid, text, double precision, double precision, timestamptz)
+grant execute on function public.refresh_hotel_point(uuid, text, text, double precision, double precision, timestamptz)
   to authenticated;
 
 -- ------------------------------------------------------------ the budget

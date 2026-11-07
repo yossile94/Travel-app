@@ -4,7 +4,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(49);
+select plan(52);
 
 insert into auth.users (id, email)
 values ('00000000-0000-4000-8000-0000000014a1', 'a14@example.test'),
@@ -172,41 +172,54 @@ update public.hotels
 where id = '30000000-0000-4000-8000-0000000014a2';
 select pg_temp.sign_in('00000000-0000-4000-8000-0000000014a1');
 select is(
-  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', 'ChIJrefreshedPlaceId', 13.8, 100.6, now()),
+  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', 'ChIJsomeOtherPlace', 'ChIJrefreshedPlaceId', 13.8, 100.6, now()),
+  'gone', 'a hotel picked again meanwhile is not touched (Dudi 2)'
+);
+select is(
+  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', 'ChIJsecondHotelPlaceId', 'ChIJrefreshedPlaceId', 13.8, 100.6, now()),
   'ok', 'a point cleared after 30 days is fetched again'
 );
 select results_eq(
-  $select place_id, lat, phone from public.hotels where id = '30000000-0000-4000-8000-0000000014a2'$,
-  $values ('ChIJrefreshedPlaceId'::text, 13.8::double precision, '+6622066999'::text)$,
+  $$select place_id, lat, phone from public.hotels where id = '30000000-0000-4000-8000-0000000014a2'$$,
+  $$values ('ChIJrefreshedPlaceId'::text, 13.8::double precision, '+6622066999'::text)$$,
   'only the link and the point change'
 );
 select is(
-  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a1', 'ChIJrefreshedPlaceId', 1, 2, now()),
+  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a1', 'ChIJN1t_tDeuEmsRUsoyG83frY4', 'ChIJrefreshedPlaceId', 1, 2, now()),
   'gone', 'a point the user moved is never refreshed'
 );
 select is(
-  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', null, null, null, null),
+  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a3', null, 'ChIJrefreshedPlaceId', 1, 2, now()),
+  'gone', 'a hotel with no link gets none through a refresh (Dudi 4)'
+);
+select throws_ok(
+  $$select public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', 'ChIJrefreshedPlaceId', 'ChIJx1234567890', 1, 2, now() - interval '31 days')$$,
+  '22023', null, 'a fetch time past 30 days is refused (Dudi 3)'
+);
+select is(
+  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', 'ChIJrefreshedPlaceId', null, null, null, null),
   'ok', 'a place Google no longer knows'
 );
 select results_eq(
-  $select place_id, lat, name_local from public.hotels where id = '30000000-0000-4000-8000-0000000014a2'$,
-  $values (null::text, null::double precision, 'โรงแรมสยาม'::text)$,
+  $$select place_id, lat, name_local from public.hotels where id = '30000000-0000-4000-8000-0000000014a2'$$,
+  $$values (null::text, null::double precision, 'โรงแรมสยาม'::text)$$,
   'drops the link and the point, and keeps the text'
 );
 select throws_ok(
-  $select public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', 'ChIJx1234567890', null, null, now())$,
+  $$select public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a2', null, 'ChIJx1234567890', null, null, now())$$,
   '22023', null, 'a refresh without a point is refused'
 );
 reset role;
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000014b');
 select is(
-  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a1', 'ChIJrefreshedPlaceId', 1, 2, now()),
+  public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a1', 'ChIJN1t_tDeuEmsRUsoyG83frY4', 'ChIJrefreshedPlaceId', 1, 2, now()),
   'gone', 'another user can''t refresh someone''s hotel'
 );
 reset role;
 select ok(
-  not has_function_privilege('anon', 'public.refresh_hotel_point(uuid,text,double precision,double precision,timestamptz)', 'EXECUTE'),
-  'signed-out clients cannot refresh'
+  not has_function_privilege('anon', 'public.refresh_hotel_point(uuid,text,text,double precision,double precision,timestamptz)', 'EXECUTE')
+  and has_function_privilege('authenticated', 'public.refresh_hotel_point(uuid,text,text,double precision,double precision,timestamptz)', 'EXECUTE'),
+  'only signed-in users can refresh'
 );
 
 -- ---------------------------------------------------------------- budget
