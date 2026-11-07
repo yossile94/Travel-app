@@ -38,6 +38,8 @@ export type Check = {
   next: string | null;
   attempts: number;
   snapshot?: unknown;
+  /** Sprint 14 AC-12: every passenger leg of the same answer, for the add-flight search. */
+  legs?: unknown[];
   notified?: Notified;
   landed?: string | null;
   events?: unknown[];
@@ -152,6 +154,7 @@ export async function checkFlights(deps: Deps): Promise<{ checked: number; chang
       next: plan.state === 'active' ? plan.next : null,
       attempts: 0,
       snapshot: leg,
+      legs: answer.value.filter((l) => !l.isCargo).slice(0, 8),
       notified,
       landed: plan.state === 'stopped' ? plan.landedAt : null,
       events,
