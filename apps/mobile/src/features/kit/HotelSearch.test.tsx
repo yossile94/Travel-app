@@ -5,7 +5,7 @@ import '@/i18n';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { HotelScreen } from './HotelScreen';
-import { saveHotel } from './kitApi';
+import { refreshHotelPointOnServer, saveHotel } from './kitApi';
 import type { Hotel } from './kitModel';
 import { resetPlaceSearchForTests } from './PlaceSearchField';
 import { pickHotel, refreshHotelPoint, searchHotels } from './placesApi';
@@ -15,8 +15,14 @@ jest.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => ({ recheckConsent: jest.fn(async () => false) }),
 }));
 jest.mock('expo-keep-awake', () => ({ useKeepAwake: jest.fn() }));
-jest.mock('expo-crypto', () => ({ randomUUID: () => '0b4f9a3e-5c2d-4e8f-9a1b-2c3d4e5f6a7b' }));
-jest.mock('./kitApi', () => ({ saveHotel: jest.fn(async () => 'ok') }));
+let mockUuid = 0;
+jest.mock('expo-crypto', () => ({
+  randomUUID: () => `0b4f9a3e-5c2d-4e8f-9a1b-${String(++mockUuid).padStart(12, '0')}`,
+}));
+jest.mock('./kitApi', () => ({
+  saveHotel: jest.fn(async () => 'ok'),
+  refreshHotelPointOnServer: jest.fn(async () => 'ok'),
+}));
 jest.mock('./placesApi', () => ({
   searchHotels: jest.fn(),
   pickHotel: jest.fn(),
@@ -27,6 +33,7 @@ const search = jest.mocked(searchHotels);
 const pick = jest.mocked(pickHotel);
 const refresh = jest.mocked(refreshHotelPoint);
 const save = jest.mocked(saveHotel);
+const writePoint = jest.mocked(refreshHotelPointOnServer);
 
 const trip = {
   id: 't1',
@@ -49,7 +56,7 @@ const place = {
 
 beforeEach(() => {
   jest.useFakeTimers();
-  for (const m of [search, pick, refresh, save]) m.mockClear();
+  for (const m of [search, pick, refresh, save, writePoint]) m.mockClear();
   resetPlaceSearchForTests();
   resetPointRefreshForTests();
   search.mockResolvedValue({
@@ -87,7 +94,7 @@ it('searches after 3 letters and 300ms, in the trip country (AC-1)', async () =>
   await type('siam');
   expect(search).toHaveBeenCalledTimes(1);
   expect(search.mock.calls[0]![0]).toMatchObject({
-    session: '0b4f9a3e-5c2d-4e8f-9a1b-2c3d4e5f6a7b',
+    session: expect.stringMatching(/^0b4f9a3e-/),
     input: 'siam',
     regions: ['TH'],
     language: 'he',
@@ -188,7 +195,7 @@ describe('the point after 30 days (AC-3, ADR-021)', () => {
   };
   const now = new Date('2026-11-08T00:00:00Z');
 
-  it('fetches the point again and saves only it, keeping the text', async () => {
+  it('fetches the point again and writes only it (Raz app review 2)', async () => {
     refresh.mockResolvedValue({
       kind: 'ok',
       refreshed: {
@@ -199,35 +206,36 @@ describe('the point after 30 days (AC-3, ADR-021)', () => {
       },
     });
     expect(await refreshExpiredPoints([linked], now)).toBe(true);
-    expect(save).toHaveBeenCalledWith('h1', 't1', {
-      name: 'Siam Hotel',
-      nameLocal: 'โรงแรมสยาม',
-      addressEn: '3/2 Khao Rd',
-      addressLocal: null,
-      phone: null,
-      checkIn: '2026-12-20',
-      checkOut: '2026-12-24',
-      bookingRef: null,
+    expect(writePoint).toHaveBeenCalledWith('h1', {
+      placeId: 'ChIJnewId1234',
       lat: 13.79,
       lng: 100.51,
-      placeId: 'ChIJnewId1234',
-      placeFetchedAt: now.toISOString(),
-      placeEdited: ['phone'],
+      fetchedAt: now.toISOString(),
     });
+    expect(save).not.toHaveBeenCalled();
     // Once per launch.
     expect(await refreshExpiredPoints([linked], now)).toBe(false);
   });
 
-  it('a place Google no longer knows keeps the text and drops the link', async () => {
+  it('a point the daily job cleared is fetched again too (Raz app review 1)', async () => {
+    refresh.mockResolvedValue({
+      kind: 'ok',
+      refreshed: { placeId: place.placeId, lat: 13.79, lng: 100.51, fetchedAt: now.toISOString() },
+    });
+    expect(await refreshExpiredPoints([{ ...linked, id: 'h2', point: null }], now)).toBe(true);
+    expect(writePoint).toHaveBeenCalledTimes(1);
+  });
+
+  it('a place Google no longer knows drops the link and the point', async () => {
     refresh.mockResolvedValue({ kind: 'gone' });
     await refreshExpiredPoints([linked], now);
-    expect(save.mock.calls[0]![2]).toMatchObject({ lat: null, lng: null, placeId: null });
+    expect(writePoint).toHaveBeenCalledWith('h1', null);
   });
 
   it('offline tries again on the next showing', async () => {
     refresh.mockResolvedValueOnce({ kind: 'offline' });
     await refreshExpiredPoints([linked], now);
-    expect(save).not.toHaveBeenCalled();
+    expect(writePoint).not.toHaveBeenCalled();
     refresh.mockResolvedValueOnce({ kind: 'failed' });
     await refreshExpiredPoints([linked], now);
     expect(refresh).toHaveBeenCalledTimes(2);
@@ -262,4 +270,75 @@ it('the driver card shows the local name first, and Google Maps for a picked hot
   expect(screen.getByTestId('driver-card-local-name')).toHaveTextContent('โรงแรมสยาม');
   expect(screen.getByTestId('google-attribution')).toBeOnTheScreen();
   expect(shareText(linked).split('\n').slice(0, 2)).toEqual(['Siam Hotel', 'โรงแรมสยาม']);
+});
+
+describe('the search field (Raz app review 9)', () => {
+  it('one session from the first search to a clear, a new one after it, used by the pick', async () => {
+    await open();
+    await type('siam');
+    const first = search.mock.calls[0]![0].session;
+    await type('siam h');
+    expect(search.mock.calls[1]![0].session).toBe(first);
+    await act(async () => fireEvent.press(screen.getByTestId('place-search-clear')));
+    await type('amari');
+    const second = search.mock.calls[2]![0].session;
+    expect(second).not.toBe(first);
+    await act(async () => fireEvent.press(screen.getByTestId('place-row-0')));
+    expect(pick.mock.calls[0]![0].session).toBe(second);
+  });
+
+  it('only the latest answer counts', async () => {
+    const answers: ((v: Awaited<ReturnType<typeof searchHotels>>) => void)[] = [];
+    search.mockImplementation(() => new Promise((r) => answers.push(r)));
+    await open();
+    await type('siam');
+    await type('amari');
+    await act(async () =>
+      answers[1]!({
+        kind: 'ok',
+        suggestions: [{ placeId: 'ChIJamari123456', name: 'Amari', place: 'Bangkok' }],
+      }),
+    );
+    await act(async () =>
+      answers[0]!({
+        kind: 'ok',
+        suggestions: [{ placeId: 'ChIJsiam12345678', name: 'Siam', place: 'Bangkok' }],
+      }),
+    );
+    expect(screen.getByText(/Amari/)).toBeOnTheScreen();
+    expect(screen.queryByText(/Siam$/)).toBeNull();
+  });
+
+  it('offline: the search hides; a linked hotel keeps its row with Change off (AC-5)', async () => {
+    const NetInfo = jest.requireMock<{ addEventListener: jest.Mock }>(
+      '@react-native-community/netinfo',
+    );
+    NetInfo.addEventListener.mockImplementation((l: (n: { isConnected: boolean }) => void) => {
+      l({ isConnected: false });
+      return jest.fn();
+    });
+    try {
+      await open();
+      expect(screen.queryByTestId('place-search')).toBeNull();
+      expect(screen.getByTestId('hotel-name')).toBeOnTheScreen();
+      await open({
+        id: 'h1',
+        tripId: 't1',
+        name: 'Siam Hotel',
+        addressEn: 'x',
+        addressLocal: null,
+        phone: null,
+        checkIn: '2026-12-20',
+        checkOut: '2026-12-24',
+        bookingRef: null,
+        placeId: place.placeId,
+        placeFetchedAt: place.fetchedAt,
+        placeEdited: [],
+      });
+      expect(screen.getByTestId('place-linked')).toBeOnTheScreen();
+      expect(screen.getByTestId('place-replace')).toBeDisabled();
+    } finally {
+      NetInfo.addEventListener.mockImplementation(() => jest.fn());
+    }
+  });
 });
