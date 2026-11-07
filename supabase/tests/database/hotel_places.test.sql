@@ -188,6 +188,10 @@ select is(
   public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a1', 'ChIJN1t_tDeuEmsRUsoyG83frY4', 'ChIJrefreshedPlaceId', 1, 2, now()),
   'gone', 'a point the user moved is never refreshed'
 );
+reset role;
+-- Not moved by the user, so only the missing link can refuse it (Dudi).
+update public.hotels set place_edited = '{}' where id = '30000000-0000-4000-8000-0000000014a3';
+select pg_temp.sign_in('00000000-0000-4000-8000-0000000014a1');
 select is(
   public.refresh_hotel_point('30000000-0000-4000-8000-0000000014a3', null, 'ChIJrefreshedPlaceId', 1, 2, now()),
   'gone', 'a hotel with no link gets none through a refresh (Dudi 4)'
