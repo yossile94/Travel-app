@@ -1,6 +1,7 @@
 import type { Hotel, HotelForm } from './kitModel';
 import {
   applyFill,
+  fromPlaces,
   editedFields,
   fromGoogle,
   googleFill,
@@ -103,14 +104,30 @@ describe('what the user changed (Raz design approval 6)', () => {
     expect(fromGoogle(edited, fill, 'phone')).toBe(false);
   });
 
-  it('without a pick in this screen: the saved list, plus a moved point', () => {
+  it('without a pick in this screen: the saved list, plus whatever changed since (Raz app review 3)', () => {
     const saved = {
+      ...form,
       placeId: 'p',
       placeEdited: ['phone'],
       point: [100.5, 13.78],
     } as unknown as Hotel;
     expect(editedFields(form, [100.5, 13.78], null, saved)).toEqual(['phone']);
-    expect(editedFields(form, [1, 2], null, saved)).toEqual(['phone', 'point']);
+    expect(editedFields({ ...form, name: 'Siam' }, [1, 2], null, saved)).toEqual([
+      'name',
+      'phone',
+      'point',
+    ]);
+  });
+
+  it('the attribution shows while any of Google text is still there (ADR-021, 5)', () => {
+    expect(fromPlaces({ placeId: 'p', placeEdited: ['phone'] })).toBe(true);
+    expect(
+      fromPlaces({
+        placeId: 'p',
+        placeEdited: ['name', 'nameLocal', 'addressEn', 'addressLocal', 'phone'],
+      }),
+    ).toBe(false);
+    expect(fromPlaces({ placeId: null, placeEdited: [] })).toBe(false);
   });
 });
 
@@ -130,6 +147,10 @@ describe("Google's 30 days on the point (ADR-021)", () => {
   it('a Google point past 30 days has expired, and the device drops it', () => {
     expect(pointExpired(h({}), now)).toBe(true);
     expect(withLivePoint(h({}), now).point).toBeNull();
+  });
+
+  it('a point the daily job already cleared is due too (Raz app review 1)', () => {
+    expect(pointExpired(h({ point: null }), now)).toBe(true);
   });
 
   it("a fresh one, one the user moved, or one picked on the map hasn't", () => {

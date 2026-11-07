@@ -99,8 +99,15 @@ export function editedFields(
   saved: Hotel | null,
 ): EditedField[] {
   if (!fill) {
+    // A field not yet listed still held Google's value at the last save, so any
+    // change from the saved value is the user's (Raz app review 3).
     const list = new Set<EditedField>((saved?.placeEdited ?? []) as EditedField[]);
-    if (saved?.placeId && !samePointAs(point, saved.point ?? null)) list.add('point');
+    if (saved?.placeId) {
+      for (const f of FILL_FIELDS) {
+        if (cleanText(form[f]) !== (saved[f] ?? '')) list.add(f);
+      }
+      if (!samePointAs(point, saved.point ?? null)) list.add('point');
+    }
     return [...list].sort();
   }
   const list: EditedField[] = FILL_FIELDS.filter((f) => cleanText(form[f]) !== fill[f]);
@@ -113,7 +120,9 @@ export function editedFields(
  * After that it is refreshed when there is a network, or not used.
  */
 export function pointExpired(h: Hotel, now: Date): boolean {
-  if (!h.placeId || !h.placeFetchedAt || !h.point) return false;
+  // Without the point too: the daily job may have cleared it; the place id is
+  // kept so it can come back (Raz app review 1).
+  if (!h.placeId || !h.placeFetchedAt) return false;
   if ((h.placeEdited ?? []).includes('point')) return false;
   return now.getTime() - Date.parse(h.placeFetchedAt) > POINT_DAYS * 86_400_000;
 }
@@ -121,3 +130,7 @@ export function pointExpired(h: Hotel, now: Date): boolean {
 /** The hotel as the device may use it: an expired Google point is dropped. */
 export const withLivePoint = (h: Hotel, now: Date): Hotel =>
   pointExpired(h, now) ? { ...h, point: null } : h;
+
+/** ADR-021 §5: Google's attribution shows while any of its text is still there. */
+export const fromPlaces = (h: Pick<Hotel, 'placeId' | 'placeEdited'>) =>
+  !!h.placeId && !FILL_FIELDS.every((f) => (h.placeEdited ?? []).includes(f));

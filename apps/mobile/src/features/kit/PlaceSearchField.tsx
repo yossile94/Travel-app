@@ -28,10 +28,11 @@ import {
 import { Button, type TextInputHandle } from '@/components/fields';
 import { InlineNotice } from '@/components/formControls';
 import { BedIcon, ClearIcon, SearchIcon } from '@/components/icons';
-import { isolateLtr, isolateOwn } from '@/features/globe/BoardingPassCard';
+import { isolateOwn } from '@/features/globe/BoardingPassCard';
 import { codePointLength } from '@/features/trips/tripDates';
 import { colors, fonts, motion, radius, type ColorScheme } from '@/theme/tokens';
 
+import { GoogleAttribution } from './GoogleAttribution';
 import { pickHotel, searchHotels, type PickedPlace, type Suggestion } from './placesApi';
 
 export const MIN_LETTERS = 3;
@@ -49,28 +50,15 @@ export const resetPlaceSearchForTests = () => {
 
 type ListState =
   | { kind: 'idle' }
-  | { kind: 'loading'; previous: Suggestion[] }
+  | { kind: 'loading'; previous: Suggestion[]; n: number }
   | { kind: 'results'; items: Suggestion[] }
   | { kind: 'unavailable' };
-
-/** "Google Maps", untranslated, left to right (Raz design approval 4). */
-export function GoogleAttribution({ colorScheme }: { colorScheme: ColorScheme }) {
-  const p = colors[colorScheme];
-  return (
-    <Text
-      style={[styles.attribution, { color: p.textSecondary }]}
-      accessibilityLabel="Google Maps"
-      testID="google-attribution"
-    >
-      {isolateLtr('Google Maps')}
-    </Text>
-  );
-}
 
 export function PlaceSearchField({
   regions,
   localLanguage,
   linkedName,
+  linkedAttribution = true,
   colorScheme,
   onPicked,
 }: {
@@ -80,6 +68,8 @@ export function PlaceSearchField({
   localLanguage: string;
   /** The saved or just-picked hotel's name when linked to Google. */
   linkedName: string | null;
+  /** ADR-021 §5: some of Google's text is still in the form. */
+  linkedAttribution?: boolean;
   colorScheme: ColorScheme;
   onPicked: (place: PickedPlace) => void;
 }) {
@@ -92,11 +82,14 @@ export function PlaceSearchField({
   const [list, setList] = useState<ListState>({ kind: 'idle' });
   const [picking, setPicking] = useState<string | null>(null);
   const [detailsFailed, setDetailsFailed] = useState(false);
+  // Design 1.4: the skeleton only after motion.skeletonDelay, for the request it waits on.
+  const [skeletonFor, setSkeletonFor] = useState(-1);
   const session = useRef<string | null>(null);
   const asked = useRef(0);
   const input = useRef<TextInputHandle>(null);
 
   useEffect(() => NetInfo.addEventListener((s) => setOffline(s.isConnected === false)), []);
+  const waitingOn = list.kind === 'loading' && list.previous.length === 0 ? list.n : -1;
 
   // Debounced search: only the latest answer counts.
   useEffect(() => {
@@ -105,7 +98,7 @@ export function PlaceSearchField({
     const n = ++asked.current;
     const timer = setTimeout(() => {
       session.current ??= Crypto.randomUUID();
-      setList((l) => ({ kind: 'loading', previous: l.kind === 'results' ? l.items : [] }));
+      setList((l) => ({ kind: 'loading', previous: l.kind === 'results' ? l.items : [], n }));
       void searchHotels({
         input: query.trim(),
         session: session.current,
@@ -133,6 +126,12 @@ export function PlaceSearchField({
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [query, regions, i18n.language, t]);
+
+  useEffect(() => {
+    if (waitingOn < 0) return;
+    const timer = setTimeout(() => setSkeletonFor(waitingOn), motion.skeletonDelay);
+    return () => clearTimeout(timer);
+  }, [waitingOn]);
 
   const clear = () => {
     asked.current++;
@@ -184,7 +183,7 @@ export function PlaceSearchField({
             <Text style={[styles.bodyStrong, { color: p.textPrimary }]} numberOfLines={2}>
               {isolateOwn(linkedName)}
             </Text>
-            <GoogleAttribution colorScheme={colorScheme} />
+            {linkedAttribution ? <GoogleAttribution colorScheme={colorScheme} /> : null}
           </View>
           <Button
             kind="text"
@@ -210,6 +209,7 @@ export function PlaceSearchField({
   const items =
     shown.kind === 'results' ? shown.items : shown.kind === 'loading' ? shown.previous : [];
   const loadingFirst = shown.kind === 'loading' && shown.previous.length === 0;
+  const skeleton = shown.kind === 'loading' && loadingFirst && skeletonFor === shown.n;
 
   return (
     <>
@@ -217,11 +217,18 @@ export function PlaceSearchField({
         <Text style={[styles.label, { color: p.textSecondary }]} importantForAccessibility="no">
           {t('hotel.search.label')}
         </Text>
-        <View style={[styles.box, { backgroundColor: p.surface, borderColor: p.borderControl }]}>
+        <View
+          style={[
+            styles.box,
+            { backgroundColor: p.surface, borderColor: p.borderControl },
+            picking !== null && styles.dim,
+          ]}
+        >
           <SearchIcon color={p.textSecondary} size={20} />
           <TextInput
             ref={input}
             value={query}
+            editable={picking === null}
             onChangeText={(v) => {
               setDetailsFailed(false);
               setQuery(v);
@@ -272,7 +279,7 @@ export function PlaceSearchField({
             colorScheme={colorScheme}
             testID="place-search-unavailable"
           />
-        ) : loadingFirst ? (
+        ) : skeleton ? (
           <View
             style={[styles.list, { backgroundColor: p.surfaceRaised, borderColor: p.borderSubtle }]}
             testID="place-search-loading"
@@ -395,7 +402,6 @@ const styles = StyleSheet.create({
   empty: { padding: 12, marginTop: 0 },
   skeleton: { height: 48, margin: 8, borderRadius: radius.xs * 2 },
   attributionRow: { borderTopWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
-  attribution: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, textAlign: 'right' },
   linked: {
     minHeight: 64,
     borderRadius: radius.md,

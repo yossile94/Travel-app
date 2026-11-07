@@ -26,7 +26,8 @@ import { colors, fonts, layout } from '@/theme/tokens';
 
 import type { Hotel } from './kitModel';
 import { formatPhone, telUrl } from './phone';
-import { GoogleAttribution } from './PlaceSearchField';
+import { GoogleAttribution } from './GoogleAttribution';
+import { fromPlaces } from './placeFill';
 
 export const STEPS = [44, 36, 30, 24] as const;
 /** Sprint 14 (design 1.7): the local name, a step below the address at each step. */
@@ -214,7 +215,7 @@ ${big}`
               {isolateLtr(formatPhone(hotel.phone))}
             </Text>
           ) : null}
-          {hotel.placeId ? <GoogleAttribution colorScheme="light" /> : null}
+          {fromPlaces(hotel) ? <GoogleAttribution colorScheme="light" /> : null}
         </ScrollView>
         <View
           style={[styles.bar, { paddingBottom: insetsBottom + 12, borderTopColor: p.borderSubtle }]}

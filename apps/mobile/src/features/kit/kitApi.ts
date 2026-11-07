@@ -160,6 +160,23 @@ export type HotelSave = ReturnType<typeof hotelPayload> & {
 export const saveHotel = (id: string, tripId: string, hotel: HotelSave) =>
   call('save hotel', 'save_hotel', { p_id: id, p_trip_id: tripId, p_hotel: hotel });
 
+/**
+ * Sprint 14 (ADR-021, Raz app review 2): the 30-day refresh, the point and the
+ * link only. A null place id: Google no longer knows it; the text stays.
+ * 'gone': the hotel is gone, or its point is the user's own.
+ */
+export const refreshHotelPointOnServer = (
+  id: string,
+  point: { placeId: string; lat: number; lng: number; fetchedAt: string } | null,
+) =>
+  call('refresh hotel point', 'refresh_hotel_point', {
+    p_id: id,
+    p_place_id: point?.placeId ?? null,
+    p_lat: point?.lat ?? null,
+    p_lng: point?.lng ?? null,
+    p_fetched_at: point?.fetchedAt ?? null,
+  });
+
 /** Never gated by consent. 'gone': already deleted. */
 export const deleteHotel = (id: string) => call('delete hotel', 'delete_hotel', { p_id: id });
 

@@ -44,6 +44,7 @@ import {
   editedFields,
   type FillField,
   fromGoogle,
+  fromPlaces,
   googleFill,
   type GoogleFill,
   samePointAs,
@@ -290,6 +291,10 @@ export function HotelScreen({
         regions={regions}
         localLanguage={localLanguageFor(trip.countryAdm0)}
         linkedName={link?.name ?? null}
+        linkedAttribution={fromPlaces({
+          placeId: link?.placeId ?? null,
+          placeEdited: editedFields(values, point, fill, hotel),
+        })}
         colorScheme={colorScheme}
         onPicked={picked}
       />
