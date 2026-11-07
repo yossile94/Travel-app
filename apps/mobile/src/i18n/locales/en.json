@@ -808,7 +808,8 @@
     "channel": {
       "name": "Flight changes",
       "description": "When a flight you're tracking is delayed, moved earlier, changes gate, is cancelled or diverted, or a connection is at risk."
-    }
+    },
+    "openWaiting": "We couldn't load your trips yet. The flight will open as soon as we do."
   },
   "route": {
     "header": "{{direction}} · ",
