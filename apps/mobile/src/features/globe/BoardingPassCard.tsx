@@ -160,7 +160,9 @@ export function BoardingPassCard({
   tripsMode = false,
   onExitTripsMode,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const hebrew = i18n.language === 'he';
+  const title = hebrew ? country.nameHe : country.nameEn;
   const { fontScale, height: windowHeight } = useWindowDimensions();
   // The header (the names beside the stub): the first tear line (fix 3).
   const [passHeight, setPassHeight] = useState(0);
@@ -402,13 +404,13 @@ export function BoardingPassCard({
                           { color: palette.textPrimary },
                         ]}
                         accessibilityRole="header"
-                        accessibilityLabel={country.nameHe}
+                        accessibilityLabel={title}
                         numberOfLines={fontScale >= 1.3 ? 2 : 1}
                         ellipsizeMode="tail"
                         maxFontSizeMultiplier={1.6}
                         testID="card-name"
                       >
-                        {country.nameHe}
+                        {title}
                       </Text>
                       <CardEntryLine
                         ref={entryRef}
@@ -439,44 +441,48 @@ export function BoardingPassCard({
                       <Text
                         style={[
                           styles.nameHe,
-                          country.nameHe.length > layout.cardNameStepDownChars && styles.nameHeLong,
+                          title.length > layout.cardNameStepDownChars && styles.nameHeLong,
                           styles.clearOfClose,
                           { color: palette.textPrimary },
                         ]}
                         accessibilityRole="header"
-                        accessibilityLabel={country.nameHe}
+                        accessibilityLabel={title}
                         numberOfLines={2}
                         ellipsizeMode="tail"
                         maxFontSizeMultiplier={1.6}
                         testID="card-name"
                       >
-                        {country.nameHe}
+                        {title}
                       </Text>
                       {/* The inner row is laid out left to right even in Hebrew: in an
                           RTL layout Android ellipsized the English name from the wrong end
                           ("H GEORGIA …", sprint 1 QA). The outer view keeps the app's
                           direction, so the space for the close button stays on its side. */}
-                      <View style={styles.clearOfClose}>
-                        <View
-                          style={styles.nameEnRow}
-                          onLayout={(event) => setNameEnWidth(event.nativeEvent.layout.width)}
-                        >
-                          <Text
-                            style={[
-                              styles.nameEn,
-                              !spaceEnglishName(country.nameEn, fontScale, nameEnWidth) &&
-                                styles.nameEnTight,
-                              { color: palette.textSecondary },
-                            ]}
-                            accessibilityLabel={country.nameEn}
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                            testID="card-name-en"
+                      {/* Sprint 14 (design 2.4): in English the title is the English
+                          name, so the spaced line below it would only repeat it. */}
+                      {hebrew ? (
+                        <View style={styles.clearOfClose}>
+                          <View
+                            style={styles.nameEnRow}
+                            onLayout={(event) => setNameEnWidth(event.nativeEvent.layout.width)}
                           >
-                            {country.nameEn}
-                          </Text>
+                            <Text
+                              style={[
+                                styles.nameEn,
+                                !spaceEnglishName(country.nameEn, fontScale, nameEnWidth) &&
+                                  styles.nameEnTight,
+                                { color: palette.textSecondary },
+                              ]}
+                              accessibilityLabel={country.nameEn}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                              testID="card-name-en"
+                            >
+                              {country.nameEn}
+                            </Text>
+                          </View>
                         </View>
-                      </View>
+                      ) : null}
                       {/* Fix 4.2: banned or restricted entry only; no threat level on the card (Yossi). */}
                       <CardEntryLine
                         ref={entryRef}

@@ -1054,6 +1054,7 @@ export function GlobeScreen() {
 
   // The Mapbox logo and credits keep their own strip above the controls (sprint 1 design 1).
   const logoPosition = useMemo(
+    // Physical on purpose: Mapbox's logo and attribution sit on the map's left edge in either UI.
     () => ({ top: insets.top + layout.mapboxLogoTop, left: layout.mapboxLogoLeft }),
     [insets.top],
   );

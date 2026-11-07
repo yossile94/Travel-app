@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   BackHandler,
   Dimensions,
+  I18nManager,
   FlatList,
   Keyboard,
   Pressable,
@@ -676,7 +677,8 @@ const styles = StyleSheet.create({
     // Unlike Text, Android's EditText takes textAlign literally (seen on the
     // A73: 'left' put Hebrew on the left), so the start edge in Hebrew is
     // 'right'; it also keeps Latin input ("usa") on the right (design 2.5).
-    textAlign: 'right',
+    // In English the start edge is 'left' (sprint 14 AC-8).
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
   results: {
     position: 'absolute',

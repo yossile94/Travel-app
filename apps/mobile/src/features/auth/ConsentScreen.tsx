@@ -58,7 +58,7 @@ export function ConsentScreen({
   insetsTop,
   insetsBottom,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { submitConsent, signOut } = useAuth();
   const palette = colors[colorScheme];
   // Opens one tick after mounting. The parent switches the status bar to dark
@@ -194,6 +194,15 @@ export function ConsentScreen({
                 ) : null}
               </Pressable>
             ))}
+            {i18n.language === 'he' ? null : (
+              // Sprint 14 AC-8: the documents are Hebrew until the lawyer's versions.
+              <Text
+                style={[styles.footnote, { color: palette.textSecondary }]}
+                testID="consent-hebrew-only"
+              >
+                {t('consent.hebrewOnly')}
+              </Text>
+            )}
           </View>
 
           {firstTime ? (
