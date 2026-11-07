@@ -257,3 +257,29 @@ describe('TripsProvider offline (sprint 4 F-015)', () => {
     );
   });
 });
+
+describe('a first load with nothing to show (sprint 14 AC-10, Raz 6)', () => {
+  afterEach(() => jest.useRealTimers());
+
+  it('says so, tries again on the backoff, and clears once the trips arrive', async () => {
+    jest.useFakeTimers();
+    jest.mocked(NetInfo.fetch).mockResolvedValue({ isConnected: true } as never);
+    const { result } = await renderHook(() => useTrips(), { wrapper });
+    await act(async () => result.current.start());
+    await act(async () => mockAnswers[0]!({ ok: false, reason: 'error' }));
+    expect(result.current.firstLoad).toBe(false);
+    expect(result.current.firstLoadFailed).toBe(true);
+    await act(async () => jest.advanceTimersByTimeAsync(30_000));
+    expect(mockAnswers).toHaveLength(2);
+    await answer(1, ['THA']);
+    expect(result.current.firstLoad).toBe(true);
+    expect(result.current.firstLoadFailed).toBe(false);
+  });
+
+  it('offline with no copy on the device is the same', async () => {
+    const { result } = await renderHook(() => useTrips(), { wrapper });
+    await act(async () => result.current.start());
+    await act(async () => mockAnswers[0]!({ ok: false, reason: 'offline' }));
+    expect(result.current.firstLoadFailed).toBe(true);
+  });
+});
