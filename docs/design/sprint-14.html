@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ספרינט 14: חיפוש מלון ואנגלית</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#FFFBF5;--surface:#FFFFFF;--raised:#FFFFFF;--alt:#FBF4E8;--t1:#121C36;--t2:#4A5573;--t3:#646E8A;
+    --border:#F4E7D0;--control:#7D869E;--primary:#1561BC;--onPrimary:#FFFFFF;--infoBg:#EEF6FF;--infoFg:#104C94;
+    --secBg:#EEF6FF;--pressed:#FBF4E8;--skeleton:#F4E7D0;--cta:#C8441F;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Rubik,system-ui,sans-serif;background:#E9EEFA;color:var(--t1)}
+  header{position:sticky;top:0;z-index:5;background:#121C36;color:#F3F6FC;padding:12px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;font-weight:600}
+  header button{font:inherit;background:#1A2749;color:#F3F6FC;border:1px solid #7487BD;border-radius:999px;padding:8px 16px;cursor:pointer;min-height:44px}
+  header button[aria-pressed="true"]{background:#6FB3FA;color:#060B18;border-color:#6FB3FA}
+  main{display:flex;flex-wrap:wrap;gap:32px;padding:24px;justify-content:center}
+  figure{margin:0;display:flex;flex-direction:column;gap:8px;align-items:center}
+  figcaption{font-size:14px;color:#4A5573;max-width:360px;text-align:center}
+  .phone{width:360px;height:760px;background:var(--canvas);border-radius:32px;border:8px solid #121C36;overflow:hidden;display:flex;flex-direction:column;position:relative}
+  .status{height:24px}
+  .bar{min-height:56px;display:flex;align-items:center;gap:4px;padding-inline-end:16px}
+  .iconbtn{width:48px;height:48px;display:flex;align-items:center;justify-content:center;flex:none}
+  .bar .title{font-weight:600;font-size:20px;line-height:26px}
+  .bar .sub{font-size:13px;color:var(--t2)}
+  .content{flex:1;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:20px}
+  .footer{border-top:1px solid var(--border);padding:12px 16px 20px}
+  .btn{height:48px;border-radius:12px;background:var(--primary);color:var(--onPrimary);display:flex;align-items:center;justify-content:center;font-weight:500}
+  .lbl{font-size:13px;color:var(--t2);margin-bottom:6px}
+  .input{min-height:48px;border:1px solid var(--control);border-radius:12px;background:var(--surface);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:16px}
+  .input.dis{opacity:.5}
+  .input .ph{color:var(--t3);flex:1}
+  .input .val{flex:1}
+  .help{font-size:13px;line-height:18px;color:var(--t2);margin-top:6px}
+  .h3{font-weight:600;font-size:18px;line-height:24px}
+  .list{background:var(--raised);border:1px solid var(--border);border-radius:12px;margin-top:8px;overflow:hidden}
+  .row{min-height:64px;display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid var(--border)}
+  .row .n{font-weight:600;font-size:16px;line-height:22px}
+  .row .c{font-size:13px;color:var(--t2)}
+  .row .grow{flex:1;min-width:0}
+  .row.dim{opacity:.5}
+  .attr{height:32px;display:flex;align-items:center;justify-content:flex-end;padding:0 12px;font-size:13px;color:var(--t2)}
+  .sk{height:64px;padding:12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+  .sk i{display:block;height:12px;border-radius:6px;background:var(--skeleton);animation:p 1s ease-in-out infinite alternate}
+  @keyframes p{from{opacity:1}to{opacity:.5}}
+  @media (prefers-reduced-motion:reduce){.sk i{animation:none}}
+  .empty{padding:12px;font-size:13px;line-height:18px;color:var(--t2);border-bottom:1px solid var(--border)}
+  .notice{background:var(--infoBg);color:var(--infoFg);border-radius:12px;padding:12px;display:flex;gap:8px;font-size:15px;line-height:20px;margin-top:8px}
+  .linked{background:var(--alt);border-radius:12px;padding:12px;display:flex;gap:12px;align-items:center;min-height:64px}
+  .linked .cap{font-size:12px;font-weight:600;color:var(--t2)}
+  .textbtn{color:var(--primary);font-weight:500;min-height:48px;display:flex;align-items:center;padding:0 8px}
+  .from{color:var(--t2)}
+  .flash{animation:f .6s cubic-bezier(.2,0,0,1)}
+  @keyframes f{from{background:var(--secBg)}to{background:var(--surface)}}
+  .ltr{direction:ltr;unicode-bidi:isolate}
+  .own{unicode-bidi:isolate}
+  .spin{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:s 1s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+  /* driver card */
+  .driver{background:#fff}
+  .driver .content{gap:12px;padding:16px 24px}
+  .dname{font-weight:600;font-size:36px;line-height:45px}
+  .daddr{font-weight:500;font-size:44px;line-height:55px}
+  .rule{height:1px;background:var(--border);margin:8px 0}
+  .den{font-weight:600;font-size:22px;line-height:28px}
+  .dena{font-size:18px;line-height:24px;color:var(--t2)}
+  .dph{font-weight:500;font-size:17px;font-variant-numeric:tabular-nums}
+  .dbar{display:flex;gap:8px;padding:12px 16px 20px;border-top:1px solid var(--border)}
+  .dbar div{flex:1;height:48px;border-radius:12px;background:var(--secBg);color:#104C94;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:15px}
+  /* boarding pass */
+  .globe{flex:1;background:radial-gradient(circle at 50% 35%,#1561BC 0,#0A1A3C 55%,#03060F 100%);position:relative}
+  .pass{position:absolute;inset-inline:12px;bottom:24px;background:#fff;border-radius:16px;display:flex;min-height:168px;overflow:hidden}
+  .pass .main{flex:1;padding:22px 20px 16px;position:relative}
+  .pass .strip{position:absolute;top:0;inset-inline:0;height:4px;background:#FF7A57}
+  .pass .lab{font-size:12px;font-weight:600;color:var(--t2)}
+  .pass .nm{font-size:28px;line-height:34px;font-weight:700;margin-top:4px}
+  .pass .en{font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--t2);font-weight:500}
+  .pass .stub{width:88px;border-inline-start:2px dashed var(--border);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:54px 0 14px}
+  .pass .code{font-weight:700;font-size:20px;background:#121C36;color:#F3F6FC;border-radius:4px;padding:4px 6px;letter-spacing:2px}
+  .pass .close{position:absolute;top:4px;inset-inline-end:4px}
+  .pass .bc{width:60px;height:24px;background:repeating-linear-gradient(90deg,#121C36 0 2px,transparent 2px 4px)}
+  .sw{display:flex;align-items:center;justify-content:space-between;min-height:56px;background:#fff;border-radius:12px;padding:0 12px;margin:12px}
+  .track{width:52px;height:32px;border-radius:999px;background:var(--primary);position:relative}
+  .knob{position:absolute;top:4px;inset-inline-end:4px;width:24px;height:24px;border-radius:50%;background:#fff}
+  svg.mir{transform:scaleX(var(--mx,1))}
+  [dir="rtl"] svg.mir{--mx:-1}
+</style>
+</head>
+<body>
+<header>
+  <h1>ספרינט 14 · חיפוש מלון ואנגלית · <span style="font-weight:400">להדגמה בלבד, השמות והכתובות לדוגמה</span></h1>
+  <button id="he" aria-pressed="true">עברית</button>
+  <button id="en" aria-pressed="false">English</button>
+</header>
+<main id="m"></main>
+<script>
+const S={
+ title:['הוספת מלון','Add a hotel'],trip:['תאילנד, נובמבר','Thailand, November'],
+ sLabel:['חיפוש מלון','Search for a hotel'],sPh:['מקלידים את שם המלון','Start typing the hotel name'],
+ sHelp:['לפחות 3 אותיות. אפשר גם למלא ידנית למטה.','At least 3 letters. You can also fill in the details below.'],
+ details:['פרטי המלון','Hotel details'],name:['שם המלון','Hotel name'],
+ nameLocal:['שם המלון בשפה המקומית (לא חובה)','Hotel name in the local language (optional)'],
+ nameLocalHelp:['מוצג לנהג בכרטיס','Shown to the driver on the card'],
+ addrEn:['כתובת באנגלית','Address in English'],addrEnHelp:['כמו שהיא מופיעה באישור ההזמנה','As it appears on your booking confirmation'],
+ addrLocal:['כתובת בשפה המקומית (לא חובה)','Address in the local language (optional)'],
+ phone:['טלפון המלון (לא חובה)','Hotel phone (optional)'],
+ point:['מיקום במפה (לא חובה)','Location on the map (optional)'],pointG:['נקודה מ-Google','Location from Google'],
+ save:['שמירת המלון','Save hotel'],
+ empty:['לא מצאנו מלון בשם הזה. נסו שם אחר, או מלאו ידנית למטה.','No hotel found with that name. Try another name, or fill in the details below.'],
+ unavail:['החיפוש לא זמין כרגע, אפשר למלא ידנית.',"Search isn't available right now. You can fill in the details yourself."],
+ detErr:['לא הצלחנו להביא את פרטי המלון. נסו שוב, או מלאו ידנית.',"We couldn't get the hotel's details. Try again, or fill them in yourself."],
+ fromG:['מולא מ-Google. אפשר לערוך.','Filled in from Google. You can edit it.'],
+ linked:['נבחר מ-Google','Selected from Google'],replace:['החלפה','Change'],
+ nav:['ניווט','Navigate'],call:['חיוג','Call'],share:['שיתוף','Share'],
+ dest:['יעד','Destination'],thai:['תאילנד','Thailand'],
+ notif:['התראות טיסה','Flight alerts'],
+ f1:['1. טופס המלון, לפני חיפוש','1. Hotel form, before searching'],
+ f2:['2. הצעות: עד 5, שם ועיר, ייחוס בסוף','2. Suggestions: up to 5, name and city, attribution last'],
+ f3:['3. טעינה ראשונה: שלד אחרי 150ms','3. First load: skeleton after 150ms'],
+ f4:['4. אין תוצאות','4. No results'],
+ f5:['5. לא זמין (בלי רשת בפתיחה). בלי מפתח: השדה לא מוצג בכלל','5. Unavailable (offline on open). No key: the field is not shown at all'],
+ f5b:['5ב. הפרטים נכשלו: הקשה נוספת מנסה שוב','5b. Details failed: tap again to retry'],
+ f5c:['5ג. טוענים פרטים אחרי בחירה','5c. Loading details after a selection'],
+ f6:['6. אחרי בחירה: "נבחר מ-Google" ושדות מסומנים','6. After selection: "Selected from Google" and marked fields'],
+ f7:['7. כרטיס הנהג עם השם המקומי','7. Driver card with the local name'],
+ f8:['8. כרטיס העלייה ומתג פעיל','8. Boarding pass and an "on" switch'],
+};
+let L=0;const t=k=>S[k][L];
+const ic={
+ search:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A5573" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg>',
+ clear:'<span class="iconbtn" style="width:44px;height:44px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A5573" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>',
+ back:'<span class="iconbtn"><svg class="mir" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#121C36" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></span>',
+ bed:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A5573" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18V7M3 14h18v4M21 14v-3a3 3 0 00-3-3h-7v6M7 11.5h.01"/></svg>',
+ info:'<svg width="20" height="20" viewBox="0 0 24 24" style="flex:none"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 8v5m0-8.5v.5" stroke="#104C94" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+ x:'<span class="iconbtn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#121C36" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>',
+};
+const hotels=[['Hilton Sukhumvit Bangkok','Bangkok'],['Hilton Garden Inn Bangkok Silom','Bangkok'],['Hilton Pattaya','Pattaya'],['Hilton Hua Hin Resort & Spa','Hua Hin'],['Conrad Bangkok','Bangkok']];
+const shell=(body,{footer=true}={})=>`<div class="phone" dir="${L?'ltr':'rtl'}"><div class="status"></div>
+ <div class="bar">${ic.back}<div><div class="title">${t('title')}</div><div class="sub">${t('trip')}</div></div></div>
+ <div class="content">${body}</div>${footer?`<div class="footer"><div class="btn">${t('save')}</div></div>`:''}</div>`;
+const search=(val,{dis=false,busy=false}={})=>`<div><div class="lbl">${t('sLabel')}</div>
+ <div class="input${dis?' dis':''}">${ic.search}${val?`<span class="val own">${val}</span>${busy?'<span class="spin"></span>':ic.clear}`:`<span class="ph">${t('sPh')}</span>`}</div>`;
+const field=(k,v,help,flash)=>`<div><div class="lbl">${t(k)}</div><div class="input${flash?' flash':''}"><span class="${v?'val':'ph'} own" style="text-align:start">${v||''}</span></div>${help?`<div class="help${flash?' from':''}">${help}</div>`:''}</div>`;
+const rows=(n,dimAt)=>hotels.slice(0,n).map(([a,b],i)=>`<div class="row${dimAt!=null&&i!==dimAt?' dim':''}">${ic.bed}<div class="grow"><div class="n own">${a}</div><div class="c own">${b}</div></div>${dimAt===i?'<span class="spin"></span>':''}</div>`).join('');
+const attr=`<div class="attr"><span class="ltr">Powered by Google</span></div>`;
+const manual=`<div class="h3">${t('details')}</div>${field('name','')}${field('nameLocal','',t('nameLocalHelp'))}`;
+function render(){
+ const f=[];
+ f.push([t('f1'),shell(`${search('')}<div class="help">${t('sHelp')}</div></div>${manual}${field('addrEn','',t('addrEnHelp'))}`)]);
+ f.push([t('f2'),shell(`${search('Hilton')}<div class="list">${rows(5)}${attr}</div></div>${manual}`)]);
+ f.push([t('f3'),shell(`${search('Hil')}<div class="list">${'<div class="sk"><i style="width:70%"></i><i style="width:35%"></i></div>'.repeat(3)}</div></div>${manual}`)]);
+ f.push([t('f4'),shell(`${search('Hilton Xyzq')}<div class="list"><div class="empty">${t('empty')}</div>${attr}</div></div>${manual}`)]);
+ f.push([t('f5'),shell(`${search('',{dis:true})}<div class="notice">${ic.info}<span>${t('unavail')}</span></div></div>${manual}`)]);
+ f.push([t('f5b'),shell(`${search('Hilton',{busy:false})}<div class="notice">${ic.info}<span>${t('detErr')}</span></div><div class="list">${rows(3)}${attr}</div></div>${manual}`)]);
+ f.push([t('f5c'),shell(`${search('Hilton',{dis:true})}<div class="list">${rows(3,0)}${attr}</div></div>${manual}`)]);
+ f.push([t('f6'),shell(`<div class="linked">${ic.bed}<div style="flex:1"><div class="cap">${t('linked')}</div><div class="n own" style="font-weight:600">Hilton Sukhumvit Bangkok</div></div><span class="textbtn">${t('replace')}</span></div>
+  <div class="h3">${t('details')}</div>
+  ${field('name','Hilton Sukhumvit Bangkok',t('fromG'),1)}
+  ${field('nameLocal','โรงแรมฮิลตัน สุขุมวิท กรุงเทพฯ',t('fromG'),1)}
+  ${field('addrEn','11 Sukhumvit 24 Rd, Khlong Tan, Bangkok 10110',t('fromG'),1)}
+  ${field('addrLocal','11 ซอยสุขุมวิท 24 แขวงคลองตัน กรุงเทพฯ 10110',t('fromG'),1)}
+  ${field('phone','<span class="ltr">+66 2 620 6666</span>',t('fromG'),1)}
+  <div><div class="lbl">${t('point')}</div><div style="font-size:13px"><span>${t('pointG')}</span> · <span class="ltr">13.7228, 100.5664</span></div></div>`)]);
+ f.push([t('f7'),`<div class="phone driver" dir="${L?'ltr':'rtl'}"><div class="status"></div>${ic.x}<div class="content">
+  <div class="dname" dir="ltr" style="text-align:left">โรงแรมฮิลตัน สุขุมวิท กรุงเทพฯ</div>
+  <div class="daddr" dir="ltr" style="text-align:left">11 ซอยสุขุมวิท 24 แขวงคลองตัน กรุงเทพฯ</div>
+  <div class="rule"></div>
+  <div class="den" dir="ltr" style="text-align:left">Hilton Sukhumvit Bangkok</div>
+  <div class="dena" dir="ltr" style="text-align:left">11 Sukhumvit 24 Rd, Khlong Tan, Bangkok 10110</div>
+  <div class="dph" dir="ltr" style="text-align:left">+66 2 620 6666</div></div>
+  <div class="dbar"><div>${t('nav')}</div><div>${t('call')}</div><div>${t('share')}</div></div></div>`]);
+ f.push([t('f8'),`<div class="phone" dir="${L?'ltr':'rtl'}"><div class="globe">
+  <div class="sw"><span>${t('notif')}</span><span class="track"><span class="knob"></span></span></div>
+  <div class="pass"><div class="strip"></div><div class="main"><div class="lab">${t('dest')}</div><div class="nm">${t('thai')}</div>${L?'':'<div class="en ltr" style="text-align:left">Thailand</div>'}</div>
+  <div class="stub"><span class="code">THA</span><span class="bc"></span></div>${ic.x.replace('iconbtn','iconbtn close')}</div></div></div>`]);
+ document.getElementById('m').innerHTML=f.map(([c,h])=>`<figure>${h}<figcaption>${c}</figcaption></figure>`).join('');
+}
+const set=l=>{L=l;document.getElementById('he').setAttribute('aria-pressed',!l);document.getElementById('en').setAttribute('aria-pressed',!!l);render();};
+document.getElementById('he').onclick=()=>set(0);document.getElementById('en').onclick=()=>set(1);
+render();
+</script>
+</body>
+</html>
