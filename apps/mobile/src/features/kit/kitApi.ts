@@ -167,10 +167,13 @@ export const saveHotel = (id: string, tripId: string, hotel: HotelSave) =>
  */
 export const refreshHotelPointOnServer = (
   id: string,
+  /** The place that was refreshed: a hotel picked again meanwhile is left alone (Dudi, Raz). */
+  fromPlaceId: string,
   point: { placeId: string; lat: number; lng: number; fetchedAt: string } | null,
 ) =>
   call('refresh hotel point', 'refresh_hotel_point', {
     p_id: id,
+    p_from_place_id: fromPlaceId,
     p_place_id: point?.placeId ?? null,
     p_lat: point?.lat ?? null,
     p_lng: point?.lng ?? null,

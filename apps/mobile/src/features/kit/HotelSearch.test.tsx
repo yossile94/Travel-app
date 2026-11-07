@@ -206,7 +206,7 @@ describe('the point after 30 days (AC-3, ADR-021)', () => {
       },
     });
     expect(await refreshExpiredPoints([linked], now)).toBe(true);
-    expect(writePoint).toHaveBeenCalledWith('h1', {
+    expect(writePoint).toHaveBeenCalledWith('h1', place.placeId, {
       placeId: 'ChIJnewId1234',
       lat: 13.79,
       lng: 100.51,
@@ -229,7 +229,7 @@ describe('the point after 30 days (AC-3, ADR-021)', () => {
   it('a place Google no longer knows drops the link and the point', async () => {
     refresh.mockResolvedValue({ kind: 'gone' });
     await refreshExpiredPoints([linked], now);
-    expect(writePoint).toHaveBeenCalledWith('h1', null);
+    expect(writePoint).toHaveBeenCalledWith('h1', place.placeId, null);
   });
 
   it('offline tries again on the next showing', async () => {

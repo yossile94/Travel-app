@@ -24,9 +24,9 @@ export async function refreshExpiredPoints(
     tried.add(h.id);
     const answer = await refreshHotelPoint(h.placeId!);
     if (answer.kind === 'ok') {
-      changed ||= (await refreshHotelPointOnServer(h.id, answer.refreshed)) === 'ok';
+      changed ||= (await refreshHotelPointOnServer(h.id, h.placeId!, answer.refreshed)) === 'ok';
     } else if (answer.kind === 'gone') {
-      changed ||= (await refreshHotelPointOnServer(h.id, null)) === 'ok';
+      changed ||= (await refreshHotelPointOnServer(h.id, h.placeId!, null)) === 'ok';
     } else if (answer.kind === 'offline') {
       tried.delete(h.id);
     }
