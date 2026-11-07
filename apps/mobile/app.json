@@ -9,10 +9,7 @@
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#060B18",
     "ios": {
-      "supportsTablet": false,
-      "infoPlist": {
-        "ExpoLocalization_forcesRTL": true
-      }
+      "supportsTablet": false
     },
     "android": {
       "package": "com.travelapp.companion",
@@ -48,12 +45,12 @@
       [
         "expo-localization",
         {
-          "supportsRTL": true,
-          "forcesRTL": true
+          "supportsRTL": true
         }
       ],
       "@rnmapbox/maps",
       "./plugins/withTurboModuleInterop",
+      "./plugins/withLayoutDirection",
       "./plugins/withShortNativeBuildDir",
       [
         "expo-notifications",
@@ -119,7 +116,6 @@
         }
       },
       "supportsRTL": true,
-      "forcesRTL": true,
       "eas": {
         "projectId": "acf23314-81dd-4f05-a2e9-5bbef56b4f11"
       }

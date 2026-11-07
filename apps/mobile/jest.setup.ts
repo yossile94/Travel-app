@@ -110,3 +110,11 @@ jest.mock('expo-notifications', () => ({
   addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
   addPushTokenListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
+
+// Sprint 14 F-044: the app's language follows the native layout direction,
+// which is LTR under Jest. The tests read Hebrew, as most users see it; the
+// English path has its own tests (language.test.ts and the LTR renders).
+jest.mock('./src/i18n/language', () => ({
+  ...jest.requireActual('./src/i18n/language'),
+  appLanguage: () => 'he',
+}));
