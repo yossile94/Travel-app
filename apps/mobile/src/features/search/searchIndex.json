@@ -116,7 +116,6 @@
     "nameHe": "איי הבתולה הבריטיים",
     "nameEn": "British Virgin Islands",
     "parentHe": "הממלכה המאוחדת",
-    "parentEn": "United Kingdom",
     "sortKey": "איי הבתולה הבריטיימ",
     "names": [
       "איי הבתולה הבריטיימ",
@@ -728,7 +727,6 @@
     "adm0": "ATF",
     "nameHe": "הארצות הדרומיות והאנטארקטיות של צרפת",
     "nameEn": "French Southern and Antarctic Lands",
-    "parentEn": "France",
     "sortKey": "הארצות הדרומיות והאנטארקטיות של צרפת",
     "names": [
       "הארצות הדרומיות והאנטארקטיות של צרפת",
@@ -779,7 +777,6 @@
     "nameHe": "הטריטוריה הבריטית באוקיינוס ההודי",
     "nameEn": "British Indian Ocean Territory",
     "parentHe": "הממלכה המאוחדת",
-    "parentEn": "United Kingdom",
     "sortKey": "הטריטוריה הבריטית באוקיינוס ההודי",
     "names": [
       "הטריטוריה הבריטית באוקיינוס ההודי",
@@ -971,7 +968,6 @@
     "nameHe": "טריטוריה של האוקיינוס ההודי",
     "nameEn": "Australian Indian Ocean Territories",
     "parentHe": "אוסטרליה",
-    "parentEn": "Australia",
     "sortKey": "טריטוריה של האוקיינוס ההודי",
     "names": [
       "טריטוריה של האוקיינוס ההודי",
@@ -1429,7 +1425,6 @@
     "nameHe": "סמואה האמריקנית",
     "nameEn": "American Samoa",
     "parentHe": "ארצות הברית",
-    "parentEn": "United States",
     "sortKey": "סמואה האמריקנית",
     "names": ["סמואה האמריקנית", "סמואה אמריקנית", "american samoa"]
   },
@@ -1577,7 +1572,6 @@
     "nameHe": "פולינזיה הצרפתית",
     "nameEn": "French Polynesia",
     "parentHe": "צרפת",
-    "parentEn": "France",
     "sortKey": "פולינזיה הצרפתית",
     "names": ["פולינזיה הצרפתית", "פולינזיה צרפתית", "french polynesia"]
   },
