@@ -951,7 +951,28 @@
     "pointChoose": "Choose on map",
     "pointChange": "Change",
     "pointRemove": "Remove",
-    "pointHelp": "To see places near the hotel. No address search: move the map until the pin is on the hotel."
+    "pointHelp": "To see places near the hotel. Move the map until the pin is on the hotel.",
+    "search": {
+      "label": "Search for a hotel",
+      "placeholder": "Start typing the hotel name",
+      "help": "At least 3 letters. You can also fill in the details below.",
+      "clear": "Clear search",
+      "count_one": "1 hotel found",
+      "count_other": "{{count}} hotels found",
+      "rowA11y": "{{name}}, {{city}}",
+      "empty": "No hotel found with that name. Try another name, or fill in the details below.",
+      "unavailable": "Search isn't available right now. You can fill in the details yourself.",
+      "detailsError": "We couldn't get the hotel's details. Try again, or fill them in yourself.",
+      "filledA11y": "We filled in the details for {{name}}. Check them and save."
+    },
+    "details": "Hotel details",
+    "nameLocal": "Hotel name in the local language (optional)",
+    "nameLocalHelp": "Shown to the driver on the card",
+    "fromGoogle": "Filled in from Google. You can edit it.",
+    "linked": "Selected from Google",
+    "replace": "Change",
+    "replaceA11y": "Choose a different hotel",
+    "pointFromGoogle": "Location from Google"
   },
   "form": {
     "err": {
@@ -966,7 +987,8 @@
   },
   "driver": {
     "close": "Close",
-    "localA11y": "Address in the local language"
+    "localA11y": "Address in the local language",
+    "localNameA11y": "Hotel name in the local language"
   },
   "insurance": {
     "title": "Insurance",

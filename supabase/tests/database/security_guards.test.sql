@@ -41,7 +41,7 @@ select is(
   array[
     'admin_grant_role', 'admin_revoke_role', 'admin_role_list', 'apply_auto_plan',
     'delete_flight', 'delete_hotel', 'delete_insurance', 'delete_itinerary_item',
-    'flights_for_trips', 'has_role', 'move_itinerary_item', 'my_roles',
+    'flights_for_trips', 'has_role', 'move_itinerary_item', 'my_roles', 'refresh_hotel_point',
     'register_push_token', 'save_flight', 'save_hotel', 'save_insurance',
     'save_itinerary_item', 'save_place', 'set_same_booking', 'unregister_push_token',
     'unsave_place'

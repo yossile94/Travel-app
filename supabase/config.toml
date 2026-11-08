@@ -460,3 +460,7 @@ import_map = "./functions/deno.json"
 [functions.flight-lookup]
 verify_jwt = true
 import_map = "./functions/deno.json"
+
+[functions.places]
+verify_jwt = true
+import_map = "./functions/deno.json"
