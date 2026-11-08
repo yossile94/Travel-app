@@ -18,3 +18,18 @@ bash scripts/release/build-android.sh origin/chore/s14-qa aab .qa/aab/travel-app
 - That fingerprint matches the test key's own SHA-1, from `keytool -list`.
 
 **What's left before the store:** Yossi's real upload key, kept outside git. The script runs the same way with it, and Play App Signing holds the app signing key.
+
+## Correction (08.11.2026)
+
+The AAB from this test was built without the app's settings file (`apps/mobile/.env.local`). A clean checkout doesn't have that file, and the script didn't copy it in. So the bundle had no Mapbox token and no server address. The same happened to the first v0.15.0 APK, which on the phone showed "couldn't load the map".
+
+**What the run still proves:** the signing and the script's flow.
+
+**What it doesn't prove:** that a working app was built.
+
+**The fix (`fix/release-env`):**
+- The script copies the settings file in (`APP_ENV_FILE`).
+- It stops if any of the four keys is missing.
+- After the build it checks that the bundle contains the server address. It prints only key names, never values.
+
+The v0.15.0 APK was rebuilt with the fix. The next AAB will be built the same way.
