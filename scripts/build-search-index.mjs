@@ -27,6 +27,8 @@ const unique = (values) => [...new Set(values)];
 /** Shorter names for sovereigns shown in brackets: "הונג קונג (סין)". */
 const SHORT_SOVEREIGN = { CHN: 'סין' };
 const SHORT_SOVEREIGN_EN = { CHN: 'China', USA: 'United States' };
+/** English names that already say their sovereign by its adjective (Raz S1). */
+const ADJECTIVE_EN = { FRA: 'French', AUS: 'Australian', GBR: 'British', USA: 'American' };
 
 /**
  * The sovereign shown after a territory's name, unless the name already says
@@ -45,7 +47,9 @@ function parentLabelEn(entry, meta) {
   if (!entry.parent) return undefined;
   const label = SHORT_SOVEREIGN_EN[entry.parent] ?? meta[entry.parent].nameEn;
   const name = ` ${fold(entry.nameEn)} `;
-  return [label, meta[entry.parent].nameEn].some((n) => name.includes(` ${fold(n)} `))
+  return [label, meta[entry.parent].nameEn, ADJECTIVE_EN[entry.parent]]
+    .filter(Boolean)
+    .some((n) => name.includes(` ${fold(n)} `))
     ? undefined
     : label;
 }
