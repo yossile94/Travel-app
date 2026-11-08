@@ -49,6 +49,7 @@ const dashArray = [launch.routeLength, launch.routeLength + 2 * launch.routeUnde
 const u = launch.viewBox / launch.iconFrame;
 const pinSize = { width: launch.pinWidth / u, height: launch.pinHeight / u };
 const pinPosition = {
+  // Physical on purpose: the pin sits on the icon's artwork, which doesn't mirror.
   left: (launch.pinAt[0] * launch.iconFrame) / launch.viewBox - pinSize.width / 2,
   top: (launch.pinAt[1] * launch.iconFrame) / launch.viewBox - pinSize.height,
 };

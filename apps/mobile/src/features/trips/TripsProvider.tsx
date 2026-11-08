@@ -19,10 +19,15 @@ import {
 
 import { useAuth } from '@/features/auth/AuthProvider';
 import { prefetchFlights } from '@/features/flights/flightsStore';
-import { pruneInsuranceReminders } from '@/features/kit/insuranceReminder';
+import {
+  pruneInsuranceReminders,
+  reminderText,
+  rescheduleInLanguage,
+} from '@/features/kit/insuranceReminder';
 import { kitsOf, prefetchKit } from '@/features/kit/kitStore';
 import { passportTripsLoaded } from '@/features/passportAlerts/passportRunner';
 import { setCachedTrips } from '@/features/trips/tripCopies';
+import i18n from '@/i18n';
 import { prefetchPlaces } from '@/features/places/placesData';
 import { useRetryWhileUnreached } from '@/lib/useRetryWhileUnreached';
 
@@ -205,6 +210,21 @@ export function TripsProvider({ children }: { children: ReactNode }) {
           await pruneInsuranceReminders(
             new Map(ids.map((id) => [id, { insured: !!kits.get(id)?.insurance }])),
             !saved.full,
+          );
+          // Sprint 14 AC-6: after a change of device language, in the new one.
+          await rescheduleInLanguage(
+            i18n.language,
+            new Map(
+              saved.upcoming.map((trip) => [
+                trip.id,
+                {
+                  startDate: trip.startDate,
+                  countryAdm0: trip.countryAdm0,
+                  insured: !!kits.get(trip.id)?.insurance,
+                },
+              ]),
+            ),
+            (adm0) => reminderText(i18n.t.bind(i18n), i18n.language, adm0),
           );
         });
       }

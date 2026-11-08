@@ -50,8 +50,11 @@ import {
 import { countryName } from './countryName';
 import { TripFormFlights } from '@/features/flights/TripFormFlights';
 import { useTripFlights } from '@/features/flights/flightsStore';
-import { reminderText } from '@/features/kit/InsuranceSection';
-import { cancelInsuranceReminder, syncInsuranceReminder } from '@/features/kit/insuranceReminder';
+import {
+  cancelInsuranceReminder,
+  reminderText,
+  syncInsuranceReminder,
+} from '@/features/kit/insuranceReminder';
 import { hotelsOutside, type Hotel } from '@/features/kit/kitModel';
 import { kitsOf, refreshTripKit, tripKitNow } from '@/features/kit/kitStore';
 

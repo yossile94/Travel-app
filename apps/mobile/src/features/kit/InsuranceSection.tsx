@@ -30,17 +30,14 @@ import {
   TrashIcon,
   WarningIcon,
 } from '@/components/icons';
-import { countryByAdm0 } from '@/features/globe/countryData';
 import { isolateLtr, isolateOwn } from '@/features/globe/BoardingPassCard';
 import { useReduceMotion } from '@/features/globe/useReduceMotion';
-import { countryName } from '@/features/trips/countryName';
 import { formatDate, todayPg } from '@/features/trips/tripDates';
 import { colors, type ColorScheme } from '@/theme/tokens';
 
-import { countryWords } from './hebrewPrefix';
 import type { KitTrip } from './HotelScreen';
 import { InsuranceScreen } from './InsuranceScreen';
-import { syncInsuranceReminder, type ReminderText } from './insuranceReminder';
+import { reminderText, syncInsuranceReminder } from './insuranceReminder';
 import { deleteInsurance } from './kitApi';
 import { endsEarly, type Insurance, numDate } from './kitModel';
 import { refreshTripKit } from './kitStore';
@@ -53,23 +50,6 @@ import {
   savePolicy,
   type PolicyMeta,
 } from './policyFile';
-
-/** The reminder's words for a trip, in the language of the moment (design 11.1). */
-export function reminderText(
-  t: (k: string, o?: Record<string, unknown>) => string,
-  language: string,
-  countryAdm0: string,
-): ReminderText {
-  const country = countryByAdm0(countryAdm0);
-  const words = countryWords(country ? countryName(country, language) : countryAdm0, language);
-  // Design 11.1 (sprint 6 3.1): an RLM leads Hebrew titles, so a country in Latin script stays in place.
-  const rlm = language === 'he' ? String.fromCharCode(0x200f) : '';
-  return {
-    title: rlm + t('reminder.insurance.title', words),
-    body: rlm + t('reminder.insurance.body'),
-    channel: { name: t('channel.reminders.name'), description: t('channel.reminders.description') },
-  };
-}
 
 /** After 5 s of saving a file, the percentage shows (design 10.2). */
 const PROGRESS_AFTER_MS = 5000;

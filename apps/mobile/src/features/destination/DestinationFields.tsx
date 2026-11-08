@@ -6,7 +6,16 @@
 import NetInfo from '@react-native-community/netinfo';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  I18nManager,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/fields';
@@ -863,7 +872,10 @@ const styles = StyleSheet.create({
   },
   link: { textDecorationLine: 'underline' },
   attr: { minHeight: 48, marginVertical: -15, textAlignVertical: 'center' },
-  rtl: { writingDirection: 'rtl', textAlign: 'right' },
+  // The advisory is Hebrew only: it keeps its physical right edge in either UI
+  // (sprint 14 AC-8). React Native swaps left and right in an RTL app, as in
+  // DriverCard's alignFor, which this file can't import (a cycle).
+  rtl: { writingDirection: 'rtl', textAlign: I18nManager.isRTL ? 'left' : 'right' },
   disclaimer: { marginTop: 16 },
   source: { marginTop: 8 },
   rule: { height: StyleSheet.hairlineWidth, marginTop: 16 },
@@ -883,6 +895,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontVariant: ['tabular-nums'],
     writingDirection: 'ltr',
-    textAlign: 'right',
+    // EditText takes textAlign literally: the start edge (sprint 14 AC-8).
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
 });
