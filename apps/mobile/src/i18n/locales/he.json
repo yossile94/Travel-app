@@ -92,6 +92,7 @@
     "countMany": "נמצאו {{count}} מדינות",
     "countMore": "מוצגות {{count}} מדינות. המשיכו להקליד כדי לצמצם",
     "row": "{{name}}, {{nameEn}}",
+    "rowTerritoryOne": "{{name}}, טריטוריה של {{parent}}",
     "rowTerritory": "{{name}}, טריטוריה של {{parent}}, {{nameEn}}",
     "groupCountries": "מדינות",
     "groupCities": "ערים",

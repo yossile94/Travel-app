@@ -15,7 +15,7 @@ import type { Advisory, Destination } from '@/features/destination/destinationDa
 import type { Rate } from '@/features/destination/rateFormat';
 
 import { BoardingPassCard } from './BoardingPassCard';
-import { CardTiles, rowWidths, tileArrangement, tileLayout } from './CardTiles';
+import { CardTiles, currencyLine, rowWidths, tileArrangement, tileLayout } from './CardTiles';
 import { countryByAdm0 } from './countryData';
 
 // v0.14.1 (Raz 8, Dana 7): the first test also pays for loading the modules; under a
@@ -541,5 +541,16 @@ describe('focus comes back to what opened the sheet (fix 6, AC-1)', () => {
     await fireEvent.press(screen.getByTestId('card-tile-time'));
     await fireEvent.press(screen.getByTestId('time-sheet-close'));
     expect(last()).toBe('card-tile-time');
+  });
+});
+
+describe('the currency line (sprint 14 AC-7, Dana)', () => {
+  const euro = { code: 'EUR', nameHe: 'יורו', symbol: '€' };
+  it('in Hebrew: the name, the symbol and the code', () => {
+    expect(currencyLine(euro, true)).toBe('יורו · ⁦⁨€⁩ · EUR⁩');
+  });
+  it('in English: no Hebrew name, the symbol and the code only', () => {
+    expect(currencyLine(euro, false)).toBe('⁨€⁩ · EUR');
+    expect(currencyLine({ code: 'CHF', nameHe: 'פרנק', symbol: 'CHF' }, false)).toBe('CHF');
   });
 });

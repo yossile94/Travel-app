@@ -1289,6 +1289,22 @@ describe('a city from search (sprint 9 AC-12, AC-13)', () => {
     expect(pin()).toBe('4164138');
   });
 
+  it('in English the announcement says the English names (sprint 14 AC-7, Dana)', async () => {
+    const i18n = jest.requireActual<typeof import('@/i18n')>('@/i18n').default;
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    await i18n.changeLanguage('en');
+    try {
+      await render(<GlobeScreen />);
+      announce.mockClear();
+      await chooseMiami();
+      const said = announce.mock.calls.map(([text]) => text);
+      expect(said).toContain('Miami, United States of America');
+      expect(said.some((text) => /[֐-׿]/.test(text))).toBe(false);
+    } finally {
+      await i18n.changeLanguage('he');
+    }
+  });
+
   it('a new search hides the pin and never flies back to the country (Raz B-1)', async () => {
     await render(<GlobeScreen />);
     await chooseMiami();

@@ -12,6 +12,8 @@ export interface SearchEntry {
   nameEn: string;
   /** Hebrew name of the sovereign, for territories: "איי קוקוס (אוסטרליה)". */
   parentHe?: string;
+  /** The same in English, for the English UI: "Åland (Finland)" (sprint 14 AC-7). */
+  parentEn?: string;
   sortKey: string;
   names: string[];
   aliases?: string[];
