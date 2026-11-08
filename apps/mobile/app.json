@@ -3,7 +3,7 @@
     "name": "Travel App",
     "slug": "travel-app",
     "scheme": "travelapp",
-    "version": "0.14.1",
+    "version": "0.15.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.travelapp.companion",
-      "versionCode": 4,
+      "versionCode": 5,
       "blockedPermissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
