@@ -94,3 +94,18 @@ Deno.test('bad input costs nothing', async () => {
   });
   assertEquals(calls, []);
 });
+
+Deno.test(
+  'sprint 14 AC-12 (Raz 9): a tracked flight with a stop answers with every leg, free',
+  async () => {
+    const second = { ...leg, number: 'LY541' } as FlightSnapshot;
+    const { deps: d, calls } = deps({
+      tracked: () =>
+        Promise.resolve({ snapshot: leg, legs: [leg, second], checkedAt: '2026-10-27T07:45:00Z' }),
+      takeSearch: () => Promise.reject(new Error('must not take quota')),
+    });
+    const answer = await lookup(d, 'u', { number: 'LY541', date: '2026-11-01' });
+    assertEquals((answer.body as { legs: unknown[] }).legs.length, 2);
+    assertEquals(calls, []);
+  },
+);

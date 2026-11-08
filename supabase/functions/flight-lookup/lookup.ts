@@ -19,7 +19,11 @@ export type LookupDeps = {
   tracked(
     number: string,
     date: string,
-  ): Promise<{ snapshot: FlightSnapshot; checkedAt: string } | null>;
+  ): Promise<{
+    snapshot: FlightSnapshot;
+    legs?: FlightSnapshot[] | null;
+    checkedAt: string;
+  } | null>;
   takeSearch(userId: string): Promise<boolean>;
   spend(units: number): Promise<boolean>;
   now(): Date;
@@ -57,7 +61,9 @@ export async function lookup(
 
   const copy = await deps.tracked(number, date!);
   if (copy && now - Date.parse(copy.checkedAt) < FRESH_MS) {
-    return { status: 200, body: { legs: [copy.snapshot], from: 'tracked' } };
+    // Sprint 14 AC-12 (Raz 9): every leg the watcher kept, not only the tracked one.
+    const legs = copy.legs?.length ? copy.legs : [copy.snapshot];
+    return { status: 200, body: { legs, from: 'tracked' } };
   }
   if (!(await deps.takeSearch(userId))) return { status: 429, body: { error: 'daily_limit' } };
   if (!(await deps.spend(UNITS.flight))) return { status: 503, body: { error: 'budget' } };

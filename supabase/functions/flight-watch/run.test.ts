@@ -68,6 +68,8 @@ const target = (over: Partial<Target> = {}): Target => ({
 function fakeWorld(start: Date) {
   let clock = start.getTime();
   let provider: FlightSnapshot = snap();
+  let extraLegs: FlightSnapshot[] = [];
+  let lastLegs: unknown[] | undefined;
   const sent: { at: number; messages: PushMessage[] }[] = [];
   const watch: Watch & { state: string; next_check_at: string | null } = {
     id: 1,
@@ -89,7 +91,8 @@ function fakeWorld(start: Date) {
     sleep: () => Promise.resolve(),
     log: () => {},
     provider: {
-      flightsByNumber: () => Promise.resolve({ ok: true, value: [provider], units: 2 }),
+      flightsByNumber: () =>
+        Promise.resolve({ ok: true, value: [provider, ...extraLegs], units: 2 }),
       departures: () => Promise.reject(new Error('unused')),
     } as FlightProvider,
     push: {
@@ -119,6 +122,7 @@ function fakeWorld(start: Date) {
         watch.state = c.state;
         watch.next_check_at = c.next;
         if (c.notified) watch.last_notified = c.notified;
+        if (c.snapshot) lastLegs = c.legs;
         const ids: number[] = [];
         for (const e of (c.events ?? []) as {
           field: ChangeEvent['field'];
@@ -176,6 +180,8 @@ function fakeWorld(start: Date) {
     watch,
     advance: (ms: number) => (clock += ms),
     setProvider: (s: FlightSnapshot) => (provider = s),
+    setExtraLegs: (legs: FlightSnapshot[]) => (extraLegs = legs),
+    lastLegs: () => lastLegs,
     clock: () => clock,
   };
 }
@@ -496,4 +502,13 @@ Deno.test('receipts: a dead device is dropped', async () => {
     });
   assertEquals(await readReceipts(w.deps), { read: 2, dropped: 1 });
   assertEquals(deleted, [[11]]);
+});
+
+Deno.test('sprint 14 AC-12: every passenger leg of the answer is kept for the search', async () => {
+  const w = fakeWorld(new Date('2026-11-01T15:00:00Z'));
+  const second = { ...snap(), departure: side('BKK', 'Asia/Bangkok', '2026-11-02T08:00:00.000Z') };
+  const cargo = { ...snap(), isCargo: true };
+  w.setExtraLegs([second, cargo]);
+  await runMinutes(w, 1);
+  assertEquals(w.lastLegs()?.length, 2);
 });

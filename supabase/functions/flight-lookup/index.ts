@@ -41,12 +41,16 @@ Deno.serve(async (req) => {
       async tracked(number, date) {
         const { data } = await admin
           .from('flight_watch')
-          .select('last_snapshot, last_checked_at')
+          .select('last_snapshot, last_legs, last_checked_at')
           .eq('flight_number', number)
           .eq('dep_date_local', date)
           .maybeSingle();
         return data?.last_snapshot && data.last_checked_at
-          ? { snapshot: data.last_snapshot as FlightSnapshot, checkedAt: data.last_checked_at }
+          ? {
+              snapshot: data.last_snapshot as FlightSnapshot,
+              legs: data.last_legs as FlightSnapshot[] | null,
+              checkedAt: data.last_checked_at,
+            }
           : null;
       },
       async takeSearch(userId) {
