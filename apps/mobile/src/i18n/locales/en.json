@@ -92,6 +92,7 @@
     "countMany": "{{count}} countries found",
     "countMore": "Showing {{count}} countries. Keep typing to narrow down",
     "row": "{{name}}, {{nameEn}}",
+    "rowTerritoryOne": "{{name}}, territory of {{parent}}",
     "rowTerritory": "{{name}}, territory of {{parent}}, {{nameEn}}",
     "groupCountries": "Countries",
     "groupCities": "Cities",

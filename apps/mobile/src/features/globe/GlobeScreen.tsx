@@ -62,6 +62,7 @@ import { contextTrip } from '@/features/places/placesModel';
 import { SearchBar, type SearchCity } from '@/features/search/SearchBar';
 import { cityPoint } from '@/features/trips/citiesData';
 import { CardTrips } from '@/features/trips/CardTrips';
+import { countryName } from '@/features/trips/countryName';
 import { MyTripsSheet } from '@/features/trips/MyTripsSheet';
 import { TripForm, type TripFormResult, type TripFormTarget } from '@/features/trips/TripForm';
 import { TripsButton } from '@/features/trips/TripsButton';
@@ -161,7 +162,7 @@ type PendingIntent = { type: 'newTrip'; adm0: string } | { type: 'myTrips' } | n
 
 /** Home screen globe (sprint 0, F-001) with country search (sprint 1, F-002). */
 export function GlobeScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const reduceMotion = useReduceMotion();
@@ -589,8 +590,10 @@ export function GlobeScreen() {
   const hadSelection = useRef(false);
   const cityNameRef = useRef<string | null>(null);
   useEffect(() => {
-    cityNameRef.current = selectedCity?.nameHe || selectedCity?.nameEn || null;
-  }, [selectedCity]);
+    // Sprint 14 AC-7 (Dana): the announcement in the app's language.
+    cityNameRef.current =
+      (i18n.language === 'he' ? selectedCity?.nameHe : null) || selectedCity?.nameEn || null;
+  }, [selectedCity, i18n.language]);
   // Design 8.9: the camera centres the globe in what the panel leaves visible.
   const discoverPadding = discoverOn ? panelHeight : 0;
   const discoverPaddingRef = useRef(0);
@@ -617,10 +620,12 @@ export function GlobeScreen() {
       else if (country && city)
         // Sprint 9 design 12.2: "Miami, United States".
         AccessibilityInfo.announceForAccessibility(
-          t('discover.cityShown', { city, country: country.nameHe }),
+          t('discover.cityShown', { city, country: countryName(country, i18n.language) }),
         );
       else if (country)
-        AccessibilityInfo.announceForAccessibility(t('globe.selected', { name: country.nameHe }));
+        AccessibilityInfo.announceForAccessibility(
+          t('globe.selected', { name: countryName(country, i18n.language) }),
+        );
       return;
     }
     if (!hadSelection.current) return;
@@ -639,7 +644,7 @@ export function GlobeScreen() {
     });
     setLastInteractionAt(Date.now());
     AccessibilityInfo.announceForAccessibility(t('globe.closed'));
-  }, [selectedAdm0, reduceMotion, t]);
+  }, [selectedAdm0, reduceMotion, t, i18n.language]);
 
   // AC-4: Android back closes the card instead of leaving the app. While
   // search is open, back belongs to search (sprint 1 design 5.5).

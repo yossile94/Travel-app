@@ -1,4 +1,4 @@
-import '@/i18n';
+import i18n from '@/i18n';
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
@@ -70,5 +70,26 @@ describe('cities in the main search (sprint 4 F-014)', () => {
       await Promise.resolve();
     });
     expect(screen.getByTestId('search-result-GRC')).toBeOnTheScreen();
+  });
+});
+
+describe('in English (sprint 14 AC-7, Dana)', () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage('en');
+  });
+  afterAll(async () => {
+    await i18n.changeLanguage('he');
+  });
+
+  it('a country row is one English line, a territory with its sovereign in English', async () => {
+    mockCities.mockResolvedValue([]);
+    await render(bar());
+    await fireEvent.changeText(screen.getByTestId('search-input'), 'hong');
+    const row = screen.getByTestId('search-result-HKG');
+    expect(row).toHaveTextContent('Hong Kong (China)HKG');
+    expect(row).not.toHaveTextContent(/[֐-׿]/);
+    expect(row.props.accessibilityLabel).toBe('Hong Kong, territory of China');
+    await fireEvent.changeText(screen.getByTestId('search-input'), 'thai');
+    expect(screen.getByTestId('search-result-THA')).toHaveTextContent('ThailandTHA');
   });
 });

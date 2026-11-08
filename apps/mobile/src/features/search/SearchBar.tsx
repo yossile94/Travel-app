@@ -478,11 +478,23 @@ function ResultRow({
   colorScheme: ColorScheme;
   onPress: (entry: SearchEntry) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const palette = colors[colorScheme];
-  const base = entry.parentHe
-    ? t('search.rowTerritory', { name: entry.nameHe, parent: entry.parentHe, nameEn: entry.nameEn })
-    : t('search.row', { name: entry.nameHe, nameEn: entry.nameEn });
+  // Sprint 14 AC-7 (Dana): in English one line, the English names only.
+  const hebrew = i18n.language === 'he';
+  const name = hebrew ? entry.nameHe : entry.nameEn;
+  const parent = hebrew ? entry.parentHe : entry.parentEn;
+  const base = !hebrew
+    ? parent
+      ? t('search.rowTerritoryOne', { name, parent })
+      : name
+    : entry.parentHe
+      ? t('search.rowTerritory', {
+          name: entry.nameHe,
+          parent: entry.parentHe,
+          nameEn: entry.nameEn,
+        })
+      : t('search.row', { name: entry.nameHe, nameEn: entry.nameEn });
   const label = entryWords(base, entry2, t);
   return (
     <Pressable
@@ -494,16 +506,16 @@ function ResultRow({
     >
       <View style={styles.rowText}>
         <Text style={[styles.name, { color: palette.textPrimary }]}>
-          {entry.nameHe}
-          {entry.parentHe ? (
-            <Text style={[styles.parent, { color: palette.textSecondary }]}>
-              {` (${entry.parentHe})`}
-            </Text>
+          {name}
+          {parent ? (
+            <Text style={[styles.parent, { color: palette.textSecondary }]}>{` (${parent})`}</Text>
           ) : null}
         </Text>
-        <Text style={[styles.secondary, { color: palette.textSecondary }]}>
-          {isolateLtr(entry.nameEn)}
-        </Text>
+        {hebrew ? (
+          <Text style={[styles.secondary, { color: palette.textSecondary }]}>
+            {isolateLtr(entry.nameEn)}
+          </Text>
+        ) : null}
       </View>
       <EntryTag status={entry2} colorScheme={colorScheme} />
       <View

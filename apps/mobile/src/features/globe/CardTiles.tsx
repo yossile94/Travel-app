@@ -45,7 +45,7 @@ import { SosScreen } from '@/features/emergency/EmergencyViews';
 import { countryName } from '@/features/trips/countryName';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
 
-import type { CountryInfo } from './countryData';
+import type { CountryCurrency, CountryInfo } from './countryData';
 import { describeDifference, differenceFromIsrael, formatClock, zonedClock } from './localTime';
 import { timeDifferenceText } from './timeDifferenceText';
 import { useMinuteClock } from './useMinuteClock';
@@ -55,6 +55,19 @@ const PDI = String.fromCodePoint(0x2069);
 const FSI = String.fromCodePoint(0x2068);
 const ltr = (s: string) => `${LRI}${s}${PDI}`;
 const own = (s: string) => `${FSI}${s}${PDI}`;
+
+/**
+ * The calculator's currency line: "יורו · €‎ · EUR" in Hebrew; in English the
+ * symbol and the code only, since the data names currencies in Hebrew (sprint 14
+ * AC-7, Dana).
+ */
+export function currencyLine(currency: CountryCurrency, hebrew: boolean): string {
+  const code =
+    currency.symbol === currency.code
+      ? currency.code
+      : `${own(currency.symbol)} · ${currency.code}`;
+  return hebrew ? `${currency.nameHe} · ${ltr(code)}` : code;
+}
 
 /**
  * How the tiles sit in a strip `width` wide (5.3, 5.4): a list from font scale
@@ -464,11 +477,7 @@ export function CardTiles({
           offline={offline === true}
           usdIls={destination.data?.rates.get('USD')?.rateToIls ?? null}
           currencyName={currencyName}
-          currencyLine={`${currency.nameHe} · ${ltr(
-            currency.symbol === currency.code
-              ? currency.code
-              : `${own(currency.symbol)} · ${currency.code}`,
-          )}`}
+          currencyLine={currencyLine(currency, i18n.language === 'he')}
           colorScheme={colorScheme}
           reduceMotion={reduceMotion}
           insetsBottom={insetsBottom}
