@@ -1,6 +1,6 @@
 # Sprint 14 AC-14: the Play AAB, test run
 
-**Date:** 08.11.2026. **Who:** Dori, for Dana's QA.
+**Date:** 07.11.2026 (the build); recorded 08.11.2026. **Who:** Dori, for Dana's QA.
 
 The release script `scripts/release/build-android.sh` was run on `origin/chore/s14-qa`
 (version 0.14.1, versionCode 4, before the 0.15.0 bump), in `aab` mode, with a
