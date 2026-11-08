@@ -57,6 +57,12 @@ interface TripsContextValue {
   changed: (country?: { adm0: string; has: boolean | null }) => void;
   /** The first countries list of this session arrived (the globe fades the layer in once). */
   firstLoad: boolean;
+  /**
+   * Sprint 14 AC-10 (Raz 6): the first load ended with nothing to show (a server
+   * error, or offline with no copy). It is tried again on the backoff; a tapped
+   * alert waits for it.
+   */
+  firstLoadFailed: boolean;
   /** The globe is up: from now on the countries load (design 7.5, never before the first frame). */
   start: () => void;
   /**
@@ -93,6 +99,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const todayRef = useRef(today);
   const [changes, setChanges] = useState(0);
   const [firstLoad, setFirstLoad] = useState(false);
+  const [firstLoadFailed, setFirstLoadFailed] = useState(false);
   /** Which user a request is for; an answer for anyone else is dropped. */
   const currentUser = useRef<string | null>(userId);
   useEffect(() => {
@@ -108,6 +115,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     setCache(null);
     setFromCache(false);
     setFirstLoad(false);
+    setFirstLoadFailed(false);
   }
 
   /** Only the latest request's answer counts: an older, slower one is dropped. */
@@ -134,10 +142,16 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       if (result.reason !== 'offline') {
         // The server answered: not offline, so editing isn't blocked (Raz, S4-m9).
         setFromCache(false);
+        setFirstLoadFailed(true);
         return;
       }
       const saved = await readTripsCache(forUser);
-      if (id !== sequence.current || currentUser.current !== forUser || !saved) return;
+      if (id !== sequence.current || currentUser.current !== forUser) return;
+      if (!saved) {
+        setFirstLoadFailed(true);
+        return;
+      }
+      setFirstLoadFailed(false);
       setCache(saved);
       setFromCache(true);
       setCountries(new Set(saved.countries));
@@ -157,6 +171,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     setNextTrip(nextValue);
     setFromCache(false);
     setFirstLoad(true);
+    setFirstLoadFailed(false);
     if (next.ok && past.ok) {
       const saved: TripsCache = {
         userId: forUser,
@@ -224,7 +239,11 @@ export function TripsProvider({ children }: { children: ReactNode }) {
 
   // v0.14.1 (Raz): on the device copy while "connected" (no internet, a timeout):
   // try again, so editing doesn't stay blocked until a restart.
-  useRetryWhileUnreached(started && !!userId && fromCache, () => void reload());
+  // Sprint 14 AC-10: and when the first load got nothing, so a tapped alert opens.
+  useRetryWhileUnreached(
+    started && !!userId && (fromCache || (firstLoadFailed && !firstLoad)),
+    () => void reload(),
+  );
 
   const changed = useCallback(
     (country?: { adm0: string; has: boolean | null }) => {
@@ -247,8 +266,31 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const start = useCallback(() => setStarted(true), []);
 
   const value = useMemo(
-    () => ({ countries, nextTrip, today, changes, changed, firstLoad, start, cache, fromCache }),
-    [countries, nextTrip, today, changes, changed, firstLoad, start, cache, fromCache],
+    () => ({
+      countries,
+      nextTrip,
+      today,
+      changes,
+      changed,
+      firstLoad,
+      // Only before any load got through: a later failure is not a first one (Raz).
+      firstLoadFailed: firstLoadFailed && !firstLoad,
+      start,
+      cache,
+      fromCache,
+    }),
+    [
+      countries,
+      nextTrip,
+      today,
+      changes,
+      changed,
+      firstLoad,
+      firstLoadFailed,
+      start,
+      cache,
+      fromCache,
+    ],
   );
   return <TripsContext.Provider value={value}>{children}</TripsContext.Provider>;
 }
