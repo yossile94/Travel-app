@@ -6,6 +6,7 @@
  */
 import type { CityEntry } from '@/features/trips/citySearch';
 import type { Trip } from '@/features/trips/tripsApi';
+import i18n from '@/i18n';
 
 export type PlaceCategory = 'attraction' | 'nature' | 'culture' | 'family' | 'food' | 'shopping';
 export type CuratedCategory = PlaceCategory | 'kosher' | 'chabad' | 'memorial';
@@ -67,13 +68,20 @@ export function formatDistance(km: number): { value: string; unit: 'm' | 'km' } 
  * The country's list: curated first (by name), then Wikidata by popularity;
  * a Wikidata row that a curated place names (wikidata_qid) is hidden.
  */
-export function mergeCurated(wikidata: readonly Place[], curated: readonly Place[]): Place[] {
+export function mergeCurated(
+  wikidata: readonly Place[],
+  curated: readonly Place[],
+  language: string = i18n.language,
+): Place[] {
   const shadowed = new Set(
     curated.map((p) => p.curated?.wikidataQid).filter((q): q is string => Boolean(q)),
   );
-  const collator = new Intl.Collator('he');
+  // In the UI's language and by the name it shows (sprint 14 AC-7).
+  const he = language === 'he';
+  const collator = new Intl.Collator(he ? 'he' : 'en');
+  const name = (p: Place) => (he ? (p.nameHe ?? p.nameEn) : p.nameEn);
   return [
-    ...[...curated].sort((a, b) => collator.compare(a.nameHe ?? a.nameEn, b.nameHe ?? b.nameEn)),
+    ...[...curated].sort((a, b) => collator.compare(name(a), name(b))),
     ...wikidata
       .filter((p) => !shadowed.has(p.ref.slice(3)))
       .sort((a, b) => b.popularity - a.popularity || a.ref.localeCompare(b.ref)),

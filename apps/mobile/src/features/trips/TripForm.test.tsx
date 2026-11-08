@@ -23,6 +23,7 @@ jest.mock('@/features/auth/AuthProvider', () => ({
 }));
 // Sprint 8 AC-10 (Dana 1): saving a trip (re)schedules its insurance reminder.
 jest.mock('@/features/kit/insuranceReminder', () => ({
+  reminderText: jest.requireActual('@/features/kit/insuranceReminder').reminderText,
   syncInsuranceReminder: jest.fn(async () => 'scheduled'),
   cancelInsuranceReminder: jest.fn(async () => {}),
 }));

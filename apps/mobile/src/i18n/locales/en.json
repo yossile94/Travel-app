@@ -92,6 +92,7 @@
     "countMany": "{{count}} countries found",
     "countMore": "Showing {{count}} countries. Keep typing to narrow down",
     "row": "{{name}}, {{nameEn}}",
+    "rowTerritoryOne": "{{name}}, territory of {{parent}}",
     "rowTerritory": "{{name}}, territory of {{parent}}, {{nameEn}}",
     "groupCountries": "Countries",
     "groupCities": "Cities",
@@ -185,7 +186,8 @@
     "leaveTitle": "Leave without accepting?",
     "leaveBody": "You'll be signed out. The globe and search keep working without an account.",
     "leaveConfirm": "Sign out",
-    "leaveCancel": "Back"
+    "leaveCancel": "Back",
+    "hebrewOnly": "The terms and privacy policy are available in Hebrew only for now."
   },
   "trips": {
     "active": "Happening now",

@@ -26,6 +26,9 @@ const unique = (values) => [...new Set(values)];
 
 /** Shorter names for sovereigns shown in brackets: "הונג קונג (סין)". */
 const SHORT_SOVEREIGN = { CHN: 'סין' };
+const SHORT_SOVEREIGN_EN = { CHN: 'China', USA: 'United States' };
+/** English names that already say their sovereign by its adjective (Raz S1). */
+const ADJECTIVE_EN = { FRA: 'French', AUS: 'Australian', GBR: 'British', USA: 'American' };
 
 /**
  * The sovereign shown after a territory's name, unless the name already says
@@ -37,6 +40,18 @@ function parentLabel(entry, meta, aliases) {
   const name = ` ${fold(entry.nameHe)} `;
   const parentNames = [label, meta[entry.parent].nameHe, ...(aliases[entry.parent] ?? [])];
   return parentNames.some((n) => name.includes(` ${fold(n)} `)) ? undefined : label;
+}
+
+/** The same in English for the English UI (sprint 14 AC-7, Dana): "Åland (Finland)". */
+function parentLabelEn(entry, meta) {
+  if (!entry.parent) return undefined;
+  const label = SHORT_SOVEREIGN_EN[entry.parent] ?? meta[entry.parent].nameEn;
+  const name = ` ${fold(entry.nameEn)} `;
+  return [label, meta[entry.parent].nameEn, ADJECTIVE_EN[entry.parent]]
+    .filter(Boolean)
+    .some((n) => name.includes(` ${fold(n)} `))
+    ? undefined
+    : label;
 }
 
 async function main() {
@@ -67,6 +82,7 @@ async function main() {
         ...(parentLabel(entry, meta, aliases)
           ? { parentHe: parentLabel(entry, meta, aliases) }
           : {}),
+        ...(parentLabelEn(entry, meta) ? { parentEn: parentLabelEn(entry, meta) } : {}),
         // Folded Hebrew name: the alphabetical tie-break, compared as plain strings.
         sortKey: fold(entry.nameHe),
         names,
@@ -79,6 +95,7 @@ async function main() {
   console.log(`Wrote ${outFile}`);
   console.log(`  areas: ${index.length}, with aliases: ${index.filter((e) => e.aliases).length}`);
   console.log(`  territories (with parent): ${index.filter((e) => e.parentHe).length}`);
+  console.log(`  with an English parent: ${index.filter((e) => e.parentEn).length}`);
 }
 
 main().catch((error) => {

@@ -6,10 +6,14 @@
  */
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance, AndroidNotificationVisibility } from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
+import { countryByAdm0 } from '@/features/globe/countryData';
+import { countryName } from '@/features/trips/countryName';
 import { fromPgDate, todayPg } from '@/features/trips/tripDates';
 
+import { countryWords } from './hebrewPrefix';
 import { reminderDay } from './kitModel';
 
 export const REMINDERS_CHANNEL_ID = 'trip-reminders';
@@ -137,4 +141,64 @@ export function reminderTripOf(
   return data?.v === 1 && data.type === 'insurance_reminder' && typeof data.tripId === 'string'
     ? data.tripId
     : null;
+}
+
+const LANGUAGE_KEY = 'insurance-reminder:language';
+
+/**
+ * Sprint 14 AC-6 (Raz, PR 34): a reminder scheduled before the device language
+ * changed would fire in the old one. Once per change, the reminders this
+ * device has are scheduled again in the new language; none is added where
+ * there wasn't one (only the device that saved the trip reminds, design 11).
+ * Before sprint 14 every reminder was Hebrew. Resolves how many were redone.
+ */
+export async function rescheduleInLanguage(
+  language: string,
+  trips: ReadonlyMap<string, { startDate: string; countryAdm0: string; insured: boolean }>,
+  textFor: (countryAdm0: string) => ReminderText,
+): Promise<number> {
+  try {
+    const was = (await AsyncStorage.getItem(LANGUAGE_KEY)) ?? 'he';
+    if (was === language) return 0;
+    let count = 0;
+    let skipped = 0;
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    for (const n of scheduled) {
+      if (!n.identifier.startsWith(PREFIX)) continue;
+      const tripId = n.identifier.slice(PREFIX.length);
+      const trip = trips.get(tripId);
+      if (!trip) {
+        // Not in the loaded list (over 50): the next load tries again.
+        skipped++;
+        continue;
+      }
+      const done = await syncInsuranceReminder(
+        { id: tripId, startDate: trip.startDate },
+        trip.insured,
+        textFor(trip.countryAdm0),
+      );
+      if (done === 'scheduled') count++;
+    }
+    if (skipped === 0) await AsyncStorage.setItem(LANGUAGE_KEY, language);
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
+/** The reminder's words for a trip, in the language of the moment (design 11.1). */
+export function reminderText(
+  t: (k: string, o?: Record<string, unknown>) => string,
+  language: string,
+  countryAdm0: string,
+): ReminderText {
+  const country = countryByAdm0(countryAdm0);
+  const words = countryWords(country ? countryName(country, language) : countryAdm0, language);
+  // Design 11.1 (sprint 6 3.1): an RLM leads Hebrew titles, so a country in Latin script stays in place.
+  const rlm = language === 'he' ? String.fromCharCode(0x200f) : '';
+  return {
+    title: rlm + t('reminder.insurance.title', words),
+    body: rlm + t('reminder.insurance.body'),
+    channel: { name: t('channel.reminders.name'), description: t('channel.reminders.description') },
+  };
 }

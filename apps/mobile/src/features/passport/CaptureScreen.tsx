@@ -494,6 +494,7 @@ const styles = StyleSheet.create({
   startAlign: { alignItems: 'flex-start' },
   frame: { position: 'absolute', top: '30%', alignSelf: 'center' },
   corner: { position: 'absolute', width: 28, height: 28, borderColor: FRAME },
+  // Physical on purpose: the frame's corners match the camera image, not the text direction.
   tl: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3 },
   tr: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3 },
   bl: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3 },

@@ -18,6 +18,7 @@
     "nameHe": "אולנד",
     "nameEn": "Åland",
     "parentHe": "פינלנד",
+    "parentEn": "Finland",
     "sortKey": "אולנד",
     "names": ["אולנד", "aland"]
   },
@@ -84,6 +85,7 @@
     "nameHe": "איי אשמור וקרטייה",
     "nameEn": "Ashmore and Cartier Islands",
     "parentHe": "אוסטרליה",
+    "parentEn": "Australia",
     "sortKey": "איי אשמור וקרטייה",
     "names": ["איי אשמור וקרטייה", "אשמור וקרטייה", "ashmore and cartier islands"]
   },
@@ -99,6 +101,7 @@
     "nameHe": "איי ג'ורג'יה הדרומית ואיי סנדוויץ' הדרומיים",
     "nameEn": "South Georgia and the South Sandwich Islands",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "איי גורגיה הדרומית ואיי סנדוויצ הדרומיימ",
     "names": [
       "איי גורגיה הדרומית ואיי סנדוויצ הדרומיימ",
@@ -140,6 +143,7 @@
     "nameHe": "איי טרקס וקייקוס",
     "nameEn": "Turks and Caicos Islands",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "איי טרקס וקייקוס",
     "names": ["איי טרקס וקייקוס", "טרקס וקייקוס", "turks and caicos islands"]
   },
@@ -148,6 +152,7 @@
     "nameHe": "איי מריאנה הצפוניים",
     "nameEn": "Northern Mariana Islands",
     "parentHe": "ארצות הברית",
+    "parentEn": "United States",
     "sortKey": "איי מריאנה הצפוניימ",
     "names": [
       "איי מריאנה הצפוניימ",
@@ -169,6 +174,7 @@
     "nameHe": "איי פארו",
     "nameEn": "Faroe Islands",
     "parentHe": "דנמרק",
+    "parentEn": "Denmark",
     "sortKey": "איי פארו",
     "names": ["איי פארו", "פארו", "faroe islands"]
   },
@@ -177,6 +183,7 @@
     "nameHe": "איי פוקלנד",
     "nameEn": "Falkland Islands",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "איי פוקלנד",
     "names": ["איי פוקלנד", "פוקלנד", "falkland islands"]
   },
@@ -185,6 +192,7 @@
     "nameHe": "איי קוק",
     "nameEn": "Cook Islands",
     "parentHe": "ניו זילנד",
+    "parentEn": "New Zealand",
     "sortKey": "איי קוק",
     "names": ["איי קוק", "קוק", "cook islands"]
   },
@@ -193,6 +201,7 @@
     "nameHe": "איי קיימן",
     "nameEn": "Cayman Islands",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "איי קיימנ",
     "names": ["איי קיימנ", "קיימנ", "cayman islands"]
   },
@@ -257,6 +266,7 @@
     "nameHe": "אנגווילה",
     "nameEn": "Anguilla",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "אנגווילה",
     "names": ["אנגווילה", "anguilla"]
   },
@@ -329,6 +339,7 @@
     "nameHe": "ארובה",
     "nameEn": "Aruba",
     "parentHe": "הולנד",
+    "parentEn": "Netherlands",
     "sortKey": "ארובה",
     "names": ["ארובה", "aruba"]
   },
@@ -490,6 +501,7 @@
     "nameHe": "ברמודה",
     "nameEn": "Bermuda",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "ברמודה",
     "names": ["ברמודה", "bermuda"]
   },
@@ -527,6 +539,7 @@
     "nameHe": "גואם",
     "nameEn": "Guam",
     "parentHe": "ארצות הברית",
+    "parentEn": "United States",
     "sortKey": "גואמ",
     "names": ["גואמ", "guam"]
   },
@@ -549,6 +562,7 @@
     "nameHe": "גיברלטר",
     "nameEn": "Gibraltar",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "גיברלטר",
     "names": ["גיברלטר", "gibraltar"]
   },
@@ -592,6 +606,7 @@
     "nameHe": "ג'רזי",
     "nameEn": "Jersey",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "גרזי",
     "names": ["גרזי", "jersey"]
   },
@@ -600,6 +615,7 @@
     "nameHe": "גרינלנד",
     "nameEn": "Greenland",
     "parentHe": "דנמרק",
+    "parentEn": "Denmark",
     "sortKey": "גרינלנד",
     "names": ["גרינלנד", "greenland"]
   },
@@ -623,6 +639,7 @@
     "nameHe": "גרנזי",
     "nameEn": "Guernsey",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "גרנזי",
     "names": ["גרנזי", "guernsey"]
   },
@@ -659,6 +676,7 @@
     "nameHe": "האי הרד ואיי מקדונלד",
     "nameEn": "Heard Island and McDonald Islands",
     "parentHe": "אוסטרליה",
+    "parentEn": "Australia",
     "sortKey": "האי הרד ואיי מקדונלד",
     "names": [
       "האי הרד ואיי מקדונלד",
@@ -673,6 +691,7 @@
     "nameHe": "האי מאן",
     "nameEn": "Isle of Man",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "האי מאנ",
     "names": ["האי מאנ", "אי מאנ", "מאנ", "isle of man"]
   },
@@ -735,6 +754,7 @@
     "nameHe": "הונג קונג",
     "nameEn": "Hong Kong",
     "parentHe": "סין",
+    "parentEn": "China",
     "sortKey": "הונג קונג",
     "names": ["הונג קונג", "ונג קונג", "hong kong"]
   },
@@ -838,6 +858,7 @@
     "nameHe": "ואליס ופוטונה",
     "nameEn": "Wallis and Futuna",
     "parentHe": "צרפת",
+    "parentEn": "France",
     "sortKey": "ואליס ופוטונה",
     "names": ["ואליס ופוטונה", "wallis and futuna"]
   },
@@ -970,6 +991,7 @@
     "nameHe": "טריטוריית איי ים האלמוגים",
     "nameEn": "Coral Sea Islands",
     "parentHe": "אוסטרליה",
+    "parentEn": "Australia",
     "sortKey": "טריטוריית איי ימ האלמוגימ",
     "names": ["טריטוריית איי ימ האלמוגימ", "טריטוריית איי ימ אלמוגימ", "coral sea islands"]
   },
@@ -1147,6 +1169,7 @@
     "nameHe": "מונטסראט",
     "nameEn": "Montserrat",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "מונטסראט",
     "names": ["מונטסראט", "montserrat"]
   },
@@ -1213,6 +1236,7 @@
     "nameHe": "מקאו",
     "nameEn": "Macau",
     "parentHe": "סין",
+    "parentEn": "China",
     "sortKey": "מקאו",
     "names": ["מקאו", "macau"]
   },
@@ -1257,6 +1281,7 @@
     "nameHe": "נורפוק",
     "nameEn": "Norfolk Island",
     "parentHe": "אוסטרליה",
+    "parentEn": "Australia",
     "sortKey": "נורפוק",
     "names": ["נורפוק", "norfolk island"]
   },
@@ -1279,6 +1304,7 @@
     "nameHe": "ניואה",
     "nameEn": "Niue",
     "parentHe": "ניו זילנד",
+    "parentEn": "New Zealand",
     "sortKey": "ניואה",
     "names": ["ניואה", "niue"]
   },
@@ -1407,6 +1433,7 @@
     "nameHe": "סן ברתלמי",
     "nameEn": "Saint Barthélemy",
     "parentHe": "צרפת",
+    "parentEn": "France",
     "sortKey": "סנ ברתלמי",
     "names": ["סנ ברתלמי", "saint barthelemy"]
   },
@@ -1415,6 +1442,7 @@
     "nameHe": "סן מרטן",
     "nameEn": "Saint Martin",
     "parentHe": "צרפת",
+    "parentEn": "France",
     "sortKey": "סנ מרטנ",
     "names": ["סנ מרטנ", "saint martin"]
   },
@@ -1430,6 +1458,7 @@
     "nameHe": "סן-פייר ומיקלון",
     "nameEn": "Saint Pierre and Miquelon",
     "parentHe": "צרפת",
+    "parentEn": "France",
     "sortKey": "סנ פייר ומיקלונ",
     "names": ["סנ פייר ומיקלונ", "saint pierre and miquelon"]
   },
@@ -1445,6 +1474,7 @@
     "nameHe": "סנט הלנה",
     "nameEn": "Saint Helena",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "סנט הלנה",
     "names": ["סנט הלנה", "סנט לנה", "saint helena"]
   },
@@ -1467,6 +1497,7 @@
     "nameHe": "סנט מארטן",
     "nameEn": "Sint Maarten",
     "parentHe": "הולנד",
+    "parentEn": "Netherlands",
     "sortKey": "סנט מארטנ",
     "names": ["סנט מארטנ", "sint maarten"]
   },
@@ -1525,6 +1556,7 @@
     "nameHe": "פוארטו ריקו",
     "nameEn": "Puerto Rico",
     "parentHe": "ארצות הברית",
+    "parentEn": "United States",
     "sortKey": "פוארטו ריקו",
     "names": ["פוארטו ריקו", "puerto rico"]
   },
@@ -1562,6 +1594,7 @@
     "nameHe": "פיטקרן",
     "nameEn": "Pitcairn Islands",
     "parentHe": "הממלכה המאוחדת",
+    "parentEn": "United Kingdom",
     "sortKey": "פיטקרנ",
     "names": ["פיטקרנ", "pitcairn islands"]
   },
@@ -1683,6 +1716,7 @@
     "nameHe": "קוראסאו",
     "nameEn": "Curaçao",
     "parentHe": "הולנד",
+    "parentEn": "Netherlands",
     "sortKey": "קוראסאו",
     "names": ["קוראסאו", "curacao"]
   },
@@ -1735,6 +1769,7 @@
     "nameHe": "קלדוניה החדשה",
     "nameEn": "New Caledonia",
     "parentHe": "צרפת",
+    "parentEn": "France",
     "sortKey": "קלדוניה החדשה",
     "names": ["קלדוניה החדשה", "קלדוניה חדשה", "new caledonia"]
   },
@@ -1743,6 +1778,7 @@
     "nameHe": "קליפרטון",
     "nameEn": "Clipperton Island",
     "parentHe": "צרפת",
+    "parentEn": "France",
     "sortKey": "קליפרטונ",
     "names": ["קליפרטונ", "clipperton island"]
   },
