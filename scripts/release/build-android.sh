@@ -41,6 +41,7 @@ out=$(abs "$3")
 : "${GOOGLE_SERVICES_JSON:?GOOGLE_SERVICES_JSON must point at google-services.json}"
 GOOGLE_SERVICES_JSON=$(abs "$GOOGLE_SERVICES_JSON")
 export GOOGLE_SERVICES_JSON
+if [[ -n "${DEBUG_KEYSTORE:-}" ]]; then DEBUG_KEYSTORE=$(abs "$DEBUG_KEYSTORE"); fi
 env_file=$(abs "${APP_ENV_FILE:-C:/Users/HP/Travelapp/apps/mobile/.env.local}")
 REQUIRED_ENV=(EXPO_PUBLIC_MAPBOX_TOKEN EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_KEY EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID)
 if [[ ! -f "$env_file" ]]; then
