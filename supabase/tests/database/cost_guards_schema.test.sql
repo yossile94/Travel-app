@@ -267,12 +267,15 @@ select set_config('request.jwt.claims',
                     'aal', 'aal2', 'email', 'admin15@example.test')::text, true);
 update public.provider_catalog set plan = 'Growth' where provider = 'aerodatabox' and metric = 'units';
 delete from public.account_suspensions where user_id = '00000000-0000-4000-8000-0000000015f1';
+insert into public.account_suspensions (user_id, reason, created_by)
+values ('00000000-0000-4000-8000-0000000015f1', 'again', '00000000-0000-4000-8000-0000000015a1');
 select is(
   (select array_agg(entity || ':' || entity_id || ':' || action order by id) from public.admin_audit_log
    where actor_id = '00000000-0000-4000-8000-0000000015a1'),
   array['provider_catalog:aerodatabox/units:update',
-        'account_suspensions:00000000-0000-4000-8000-0000000015f1:delete'],
-  'a catalog change and a lifted suspension are logged by key (AC-13, AC-18)'
+        'account_suspensions:00000000-0000-4000-8000-0000000015f1:delete',
+        'account_suspensions:00000000-0000-4000-8000-0000000015f1:insert'],
+  'a catalog change, a lifted suspension and a new one are logged by key (AC-13, AC-18)'
 );
 select pg_temp.sign_out();
 
