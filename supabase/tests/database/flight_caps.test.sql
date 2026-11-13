@@ -104,7 +104,7 @@ select is(
 );
 select is(pg_temp.adds(1), 13, 'and adds nothing (AC-5)');
 -- A place frees up; editing the untracked flight tries again (AC-6).
-select public.delete_flight(pg_temp.fid(1, 2));
+select public.delete_flight(pg_temp.fid(1, 2)) is not null;
 select is(
   public.save_flight_v2(pg_temp.fid(1, 13), pg_temp.trip(1, 1), pg_temp.flight('A99', current_date + 5)),
   '{"status":"ok"}'::jsonb, 'saving it again once there is room tracks it'
@@ -230,7 +230,7 @@ select is((select count(*)::integer from public.flight_watch where flight_number
 
 -- ---------------------------------------------------------------- what counts as an add
 select pg_temp.sign_in('00000000-0000-4000-8000-0000000015b6');
-select public.save_flight_v2(pg_temp.fid(6, 2), pg_temp.trip(6, 1), pg_temp.flight('F12', current_date + 5));
+select public.save_flight_v2(pg_temp.fid(6, 2), pg_temp.trip(6, 1), pg_temp.flight('F12', current_date + 5)) is not null;
 -- The save holds the user's lock until the transaction ends (Raz 2).
 select is(
   (select count(*)::integer from pg_locks
@@ -238,7 +238,7 @@ select is(
      and objid::bigint = (hashtext('00000000-0000-4000-8000-0000000015b6')::bigint & 4294967295)),
   1, 'a save takes the user''s lock'
 );
-select public.save_flight_v2(pg_temp.fid(6, 2), pg_temp.trip(6, 1), pg_temp.flight('F13', current_date + 5));
+select public.save_flight_v2(pg_temp.fid(6, 2), pg_temp.trip(6, 1), pg_temp.flight('F13', current_date + 5)) is not null;
 select is(pg_temp.adds(6), 13, 'a new number on the same flight is a new add (AC-5)');
 -- Over now, with the same number and date: it keeps its watch.
 select is(
@@ -254,7 +254,7 @@ select ok((select watch_id is not null from public.flights where id = pg_temp.fi
 insert into public.flight_watch (flight_number, dep_date_local, state, next_check_at, attempts)
 values ('F14', current_date + 5, 'failed', now() - interval '1 hour', 3);
 select pg_temp.sign_in('00000000-0000-4000-8000-0000000015b6');
-select public.save_flight_v2(pg_temp.fid(6, 4), pg_temp.trip(6, 1), pg_temp.flight('F14', current_date + 5));
+select public.save_flight_v2(pg_temp.fid(6, 4), pg_temp.trip(6, 1), pg_temp.flight('F14', current_date + 5)) is not null;
 select is(pg_temp.adds(6), 13, 'a failed watch takes no add');
 reset role;
 
