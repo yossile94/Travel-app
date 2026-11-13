@@ -36,6 +36,12 @@
 | `push_tokens` | קריאה ומחיקה. הרישום דרך `register_push_token` | הבעלים | `push.test.sql` |
 | `admin_roles` | קריאה | אדמינים | `admin.test.sql` |
 | `admin_audit_log` | קריאה | אדמינים | `admin.test.sql` |
+| `usage_limits` | קריאה. שינוי ב-migration בלבד (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `provider_catalog` | קריאה. כתיבה ב-RPC של אדמין (PR-G) (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `usage_daily` | קריאה. נכתבת בשרת, ב-`spend_provider_units` וב-`take_places_call` (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `cost_alerts` | קריאה. נכתבת בשרת, ב-`usage-rollup` (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `manual_usage` | קריאה. כתיבה ב-RPC של אדמין (PR-G) (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `account_suspensions` | קריאה. כתיבה ב-RPC של אדמין (PR-G) (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
 | `country_advisories` | קריאה לכולם, עדכון לעורכים | ציבורי ועורכים | `destination_data.test.sql`, ‏`admin_cases.test.sql` |
 | `curated_places` | קריאה של מה שפורסם, כתיבה לעורכים | ציבורי ועורכים | `places_itinerary.test.sql`, ‏`admin_cases.test.sql` |
 | `min_connection_times` | קריאה לכולם, כתיבה לעורכים | ציבורי ועורכים | `connections.test.sql`, ‏`admin_cases.test.sql` |
@@ -46,12 +52,11 @@
 | `places` | קריאה לכולם | ציבורי | `places_itinerary.test.sql` |
 | `account_deletions` | אין. השרת בלבד | — | `account_deletion.test.sql` |
 | `country_advisory_changes` | אין. השרת בלבד | — | `destination_data.test.sql` |
-| `flight_coverage_probes` | אין. השרת בלבד | — | `flight_budget.test.sql` |
 | `flight_events` | אין. השרת בלבד | — | `flights.test.sql`, ‏`push.test.sql` |
 | `flight_lookups` | אין. השרת בלבד | — | `flights.test.sql` |
+| `tracked_flight_adds` | אין. השרת בלבד (ספרינט 15) | — | `cost_guards_schema.test.sql` |
 | `flight_watch` | אין. השרת בלבד | — | `flights.test.sql` |
 | `job_runs` | אין. השרת בלבד | — | `destination_data.test.sql` |
-| `provider_caps` | אין. השרת בלבד | — | `flight_budget.test.sql` |
 | `provider_usage` | אין. השרת בלבד | — | `flight_budget.test.sql` |
 | `push_receipts` | אין. השרת בלבד | — | `push.test.sql` |
 
