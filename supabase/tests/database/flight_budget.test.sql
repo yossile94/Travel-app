@@ -1,28 +1,22 @@
 -- Sprint 5 AC-6א, AC-6ב (ADR-010; Dudi's and Raz's reviews): the provider unit
--- budget over any 30 days, the cron call that carries the secret, and the
--- coverage-gate table are closed to clients.
+-- budget over any 30 days and the cron call that carries the secret are
+-- closed to clients. Sprint 15 (AC-9): the cap is read from provider_catalog,
+-- and the coverage gate is gone.
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(22);
 
 -- ---------------------------------------------------------------- structure
 select ok(
   (select bool_and(relrowsecurity) from pg_class
-   where oid in ('public.provider_usage'::regclass, 'public.provider_caps'::regclass,
-                 'public.flight_coverage_probes'::regclass)),
-  'RLS is on for the budget and coverage tables'
+   where oid in ('public.provider_usage'::regclass, 'public.provider_catalog'::regclass)),
+  'RLS is on for the budget tables'
 );
 select table_privs_are('public', 'provider_usage', 'anon', array[]::text[], 'anon: no usage');
 select table_privs_are('public', 'provider_usage', 'authenticated', array[]::text[], 'users: no usage');
-select table_privs_are('public', 'provider_caps', 'authenticated', array[]::text[], 'users: no caps');
-select table_privs_are('public', 'flight_coverage_probes', 'anon', array[]::text[], 'anon: no probes');
-select table_privs_are('public', 'flight_coverage_probes', 'authenticated', array[]::text[],
-  'users: no probes');
-select ok(
-  not has_sequence_privilege('anon', 'public.flight_coverage_probes_id_seq', 'USAGE'),
-  'the probes sequence is closed to clients'
-);
+select ok(to_regclass('public.flight_coverage_probes') is null and to_regclass('public.provider_caps') is null,
+  'the coverage gate and provider_caps are gone (AC-9)');
 select ok(
   (select bool_and(prosecdef and proconfig @> array['search_path=""']) from pg_proc
    where oid in ('public.spend_provider_units(text,integer)'::regprocedure,
@@ -45,7 +39,7 @@ select ok(
 );
 
 -- ---------------------------------------------------------------- the cap
-select is((select cap from public.provider_caps where provider = 'aerodatabox'), 360,
+select is((select hard_cap from public.provider_catalog where provider = 'aerodatabox' and metric = 'units'), 360,
   'the cap is a setting: 360 units');
 select is(
   (select bool_and(public.spend_provider_units('aerodatabox', 2)) from generate_series(1, 179)),
@@ -60,7 +54,8 @@ select is(
 -- Units older than 30 days no longer count (a rolling window, Dudi #3).
 update public.provider_usage set day = day - 30 where provider = 'aerodatabox';
 select is(public.spend_provider_units('aerodatabox', 2), true, 'units from 30 days ago are free again');
-update public.provider_caps set cap = 4000 where provider = 'aerodatabox';
+update public.provider_catalog set monthly_quota = 4000, hard_cap = 4000
+where provider = 'aerodatabox' and metric = 'units';
 select is(
   (select bool_and(public.spend_provider_units('aerodatabox', 10)) from generate_series(1, 50)),
   true, 'a paid plan is a change of the setting, not of code'
@@ -71,14 +66,13 @@ select throws_ok($$select public.spend_provider_units('aerodatabox', 11)$$, 'P00
   'more than 10 units at once is refused');
 select is(public.spend_provider_units('unknown', 1), false, 'a provider without a cap spends nothing');
 
--- ---------------------------------------------------------------- coverage and cron
-select throws_ok(
-  $$insert into public.flight_coverage_probes (flight_number, airline, dep_date_local, sched_dep_utc, probe_kind, probe_at)
-    values ('LY 81', 'LY', '2026-10-27', now(), 'early', now())$$,
-  '23514', null, 'a spaced flight number is refused'
-);
+-- ---------------------------------------------------------------- cron
 select throws_ok($$select public.call_cron_job('delete-account', '{}')$$, 'P0001', null,
   'the secret goes only to the cron functions');
+select throws_ok($$select public.call_cron_job('flight-coverage', '{}')$$, 'P0001', null,
+  'and no longer to the removed coverage gate');
+select ok(not exists (select 1 from cron.job where jobname like 'flight-coverage%'),
+  'the coverage cron jobs are gone');
 select ok(
   not exists (select 1 from cron.job where command ilike '%cron_secret%' and jobname like 'flight-%'
               and command not ilike '%call_cron_job%'),
