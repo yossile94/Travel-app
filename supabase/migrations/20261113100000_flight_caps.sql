@@ -162,6 +162,8 @@ begin
            where fl.user_id = uid and fl.trip_id = p_trip_id and fl.id <> p_id
              and w.state in ('active', 'paused'))
           >= public.usage_limit(uid, 'flights_per_trip')
+       -- "Future" by the watch: active or paused means not over yet. A landed
+       -- watch the worker hasn't stopped yet counts a little longer (Raz 10).
        or (select count(*) from public.flights fl
            join public.flight_watch w on w.id = fl.watch_id
            where fl.user_id = uid and fl.id <> p_id and w.state in ('active', 'paused'))
