@@ -138,6 +138,20 @@ describe('FlightScreen (sprint 5 F-016, design 2–8)', () => {
     );
   });
 
+  // Sprint 15 design 6.1: saved without tracking is saved; the form closes with the reason.
+  it('a flight saved past a cap closes the form with the reason, not an error', async () => {
+    jest.mocked(lookupFlight).mockResolvedValue({ kind: 'found', legs: [leg('TLV', 'BKK')] });
+    jest.mocked(saveFlight).mockResolvedValueOnce({ untracked: 'concurrent', renewsAt: null });
+    const onSaved = jest.fn();
+    await show(onSaved);
+    await fireEvent.changeText(screen.getByTestId('flight-number'), 'ly 081');
+    await fireEvent.press(screen.getByTestId('flight-search'));
+    await waitFor(() => expect(screen.getByTestId('flight-notice-found')).toBeOnTheScreen());
+    await fireEvent.press(screen.getByTestId('flight-save'));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(onSaved.mock.calls[0]![5]).toMatch(/הגעתם למספר הטיסות במעקב/);
+  });
+
   it('several legs: a list to choose from', async () => {
     jest
       .mocked(lookupFlight)

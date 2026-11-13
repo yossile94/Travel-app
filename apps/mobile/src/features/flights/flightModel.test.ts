@@ -85,6 +85,17 @@ describe('flightTrackState (design 11)', () => {
     expect(flightTrackState(flight(null), new Date('2027-01-05T00:00:00Z'))).toBe('ended');
   });
 
+  // Sprint 15 design 6.2: saved past a cap, with the reason, until it is over.
+  it('no watch and a reason: untracked for that reason, then ended', () => {
+    const capped = { ...flight(null), untrackedReason: 'turnover' as const };
+    expect(flightTrackState(capped, now)).toBe('untracked_turnover');
+    expect(flightTrackState({ ...capped, untrackedReason: 'suspended' }, now)).toBe(
+      'untracked_suspended',
+    );
+    expect(flightTrackState(capped, new Date('2027-01-05T00:00:00Z'))).toBe('ended');
+    expect(flightChips(capped, 'untracked_concurrent')).toEqual(['untracked']);
+  });
+
   it('not checked yet, then tracking', () => {
     expect(flightTrackState(flight({ checkedAt: null }), now)).toBe('not_checked');
     expect(flightTrackState(flight({}), now)).toBe('tracking');

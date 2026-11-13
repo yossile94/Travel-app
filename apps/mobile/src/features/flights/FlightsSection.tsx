@@ -456,7 +456,8 @@ export function FlightsSection({
   colorScheme: ColorScheme;
   /** The card shows the device copy: every write blocked (sprint 4 design 10.3). */
   readOnly: boolean;
-  onToast: (text: string) => void;
+  /** long: 5 seconds, for a message to read (sprint 15 design 6.1). */
+  onToast: (text: string, long?: boolean) => void;
   /** "flightId:seq" from a tapped alert: its sheet opens once the flight is here (AC-5). */
   openFlight?: string | null;
   /** What that alert said, shown over an offline copy (sprint 6 design 4.4). */
@@ -700,11 +701,13 @@ export function FlightsSection({
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
           onClose={() => setScreen(null)}
-          onSaved={(id, _number, direction, isNew, bookingFailed) => {
+          onSaved={(id, _number, direction, isNew, bookingFailed, untracked) => {
             setScreen(null);
             setSavedFlight(id);
+            // Sprint 15 design 6.1: saved without tracking, and why. One toast at a time.
+            if (untracked) onToast(untracked, true);
             // Sprint 7 design 6.3: the flight is saved; only the booking answer needs another try.
-            if (bookingFailed) onToast(t('flight.sameBookingFailed'));
+            else if (bookingFailed) onToast(t('flight.sameBookingFailed'));
             void refreshTripFlights(trip.id);
             // Design 8.4: after adding an outbound flight, when there is no return yet.
             if (isNew && direction === 'out' && !flights.some((f) => f.direction === 'return')) {

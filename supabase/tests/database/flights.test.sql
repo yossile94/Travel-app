@@ -250,7 +250,8 @@ select is((select count(*)::integer from public.flight_events e join public.flig
 select is((select sched_dep_utc from public.flight_watch where flight_number = 'LY541'),
   '2030-01-01T10:00:00Z'::timestamptz, 'the provider''s schedule replaces the typed one (#3)');
 
--- Times must fit the flight's date, and at most 10 flights tracked at once (#4).
+-- Times must fit the flight's date. Sprint 15: 12 tracked per trip, not 10 at once; the
+-- caps are tested in flight_caps.test.sql.
 select pg_temp.sign_in('00000000-0000-4000-8000-00000000005b');
 select throws_ok(
   $$select public.save_flight('20000000-0000-4000-8000-000000000007', '10000000-0000-4000-8000-00000000005d',
@@ -266,7 +267,7 @@ select is(
 select is(
   public.save_flight('40000000-0000-4000-8000-000000000010', '10000000-0000-4000-8000-00000000005d',
     pg_temp.flight('W610', current_date + 4)),
-  'track_limit', 'the eleventh tracked flight is refused'
+  'ok', 'an eleventh tracked flight is saved (sprint 15: 12 per trip)'
 );
 reset role;
 

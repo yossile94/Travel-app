@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { InlineNotice } from '@/components/formControls';
 import { NextIcon, PlusIcon } from '@/components/icons';
 import { isolateLtr } from '@/features/globe/BoardingPassCard';
 import { colors, fonts, layout, radius, type ColorScheme } from '@/theme/tokens';
@@ -42,6 +43,8 @@ export function TripFormFlights({
   const { t } = useTranslation();
   const p = colors[colorScheme];
   const data = useTripFlights(saved ? trip.id : null);
+  // Sprint 15 design 6.1: saved without tracking. The form has no toast, so it stays here.
+  const [untracked, setUntracked] = useState<string | null>(null);
   const [screen, setScreen] = useState<{ flight: Flight | null; direction: Direction } | null>(
     null,
   );
@@ -137,6 +140,13 @@ export function TripFormFlights({
       <Text style={[styles.footnote, { color: p.textSecondary }]} testID="trip-form-flights-help">
         {t('flights.formHelp')}
       </Text>
+      {untracked ? (
+        <InlineNotice
+          text={untracked}
+          colorScheme={colorScheme}
+          testID="trip-form-flight-untracked"
+        />
+      ) : null}
       {screen ? (
         <FlightScreen
           trip={trip}
@@ -147,8 +157,9 @@ export function TripFormFlights({
           insetsTop={insetsTop}
           insetsBottom={insetsBottom}
           onClose={() => setScreen(null)}
-          onSaved={(id) => {
+          onSaved={(id, _number, _direction, _isNew, _bookingFailed, notice) => {
             setScreen(null);
+            setUntracked(notice ?? null);
             void refreshTripFlights(trip.id);
             onFlightSaved?.(id);
           }}
