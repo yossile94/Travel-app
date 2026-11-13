@@ -119,8 +119,8 @@ revoke all on sequence public.tracked_flight_adds_id_seq from anon, authenticate
 
 -- ------------------------------------------------------ untracked_reason
 -- A flight past a cap is saved without a watch, with the reason (AC-6).
--- The new column is empty, so the checks are added without a scan under the
--- table lock, then validated (Dudi 6).
+-- Added not valid, then validated. In one migration this saves no lock time;
+-- it is the pattern for a later migration on a large table (Dudi 6).
 alter table public.flights
   add column untracked_reason text,
   add constraint flights_untracked_reason_check
