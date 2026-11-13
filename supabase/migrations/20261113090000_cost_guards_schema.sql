@@ -182,6 +182,7 @@ create table public.provider_catalog (
   alert_thresholds smallint[] not null default '{70,85,95}'
     constraint provider_catalog_thresholds_check
     check (cardinality(alert_thresholds) = 3 and array_ndims(alert_thresholds) = 1
+           and array_lower(alert_thresholds, 1) = 1 and array_position(alert_thresholds, null) is null
            and alert_thresholds[1] >= 1 and alert_thresholds[1] < alert_thresholds[2]
            and alert_thresholds[2] < alert_thresholds[3] and alert_thresholds[3] <= 100),
   -- Flight tracking only (AC-1): the 6-hour window, or the full schedule.

@@ -5,7 +5,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(47);
+select plan(48);
 
 insert into auth.users (id, email, email_confirmed_at)
 values
@@ -156,6 +156,10 @@ select throws_ok(
 select throws_ok(
   $$update public.provider_catalog set alert_thresholds = '{85,70,95}' where provider = 'aerodatabox'$$,
   '23514', null, 'the three thresholds go up'
+);
+select throws_ok(
+  $$update public.provider_catalog set alert_thresholds = '{70,null,95}' where provider = 'aerodatabox'$$,
+  '23514', null, 'a missing threshold is refused'
 );
 select throws_ok(
   $$update public.provider_catalog set schedule_mode = null where provider = 'aerodatabox'$$,
