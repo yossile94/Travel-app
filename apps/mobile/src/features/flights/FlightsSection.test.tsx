@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { Flight } from './flightModel';
-import { FlightsSection, updatedText } from './FlightsSection';
+import { FlightsSection, trackLine, updatedText } from './FlightsSection';
 import type { TripFlights } from './flightsStore';
 
 // The first render also loads the section's modules: room for a busy parallel run (QA S5 retest).
@@ -171,5 +171,23 @@ describe('FlightsSection (sprint 5 design 9–12)', () => {
     expect(updatedText('2026-12-20T11:59:30Z', at, t)).toBe('flight.updated.now');
     expect(updatedText('2026-12-20T11:55:00Z', at, t)).toBe('flight.updated.minMany5');
     expect(updatedText('2026-12-20T10:00:00Z', at, t)).toBe('flight.updated.hourTwo');
+  });
+});
+
+// Sprint 15 design 6.2 (Raz 4): a flight saved past a cap shows its reason, and
+// no "tracking has ended" once it is over: it was never tracked.
+describe('trackLine for a flight saved past a cap', () => {
+  const tt = (k: string) => k;
+  const capped = flight({ watch: null, untrackedReason: 'concurrent' });
+  it('before it is over: the reason', () => {
+    expect(trackLine(capped, 'untracked_concurrent', new Date(), tt)).toBe(
+      'flight.track.untracked_concurrent',
+    );
+  });
+  it('over: nothing', () => {
+    expect(trackLine(capped, 'ended', new Date(), tt)).toBe('');
+  });
+  it('a tracked flight whose data went: still "ended"', () => {
+    expect(trackLine(flight({ watch: null }), 'ended', new Date(), tt)).toBe('flight.track.ended');
   });
 });

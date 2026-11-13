@@ -286,10 +286,10 @@ as $$
       'arrTerminal', f.arr_terminal, 'arrGate', f.arr_gate,
       'pnr', f.pnr, 'seat', f.seat, 'cabin', f.cabin,
       'sameBooking', f.same_booking, 'sameBookingPrev', f.same_booking_prev,
-      -- No reason once the flight is over (design 6.2, Dudi 5).
-      'untrackedReason', case when coalesce(f.arr_sched, f.dep_sched + interval '24 hours',
-                                       (f.dep_date_local + 2)::timestamp at time zone f.dep_tz) > now()
-                               then f.untracked_reason end,
+      -- As saved. The app shows no reason once the flight is over, and uses it
+      -- to tell a never-tracked flight from one whose tracking ended
+      -- (design 6.2; Dudi 5, Raz 4).
+      'untrackedReason', f.untracked_reason,
       'arrMct', case when f.arr_iata is null then null
                      else coalesce(m.minutes, public.connection_mct(f.arr_iata)) end,
       'arrMctDefault', f.arr_iata is not null and m.iata is null,

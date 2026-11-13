@@ -112,7 +112,7 @@ function useMinute(active: boolean): Date {
   return now;
 }
 
-function trackLine(
+export function trackLine(
   f: Flight,
   state: TrackState,
   now: Date,
@@ -123,6 +123,9 @@ function trackLine(
   if (state === 'tracking' || state === 'landed' || state === 'cancelled' || state === 'diverted') {
     return checked ? updatedText(checked, now, t, a11y) : '';
   }
+  // Sprint 15 design 6.2: a flight saved past a cap was never tracked, so
+  // "tracking has ended" isn't true for it once it is over.
+  if (state === 'ended' && !f.watch && f.untrackedReason) return '';
   const text = t(`flight.track.${state}`);
   return state === 'paused' && checked ? `${text} ${updatedText(checked, now, t, a11y)}` : text;
 }
@@ -705,7 +708,13 @@ export function FlightsSection({
             setScreen(null);
             setSavedFlight(id);
             // Sprint 15 design 6.1: saved without tracking, and why. One toast at a time.
-            if (untracked) onToast(untracked, true);
+            if (untracked) {
+              // Raz 8: a booking answer that failed too goes in the same toast.
+              onToast(
+                bookingFailed ? `${untracked} ${t('flight.sameBookingFailed')}` : untracked,
+                true,
+              );
+            }
             // Sprint 7 design 6.3: the flight is saved; only the booking answer needs another try.
             else if (bookingFailed) onToast(t('flight.sameBookingFailed'));
             void refreshTripFlights(trip.id);

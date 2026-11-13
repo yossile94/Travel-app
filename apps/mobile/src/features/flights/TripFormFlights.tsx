@@ -165,6 +165,7 @@ export function TripFormFlights({
           }}
           onDeleted={() => {
             setScreen(null);
+            setUntracked(null);
             void refreshTripFlights(trip.id);
           }}
         />

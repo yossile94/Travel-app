@@ -5,7 +5,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(37);
+select plan(42);
 
 insert into auth.users (id, email)
 values
@@ -190,9 +190,9 @@ select is(
   'a suspended account saves flights without tracking'
 );
 select is(pg_temp.adds(5), 0, 'and spends no add');
+reset role;
 select is((select count(*)::integer from public.flight_watch where flight_number = 'E11'), 0,
   'and no watch is made');
-reset role;
 
 -- ---------------------------------------------------------------- AC-3: re-added
 -- A flight leaving in 2 hours is due at once. Checked, deleted, and added
@@ -228,8 +228,37 @@ select is((select next_check_at from public.flight_watch where flight_number = '
 select is((select count(*)::integer from public.flight_watch where flight_number = 'F11'), 1,
   'one watch, so at most one provider check');
 
--- ---------------------------------------------------------------- concurrent saves
--- The cap and the add share one lock per user, so the log matches the watches.
+-- ---------------------------------------------------------------- what counts as an add
+select pg_temp.sign_in('00000000-0000-4000-8000-0000000015b6');
+select public.save_flight_v2(pg_temp.fid(6, 2), pg_temp.trip(6, 1), pg_temp.flight('F12', current_date + 5));
+-- The save holds the user's lock until the transaction ends (Raz 2).
+select is(
+  (select count(*)::integer from pg_locks
+   where locktype = 'advisory' and classid = 1515 and pid = pg_backend_pid()
+     and objid::bigint = (hashtext('00000000-0000-4000-8000-0000000015b6')::bigint & 4294967295)),
+  1, 'a save takes the user''s lock'
+);
+select public.save_flight_v2(pg_temp.fid(6, 2), pg_temp.trip(6, 1), pg_temp.flight('F13', current_date + 5));
+select is(pg_temp.adds(6), 13, 'a new number on the same flight is a new add (AC-5)');
+-- Over now, with the same number and date: it keeps its watch.
+select is(
+  public.save_flight_v2(pg_temp.fid(6, 1), pg_temp.trip(6, 1), pg_temp.flight('F11', (now() at time zone 'UTC')::date,
+    jsonb_build_object('depTz', 'UTC', 'depDateLocal', ((now() + interval '2 hours') at time zone 'UTC')::date,
+                       'depSched', now() - interval '3 hours', 'arrSched', now() - interval '1 hour'))) ->> 'status',
+  'ok', 'a flight now over saves as before'
+);
+reset role;
+select ok((select watch_id is not null from public.flights where id = pg_temp.fid(6, 1)),
+  'and keeps its watch');
+-- A watch that failed an hour ago: linked, but not tracking, so not an add (Dudi 3).
+insert into public.flight_watch (flight_number, dep_date_local, state, next_check_at, attempts)
+values ('F14', current_date + 5, 'failed', now() - interval '1 hour', 3);
+select pg_temp.sign_in('00000000-0000-4000-8000-0000000015b6');
+select public.save_flight_v2(pg_temp.fid(6, 4), pg_temp.trip(6, 1), pg_temp.flight('F14', current_date + 5));
+select is(pg_temp.adds(6), 13, 'a failed watch takes no add');
+reset role;
+
+-- ---------------------------------------------------------------- the counts agree
 select is(
   (select count(*)::integer from public.flights f join public.flight_watch w on w.id = f.watch_id
    where f.user_id = '00000000-0000-4000-8000-0000000015b1' and w.state in ('active', 'paused')),

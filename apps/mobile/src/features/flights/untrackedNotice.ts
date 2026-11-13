@@ -3,13 +3,15 @@
  * saved without tracking, past a cap. The renewal date is the device's own
  * day, read left to right; the screen reader hears the spoken date.
  */
+import type { TFunction } from 'i18next';
+
 import { isolateLtr } from '@/features/globe/BoardingPassCard';
 import { formatDate } from '@/features/trips/tripDates';
 
 import type { Untracked } from './flightsApi';
 import { dayMonth } from './flightTime';
 
-type T = (key: string, options?: Record<string, unknown>) => string;
+type T = TFunction | ((key: string, options?: Record<string, unknown>) => string);
 
 /** "2027-01-14" in the device's time zone. */
 function localDay(at: string): string {
@@ -39,6 +41,6 @@ export function untrackedNotice(
   const shown = year === now.getFullYear() ? dayMonth(day) : `${dayMonth(day)}.${year}`;
   return {
     text: t('flight.untracked.turnover', { date: isolateLtr(shown) }),
-    a11y: t('flight.untracked.turnover', { date: formatDate(day, t as never) }),
+    a11y: t('flight.untracked.turnover', { date: formatDate(day, t as TFunction) }),
   };
 }
