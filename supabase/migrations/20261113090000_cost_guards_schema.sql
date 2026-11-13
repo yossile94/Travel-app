@@ -311,7 +311,7 @@ create table public.manual_usage (
   updated_by uuid references auth.users (id) on delete set null,
   primary key (provider, metric, as_of),
   foreign key (provider, metric) references public.provider_catalog (provider, metric)
-    on update cascade on delete cascade
+    on update cascade on delete restrict
 );
 comment on table public.manual_usage is
   'Usage typed from an invoice, for providers we can''t meter (sprint 15 AC-15). Admin with MFA only; logged.';

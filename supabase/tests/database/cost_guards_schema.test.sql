@@ -5,7 +5,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(48);
+select plan(49);
 
 insert into auth.users (id, email, email_confirmed_at)
 values
@@ -194,6 +194,11 @@ select throws_ok(
   $$insert into public.usage_daily (provider, metric, day, feature, platform)
     values ('mapbox', 'loads', current_date, 'watch', 'ios')$$,
   '23503', null, 'usage is counted only against a catalog row'
+);
+
+select throws_ok(
+  $$delete from public.provider_catalog where provider = 'google_places' and metric = 'places_search'$$,
+  '23503', null, 'a catalog row with typed-in usage can''t be deleted (Dudi 5)'
 );
 
 -- ---------------------------------------------------------------- suspensions and flights
