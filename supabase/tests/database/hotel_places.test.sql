@@ -271,7 +271,7 @@ select throws_ok(
   $$select public.take_places_call('00000000-0000-4000-8000-0000000014a1', 'other')$$,
   'P0001', 'take_places_call: bad user or kind', 'an unknown kind is refused'
 );
-select is((select hard_cap from public.provider_catalog where provider = 'google_places' and metric = 'pick'), 800,
+select is((select hard_cap from public.provider_catalog where provider = 'google_places' and metric = 'places_pick'), 800,
   'the pick cap is a setting under Enterprise''s free 1,000');
 
 delete from auth.users where id = '00000000-0000-4000-8000-0000000014a1';

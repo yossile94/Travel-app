@@ -36,12 +36,12 @@
 | `push_tokens` | קריאה ומחיקה. הרישום דרך `register_push_token` | הבעלים | `push.test.sql` |
 | `admin_roles` | קריאה | אדמינים | `admin.test.sql` |
 | `admin_audit_log` | קריאה | אדמינים | `admin.test.sql` |
-| `usage_limits` | קריאה. כתיבה רק ב-migration או ב-RPC של אדמין (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
-| `provider_catalog` | קריאה. כתיבה רק ב-migration או ב-RPC של אדמין (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
-| `usage_daily` | קריאה. כתיבה רק ב-migration או ב-RPC של אדמין (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
-| `cost_alerts` | קריאה. כתיבה רק ב-migration או ב-RPC של אדמין (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
-| `manual_usage` | קריאה. כתיבה רק ב-migration או ב-RPC של אדמין (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
-| `account_suspensions` | קריאה. כתיבה רק ב-migration או ב-RPC של אדמין (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `usage_limits` | קריאה. שינוי ב-migration בלבד (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `provider_catalog` | קריאה. כתיבה ב-RPC של אדמין (PR-G) (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `usage_daily` | קריאה. נכתבת בשרת, ב-`spend_provider_units` וב-`take_places_call` (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `cost_alerts` | קריאה. נכתבת בשרת, ב-`usage-rollup` (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `manual_usage` | קריאה. כתיבה ב-RPC של אדמין (PR-G) (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
+| `account_suspensions` | קריאה. כתיבה ב-RPC של אדמין (PR-G) (ספרינט 15) | אדמינים עם AAL2 | `cost_guards_schema.test.sql` |
 | `country_advisories` | קריאה לכולם, עדכון לעורכים | ציבורי ועורכים | `destination_data.test.sql`, ‏`admin_cases.test.sql` |
 | `curated_places` | קריאה של מה שפורסם, כתיבה לעורכים | ציבורי ועורכים | `places_itinerary.test.sql`, ‏`admin_cases.test.sql` |
 | `min_connection_times` | קריאה לכולם, כתיבה לעורכים | ציבורי ועורכים | `connections.test.sql`, ‏`admin_cases.test.sql` |

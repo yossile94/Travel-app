@@ -64,9 +64,10 @@ revoke execute on function public.admin_audit() from public, anon, authenticated
 create table public.usage_limits (
   tier text not null constraint usage_limits_tier_check check (tier in ('interim')),
   limit_key text not null constraint usage_limits_key_check check (limit_key in (
-    'flights_per_trip', 'future_flights', 'tracked_adds_year', 'tracked_adds_30d',
-    'lookups_30d', 'lookups_day',
-    'places_picks_month', 'places_searches_month', 'places_refreshes_month')),
+    'flights_per_trip', 'flights_per_trip_total', 'future_flights',
+    'tracked_adds_year', 'tracked_adds_30d', 'lookups_30d', 'lookups_day',
+    'places_picks_month', 'places_searches_month', 'places_refreshes_month',
+    'places_picks_day', 'places_searches_day', 'places_refreshes_day')),
   value integer not null constraint usage_limits_value_check check (value >= 0),
   primary key (tier, limit_key)
 );
@@ -74,7 +75,9 @@ comment on table public.usage_limits is
   'Per-user caps by tier (sprint 15, G3). The server reads its caps only here. Changed by migration only.';
 
 insert into public.usage_limits (tier, limit_key, value) values
+  -- Tracked flights per trip; with the manual ones, 20 (sprint 5).
   ('interim', 'flights_per_trip', 12),
+  ('interim', 'flights_per_trip_total', 20),
   ('interim', 'future_flights', 30),
   ('interim', 'tracked_adds_year', 72),
   ('interim', 'tracked_adds_30d', 24),
@@ -82,7 +85,11 @@ insert into public.usage_limits (tier, limit_key, value) values
   ('interim', 'lookups_day', 10),
   ('interim', 'places_picks_month', 15),
   ('interim', 'places_searches_month', 300),
-  ('interim', 'places_refreshes_month', 30);
+  ('interim', 'places_refreshes_month', 30),
+  -- The daily caps of sprint 14 stay (AC-10), now as rows.
+  ('interim', 'places_picks_day', 20),
+  ('interim', 'places_searches_day', 100),
+  ('interim', 'places_refreshes_day', 20);
 
 alter table public.usage_limits enable row level security;
 revoke all on public.usage_limits from anon, authenticated;
@@ -112,12 +119,16 @@ revoke all on sequence public.tracked_flight_adds_id_seq from anon, authenticate
 
 -- ------------------------------------------------------ untracked_reason
 -- A flight past a cap is saved without a watch, with the reason (AC-6).
+-- The new column is empty, so the checks are added without a scan under the
+-- table lock, then validated (Dudi 6).
 alter table public.flights
-  add column untracked_reason text
-    constraint flights_untracked_reason_check
-    check (untracked_reason in ('concurrent', 'turnover', 'suspended')),
+  add column untracked_reason text,
+  add constraint flights_untracked_reason_check
+    check (untracked_reason in ('concurrent', 'turnover', 'suspended')) not valid,
   add constraint flights_untracked_reason_watch_check
-    check (untracked_reason is null or watch_id is null);
+    check (untracked_reason is null or watch_id is null) not valid;
+alter table public.flights validate constraint flights_untracked_reason_check;
+alter table public.flights validate constraint flights_untracked_reason_watch_check;
 
 -- ----------------------------------------------------- account_suspensions
 create table public.account_suspensions (
@@ -150,26 +161,29 @@ create table public.provider_catalog (
   metric text not null constraint provider_catalog_metric_check
     check (metric ~ '^[a-z][a-z0-9_]{1,30}$'),
   plan text not null constraint provider_catalog_plan_check
-    check (char_length(plan) between 1 and 60 and plan = btrim(plan)),
+    check (char_length(plan) between 1 and 40 and plan = btrim(plan)),
   -- What the plan includes in a billing cycle, and what the server lets us
   -- spend of it. A hard cap of 0 stops the metric.
   monthly_quota integer not null constraint provider_catalog_quota_check check (monthly_quota > 0),
   hard_cap integer not null constraint provider_catalog_cap_check
     check (hard_cap >= 0 and hard_cap <= monthly_quota),
-  -- AeroDataBox: any 30 days (RapidAPI renews on the subscription day, so
-  -- 30 rolling days never spend two quotas in one cycle). Google: the
-  -- calendar month in Pacific time.
+  -- AeroDataBox: RapidAPI renews monthly on the subscription day; the cap
+  -- holds over any 31 days, which no monthly cycle is longer than, so one
+  -- cycle never spends more than one cap. Google: the calendar month in
+  -- Pacific time. Mapbox: the calendar month in UTC. Supabase: monthly from
+  -- the organisation's billing day (billing_anchor).
   billing_cycle text not null constraint provider_catalog_cycle_check
-    check (billing_cycle in ('rolling_30d', 'month_pacific')),
+    check (billing_cycle in ('rolling_31d', 'month_pacific', 'month_utc', 'month_anchor')),
   billing_anchor date,
-  fixed_price numeric(10, 2) not null default 0 constraint provider_catalog_fixed_price_check
+  fixed_price numeric(12, 6) not null default 0 constraint provider_catalog_fixed_price_check
     check (fixed_price >= 0),
   unit_price numeric(12, 6) not null default 0 constraint provider_catalog_unit_price_check
     check (unit_price >= 0),
   alert_thresholds smallint[] not null default '{70,85,95}'
     constraint provider_catalog_thresholds_check
-    check (cardinality(alert_thresholds) between 1 and 5
-           and 1 <= all (alert_thresholds) and 100 >= all (alert_thresholds)),
+    check (cardinality(alert_thresholds) = 3 and array_ndims(alert_thresholds) = 1
+           and alert_thresholds[1] >= 1 and alert_thresholds[1] < alert_thresholds[2]
+           and alert_thresholds[2] < alert_thresholds[3] and alert_thresholds[3] <= 100),
   -- Flight tracking only (AC-1): the 6-hour window, or the full schedule.
   schedule_mode text constraint provider_catalog_schedule_check
     check (schedule_mode in ('window_6h', 'full')),
@@ -184,15 +198,24 @@ comment on table public.provider_catalog is
 create index provider_catalog_updated_by on public.provider_catalog (updated_by)
   where updated_by is not null;
 
--- The rows of provider_caps, as they were (ADR-010, ADR-021). Prices are the
--- list price after the free quota, in dollars.
+-- The rows of provider_caps, as they were (ADR-010, ADR-021), and the rows
+-- the sprint adds: the lookup budget (AC-7; on the free plan it shares the
+-- whole cap, Yossi 13.11), the English pick (AC-12), and Mapbox and Supabase,
+-- entered by hand (AC-15). Prices are the list price after the free quota,
+-- in dollars. Mapbox and Supabase aren't enforced by us: their hard cap is
+-- the quota, for the card's percentage.
 insert into public.provider_catalog
   (provider, metric, plan, monthly_quota, hard_cap, billing_cycle, unit_price, schedule_mode)
 values
-  ('aerodatabox', 'units', 'Basic (free)', 400, 360, 'rolling_30d', 0, 'window_6h'),
-  ('google_places', 'search', 'Autocomplete, free tier', 10000, 9000, 'month_pacific', 0.00283, null),
-  ('google_places', 'pick', 'Place Details Enterprise, free tier', 1000, 800, 'month_pacific', 0.02, null),
-  ('google_places', 'refresh', 'Place Details Essentials, free tier', 10000, 8000, 'month_pacific', 0.005, null);
+  ('aerodatabox', 'units', 'Basic (free)', 400, 360, 'rolling_31d', 0, 'window_6h'),
+  ('aerodatabox', 'lookup', 'Basic (free)', 400, 360, 'rolling_31d', 0, null),
+  ('google_places', 'places_search', 'Autocomplete, free tier', 10000, 9000, 'month_pacific', 0.00283, null),
+  ('google_places', 'places_pick', 'Place Details Enterprise, free tier', 1000, 800, 'month_pacific', 0.02, null),
+  ('google_places', 'places_pick_en', 'Place Details Pro, free tier', 5000, 800, 'month_pacific', 0.017, null),
+  ('google_places', 'places_refresh', 'Place Details Essentials, free tier', 10000, 8000, 'month_pacific', 0.005, null),
+  ('mapbox', 'mau', 'Free', 25000, 25000, 'month_utc', 0, null),
+  ('supabase', 'db_size_mb', 'Free', 500, 500, 'month_anchor', 0, null),
+  ('supabase', 'edge_invocations', 'Free', 500000, 500000, 'month_anchor', 0, null);
 
 alter table public.provider_catalog enable row level security;
 revoke all on public.provider_catalog from anon, authenticated;
@@ -200,6 +223,12 @@ create policy "admins read the provider catalog"
   on public.provider_catalog for select to authenticated
   using ((select public.has_role('admin')));
 grant select on public.provider_catalog to authenticated;
+
+-- The edit RPC finds a stale row by updated_at (design 8.7), so every
+-- change moves it, a migration's too (sprint 10's touch_updated_at).
+create trigger provider_catalog_touch
+  before update on public.provider_catalog
+  for each row execute function public.touch_updated_at();
 
 create trigger provider_catalog_audit
   after insert or update or delete on public.provider_catalog
@@ -220,7 +249,7 @@ create table public.usage_daily (
   last_call_at timestamptz not null default now(),
   primary key (provider, metric, day, feature, platform),
   foreign key (provider, metric) references public.provider_catalog (provider, metric)
-    on update cascade
+    on update cascade on delete restrict
 );
 comment on table public.usage_daily is
   'Provider calls per day, metric, feature and platform (sprint 15 D-1). No user id. Admin with MFA only.';
@@ -249,7 +278,7 @@ create table public.cost_alerts (
     check (jsonb_typeof(detail) = 'object' and pg_column_size(detail) <= 200),
   created_at timestamptz not null default now(),
   foreign key (provider, metric) references public.provider_catalog (provider, metric)
-    on update cascade on delete cascade,
+    on update cascade on delete restrict,
   constraint cost_alerts_shape_check check (
     (kind = 'threshold') = (threshold is not null)
     and (kind = 'flood') = (feature is not null)
@@ -257,9 +286,10 @@ create table public.cost_alerts (
 );
 comment on table public.cost_alerts is
   'One row per alert, threshold and billing period (sprint 15 D-3, AC-16). Admin with MFA only.';
--- Once per threshold and period, however often the daily job runs.
-create unique index cost_alerts_once on public.cost_alerts
-  (provider, metric, kind, coalesce(threshold, 0), coalesce(feature, ''), period);
+-- Once per threshold and period, however often the daily job runs
+-- (insert ... on conflict on constraint cost_alerts_once do nothing).
+alter table public.cost_alerts add constraint cost_alerts_once
+  unique nulls not distinct (provider, metric, kind, threshold, feature, period);
 create index cost_alerts_created on public.cost_alerts (created_at desc);
 
 alter table public.cost_alerts enable row level security;
@@ -293,12 +323,17 @@ create policy "admins read the manual usage"
   using ((select public.has_role('admin')));
 grant select on public.manual_usage to authenticated;
 
+create trigger manual_usage_touch
+  before update on public.manual_usage
+  for each row execute function public.touch_updated_at();
 create trigger manual_usage_audit
   after insert or update or delete on public.manual_usage
   for each row execute function public.admin_audit('provider', 'metric', 'as_of');
 
 -- ------------------------------------------- the budgets read the catalog
--- Same rules as sprint 5 and 14; only the source of the cap moves (AC-9).
+-- Same rules as sprint 5 and 14; the source of the cap moves (AC-9), and the
+-- AeroDataBox window is 31 days, so a 31-day billing month can't hold two
+-- full caps (Raz 3).
 create or replace function public.spend_provider_units(p_provider text, p_units integer)
   returns boolean
   language plpgsql
@@ -317,9 +352,9 @@ begin
   perform pg_advisory_xact_lock(hashtext('provider_units:' || p_provider));
   select coalesce(sum(units), 0) into used
   from public.provider_usage
-  where provider = p_provider and day > today - 30;
+  where provider = p_provider and day > today - 31;
   if cap is null or used + p_units > cap then
-    raise log 'spend_provider_units: % reached the cap of % units in 30 days', p_provider, cap;
+    raise log 'spend_provider_units: % reached the cap of % units in 31 days', p_provider, cap;
     return false;
   end if;
   insert into public.provider_usage as u (day, provider, units)
@@ -339,9 +374,14 @@ declare
   today date := (now() at time zone 'utc')::date;
   -- Google bills by calendar month in Pacific time (Dudi 2).
   this_month date := date_trunc('month', now() at time zone 'America/Los_Angeles')::date;
-  per_user integer := case p_kind when 'search' then 100 when 'pick' then 20 when 'refresh' then 20 end;
+  -- The user's daily caps are rows now (100 searches, 20 picks, 20 refreshes).
+  per_user integer := (select l.value from public.usage_limits l
+                       where l.tier = 'interim'
+                         and l.limit_key = case p_kind when 'search' then 'places_searches_day'
+                                                       when 'pick' then 'places_picks_day'
+                                                       when 'refresh' then 'places_refreshes_day' end);
   cap integer := (select c.hard_cap from public.provider_catalog c
-                  where c.provider = 'google_places' and c.metric = p_kind);
+                  where c.provider = 'google_places' and c.metric = 'places_' || p_kind);
   used integer;
 begin
   if p_user is null or per_user is null then
@@ -419,7 +459,10 @@ revoke execute on function public.call_cron_job(text, jsonb) from public, anon, 
 
 -- -------------------------------------------------------------- retention
 -- The 30-day caps need 31 days of counts (Raz 5): flight_lookups and
--- places_calls were kept 2 days.
+-- places_calls were kept 2 days. Their keys start with the user, so the
+-- daily delete gets an index on the day (Dudi 2).
+create index flight_lookups_day on public.flight_lookups (day);
+create index places_calls_day on public.places_calls (day);
 create or replace function public.flight_data_retention()
   returns void
   language sql

@@ -5,7 +5,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(23);
 
 -- ---------------------------------------------------------------- structure
 select ok(
@@ -51,9 +51,11 @@ select is(
   (select sum(units)::integer from public.provider_usage where provider = 'aerodatabox'), 360,
   'a refused call spends nothing'
 );
--- Units older than 30 days no longer count (a rolling window, Dudi #3).
+-- Units count for 31 days, so a 31-day billing month holds one cap (Raz 3, sprint 15).
 update public.provider_usage set day = day - 30 where provider = 'aerodatabox';
-select is(public.spend_provider_units('aerodatabox', 2), true, 'units from 30 days ago are free again');
+select is(public.spend_provider_units('aerodatabox', 1), false, 'units from 30 days ago still count');
+update public.provider_usage set day = day - 1 where provider = 'aerodatabox';
+select is(public.spend_provider_units('aerodatabox', 2), true, 'units from 31 days ago are free again');
 update public.provider_catalog set monthly_quota = 4000, hard_cap = 4000
 where provider = 'aerodatabox' and metric = 'units';
 select is(
