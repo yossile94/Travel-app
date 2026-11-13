@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ספרינט 15: דשבורד ספקים, השהיית חשבון והודעות התקרה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#FFFBF5;--surface:#FFFFFF;--alt:#FBF4E8;--t1:#121C36;--t2:#4A5573;--t3:#646E8A;--link:#1561BC;--alertT:#C81E16;
+    --border:#F4E7D0;--control:#7D869E;--primary:#1561BC;--secBg:#EEF6FF;--secFg:#104C94;--cta:#C8441F;--tag:#FBF4E8;
+    --okBg:#E8FAF7;--okFg:#0A665D;--warnBg:#FFF2EE;--warnFg:#A8381A;--badBg:#FFF0EF;--badFg:#A0170F;--bad:#C81E16;
+    --m-ok:#0B7F73;--m-warn:#F25C38;--m-over:#C81E16;--m-track:#FBF4E8;
+    --c1:#1561BC;--c2:#0B7F73;--c3:#C8441F;--c4:#9B6BEA;--c5:#8F7550;--c6:#646E8A;--skeleton:#F4E7D0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Rubik,system-ui,sans-serif;background:#E9EEFA;color:var(--t1);font-size:16px;line-height:1.5}
+  .page-head{position:sticky;top:0;z-index:5;background:#121C36;color:#F3F6FC;padding:12px 20px;font-weight:600}
+  section.demo{padding:24px;display:flex;flex-direction:column;gap:12px;align-items:center}
+  section.demo>h2{margin:0;font-size:18px;color:#24355F}
+  .note{font-size:14px;color:#4A5573;max-width:1280px}
+  /* Numbers only: never on a td or a whole block (Raz 6). */
+  .ltr{direction:ltr;unicode-bidi:isolate}
+  .num{font-variant-numeric:tabular-nums}
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+  /* ---------- Admin shell (globals.css) ---------- */
+  .desk{width:1280px;background:var(--canvas);border:1px solid #CED8F0;border-radius:8px;overflow:hidden}
+  .top{height:56px;display:flex;align-items:center;gap:12px;padding-inline:24px;background:var(--surface);border-bottom:1px solid var(--border)}
+  .top .grow{flex:1}.product{font-weight:600}
+  .tag{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:13px;background:var(--tag);color:var(--t2);white-space:nowrap}
+  .tag.ok,.tag-published{background:var(--okBg);color:var(--okFg)}.tag.warn{background:var(--warnBg);color:var(--warnFg)}.tag.bad{background:var(--badBg);color:var(--badFg)}
+  .tag.full{background:var(--bad);color:#fff}
+  .tag .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+  .frame{display:flex}
+  nav.side{width:232px;padding:16px 12px;display:flex;flex-direction:column;gap:4px;flex:none}
+  nav.side a{min-height:44px;display:flex;align-items:center;padding-inline:12px;border-radius:8px;color:var(--t1);text-decoration:none}
+  nav.side a[aria-current=page]{background:var(--secBg);color:var(--secFg)}
+  nav.side hr{border:0;border-top:1px solid var(--border);width:100%}
+  main{flex:1;padding:32px;max-width:1120px}
+  h1{font-size:28px;line-height:34px;font-weight:600;margin:0 0 4px}
+  .sub{color:var(--t2);font-size:13px;margin:0 0 24px}
+  button,.button{font:inherit;min-height:44px;padding:0 20px;border-radius:999px;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .primary{background:var(--primary);color:#fff}.secondary{background:var(--secBg);color:var(--secFg)}.cta{background:var(--cta);color:#fff}
+  .linkb{background:none;color:var(--link);padding:0 8px}
+  a{color:var(--link)}
+  button[aria-disabled=true]{background:#E9EEFA;color:#646E8A;cursor:not-allowed}
+  /* Arrows come from CSS and flip with the direction (Raz 6). */
+  .go::after{content:"\2190";margin-inline-start:6px}
+  .go:dir(ltr)::after{content:"\2192"}
+  .back::before{content:"\2192";margin-inline-end:6px}
+  .back:dir(ltr)::before{content:"\2190"}
+  .alert{background:var(--badBg);color:var(--badFg);padding:12px 16px;border-radius:12px;margin-bottom:16px}
+  .notice{background:var(--secBg);color:var(--secFg);padding:12px 16px;border-radius:12px;margin-bottom:16px}
+  .help{font-size:13px;color:var(--t2)}.error{font-size:13px;color:var(--alertT)}
+  input,select,textarea{font:inherit;min-height:44px;padding:8px 12px;border:1px solid var(--control);border-radius:8px;background:var(--surface);color:var(--t1)}
+  input[aria-invalid=true]{border:2px solid var(--alertT)}
+  .field{display:flex;flex-direction:column;gap:4px;margin-bottom:16px;max-width:560px}
+  .field label,legend{font-size:14px;color:var(--t2)}
+  fieldset{border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin:0 0 16px;max-width:560px}
+  .actions{display:flex;gap:12px;align-items:center;margin-top:8px}
+  table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:12px;font-size:15px;font-variant-numeric:tabular-nums}
+  th,td{text-align:start;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+  th{color:var(--t2);font-weight:500}
+  /* New: the full internal ID (Raz 5). .code stays the sign-in code. */
+  .uid{font-family:ui-monospace,Consolas,monospace;font-size:13px;letter-spacing:0}
+  tr.flash td{animation:fl .6s cubic-bezier(.2,0,0,1) 1s both}
+  @keyframes fl{from{background:var(--secBg)}to{background:var(--surface)}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* banner */
+  .banner{margin:16px 24px 0;display:flex;gap:12px;align-items:flex-start}
+  .banner h2{font-size:16px;line-height:24px;margin:0;font-weight:600}
+  .banner ul{margin:4px 0 0;padding-inline-start:20px}
+  .banner .grow{flex:1}
+
+  /* usage cards (.usage-card, not the sign-in .card) */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .usage-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:8px}
+  .usage-card .head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .usage-card h3{font-size:20px;line-height:26px;margin:0;font-weight:600}
+  .usage-card .plan{font-size:14px;color:var(--t2)}
+  .pct{font-size:34px;line-height:40px;font-weight:600;font-variant-numeric:tabular-nums}
+  .meter{position:relative;height:12px;border-radius:999px;background:var(--m-track)}
+  .meter .fill{position:absolute;inset-block:0;inset-inline-start:0;border-radius:999px}
+  .meter .fc{position:absolute;top:-4px;width:2px;height:20px;background:var(--t1)}
+  /* Forecast past 100%: the arrow points past the end, flipped by direction (Raz 6). */
+  .meter .fc.out{inset-inline-end:0}
+  .meter .fc.out::after{content:"\203A";position:absolute;top:-4px;inset-inline-start:6px;font-size:18px;line-height:20px}
+  .meter .fc.out:dir(rtl)::after{content:"\2039"}
+  .used{font-size:14px}
+  dl{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;margin:8px 0 0;font-size:14px}
+  dt{color:var(--t2)}dd{margin:0}
+  .over{color:var(--alertT)}
+  .foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:8px;margin-top:4px;font-size:13px;color:var(--t2)}
+  .sk{height:260px;border-radius:16px;background:var(--skeleton);animation:p 1s ease-in-out infinite alternate}
+  @keyframes p{from{opacity:1}to{opacity:.5}}
+
+  /* dialog mock */
+  .dlgwrap{background:rgba(6,11,24,.48);padding:40px;display:flex;justify-content:center;border-radius:8px}
+  .dlg{background:#fff;border-radius:16px;padding:24px;width:520px}
+  .dlg h2{font-size:20px;line-height:26px;margin:0 0 12px}
+  .dlg table{font-size:14px;margin:8px 0 12px}
+
+  /* chart */
+  .chart{background:#fff;border-radius:12px;padding:16px;border:1px solid var(--border);position:relative}
+  .legend{display:flex;gap:20px;font-size:14px;margin-top:8px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-inline-end:6px;vertical-align:-1px}
+  .radios{display:inline-flex;gap:16px;margin-inline-start:8px}
+  .radios label{min-height:44px;display:inline-flex;align-items:center;gap:6px}
+  .tip{position:absolute;background:#121C36;color:#F3F6FC;border-radius:8px;padding:8px 12px;font-size:13px;pointer-events:none;display:none;white-space:nowrap}
+
+  /* ---------- Phones ---------- */
+  .phones{display:flex;flex-wrap:wrap;gap:32px;justify-content:center}
+  figure{margin:0;display:flex;flex-direction:column;gap:8px;align-items:center}
+  figcaption{font-size:14px;color:#4A5573;max-width:360px;text-align:center}
+  .phone{width:360px;height:740px;background:#0A2A52;border-radius:32px;border:8px solid #121C36;overflow:hidden;display:flex;flex-direction:column;position:relative}
+  .phone.form{background:var(--canvas)}
+  .sheet{position:absolute;inset-inline:0;bottom:0;top:120px;background:#fff;border-radius:28px 28px 0 0;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+  .grab{width:36px;height:4px;border-radius:2px;background:#CED8F0;align-self:center}
+  .h3{font-weight:600;font-size:18px;line-height:24px}
+  .frow{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px}
+  .frow .top2{display:flex;justify-content:space-between;align-items:center}
+  .cap{font-size:12px;font-weight:500;color:var(--t2)}
+  .chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:500}
+  .chip.un{background:var(--tag);color:var(--t2)}
+  .chip.ok{background:var(--okBg);color:var(--okFg)}
+  .codeT{font-weight:500;font-size:15px;letter-spacing:1.6px;font-variant-numeric:tabular-nums}
+  .route{display:flex;align-items:center;gap:6px;font-weight:600;font-size:18px}
+  .route .dash{flex:1;border-top:1px dashed var(--control)}
+  .times{display:flex;justify-content:space-between;font-weight:500;font-size:17px;font-variant-numeric:tabular-nums}
+  .foot2{font-size:13px;line-height:18px;color:var(--t2);display:flex;gap:6px;align-items:flex-end}
+  .foot2 span{flex:1}
+  .toast{position:absolute;inset-inline:16px;bottom:24px;background:#121C36;color:#F3F6FC;border-radius:16px;padding:12px 16px;font-size:15px;line-height:21px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .bar{min-height:56px;display:flex;align-items:center;gap:4px;padding-inline-end:16px}
+  .bar .title{font-weight:600;font-size:20px}
+  .content{flex:1;padding:16px;display:flex;flex-direction:column;gap:16px}
+  .lbl{font-size:13px;color:var(--t2);margin-bottom:6px}
+  .input{min-height:48px;border:1px solid var(--control);border-radius:12px;background:#fff;display:flex;align-items:center;gap:8px;padding:0 12px}
+  .input.off{opacity:.5}
+  .inote{background:var(--secBg);color:var(--secFg);border-radius:12px;padding:12px;font-size:15px;line-height:20px}
+</style>
+</head>
+<body>
+<div class="page-head">ספרינט 15 · הדמיה · אושר על ידי רז עם הערות (13.11), ההערות שולבו · פירוט ב-sprint-15.md</div>
+
+<!-- ======================= 1. COSTS ======================= -->
+<section class="demo">
+  <h2>1–2. "ספקים ועלויות" עם באנר ההתראות (AC-15, AC-16)</h2>
+  <p class="note">הכרטיסים מסודרים לפי חומרה. המד מתמלא מצד ההתחלה. הקו השחור הוא הצפי, והחץ מסמן צפי מעל 100% ומתהפך לפי הכיוון. בכרטיס, "מעל התקרה" נמדד מול התקרה הקשיחה, וההתראה בבאנר נמדדת מול המכסה. הבאנר מופיע בכל דף בפאנל, רק ל-Admin. בדף הזה אין בו את הכפתור "ספקים ועלויות", כי כבר נמצאים בדף.</p>
+  <div class="desk">
+    <header class="top"><span class="product">פאנל תוכן</span><span class="tag" style="background:#FFF2EE;color:#A8381A">פיתוח</span><span class="grow"></span><span class="ltr">admin@…</span><span class="tag">Admin</span><button class="linkb">English</button><button class="secondary">יציאה</button></header>
+    <section class="alert banner" aria-labelledby="ca-t">
+      <span aria-hidden="true">⚠</span>
+      <div class="grow">
+        <h2 id="ca-t">3 התראות עלות</h2>
+        <ul>
+          <li><span class="ltr">AeroDataBox</span> · יחידות: עבר <span class="ltr">85%</span> מהתקרה הקשיחה. עכשיו <span class="ltr num">88%</span>.</li>
+          <li><span class="ltr">AeroDataBox</span> · יחידות: לפי הקצב, יגיע ל-<span class="ltr num">760</span> עד 1.12, מעל המכסה (<span class="ltr num">700</span>).</li>
+          <li><span class="ltr">Google Places</span> · חיפוש מלון: הצפת קריאות ב-12.11, ‏<span class="ltr num">312</span> קריאות, פי <span class="ltr num">4.2</span> מהממוצע של 7 הימים.</li>
+        </ul>
+      </div>
+    </section>
+    <div class="frame">
+      <nav class="side" aria-label="ניווט">
+        <a>כניסה לישראלים</a><a>זמני חיבור</a><a>מומלץ לישראלים</a><hr>
+        <a aria-current="page">ספקים ועלויות</a><a>ספקים ומסלולים</a><a>חשבונות מובילים</a>
+        <a>יומן שינויים</a><a>תפקידים</a>
+      </nav>
+      <main>
+        <h1>ספקים ועלויות</h1>
+        <p class="sub">ניצול מתוך התקרה הקשיחה, לפי מחזור החיוב של כל ספק. הזמנים בשעון ישראל.</p>
+        <div class="grid">
+          <!-- red: forecast 760 > hard cap 600 → "over the cap" -->
+          <article class="usage-card">
+            <div class="head"><h3><span class="ltr">AeroDataBox</span></h3><span class="tag bad"><span class="dot"></span>קרוב לתקרה</span></div>
+            <div class="plan">יחידות · מסלול <span class="ltr">Basic</span></div>
+            <div class="pct"><span class="ltr">88%</span></div>
+            <div class="meter" role="meter" aria-valuenow="88" aria-valuemin="0" aria-valuemax="100" aria-valuetext="88% מהתקרה הקשיחה, קרוב לתקרה"><div class="fill" style="width:88%;background:var(--m-over)"></div><div class="fc out"></div></div>
+            <div class="used"><span class="ltr num">528</span> מתוך <span class="ltr num">600</span> (התקרה הקשיחה). מכסת המסלול: <span class="ltr num">700</span>.</div>
+            <dl>
+              <dt>צפי לסוף המחזור</dt><dd><span class="ltr num">760</span> (<span class="ltr num">127%</span>) <span class="over">· ⚠ מעל התקרה</span></dd>
+              <dt>מחזור החיוב</dt><dd>2.11–1.12 · 30 יום מתגלגלים</dd>
+              <dt>עלות משוערת</dt><dd><span class="ltr num">$5.00</span> במחזור הזה</dd>
+            </dl>
+            <div class="foot"><span>מדוד · עודכן היום, 14:02</span><a class="go" href="#detail" aria-label="פירוט של AeroDataBox">פירוט</a></div>
+          </article>
+          <!-- orange -->
+          <article class="usage-card">
+            <div class="head"><h3><span class="ltr">Google Places</span></h3><span class="tag warn"><span class="dot"></span>לשים לב</span></div>
+            <div class="plan">חיפוש מלון · מסלול <span class="ltr">Essentials</span></div>
+            <div class="pct"><span class="ltr">74%</span></div>
+            <div class="meter" role="meter" aria-valuenow="74" aria-valuemin="0" aria-valuemax="100" aria-valuetext="74% מהתקרה הקשיחה, לשים לב"><div class="fill" style="width:74%;background:var(--m-warn)"></div><div class="fc" style="inset-inline-start:91%"></div></div>
+            <div class="used"><span class="ltr num">7,400</span> מתוך <span class="ltr num">10,000</span> (התקרה הקשיחה).</div>
+            <dl>
+              <dt>צפי לסוף המחזור</dt><dd><span class="ltr num">9,100</span> (<span class="ltr num">91%</span>)</dd>
+              <dt>מחזור החיוב</dt><dd>1.11–30.11 · חודש קלנדרי, שעון Pacific</dd>
+              <dt>עלות משוערת</dt><dd><span class="ltr num">$0.00</span> במחזור הזה</dd>
+            </dl>
+            <div class="foot"><span>מדוד · עודכן היום, 13:47</span><a class="go" href="#detail" aria-label="פירוט של Google Places">פירוט</a></div>
+          </article>
+          <!-- green -->
+          <article class="usage-card">
+            <div class="head"><h3><span class="ltr">Google Places</span></h3><span class="tag ok"><span class="dot"></span>תקין</span></div>
+            <div class="plan">בחירת מלון (Enterprise) · מסלול <span class="ltr">Essentials</span></div>
+            <div class="pct"><span class="ltr">21%</span></div>
+            <div class="meter" role="meter" aria-valuenow="21" aria-valuemin="0" aria-valuemax="100" aria-valuetext="21% מהתקרה הקשיחה, תקין"><div class="fill" style="width:21%;background:var(--m-ok)"></div><div class="fc" style="inset-inline-start:48%"></div></div>
+            <div class="used"><span class="ltr num">168</span> מתוך <span class="ltr num">800</span> (התקרה הקשיחה). מכסת המסלול: <span class="ltr num">1,000</span>.</div>
+            <dl>
+              <dt>צפי לסוף המחזור</dt><dd><span class="ltr num">390</span> (<span class="ltr num">48%</span>)</dd>
+              <dt>מחזור החיוב</dt><dd>1.11–30.11 · חודש קלנדרי, שעון Pacific</dd>
+              <dt>עלות משוערת</dt><dd><span class="ltr num">$0.00</span> במחזור הזה</dd>
+            </dl>
+            <div class="foot"><span>מדוד · עודכן היום, 11:20</span><a class="go" href="#detail" aria-label="פירוט של Google Places">פירוט</a></div>
+          </article>
+          <!-- manual -->
+          <article class="usage-card">
+            <div class="head"><h3><span class="ltr">Mapbox</span></h3><span class="tag ok"><span class="dot"></span>תקין</span></div>
+            <div class="plan">משתמשים פעילים בחודש · מסלול <span class="ltr">Free</span></div>
+            <div class="pct"><span class="ltr">5%</span></div>
+            <div class="meter" role="meter" aria-valuenow="5" aria-valuemin="0" aria-valuemax="100" aria-valuetext="5% מהתקרה הקשיחה, תקין"><div class="fill" style="width:5%;background:var(--m-ok)"></div><div class="fc" style="inset-inline-start:12%"></div></div>
+            <div class="used"><span class="ltr num">1,240</span> מתוך <span class="ltr num">25,000</span> (התקרה הקשיחה).</div>
+            <dl>
+              <dt>צפי לסוף המחזור</dt><dd><span class="ltr num">2,960</span> (<span class="ltr num">12%</span>)</dd>
+              <dt>מחזור החיוב</dt><dd>1.11–30.11 · חודש קלנדרי</dd>
+              <dt>עלות משוערת</dt><dd>אין מחיר בטבלה</dd>
+            </dl>
+            <div class="foot"><span>הוזן ידנית · עודכן <span class="over">2.10, 09:00 · כדאי לעדכן</span></span><button class="secondary">עדכון ידני</button></div>
+          </article>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <p class="note">מצבי הדף: טעינה (4 שלדים), ריק ושגיאה. עדכון ידני נעשה בדיאלוג, ונשמר בטבלה <code>manual_usage</code>.</p>
+  <div style="display:flex;gap:24px;width:1280px">
+    <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="sk"></div><div class="sk"></div></div>
+    <div style="flex:1"><div class="notice">עוד אין ספקים בטבלה. הם נוספים ב-migration, ואחר כך אפשר לערוך אותם ב"ספקים ומסלולים".</div><div class="alert" role="alert">לא הצלחנו לטעון את נתוני הספקים. נסו לרענן את הדף.</div></div>
+  </div>
+  <div class="dlgwrap" style="width:1280px">
+    <div class="dlg" role="dialog" aria-labelledby="mu-t">
+      <h2 id="mu-t">עדכון ידני: <span class="ltr">Mapbox</span> · משתמשים פעילים בחודש</h2>
+      <p class="help">מעתיקים את המספר מדף ה-Statistics של Mapbox.</p>
+      <div class="field"><label for="mu-a">הכמות במחזור הנוכחי</label><input id="mu-a" dir="ltr" value="1240" inputmode="numeric"></div>
+      <div class="field"><label for="mu-d">נכון לתאריך</label><input id="mu-d" type="date" value="2026-11-13"></div>
+      <div class="actions"><button class="primary">שמירה</button><button class="linkb">ביטול</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 3. PROVIDERS ======================= -->
+<section class="demo">
+  <h2>3. "ספקים ומסלולים": טבלה, עריכה עם שגיאות ואישור (AC-18)</h2>
+  <div class="desk"><div class="frame">
+    <nav class="side"><a>כניסה לישראלים</a><a>זמני חיבור</a><a>מומלץ לישראלים</a><hr><a>ספקים ועלויות</a><a aria-current="page">ספקים ומסלולים</a><a>חשבונות מובילים</a><a>יומן שינויים</a><a>תפקידים</a></nav>
+    <main>
+      <h1>ספקים ומסלולים</h1>
+      <p class="sub">השינוי נאכף בשרת מיד אחרי השמירה, ונרשם ביומן השינויים.</p>
+      <table>
+        <caption class="visually-hidden">הספקים, המסלולים והתקרות שהשרת אוכף</caption>
+        <thead><tr><th scope="col">ספק · מדד</th><th scope="col">מסלול</th><th scope="col">מכסה</th><th scope="col">תקרה קשיחה</th><th scope="col">תחילת מחזור</th><th scope="col">מחיר</th><th scope="col">ספי התראה</th><th scope="col">לוח הבדיקות</th><th scope="col"><span class="visually-hidden">פעולה</span></th></tr></thead>
+        <tbody>
+          <tr class="flash"><td><span class="ltr">AeroDataBox</span> · יחידות</td><td><span class="ltr">Basic</span></td><td><span class="ltr">700</span></td><td><span class="ltr">600</span></td><td>2.11.2026</td><td><span class="ltr">$5.00</span> לחודש + <span class="ltr">$0.0005</span> ליחידה</td><td><span class="ltr">70 · 85 · 95</span></td><td><span class="tag">חלון 6 שעות</span></td><td><a href="#" aria-label="עריכת AeroDataBox · יחידות">עריכה</a></td></tr>
+          <tr><td><span class="ltr">AeroDataBox</span> · חיפוש טיסה</td><td><span class="ltr">Basic</span></td><td><span class="ltr">700</span></td><td><span class="ltr">600</span></td><td>2.11.2026</td><td>—</td><td><span class="ltr">70 · 85 · 95</span></td><td>—</td><td><a href="#" aria-label="עריכת AeroDataBox · חיפוש טיסה">עריכה</a></td></tr>
+          <tr><td><span class="ltr">Google Places</span> · בחירת מלון</td><td><span class="ltr">Essentials</span></td><td><span class="ltr">1,000</span></td><td><span class="ltr">800</span></td><td>1 בחודש</td><td><span class="ltr">$0</span> + <span class="ltr">$0.02</span> ליחידה</td><td><span class="ltr">70 · 85 · 95</span></td><td>—</td><td><a href="#" aria-label="עריכת Google Places · בחירת מלון">עריכה</a></td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div></div>
+
+  <div style="display:flex;gap:24px;width:1280px;align-items:flex-start">
+    <div class="desk" style="width:640px;padding:32px">
+      <a class="back" href="#">ספקים ומסלולים</a>
+      <h1><span class="ltr">AeroDataBox</span> · יחידות</h1>
+      <p class="sub">השינוי נאכף בשרת מיד אחרי השמירה, ונרשם ביומן השינויים.</p>
+      <div class="alert" role="alert" tabindex="-1">יש 2 שגיאות:<ul style="margin:4px 0 0"><li><a href="#e-cap" style="color:inherit">התקרה הקשיחה לא יכולה להיות גבוהה מהמכסה (<span class="ltr">700</span>).</a></li><li><a href="#e-unit" style="color:inherit">שינוי של יותר מפי 10 בשמירה אחת…</a></li></ul></div>
+      <div class="field"><label>מסלול</label><input dir="ltr" value="Pro"></div>
+      <div class="field"><label>מכסת המסלול</label><input dir="ltr" value="700"><span class="help">כמה המסלול כולל במחזור, לפי האתר של הספק.</span></div>
+      <div class="field"><label for="e-cap">תקרה קשיחה</label><input id="e-cap" dir="ltr" value="5000" aria-invalid="true"><span class="error">התקרה הקשיחה לא יכולה להיות גבוהה מהמכסה (<span class="ltr">700</span>).</span></div>
+      <div class="field"><label for="e-unit">מחיר ליחידה ($)</label><input id="e-unit" dir="ltr" value="0.05" aria-invalid="true"><span class="error">שינוי של יותר מפי 10 בשמירה אחת (<span class="ltr">0.0005</span> ל-<span class="ltr">0.05</span>). אם זה נכון, שומרים בשני שלבים.</span></div>
+      <fieldset><legend>ספי התראה (%)</legend><div style="display:flex;gap:12px"><input dir="ltr" style="width:88px" value="70" aria-label="סף 1"><input dir="ltr" style="width:88px" value="85" aria-label="סף 2"><input dir="ltr" style="width:88px" value="95" aria-label="סף 3"></div></fieldset>
+      <fieldset><legend>לוח הבדיקות</legend>
+        <label style="display:flex;gap:6px;min-height:44px;align-items:center"><input type="radio" name="s" style="min-height:auto">חלון 6 שעות בלבד (מסלול חינמי)</label>
+        <label style="display:flex;gap:6px;min-height:44px;align-items:center"><input type="radio" name="s" checked style="min-height:auto">לוח מלא (מסלול בתשלום)</label>
+        <span class="help">לוח מלא בודק טיסות גם שבועות לפני ההמראה, ולכן מוציא יותר יחידות.</span></fieldset>
+      <div class="actions"><button class="primary">בדיקה ושמירה</button><a href="#">ביטול</a></div>
+      <p class="help" style="margin-top:24px">אם השורה השתנתה מאז שנפתחה (<code>stale</code>):</p>
+      <div class="alert" role="alert">השורה השתנתה מאז שפתחתם אותה. רעננו ובדקו שוב. <a href="#" style="color:inherit">רענון</a></div>
+    </div>
+    <div class="dlgwrap" style="flex:1">
+      <div class="dlg" role="dialog" aria-labelledby="cf-t">
+        <h2 id="cf-t" tabindex="-1">לשמור את השינויים ב-<span class="ltr">AeroDataBox</span> · יחידות?</h2>
+        <table><thead><tr><th>שדה</th><th>לפני</th><th>אחרי</th></tr></thead>
+          <tbody><tr><td>מסלול</td><td><span class="ltr">Basic</span></td><td><span class="ltr">Pro</span></td></tr><tr><td>מכסת המסלול</td><td><span class="ltr">700</span></td><td><span class="ltr">6,000</span></td></tr><tr><td>תקרה קשיחה</td><td><span class="ltr">600</span></td><td><span class="ltr">5,000</span></td></tr><tr><td>לוח הבדיקות</td><td>חלון 6 שעות</td><td>לוח מלא</td></tr></tbody></table>
+        <div class="notice">⚠ לוח מלא מתחיל לבדוק את כל הטיסות העתידיות לפי הלוח. זה מוציא יחידות.</div>
+        <p class="help" style="margin:0 0 8px">דוגמה לאזהרה השנייה, כשהתקרה יורדת מתחת לשימוש:</p>
+        <div class="alert">⚠ התקרה החדשה (<span class="ltr">400</span>) נמוכה מהשימוש במחזור הזה (<span class="ltr">528</span>). השרת יעצור קריאות לספק מיד, עד 1.12.</div>
+        <div class="actions"><button class="primary">שמירת השינויים</button><button class="linkb">חזרה לעריכה</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 4. ACCOUNTS ======================= -->
+<section class="demo">
+  <h2>4. "חשבונות מובילים": השהיה וביטול השהיה (AC-13)</h2>
+  <div class="desk"><div class="frame">
+    <nav class="side"><a>כניסה לישראלים</a><a>זמני חיבור</a><a>מומלץ לישראלים</a><hr><a>ספקים ועלויות</a><a>ספקים ומסלולים</a><a aria-current="page">חשבונות מובילים</a><a>יומן שינויים</a><a>תפקידים</a></nav>
+    <main>
+      <h1>חשבונות מובילים</h1>
+      <p class="sub">20 חשבונות, לפי הקרבה לתקרות האישיות ב-30 הימים האחרונים. מזהה פנימי בלבד, בלי מייל.</p>
+      <table>
+        <caption class="visually-hidden">החשבונות הקרובים ביותר לתקרות האישיות</caption>
+        <thead><tr><th scope="col">#</th><th scope="col">מזהה</th><th scope="col">קרבה לתקרה</th><th scope="col">חיפושי טיסה</th><th scope="col">קריאות Places</th><th scope="col">הוספות למעקב</th><th scope="col">מצב</th><th scope="col"><span class="visually-hidden">פעולה</span></th></tr></thead>
+        <tbody>
+          <tr><td><span class="ltr">1</span></td><td><span class="uid ltr">3f9c2a71-0b4e-4d2a-9e51-7c0d2b6a1f08</span> <button class="linkb" aria-label="העתקת המזהה">⧉</button></td><td><span class="ltr">100%</span> · הוספות</td><td><span class="ltr">148</span></td><td><span class="ltr">2,310</span></td><td><span class="ltr">24</span></td><td><span class="tag">פעיל</span></td><td><button class="secondary" aria-label="השהיית החשבון 3f9c2a71-0b4e-4d2a-9e51-7c0d2b6a1f08">השהיית חשבון</button></td></tr>
+          <tr><td><span class="ltr">2</span></td><td><span class="uid ltr">8a1d4f02-77c1-4b0e-a3f9-01e2c3d4b5a6</span> (את/ה) <button class="linkb" aria-label="העתקת המזהה">⧉</button></td><td><span class="ltr">26%</span> · חיפושי טיסה</td><td><span class="ltr">40</span></td><td><span class="ltr">120</span></td><td><span class="ltr">6</span></td><td><span class="tag">פעיל</span></td><td><span class="visually-hidden">אי אפשר להשהות את החשבון שלך</span></td></tr>
+          <tr><td><span class="ltr">3</span></td><td><span class="uid ltr">c07e9b12-5d3a-4f1b-8c2e-9a0b1c2d3e4f</span> <button class="linkb" aria-label="העתקת המזהה">⧉</button></td><td><span class="ltr">8%</span> · בחירות מלון</td><td><span class="ltr">12</span></td><td><span class="ltr">90</span></td><td><span class="ltr">2</span></td><td><span class="tag warn">מושהה</span></td><td><button class="linkb">ביטול ההשהיה</button></td></tr>
+        </tbody>
+      </table>
+      <h2 style="font-size:20px;margin:32px 0 12px">חשבונות מושהים</h2>
+      <table>
+        <thead><tr><th scope="col">מזהה</th><th scope="col">הושהה</th><th scope="col">סיבה</th><th scope="col"><span class="visually-hidden">פעולה</span></th></tr></thead>
+        <tbody><tr><td><span class="uid ltr">c07e9b12-5d3a-4f1b-8c2e-9a0b1c2d3e4f</span></td><td>12.11, 22:40</td><td>2,000 חיפושי מלון ביום</td><td><button class="linkb">ביטול ההשהיה</button></td></tr></tbody>
+      </table>
+    </main>
+  </div></div>
+  <div class="dlgwrap" style="width:1280px">
+    <div class="dlg" role="dialog" aria-labelledby="sp-t">
+      <h2 id="sp-t">להשהות את החשבון <span class="uid ltr">3f9c2a71</span>…?</h2>
+      <p style="margin:0">מיד אחרי ההשהיה:</p>
+      <ul style="margin:4px 0 16px">
+        <li>חיפוש טיסה וחיפוש מלון לא יעבדו בחשבון הזה.</li>
+        <li>טיסות שבמעקב יצאו ממעקב ויישארו כטיסות ידניות. ביטול ההשהיה לא מחזיר אותן אוטומטית.</li>
+        <li>טיסות חדשות יישמרו בלי מעקב.</li>
+        <li>כל השאר ממשיך לעבוד: נסיעות, טיסות ידניות והנתונים השמורים.</li>
+      </ul>
+      <div class="field"><label for="sp-r">סיבה (נשמרת ביומן)</label><textarea id="sp-r" rows="2" maxlength="200">2,000 חיפושי מלון ביום, נראה כמו סקריפט</textarea><span class="help">בלי מייל, שם או פרט אישי אחר.</span></div>
+      <div class="field"><label for="sp-c">כדי לאשר, הקלידו את 4 התווים האחרונים של המזהה: <span class="uid ltr">1f08</span></label><input id="sp-c" dir="ltr" autocomplete="off" value="1f0"></div>
+      <div class="actions"><button class="cta" aria-disabled="true">השהיית החשבון</button><button class="linkb">ביטול</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 5. CHART ======================= -->
+<section class="demo" id="detail">
+  <h2>5. ספק בפירוט: גרף של 90 יום (AC-19, מתחת לקו)</h2>
+  <p class="note">הזמן תמיד משמאל לימין, בשתי השפות. ציר Y בצד ההתחלה (בעברית מימין). זו תמונה סטטית עם aria-label, ובועה שמופיעה רק בריחוף עם העכבר. "הצגה כטבלה" היא החלופה הנגישה.</p>
+  <div class="desk" style="padding:32px">
+    <a class="back" href="#">ספקים ועלויות</a>
+    <h1><span class="ltr">Google Places</span></h1>
+    <div class="sub" style="margin-bottom:8px">קריאות ביום, 90 הימים האחרונים. <span>לפי:</span>
+      <span class="radios"><label><input type="radio" name="by" checked style="min-height:auto">פלטפורמה</label><label><input type="radio" name="by" style="min-height:auto">פיצ'ר</label></span></div>
+    <div class="chart">
+      <svg id="chart" width="1180" height="260" role="img" aria-label="סך הכול 8,202 קריאות ב-90 יום. היום הגבוה: 12.11, ‏412."></svg>
+      <div class="tip" id="tip" aria-hidden="true"></div>
+      <div class="legend"><span><i style="background:var(--c1)"></i>Android <span class="ltr num">4,210</span></span><span><i style="background:var(--c2)"></i>iOS <span class="ltr num">3,980</span></span><span><i style="background:var(--c3)"></i>שרת <span class="ltr num">0</span></span><span><i style="background:var(--c6)"></i>לא ידוע <span class="ltr num">12</span></span></div>
+    </div>
+    <div class="actions"><button class="secondary">הצגה כטבלה</button></div>
+  </div>
+</section>
+
+<!-- ======================= 6. MOBILE ======================= -->
+<section class="demo">
+  <h2>6. האפליקציה: טיסה שנשמרה בלי מעקב, וחשבון מושהה (AC-6, AC-13)</h2>
+  <div class="phones">
+    <figure>
+      <div class="phone"><div class="sheet">
+        <div class="grab"></div><div class="h3">טיסות</div>
+        <div class="frow" role="button" aria-label="L Y 81, הלוך, בלי מעקב. … אין עדכונים אוטומטיים, כי הגעתם למכסת ההוספות למעקב…">
+          <div class="top2"><span class="cap">הלוך · 14.12</span><span class="chip un">בלי מעקב</span></div>
+          <div><span class="codeT ltr">LY81</span> <span style="color:var(--t2);font-size:15px">· El Al</span></div>
+          <div class="route"><span class="ltr">TLV</span><span class="dash"></span>✈<span class="dash"></span><span class="ltr">BKK</span></div>
+          <div class="times"><span class="ltr">23:40</span><span class="ltr">16:05 <small style="font-size:12px;color:var(--t2)">+1</small></span></div>
+          <div class="foot2"><span>אין עדכונים אוטומטיים, כי הגעתם למכסת ההוספות למעקב. כשהיא תתחדש, ערכו ושמרו את הטיסה.</span>‹</div>
+        </div>
+        <div class="frow">
+          <div class="top2"><span class="cap">חזור · 28.12</span><span class="chip ok">✓ בזמן</span></div>
+          <div><span class="codeT ltr">LY82</span></div>
+          <div class="foot2"><span>עודכן לפני 12 דק'</span>‹</div>
+        </div>
+      </div>
+      <div class="toast" role="status">הגעתם למכסת ההוספות למעקב. היא תתחדש ב-<span class="ltr">14.12</span>. הטיסה נשמרה בלי עדכונים אוטומטיים.</div>
+      </div>
+      <figcaption>תקרת תחלופה: הטופס נסגר ומופיע Toast ארוך (5 שניות). התאריך מגיע מ-<code>renews_at</code>, לפי השעון של המכשיר. הסיבה נשארת בשורה.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone" dir="ltr" lang="en"><div class="sheet">
+        <div class="grab"></div><div class="h3">Flights</div>
+        <div class="frow">
+          <div class="top2"><span class="cap">Outbound · 14.12</span><span class="chip un">Not tracked</span></div>
+          <div><span class="codeT">LY81</span> <span style="color:var(--t2);font-size:15px">· El Al</span></div>
+          <div class="route"><span>TLV</span><span class="dash"></span><span style="transform:scaleX(-1);display:inline-block">✈</span><span class="dash"></span><span>BKK</span></div>
+          <div class="times"><span>23:40</span><span>16:05 <small style="font-size:12px;color:var(--t2)">+1</small></span></div>
+          <div class="foot2"><span>No automatic updates: you've reached the number of flights you can track. To try again, edit and save the flight.</span>›</div>
+        </div>
+      </div>
+      <div class="toast" role="status">You've reached the number of flights you can track. The flight was saved without automatic updates.</div>
+      </div>
+      <figcaption>תקרה ברגע נתון, באנגלית (LTR).</figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone"><div class="sheet">
+        <div class="grab"></div>
+        <div style="font-weight:600;font-size:22px"><span class="ltr">LY81</span> · הלוך</div>
+        <div style="color:var(--t2)">El Al</div>
+        <div><span class="chip un">בלי מעקב</span></div>
+        <div style="font-size:13px;line-height:18px;color:var(--t2)">המעקב הופסק בזמן שהחשבון הושהה. כדי לחדש אותו, ערכו ושמרו את הטיסה.</div>
+        <div class="frow"><div class="cap">המראה</div><div class="times"><span class="ltr">23:40</span></div></div>
+      </div></div>
+      <figcaption>גיליון של טיסה שיצאה ממעקב בגלל השהיה. הנוסח לא תלוי בזמן, כי הוא נשאר גם אחרי ביטול ההשהיה. אין Toast.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone form">
+        <div class="bar"><span style="width:48px;text-align:center">→</span><span class="title">הוספת מלון</span></div>
+        <div class="content">
+          <div><div class="lbl">חיפוש מלון</div><div class="input off" aria-disabled="true"><span>🔍</span><span style="color:var(--t3)">מקלידים את שם המלון</span></div>
+          <div class="inote" style="margin-top:8px" role="status">החשבון מושהה כרגע, ולכן החיפוש לא זמין. אפשר למלא ידנית.</div></div>
+          <div class="h3">פרטי המלון</div>
+          <div><div class="lbl">שם המלון</div><div class="input"></div></div>
+          <div><div class="lbl">כתובת באנגלית</div><div class="input"></div></div>
+        </div>
+      </div>
+      <figcaption>חיפוש מלון בחשבון מושהה: השדה לא פעיל רק כל עוד המסך פתוח. פתיחה חוזרת מנסה שוב.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone form">
+        <div class="bar"><span style="width:48px;text-align:center">→</span><span class="title">הוספת טיסה</span></div>
+        <div class="content">
+          <div><div class="lbl">מספר טיסה</div><div class="input"><span class="ltr">LY81</span></div></div>
+          <div><div class="lbl">תאריך ההמראה</div><div class="input"><span class="ltr">14.12.2026</span></div></div>
+          <div class="inote" role="status">החשבון מושהה כרגע, ולכן אי אפשר לחפש טיסה. אפשר להזין את הפרטים ידנית.</div>
+          <div class="lbl" style="margin:0">שדה המוצא</div><div class="input" style="margin-top:-10px"></div>
+          <div class="lbl" style="margin:0">שדה היעד</div><div class="input" style="margin-top:-10px"></div>
+        </div>
+      </div>
+      <figcaption>חיפוש טיסה בחשבון מושהה: ההודעה מופיעה במקום של <code>rateLimited</code>, והטופס הידני פתוח.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<script>
+// 90-day stacked chart (design 5, Raz 5 and 10): time always left to right, the Y axis
+// on the interface's start side, a static image with a mouse-only tooltip.
+(function(){
+  const svg=document.getElementById('chart'), tip=document.getElementById('tip'); if(!svg) return;
+  const W=1180,H=260,pad={t:10,b:30,axis:48},n=90,rtl=document.dir==='rtl';
+  const left=rtl?16:pad.axis, right=rtl?W-pad.axis:W-16;
+  const ns='http://www.w3.org/2000/svg';
+  const cols=['#1561BC','#0B7F73','#C8441F','#646E8A'], names=['Android','iOS','שרת','לא ידוע'];
+  let seed=7; const rnd=()=>(seed=(seed*9301+49297)%233280)/233280;
+  const days=[...Array(n)].map((_,i)=>{const base=i<55?20+rnd()*25:60+(i-55)*7+rnd()*40;return [base*.52,base*.47,0,rnd()<.1?2:0];});
+  const start=new Date(2026,10,13); start.setDate(start.getDate()-89); // index 0 = 16.8
+  const label=i=>{const d=new Date(start);d.setDate(d.getDate()+i);return d.getDate()+'.'+(d.getMonth()+1);};
+  const max=450, bw=(right-left)/n;
+  const x=i=>left+i*bw;
+  const y=v=>H-pad.b-(v/max)*(H-pad.t-pad.b);
+  const el=(t,a)=>{const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e;};
+  [0,200,400].forEach(v=>{el('line',{x1:left,x2:right,y1:y(v),y2:y(v),stroke:'#F4E7D0'});const t=el('text',{x:rtl?right+8:left-8,y:y(v)+4,'font-size':12,fill:'#4A5573','text-anchor':rtl?'start':'end',direction:'ltr'});t.textContent=v;});
+  days.forEach((d,i)=>{let acc=0;const g=el('g',{});d.forEach((v,k)=>{if(!v)return;const r=document.createElementNS(ns,'rect');Object.entries({x:x(i)+1,width:bw-2,y:y(acc+v),height:y(acc)-y(acc+v),fill:cols[k],stroke:'#fff','stroke-width':1}).forEach(([a,b])=>r.setAttribute(a,b));g.appendChild(r);acc+=v;});
+    g.addEventListener('mousemove',e=>{tip.style.display='block';tip.style.left=(e.offsetX+20)+'px';tip.style.top=(e.offsetY-10)+'px';
+      tip.textContent=label(i)+' · '+Math.round(acc)+' ('+d.map((v,k)=>v?names[k]+' '+Math.round(v):'').filter(Boolean).join(', ')+')';});
+    g.addEventListener('mouseleave',()=>tip.style.display='none');});
+  [18,48,78].forEach(i=>el('line',{x1:x(i),x2:x(i),y1:pad.t,y2:H-pad.b,stroke:'#7D869E','stroke-dasharray':'4 4'}));
+  [0,30,60,89].forEach(i=>{const t=el('text',{x:x(i)+bw/2,y:H-8,'font-size':12,fill:'#4A5573','text-anchor':'middle'});t.textContent=label(i);});
+})();
+</script>
+</body>
+</html>
