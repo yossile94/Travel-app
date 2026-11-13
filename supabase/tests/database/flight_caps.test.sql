@@ -5,7 +5,7 @@
 -- Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(37);
 
 insert into auth.users (id, email)
 values
@@ -239,6 +239,29 @@ select ok(
   (select bool_and(untracked_reason is null) from public.flights where watch_id is not null),
   'no tracked flight carries a reason'
 );
+
+-- A tier with no adds: untracked, and no renewal date (Dudi 1).
+update public.usage_limits set value = 0 where limit_key = 'tracked_adds_year';
+select pg_temp.sign_in('00000000-0000-4000-8000-0000000015b2');
+select is(
+  public.save_flight_v2(pg_temp.fid(2, 5), pg_temp.trip(2, 1), pg_temp.flight('B97', current_date + 5)),
+  '{"status":"untracked","reason":"turnover","renews_at":null}'::jsonb,
+  'a cap of 0 never renews'
+);
+reset role;
+update public.usage_limits set value = 72 where limit_key = 'tracked_adds_year';
+
+-- Suspended: editing a tracked flight takes it out of tracking (AC-13).
+insert into public.account_suspensions (user_id, reason)
+values ('00000000-0000-4000-8000-0000000015b1', 'test');
+select pg_temp.sign_in('00000000-0000-4000-8000-0000000015b1');
+select is(
+  public.save_flight_v2(pg_temp.fid(1, 1), pg_temp.trip(1, 1), pg_temp.flight('AB11', current_date + 5)) ->> 'reason',
+  'suspended', 'a suspended account''s edited flight is untracked'
+);
+reset role;
+select is((select watch_id from public.flights where id = pg_temp.fid(1, 1)), null::bigint,
+  'and leaves its watch');
 
 -- A missing limit fails closed, not open.
 delete from public.usage_limits where limit_key = 'flights_per_trip';

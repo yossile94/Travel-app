@@ -10,6 +10,9 @@
 -- save_flight_v2 answers {status, reason, renews_at}. save_flight keeps its
 -- text answer for the v0.15.0 app, which shows an error on anything it
 -- doesn't know: a flight saved without tracking answers 'ok' there.
+-- Rollback: restore save_flight (20261027140000), tracked_flights_of
+-- (20261027150000) and flights_for_trips (20261029110000); drop
+-- save_flight_v2, lock_user_flights, usage_limit, user_tier and the index.
 
 -- ---------------------------------------------------------- the limits
 -- One tier for everyone until the Pro sprint; then only this changes (Raz 4).
@@ -43,6 +46,22 @@ end;
 $$;
 revoke execute on function public.usage_limit(uuid, text) from public, anon, authenticated;
 
+-- -------------------------------------------------------- the user's lock
+-- One lock per user for every change to what the user tracks: save_flight_v2
+-- and the suspend RPC (PR-G) take it first, before any row lock (Dudi 2).
+-- Its own namespace, so a user never shares a key with the budgets.
+create function public.lock_user_flights(p_user uuid)
+  returns void
+  language sql
+  set search_path = ''
+as $$
+  select pg_advisory_xact_lock(1515, hashtext(p_user::text));
+$$;
+revoke execute on function public.lock_user_flights(uuid) from public, anon, authenticated;
+
+-- The 30 future flights count only flights with a watch (Dudi 8).
+create index flights_user_watched on public.flights (user_id) where watch_id is not null;
+
 -- ---------------------------------------------------------- save_flight_v2
 create function public.save_flight_v2(p_id uuid, p_trip_id uuid, p_flight jsonb)
   returns jsonb
@@ -65,6 +84,7 @@ declare
   v_renews timestamptz;
   v_year_limit integer;
   v_month_limit integer;
+  v_state text;
 begin
   if uid is null then
     raise exception 'sign in required' using errcode = '42501';
@@ -93,7 +113,7 @@ begin
 
   -- One save at a time per user, across trips, so two saves can't both take
   -- the last place (AC-5). The suspend RPC takes the same lock (PR-G).
-  perform pg_advisory_xact_lock(hashtext('tracked_flights:' || uid::text));
+  perform public.lock_user_flights(uid);
 
   perform 1 from public.trips where id = p_trip_id and user_id = uid for update;
   if not found then
@@ -122,17 +142,18 @@ begin
     -- Turnover first: freeing a place doesn't help before the date (AC-5).
     v_year_limit := public.usage_limit(uid, 'tracked_adds_year');
     v_month_limit := public.usage_limit(uid, 'tracked_adds_30d');
-    select greatest(
-      (select a.added_at + interval '365 days' from public.tracked_flight_adds a
-       where a.user_id = uid and a.added_at > now() - interval '365 days'
-       order by a.added_at desc offset greatest(v_year_limit - 1, 0) limit 1),
-      (select a.added_at + interval '30 days' from public.tracked_flight_adds a
-       where a.user_id = uid and a.added_at > now() - interval '30 days'
-       order by a.added_at desc offset greatest(v_month_limit - 1, 0) limit 1)
-    ) into v_renews;
-    -- With a limit of 0 the offset finds the newest add, or none at all.
-    if v_renews is null and least(v_year_limit, v_month_limit) = 0 then
+    if least(v_year_limit, v_month_limit) = 0 then
+      -- A tier with no adds: never renews (Dudi 1).
       v_renews := 'infinity';
+    else
+      select greatest(
+        (select a.added_at + interval '365 days' from public.tracked_flight_adds a
+         where a.user_id = uid and a.added_at > now() - interval '365 days'
+         order by a.added_at desc offset greatest(v_year_limit - 1, 0) limit 1),
+        (select a.added_at + interval '30 days' from public.tracked_flight_adds a
+         where a.user_id = uid and a.added_at > now() - interval '30 days'
+         order by a.added_at desc offset greatest(v_month_limit - 1, 0) limit 1)
+      ) into v_renews;
     end if;
     if v_renews is not null then
       v_reason := 'turnover';
@@ -168,8 +189,12 @@ begin
               else w.next_check_at end,
             sched_dep_utc = coalesce(w.sched_dep_utc, excluded.sched_dep_utc),
             sched_arr_utc = coalesce(w.sched_arr_utc, excluded.sched_arr_utc)
-      returning id into v_watch;
-      insert into public.tracked_flight_adds (user_id, watch_id) values (uid, v_watch);
+      returning id, state into v_watch, v_state;
+      -- An add only when the watch really tracks: a watch that failed lately
+      -- or is over costs nothing, and takes no place (Dudi 3).
+      if v_state in ('active', 'paused') then
+        insert into public.tracked_flight_adds (user_id, watch_id) values (uid, v_watch);
+      end if;
     end if;
   end if;
 
@@ -217,11 +242,12 @@ grant execute on function public.save_flight_v2(uuid, uuid, jsonb) to authentica
 
 -- ---------------------------------------------------- the v0.15.0 answer
 -- 'ok', 'gone' or 'limit'. A flight saved without tracking is 'ok' here: the
--- old app knows no other success, and the row is saved (AC-6).
+-- old app knows no other success, and the row is saved (AC-6). Invoker: v2
+-- does the privileged work (Dudi 6).
 create or replace function public.save_flight(p_id uuid, p_trip_id uuid, p_flight jsonb)
   returns text
   language plpgsql
-  security definer
+  security invoker
   set search_path = ''
 as $$
 declare
@@ -260,7 +286,10 @@ as $$
       'arrTerminal', f.arr_terminal, 'arrGate', f.arr_gate,
       'pnr', f.pnr, 'seat', f.seat, 'cabin', f.cabin,
       'sameBooking', f.same_booking, 'sameBookingPrev', f.same_booking_prev,
-      'untrackedReason', f.untracked_reason,
+      -- No reason once the flight is over (design 6.2, Dudi 5).
+      'untrackedReason', case when coalesce(f.arr_sched, f.dep_sched + interval '24 hours',
+                                       (f.dep_date_local + 2)::timestamp at time zone f.dep_tz) > now()
+                               then f.untracked_reason end,
       'arrMct', case when f.arr_iata is null then null
                      else coalesce(m.minutes, public.connection_mct(f.arr_iata)) end,
       'arrMctDefault', f.arr_iata is not null and m.iata is null,
