@@ -48,7 +48,8 @@ create function pg_temp.flight(number text, day date, extra jsonb default '{}') 
     'arrSched', (day + time '12:00') at time zone 'UTC'
   ) || extra;
 $$;
-create function pg_temp.adds(n integer) returns integer language sql as $$
+-- The log is server-only: the helper reads it as the test's owner, whoever is signed in.
+create function pg_temp.adds(n integer) returns integer language sql security definer as $$
   select count(*)::integer from public.tracked_flight_adds
   where user_id = ('00000000-0000-4000-8000-0000000015b' || n)::uuid;
 $$;
