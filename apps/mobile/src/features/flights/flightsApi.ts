@@ -39,6 +39,10 @@ export type LookupResult =
   | { kind: 'notFound' }
   | { kind: 'unavailable' }
   | { kind: 'rateLimited' }
+  /** Sprint 15 AC-7: the 30-day cap, not today's. */
+  | { kind: 'rateLimited30d' }
+  /** Sprint 15 design 6.3. */
+  | { kind: 'suspended' }
   | { kind: 'offline' };
 
 const SEARCH_TIMEOUT_MS = 15_000;
@@ -54,13 +58,17 @@ async function online(): Promise<boolean> {
 
 /** The provider answer as the form reads it; exported for tests. */
 export function lookupFrom(status: number, body: unknown): LookupResult {
-  const fields = (body ?? {}) as { legs?: unknown; error?: unknown };
+  const fields = (body ?? {}) as { legs?: unknown; error?: unknown; reason?: unknown };
   if (status === 200 && Array.isArray(fields.legs)) {
     return fields.legs.length > 0
       ? { kind: 'found', legs: fields.legs as FlightSnapshot[] }
       : { kind: 'notFound' };
   }
-  if (status === 429) return { kind: 'rateLimited' };
+  // A 429 without a reason (an older server) is today's cap (design 6.4).
+  if (status === 429) {
+    return fields.reason === 'lookups_30d' ? { kind: 'rateLimited30d' } : { kind: 'rateLimited' };
+  }
+  if (status === 403 && fields.error === 'suspended') return { kind: 'suspended' };
   return { kind: 'unavailable' };
 }
 

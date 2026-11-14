@@ -55,7 +55,7 @@ select table_privs_are('public', 'flights', 'anon', array[]::text[], 'anon: no f
 select table_privs_are('public', 'flight_watch', 'authenticated', array[]::text[], 'users: no tracking rows');
 select table_privs_are('public', 'flight_events', 'authenticated', array[]::text[], 'users: no change rows');
 select ok(
-  not has_function_privilege('authenticated', 'public.take_flight_lookup(uuid)', 'EXECUTE'),
+  not has_function_privilege('authenticated', 'public.begin_flight_lookup(uuid,text,date,integer)', 'EXECUTE'),
   'users cannot take search quota themselves'
 );
 select ok(
@@ -176,7 +176,8 @@ select is(
 reset role;
 select is(
   (select count(*)::integer from generate_series(1, 11) n
-   where public.take_flight_lookup('00000000-0000-4000-8000-00000000005c')),
+   where public.begin_flight_lookup('00000000-0000-4000-8000-00000000005c', 'LY' || n,
+     current_date + 10, 2) ->> 'status' = 'go'),
   10, 'ten searches a day, the 11th is refused'
 );
 

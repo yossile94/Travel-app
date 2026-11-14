@@ -86,7 +86,16 @@ export interface FlightScreenTrip {
 }
 
 type Step = 'search' | 'legs' | 'details';
-type SearchNotice = 'found' | 'notFound' | 'unavailable' | 'rateLimited' | null;
+const NOTICE_IDS = {
+  found: 'found',
+  notFound: 'not-found',
+  unavailable: 'unavailable',
+  rateLimited: 'rate-limited',
+  rateLimited30d: 'rate-limited-30d',
+  suspended: 'suspended',
+} as const;
+type SearchNotice =
+  'found' | 'notFound' | 'unavailable' | 'rateLimited' | 'rateLimited30d' | 'suspended' | null;
 type SaveNotice = 'offline' | 'error' | 'gone' | 'limit' | 'consent' | null;
 
 const DIRECTIONS: Direction[] = ['out', 'return', 'internal'];
@@ -261,7 +270,8 @@ export function FlightScreen({
       setSearchNotice('found');
     } else {
       if (result.kind === 'notFound') console.error('[flights] flight_lookup_not_found');
-      if (result.kind === 'rateLimited') console.error('[flights] flight_lookup_rate_limited');
+      if (result.kind === 'rateLimited' || result.kind === 'rateLimited30d')
+        console.error('[flights] flight_lookup_rate_limited');
       setSearchNotice(result.kind);
     }
     setStep('details');
@@ -443,7 +453,11 @@ export function FlightScreen({
           ? t('flight.unavailable')
           : searchNotice === 'rateLimited'
             ? t('flight.rateLimited')
-            : null;
+            : searchNotice === 'rateLimited30d'
+              ? t('flight.rateLimited30d')
+              : searchNotice === 'suspended'
+                ? t('flight.suspended')
+                : null;
   const saveNoticeText =
     saveNotice === 'offline'
       ? t('flight.saveOffline')
@@ -956,7 +970,7 @@ export function FlightScreen({
           <InlineNotice
             text={searchNoticeText}
             colorScheme={colorScheme}
-            testID={`flight-notice-${searchNotice === 'found' ? 'found' : searchNotice === 'notFound' ? 'not-found' : searchNotice === 'rateLimited' ? 'rate-limited' : 'unavailable'}`}
+            testID={`flight-notice-${NOTICE_IDS[searchNotice!]}`}
           />
         ) : null}
         {saveNoticeText ? (

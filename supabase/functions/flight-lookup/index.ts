@@ -1,13 +1,14 @@
 /**
- * flight-lookup (sprint 5 F-016, AC-1, AC-6ב): the add-flight form's search.
- * Signed-in users only (verify_jwt, and the user is read from the token);
- * 10 searches a day each; units spent within the cap. Nothing personal is
- * logged or sent to the provider: only the flight number and date.
+ * flight-lookup (sprint 5 F-016, AC-1, AC-6ב; sprint 15 AC-7, AC-8): the
+ * add-flight form's search. Signed-in users only (verify_jwt, and the user is
+ * read from the token). The database decides what a search may do, in one
+ * call. Nothing personal is logged or sent to the provider: only the flight
+ * number and date, and the copy keeps no user id.
  */
 import { createClient } from '@supabase/supabase-js';
 
 import { aeroDataBox, type FlightSnapshot } from '../_shared/aerodatabox.ts';
-import { lookup } from './lookup.ts';
+import { type Begin, lookup } from './lookup.ts';
 
 function required(name: string): string {
   const value = Deno.env.get(name);
@@ -28,6 +29,23 @@ const admin = createClient(required('SUPABASE_URL'), secretKey(), {
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
+const STOPS = ['go', 'suspended', 'off', 'budget', 'lookups_day', 'lookups_30d'];
+
+/** begin_flight_lookup's jsonb as a Begin; anything else is 'error' (AC-8). */
+function beginFrom(data: unknown): Begin {
+  const a = (data ?? {}) as { status?: unknown; from?: unknown; legs?: unknown };
+  if (
+    a.status === 'copy' &&
+    (a.from === 'tracked' || a.from === 'cache') &&
+    Array.isArray(a.legs)
+  ) {
+    return { status: 'copy', from: a.from, legs: a.legs as FlightSnapshot[] };
+  }
+  if (typeof a.status === 'string' && STOPS.includes(a.status))
+    return { status: a.status } as Begin;
+  return { status: 'error' };
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
   const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? '';
@@ -38,33 +56,29 @@ Deno.serve(async (req) => {
   const answer = await lookup(
     {
       provider: aeroDataBox(required('AERODATABOX_RAPIDAPI_KEY')),
-      async tracked(number, date) {
-        const { data } = await admin
-          .from('flight_watch')
-          .select('last_snapshot, last_legs, last_checked_at')
-          .eq('flight_number', number)
-          .eq('dep_date_local', date)
-          .maybeSingle();
-        return data?.last_snapshot && data.last_checked_at
-          ? {
-              snapshot: data.last_snapshot as FlightSnapshot,
-              legs: data.last_legs as FlightSnapshot[] | null,
-              checkedAt: data.last_checked_at,
-            }
-          : null;
-      },
-      async takeSearch(userId) {
-        const { data, error } = await admin.rpc('take_flight_lookup', { p_user: userId });
-        if (error) console.error('[flight-lookup] quota failed', error.code);
-        return data === true;
-      },
-      async spend(units) {
-        const { data, error } = await admin.rpc('spend_provider_units', {
-          p_provider: 'aerodatabox',
+      async begin(userId, number, date, units) {
+        const { data, error } = await admin.rpc('begin_flight_lookup', {
+          p_user: userId,
+          p_number: number,
+          p_date: date,
           p_units: units,
         });
-        if (error) console.error('[flight-lookup] budget failed', error.code);
-        return data === true;
+        if (error) {
+          console.error('[flight-lookup] begin failed', error.code);
+          return { status: 'error' };
+        }
+        const begin = beginFrom(data);
+        if (begin.status === 'error')
+          console.error('[flight-lookup] begin answered out of contract');
+        return begin;
+      },
+      async remember(number, date, legs) {
+        const { error } = await admin.rpc('put_flight_lookup', {
+          p_number: number,
+          p_date: date,
+          p_legs: legs,
+        });
+        if (error) console.error('[flight-lookup] copy failed', error.code);
       },
       now: () => new Date(),
     },

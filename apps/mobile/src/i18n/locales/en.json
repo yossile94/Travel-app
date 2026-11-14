@@ -614,6 +614,8 @@
     "notFound": "We couldn't find {{number}} on {{date}}. You can enter the details manually.",
     "unavailable": "We couldn't check the flight right now. You can enter the details manually.",
     "rateLimited": "You've reached today's search limit. You can enter the details manually.",
+    "rateLimited30d": "You've reached the search limit for the last 30 days. You can enter the details manually.",
+    "suspended": "Your account is suspended for now, so you can't search for flights. You can enter the details manually.",
     "legsTitle": "This flight has several legs. Choose yours.",
     "legA11y": "{{origin}} to {{destination}}, {{dep}} to {{arr}}",
     "change": "Change",
