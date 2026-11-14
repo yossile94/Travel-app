@@ -460,7 +460,8 @@ export function FlightsSection({
   /** The card shows the device copy: every write blocked (sprint 4 design 10.3). */
   readOnly: boolean;
   /** long: 5 seconds, for a message to read (sprint 15 design 6.1). */
-  onToast: (text: string, long?: boolean) => void;
+  /** announced: already said to the screen reader, so the toast isn't a live region. */
+  onToast: (text: string, long?: boolean, announced?: boolean) => void;
   /** "flightId:seq" from a tapped alert: its sheet opens once the flight is here (AC-5). */
   openFlight?: string | null;
   /** What that alert said, shown over an offline copy (sprint 6 design 4.4). */
@@ -710,8 +711,10 @@ export function FlightsSection({
             // Sprint 15 design 6.1: saved without tracking, and why. One toast at a time.
             if (untracked) {
               // Raz 8: a booking answer that failed too goes in the same toast.
+              // FlightScreen already announced it, as one sentence (QA 1).
               onToast(
                 bookingFailed ? `${untracked} ${t('flight.sameBookingFailed')}` : untracked,
+                true,
                 true,
               );
             }

@@ -354,8 +354,11 @@ export function FlightScreen({
     const bookingFailed = result === 'ok' || untracked ? await saveBooking() : false;
     setBusy(null);
     if (untracked) {
-      // Instead of "saved", not as well (design 6.1).
-      AccessibilityInfo.announceForAccessibility(untracked.a11y);
+      // Instead of "saved", not as well (design 6.1). Said once, here, with the
+      // booking answer that failed too; the toast or notice isn't a live region (QA 1, 2).
+      AccessibilityInfo.announceForAccessibility(
+        bookingFailed ? `${untracked.a11y} ${t('flight.sameBookingFailed')}` : untracked.a11y,
+      );
       onSaved(id, saved.number, saved.direction, !editing, bookingFailed, untracked.text);
     } else if (result === 'ok') {
       if (!bookingFailed) {

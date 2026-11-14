@@ -145,6 +145,7 @@ export function TripFormFlights({
           text={untracked}
           colorScheme={colorScheme}
           testID="trip-form-flight-untracked"
+          announced
         />
       ) : null}
       {screen ? (
@@ -157,9 +158,16 @@ export function TripFormFlights({
           insetsTop={insetsTop}
           insetsBottom={insetsBottom}
           onClose={() => setScreen(null)}
-          onSaved={(id, _number, _direction, _isNew, _bookingFailed, notice) => {
+          onSaved={(id, _number, _direction, _isNew, bookingFailed, notice) => {
             setScreen(null);
-            setUntracked(notice ?? null);
+            // QA 2: a booking answer that failed too is in the same notice, as in the toast.
+            setUntracked(
+              notice
+                ? bookingFailed
+                  ? `${notice} ${t('flight.sameBookingFailed')}`
+                  : notice
+                : null,
+            );
             void refreshTripFlights(trip.id);
             onFlightSaved?.(id);
           }}

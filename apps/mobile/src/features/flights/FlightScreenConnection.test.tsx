@@ -1,6 +1,7 @@
-import '@/i18n';
+import i18n from '@/i18n';
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import { FlightScreen } from './FlightScreen';
 import { lookupFlight, saveFlight, setSameBooking } from './flightsApi';
@@ -158,6 +159,22 @@ describe('the form and connections (sprint 7 design 6)', () => {
     await fireEvent.press(screen.getByTestId('flight-save'));
     await waitFor(() => expect(again).toHaveBeenCalled());
     expect(again.mock.calls[0]![4]).toBe(true);
+  });
+
+  // Sprint 15 QA 1, 2: past a cap with a failed answer too: said once, as one sentence.
+  it('saved without tracking and a failed answer: one announcement with both', async () => {
+    const say = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    jest.mocked(saveFlight).mockResolvedValueOnce({ untracked: 'concurrent', renewsAt: null });
+    jest.mocked(setSameBooking).mockResolvedValueOnce('offline');
+    const onSaved = await search();
+    say.mockClear();
+    await fireEvent.press(screen.getByTestId(`flight-same-booking-${mockFirst.id}-yes`));
+    await fireEvent.press(screen.getByTestId('flight-save'));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(say).toHaveBeenCalledTimes(1);
+    expect(say.mock.calls[0]![0]).toMatch(/הגעתם למספר הטיסות במעקב/);
+    expect(say.mock.calls[0]![0]).toContain(i18n.t('flight.sameBookingFailed'));
+    expect(onSaved.mock.calls[0]![4]).toBe(true);
   });
 
   it('a user pick of the direction stays', async () => {
