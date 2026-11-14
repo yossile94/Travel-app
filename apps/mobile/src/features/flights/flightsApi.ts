@@ -9,9 +9,30 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { isNetworkError } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 
-import type { Flight, FlightSnapshot } from './flightModel';
+import type { Flight, FlightSnapshot, UntrackedReason } from './flightModel';
 
-export type FlightWrite = 'ok' | 'offline' | 'consent' | 'gone' | 'limit' | 'trackLimit' | 'error';
+/** Saved without tracking, past a cap (sprint 15 AC-6); renewsAt: turnover only. */
+export interface Untracked {
+  untracked: UntrackedReason;
+  renewsAt: string | null;
+}
+
+export type FlightWrite = 'ok' | 'offline' | 'consent' | 'gone' | 'limit' | 'error' | Untracked;
+
+const REASONS: readonly string[] = ['concurrent', 'turnover', 'suspended'];
+
+/** save_flight_v2's answer as the screen reads it; exported for tests. */
+export function writeFrom(data: unknown): FlightWrite {
+  const a = (data ?? {}) as { status?: unknown; reason?: unknown; renews_at?: unknown };
+  if (a.status === 'ok' || a.status === 'gone' || a.status === 'limit') return a.status;
+  if (a.status === 'untracked' && typeof a.reason === 'string' && REASONS.includes(a.reason)) {
+    return {
+      untracked: a.reason as UntrackedReason,
+      renewsAt: typeof a.renews_at === 'string' ? a.renews_at : null,
+    };
+  }
+  return 'error';
+}
 
 export type LookupResult =
   | { kind: 'found'; legs: FlightSnapshot[] }
@@ -92,7 +113,7 @@ export async function loadFlights(
   return { ok: true, value: data as Flight[] };
 }
 
-type SavedFields = Omit<Flight, 'id' | 'tripId' | 'watch'>;
+type SavedFields = Omit<Flight, 'id' | 'tripId' | 'watch' | 'untrackedReason'>;
 
 /** v0.14.1 (Raz 1): a write that hangs on a weak network ends as 'offline', like the kit's. */
 const WRITE_TIMEOUT_MS = 15_000;
@@ -112,7 +133,11 @@ export async function saveFlight(
 ): Promise<FlightWrite> {
   if (!supabase) return 'error';
   if (!(await online())) return 'offline';
-  const answer = await rpcWithin('save_flight', { p_id: id, p_trip_id: tripId, p_flight: flight });
+  const answer = await rpcWithin('save_flight_v2', {
+    p_id: id,
+    p_trip_id: tripId,
+    p_flight: flight,
+  });
   if (answer === 'timeout') return 'offline';
   const { data, error } = answer;
   if (error) {
@@ -121,8 +146,9 @@ export async function saveFlight(
     log('save', error);
     return 'error';
   }
-  if (data === 'track_limit') return 'trackLimit';
-  return data === 'ok' || data === 'gone' || data === 'limit' ? data : 'error';
+  const result = writeFrom(data);
+  if (result === 'error') console.error('[flights] save answer outside the contract');
+  return result;
 }
 
 /** Deletes one flight; never gated by consent. 'gone': already deleted. */

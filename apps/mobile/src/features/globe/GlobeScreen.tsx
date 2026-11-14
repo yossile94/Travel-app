@@ -217,9 +217,12 @@ export function GlobeScreen() {
   /** Sprint 6 AC-5: the flight a tapped alert opens, in the open trip's row. */
   const [openFlight, setOpenFlight] = useState<string | null>(null);
   const [alertText, setAlertText] = useState<AlertText | null>(null);
-  const [tripToast, setTripToast] = useState<{ text: string; at: number; long?: boolean } | null>(
-    null,
-  );
+  const [tripToast, setTripToast] = useState<{
+    text: string;
+    at: number;
+    long?: boolean;
+    announced?: boolean;
+  } | null>(null);
   const tripAdm0s = useMemo(
     () => (trips.countries ? [...trips.countries] : null),
     [trips.countries],
@@ -828,7 +831,8 @@ export function GlobeScreen() {
   }, [globeReady, trips]);
 
   const showTripToast = useCallback(
-    (text: string, long?: boolean) => setTripToast({ text, at: Date.now(), long }),
+    (text: string, long?: boolean, announced?: boolean) =>
+      setTripToast({ text, at: Date.now(), long, announced }),
     [],
   );
 
@@ -1458,6 +1462,7 @@ export function GlobeScreen() {
           key={tripToast.at}
           text={tripToast.text}
           long={tripToast.long}
+          announced={tripToast.announced}
           top={insets.top + overlayTop}
           onDone={() => setTripToast(null)}
         />

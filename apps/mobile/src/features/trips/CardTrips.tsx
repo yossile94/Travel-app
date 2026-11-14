@@ -88,7 +88,8 @@ interface Props {
   onEditTrip: (trip: Trip) => void;
   /** Sprint 3 AC-9: a new trip to the same country, copied without dates. */
   onDuplicateTrip: (trip: Trip) => void;
-  onToast: (text: string) => void;
+  /** announced: already said to the screen reader, so the toast isn't a live region. */
+  onToast: (text: string, long?: boolean, announced?: boolean) => void;
   /** "flightId:seq": a tapped alert's flight, opened in the open trip (sprint 6 AC-5). */
   openFlight?: string | null;
   /** That alert's text, for an offline copy (sprint 6 design 4.4). */

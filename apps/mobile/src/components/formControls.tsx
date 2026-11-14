@@ -82,21 +82,26 @@ export function CheckboxRow({
   );
 }
 
-/** A non-alarming message inside a sheet or screen (design 7.4); never red. */
+/**
+ * A non-alarming message inside a sheet or screen (design 7.4); never red.
+ * `announced`: the caller already said it to the screen reader, so it isn't a live region too.
+ */
 export function InlineNotice({
   text,
   colorScheme,
   testID,
+  announced = false,
 }: {
   text: string;
   colorScheme: ColorScheme;
   testID?: string;
+  announced?: boolean;
 }) {
   const palette = colors[colorScheme];
   return (
     <View
       style={[styles.notice, { backgroundColor: palette.infoBg }]}
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={announced ? 'none' : 'polite'}
       testID={testID}
     >
       <Svg width={20} height={20} viewBox="0 0 24 24">
@@ -113,17 +118,23 @@ export function InlineNotice({
   );
 }
 
-/** A short confirmation over the globe, gone after 3 s (design 7.5), or 5 s when `long`. */
+/**
+ * A short confirmation over the globe, gone after 3 s (design 7.5), or 5 s when `long`.
+ * `announced`: the caller already said it to the screen reader (sprint 15 QA 1), so it
+ * isn't a live region too and TalkBack reads it once.
+ */
 export function Toast({
   text,
   top,
   onDone,
   long = false,
+  announced = false,
 }: {
   text: string;
   top: number;
   onDone: () => void;
   long?: boolean;
+  announced?: boolean;
 }) {
   useEffect(() => {
     const timer = setTimeout(onDone, long ? motion.toastVisibleLong : motion.toastVisible);
@@ -133,7 +144,7 @@ export function Toast({
     <View
       pointerEvents="none"
       style={[styles.toastWrap, { top }]}
-      accessibilityLiveRegion={long ? 'assertive' : 'polite'}
+      accessibilityLiveRegion={announced ? 'none' : long ? 'assertive' : 'polite'}
       testID="toast"
     >
       <Text style={styles.toast}>{text}</Text>

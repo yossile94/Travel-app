@@ -705,7 +705,10 @@
       "not_checked": "We haven't checked this flight for changes yet.",
       "paused": "Tracking is paused for now. Your details are saved.",
       "not_found": "The flight data provider couldn't find this flight, so there are no updates. Your details are saved.",
-      "ended": "Tracking has ended."
+      "ended": "Tracking has ended.",
+      "untracked_concurrent": "No automatic updates: you've reached the number of flights you can track. To try again, edit and save the flight.",
+      "untracked_turnover": "No automatic updates: you've reached your limit for adding flights to tracking. When it renews, edit and save the flight.",
+      "untracked_suspended": "Tracking stopped while your account was suspended. To restart it, edit and save the flight."
     },
     "history": "Change history",
     "ev": {
@@ -744,13 +747,17 @@
     "discardBody": "Your changes won't be saved.",
     "discard": "Leave",
     "keep": "Keep editing",
-    "trackLimit": "You can track up to 10 flights at a time. Once one of them lands, you can add more.",
     "connectionTitle": "Connection",
     "connectionContinues": "Continues {{prev}} ({{route}})",
     "connectionContinuedBy": "{{next}} continues it ({{route}})",
     "directionAuto": "Direction set from {{prev}}, which this flight continues.",
     "directionAutoA11y": "Direction set to {{direction}}, from {{prev}}.",
-    "sameBookingFailed": "Flight saved. You can set the booking answer again from the layover line."
+    "sameBookingFailed": "Flight saved. You can set the booking answer again from the layover line.",
+    "untracked": {
+      "concurrent": "You've reached the number of flights you can track. The flight was saved without automatic updates.",
+      "turnover": "You've reached your limit for adding flights to tracking. It renews on {{date}}. The flight was saved without automatic updates.",
+      "suspended": "Your account is suspended for now. The flight was saved without automatic updates."
+    }
   },
   "airport": {
     "search": "Search airports",

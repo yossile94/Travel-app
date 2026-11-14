@@ -63,6 +63,7 @@ import {
   type FlightSnapshot,
 } from './flightModel';
 import { deleteFlight, lookupFlight, saveFlight, setSameBooking } from './flightsApi';
+import { untrackedNotice } from './untrackedNotice';
 import { useDestination } from '@/features/destination/destinationData';
 import {
   layoverLabel,
@@ -86,7 +87,7 @@ export interface FlightScreenTrip {
 
 type Step = 'search' | 'legs' | 'details';
 type SearchNotice = 'found' | 'notFound' | 'unavailable' | 'rateLimited' | null;
-type SaveNotice = 'offline' | 'error' | 'gone' | 'limit' | 'trackLimit' | 'consent' | null;
+type SaveNotice = 'offline' | 'error' | 'gone' | 'limit' | 'consent' | null;
 
 const DIRECTIONS: Direction[] = ['out', 'return', 'internal'];
 const CABINS: Cabin[] = ['economy', 'premium_economy', 'business', 'first'];
@@ -113,13 +114,17 @@ export function FlightScreen({
   insetsTop: number;
   insetsBottom: number;
   onClose: () => void;
-  /** bookingFailed: saved, but the "same booking" answer didn't go (sprint 7 design 6.3). */
+  /**
+   * bookingFailed: saved, but the "same booking" answer didn't go (sprint 7 design 6.3).
+   * untracked: saved without tracking, past a cap; the long toast's text (sprint 15 design 6.1).
+   */
   onSaved: (
     flightId: string,
     number: string,
     direction: Direction,
     isNew: boolean,
     bookingFailed?: boolean,
+    untracked?: string,
   ) => void;
   onDeleted: (flightId: string) => void;
 }) {
@@ -344,9 +349,18 @@ export function FlightScreen({
     const saved = toSaved(values);
     const result = await saveFlight(id, trip.id, saved);
     // Busy until the answers are saved too (Raz review 3).
-    const bookingFailed = result === 'ok' ? await saveBooking() : false;
+    // Saved without tracking is saved too (sprint 15 AC-6).
+    const untracked = typeof result === 'object' ? untrackedNotice(result, t) : null;
+    const bookingFailed = result === 'ok' || untracked ? await saveBooking() : false;
     setBusy(null);
-    if (result === 'ok') {
+    if (untracked) {
+      // Instead of "saved", not as well (design 6.1). Said once, here, with the
+      // booking answer that failed too; the toast or notice isn't a live region (QA 1, 2).
+      AccessibilityInfo.announceForAccessibility(
+        bookingFailed ? `${untracked.a11y} ${t('flight.sameBookingFailed')}` : untracked.a11y,
+      );
+      onSaved(id, saved.number, saved.direction, !editing, bookingFailed, untracked.text);
+    } else if (result === 'ok') {
       if (!bookingFailed) {
         AccessibilityInfo.announceForAccessibility(
           t('flight.saved', { number: spellCode(saved.number) }),
@@ -365,9 +379,7 @@ export function FlightScreen({
             ? 'gone'
             : result === 'limit'
               ? 'limit'
-              : result === 'trackLimit'
-                ? 'trackLimit'
-                : 'error',
+              : 'error',
       );
   };
 
@@ -439,13 +451,11 @@ export function FlightScreen({
         ? t('flight.tripGone')
         : saveNotice === 'limit'
           ? t('flight.limit')
-          : saveNotice === 'trackLimit'
-            ? t('flight.trackLimit')
-            : saveNotice === 'consent'
-              ? t('tripForm.consentNeeded')
-              : saveNotice === 'error'
-                ? t('flight.saveError')
-                : null;
+          : saveNotice === 'consent'
+            ? t('tripForm.consentNeeded')
+            : saveNotice === 'error'
+              ? t('flight.saveError')
+              : null;
 
   const timeHelp = (p: PickedAirport | null) =>
     p

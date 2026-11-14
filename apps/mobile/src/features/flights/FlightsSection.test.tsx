@@ -1,10 +1,10 @@
-import '@/i18n';
+import i18n from '@/i18n';
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { Flight } from './flightModel';
-import { FlightsSection, updatedText } from './FlightsSection';
+import { FlightsSection, trackLine, updatedText } from './FlightsSection';
 import type { TripFlights } from './flightsStore';
 
 // The first render also loads the section's modules: room for a busy parallel run (QA S5 retest).
@@ -17,11 +17,15 @@ jest.mock('./flightsStore', () => ({
   useTripFlights: () => mockState.value,
   refreshTripFlights: jest.fn(async () => {}),
 }));
+const mockSave: { extra: unknown[] } = { extra: [] };
 jest.mock('./FlightScreen', () => ({
   FlightScreen: ({ onSaved }: { onSaved: (...a: unknown[]) => void }) => {
     const { Pressable, Text } = jest.requireActual('react-native');
     return (
-      <Pressable testID="mock-save" onPress={() => onSaved('new', 'LY81', 'out', true)}>
+      <Pressable
+        testID="mock-save"
+        onPress={() => onSaved('new', 'LY81', 'out', true, ...mockSave.extra)}
+      >
         <Text>screen</Text>
       </Pressable>
     );
@@ -96,7 +100,7 @@ const trip = {
   startDate: '2026-12-20',
   endDate: '2027-01-05',
 };
-const show = (readOnly = false) =>
+const show = (readOnly = false, onToast = jest.fn()) =>
   render(
     <SafeAreaProvider
       initialMetrics={{
@@ -104,7 +108,7 @@ const show = (readOnly = false) =>
         insets: { top: 0, left: 0, right: 0, bottom: 0 },
       }}
     >
-      <FlightsSection trip={trip} colorScheme="light" readOnly={readOnly} onToast={jest.fn()} />
+      <FlightsSection trip={trip} colorScheme="light" readOnly={readOnly} onToast={onToast} />
     </SafeAreaProvider>,
   );
 
@@ -165,11 +169,46 @@ describe('FlightsSection (sprint 5 design 9–12)', () => {
     expect(screen.getByTestId('return-prompt-add')).toBeOnTheScreen();
   });
 
+  // Sprint 15 QA 1: FlightScreen already announced it, so the long toast isn't live too.
+  it('saved past a cap: one long, announced toast, with a failed booking answer', async () => {
+    mockState.value = { flights: [], status: 'ready', fromCache: false, savedAt: null };
+    const onToast = jest.fn();
+    mockSave.extra = [true, 'past a cap'];
+    await show(false, onToast);
+    await fireEvent.press(screen.getByTestId('card-flight-add'));
+    await fireEvent.press(screen.getByTestId('mock-save'));
+    mockSave.extra = [];
+    expect(onToast).toHaveBeenCalledTimes(1);
+    expect(onToast).toHaveBeenCalledWith(
+      `past a cap ${i18n.t('flight.sameBookingFailed')}`,
+      true,
+      true,
+    );
+  });
+
   it('"updated X ago" wording (design 9.5)', () => {
     const t = (k: string, o?: Record<string, unknown>) => `${k}${o?.n ?? ''}`;
     const at = new Date('2026-12-20T12:00:00Z');
     expect(updatedText('2026-12-20T11:59:30Z', at, t)).toBe('flight.updated.now');
     expect(updatedText('2026-12-20T11:55:00Z', at, t)).toBe('flight.updated.minMany5');
     expect(updatedText('2026-12-20T10:00:00Z', at, t)).toBe('flight.updated.hourTwo');
+  });
+});
+
+// Sprint 15 design 6.2 (Raz 4): a flight saved past a cap shows its reason, and
+// no "tracking has ended" once it is over: it was never tracked.
+describe('trackLine for a flight saved past a cap', () => {
+  const tt = (k: string) => k;
+  const capped = flight({ watch: null, untrackedReason: 'concurrent' });
+  it('before it is over: the reason', () => {
+    expect(trackLine(capped, 'untracked_concurrent', new Date(), tt)).toBe(
+      'flight.track.untracked_concurrent',
+    );
+  });
+  it('over: nothing', () => {
+    expect(trackLine(capped, 'ended', new Date(), tt)).toBe('');
+  });
+  it('a tracked flight whose data went: still "ended"', () => {
+    expect(trackLine(flight({ watch: null }), 'ended', new Date(), tt)).toBe('flight.track.ended');
   });
 });

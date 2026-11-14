@@ -46,6 +46,9 @@ export interface FlightWatch {
   events: FlightEvent[];
 }
 
+/** Why a flight was saved without tracking (sprint 15 AC-6, AC-13). */
+export type UntrackedReason = 'concurrent' | 'turnover' | 'suspended';
+
 /** What the user saved: their values, never overwritten by the tracking. */
 export interface Flight {
   id: string;
@@ -76,6 +79,11 @@ export interface Flight {
    */
   sameBooking?: boolean | null;
   sameBookingPrev?: string | null;
+  /**
+   * Sprint 15 AC-6: saved without tracking, past a cap, and why. Absent in a
+   * device copy from before: it shows as it did.
+   */
+  untrackedReason?: UntrackedReason | null;
   /** The arrival airport's minimum connection time, in minutes (AC-2). */
   arrMct?: number | null;
   /** That minimum is the general one, not the airport's own (design 3.5). */
@@ -118,6 +126,9 @@ export const PNR = /^[A-Z0-9]{5,8}$/;
 export const SEAT = /^[A-Z0-9]{1,4}$/;
 
 export type TrackState =
+  | 'untracked_concurrent'
+  | 'untracked_turnover'
+  | 'untracked_suspended'
   | 'untracked_past'
   | 'not_checked'
   | 'tracking'
@@ -149,7 +160,9 @@ export function flightTrackState(flight: Flight, now: Date): TrackState {
     // No watch: never tracked because it had left, or its data was deleted.
     const end = flight.arrSched ?? flight.depSched;
     const over = end ? Date.parse(end) + DAY < now.getTime() : false;
-    return over ? 'ended' : 'untracked_past';
+    if (over) return 'ended';
+    // Sprint 15 design 6.2: past a cap, before the flight is over.
+    return flight.untrackedReason ? `untracked_${flight.untrackedReason}` : 'untracked_past';
   }
   if (w.state === 'failed') return 'not_found';
   const status = w.snapshot?.status;
@@ -184,7 +197,7 @@ export function flightChips(flight: Flight, state: TrackState): ChipKind[] {
   if (state === 'cancelled') return ['cancelled'];
   if (state === 'diverted') return ['diverted'];
   if (state === 'paused') return ['paused'];
-  if (state === 'untracked_past') return ['untracked'];
+  if (state.startsWith('untracked_')) return ['untracked'];
   if (state === 'not_checked' || state === 'not_found' || state === 'ended') return [];
   const snap = flight.watch?.snapshot;
   const chips: ChipKind[] = [];
