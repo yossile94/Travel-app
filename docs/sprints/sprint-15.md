@@ -337,6 +337,7 @@
 - **`aerodatabox/lookup` הוא נתח מ-`units`, לא תקציב שני (רז ודודי, ל-PR-C ול-PR-F):**
   - **הוצאה:** חיפוש נספר ב-`units` וגם חייב להישאר מתחת לתקרה של `lookup`.
   - **מדידה:** ב-`usage_daily`, ‏`feature='lookup'` נרשם תחת המדד `units`.
+    - **ב-PR-F (רז, סקירת PR-C):** ‏`begin_flight_lookup` כותבת ל-`provider_usage` בעצמה ולא דרך `spend_provider_units`. לכן גם היא רושמת את השורה שלה ב-`usage_daily`.
   - **דשבורד:** ‏`cost_status()` לא מוסיפה את העלות של `lookup` לזו של `units`, וההתראות לא חוזרות פעמיים.
 - **כרטיסי Supabase ו-Mapbox (רז, ל-PR-G):** בלי `billing_anchor` מוצג "קבעו את יום החיוב" או חודש קלנדרי ב-UTC. ‏`db_size_mb` הוא רמה ולא סכום, ולכן הכרטיס מציג את הערך האחרון בלי צפי.
 - **סוג המשתמש (רז):** ‏PR-B ו-PR-E קוראים את הסוג דרך פונקציה אחת, `user_tier(uuid)`, שמחזירה בינתיים `interim`. ‏`take_places_call` עוברת אליה ב-PR-E.

@@ -5,7 +5,9 @@
 -- can't search. Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(44);
+-- The function's day is UTC; so is current_date here (Dudi 6).
+set local timezone = 'UTC';
 
 insert into auth.users (id, email)
 values
@@ -50,6 +52,18 @@ select ok(
 );
 select ok(to_regprocedure('public.take_flight_lookup(uuid)') is null, 'take_flight_lookup is gone');
 select throws_ok($$select pg_temp.go(1, null)$$, '22023', null, 'a missing number is refused');
+select throws_ok($$select pg_temp.go(1, 'ly 1')$$, '22023', null, 'a number not normalised is refused (Dudi 5)');
+select throws_ok($$select pg_temp.go(1, 'LY1', current_date + 356)$$, '22023', null,
+  'a date past 355 days is refused');
+select throws_ok($$select pg_temp.go(1, 'LY1', current_date - 3)$$, '22023', null,
+  'a date more than 2 days back is refused');
+select throws_ok(
+  $$select public.begin_flight_lookup('00000000-0000-4000-8000-0000000015c1', 'LY1', current_date, 11)$$,
+  '22023', null, 'more than 10 units is refused');
+select ok(
+  not has_function_privilege('authenticated', 'public.aerodatabox_load()', 'EXECUTE')
+  and has_function_privilege('service_role', 'public.aerodatabox_load()', 'EXECUTE'),
+  'the load is read by the server only');
 
 -- ---------------------------------------------------------- a search, a copy
 select is(pg_temp.go(1, 'LY1'), 'go', 'a first search goes to the provider');
@@ -79,6 +93,9 @@ select ok(
 );
 select throws_ok($$select public.put_flight_lookup('LY3', current_date, '{}')$$, '23514', null,
   'the copy is an array');
+select throws_ok(
+  $$select public.put_flight_lookup('LY3', current_date, (select jsonb_agg('{}'::jsonb) from generate_series(1, 9)))$$,
+  '23514', null, 'the copy holds 8 legs at most');
 
 -- A tracked flight checked in the last 30 minutes answers with every leg.
 insert into public.flight_watch (flight_number, dep_date_local, sched_dep_utc, last_snapshot, last_legs, last_checked_at)
@@ -86,7 +103,12 @@ values
   ('LY4', current_date + 10, now() + interval '10 days', '{"number": "LY4"}',
    '[{"number": "LY4"}, {"number": "LY4", "leg": 2}]', now() - interval '10 minutes'),
   ('LY5', current_date + 10, now() + interval '10 days', '{"number": "LY5"}', null, now() - interval '10 minutes'),
-  ('LY6', current_date + 10, now() + interval '10 days', '{"number": "LY6"}', null, now() - interval '40 minutes');
+  ('LY6', current_date + 10, now() + interval '10 days', '{"number": "LY6"}', null, now() - interval '25 hours'),
+  ('LY8', current_date + 10, now() + interval '10 days', '{"number": "LY8"}', null, now() - interval '2 hours'),
+  ('LY9', current_date + 10, now() + interval '10 days', '{"number": "LY9"}', null, now() - interval '5 hours');
+insert into public.flight_lookup_cache (flight_number, dep_date_local, legs, fetched_at)
+values ('LY8', current_date + 10, '[{"number": "LY8", "old": true}]', now() - interval '5 hours'),
+       ('LY9', current_date + 10, '[{"number": "LY9", "new": true}]', now() - interval '1 hour');
 select is(
   public.begin_flight_lookup('00000000-0000-4000-8000-0000000015c3', 'LY4', current_date + 10, 2),
   '{"status": "copy", "from": "tracked", "legs": [{"number": "LY4"}, {"number": "LY4", "leg": 2}]}'::jsonb,
@@ -94,7 +116,13 @@ select is(
 select is(
   public.begin_flight_lookup('00000000-0000-4000-8000-0000000015c3', 'LY5', current_date + 10, 2) -> 'legs',
   '[{"number": "LY5"}]'::jsonb, 'without legs, with the tracked one');
-select is(pg_temp.go(3, 'LY6'), 'go', 'a tracked copy older than 30 minutes isn''t used');
+select is(pg_temp.go(3, 'LY6'), 'go', 'a tracked copy older than 24 hours isn''t used');
+select is(
+  public.begin_flight_lookup('00000000-0000-4000-8000-0000000015c3', 'LY8', current_date + 10, 2) -> 'legs',
+  '[{"number": "LY8"}]'::jsonb, 'a tracked check newer than the copy answers (Raz 4)');
+select is(
+  public.begin_flight_lookup('00000000-0000-4000-8000-0000000015c3', 'LY9', current_date + 10, 2) -> 'legs',
+  '[{"number": "LY9", "new": true}]'::jsonb, 'a copy newer than the tracked check answers');
 
 -- ------------------------------------------------------------- the user's caps
 select is(
