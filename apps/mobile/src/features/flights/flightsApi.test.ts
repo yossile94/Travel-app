@@ -1,6 +1,6 @@
 // v0.14.1 (Raz 1): a flight write that hangs on a weak network ends as
 // 'offline' after 15s, so the screen unlocks and keeps what was filled.
-import { deleteFlight, loadFlights, saveFlight, writeFrom } from './flightsApi';
+import { deleteFlight, loadFlights, lookupFrom, saveFlight, writeFrom } from './flightsApi';
 
 const mockRpc = jest.fn();
 jest.mock('@/lib/supabase', () => ({ supabase: { rpc: (...a: unknown[]) => mockRpc(...a) } }));
@@ -77,4 +77,23 @@ it('Dana 1: a read that never reached the server is offline (the device copy sho
     status: 403,
   });
   await expect(loadFlights(['t1'])).resolves.toEqual({ ok: false, reason: 'error' });
+});
+
+// Sprint 15 AC-7, design 6.3, 6.4: the search's stops, as the form reads them.
+it('a 429 names its cap; without a reason it is today', () => {
+  expect(lookupFrom(429, { error: 'rate_limited', reason: 'lookups_30d' })).toEqual({
+    kind: 'rateLimited30d',
+  });
+  expect(lookupFrom(429, { error: 'rate_limited', reason: 'lookups_day' })).toEqual({
+    kind: 'rateLimited',
+  });
+  expect(lookupFrom(429, null)).toEqual({ kind: 'rateLimited' });
+});
+
+it('a suspended account, a spent budget and a failure', () => {
+  expect(lookupFrom(403, { error: 'suspended' })).toEqual({ kind: 'suspended' });
+  expect(lookupFrom(403, { error: 'other' })).toEqual({ kind: 'unavailable' });
+  expect(lookupFrom(503, { error: 'budget' })).toEqual({ kind: 'unavailable' });
+  expect(lookupFrom(503, { error: 'provider' })).toEqual({ kind: 'unavailable' });
+  expect(lookupFrom(200, { legs: [], from: 'cache' })).toEqual({ kind: 'notFound' });
 });

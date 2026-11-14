@@ -8,7 +8,7 @@
 
 | Function | `verify_jwt` | מי רשאי לקרוא | בדיקת הקלט |
 |---|---|---|---|
-| `flight-lookup` | true | משתמש מחובר. המשתמש נקרא מהטוקן (`auth.getUser`) | `POST` בלבד. מספר טיסה ותאריך מאומתים (`bad_number`, ‏`bad_date`). יש מכסה למשתמש (`take_flight_lookup`) |
+| `flight-lookup` | true | משתמש מחובר. המשתמש נקרא מהטוקן (`auth.getUser`) | `POST` בלבד. מספר טיסה ותאריך מאומתים (`bad_number`, ‏`bad_date`). יש מכסה למשתמש, יומית ול-30 יום, וחשבון מושהה לא מחפש (`begin_flight_lookup`, ספרינט 15). העותק לא שומר מזהה משתמש |
 | `delete-account` | false (*) | משתמש מחובר: ‏`auth.getUser` על הטוקן, ואימות מחדש עם ID token של Google מאותו חשבון, עד 60 דקות | `POST` בלבד. בלי ID token מוחזר 400. חשבון אחר מחזיר 403 |
 | `flight-watch` | false | `pg_cron` בלבד: ‏`CRON_SECRET` בכותרת (`hasCronSecret`) | `POST` בלבד. בלי סוד מוחזר 401 |
 | `rates-daily` | false | `pg_cron` בלבד: ‏`CRON_SECRET` (נוסף בספרינט 13, דודי 2) | `POST` בלבד. בלי סוד מוחזר 401. ריצה נתפסת קודם במסד (`claim_job_run`, פעם בשעה לכל היותר) |

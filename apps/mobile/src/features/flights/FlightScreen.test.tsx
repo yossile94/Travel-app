@@ -164,17 +164,21 @@ describe('FlightScreen (sprint 5 F-016, design 2–8)', () => {
     expect(screen.getByTestId('flight-notice-found')).toBeOnTheScreen();
   });
 
-  it('not found, unavailable or the daily limit all land on the manual form', async () => {
-    for (const [kind, id] of [
-      ['notFound', 'flight-notice-not-found'],
-      ['unavailable', 'flight-notice-unavailable'],
-      ['rateLimited', 'flight-notice-rate-limited'],
+  // Sprint 15 AC-7, design 6.3: the 30-day cap and a suspended account too.
+  it('not found, unavailable, the caps or a suspended account all land on the manual form', async () => {
+    for (const [kind, id, text] of [
+      ['notFound', 'flight-notice-not-found', /לא מצאנו|LY81/],
+      ['unavailable', 'flight-notice-unavailable', /לא הצלחנו/],
+      ['rateLimited', 'flight-notice-rate-limited', /להיום/],
+      ['rateLimited30d', 'flight-notice-rate-limited-30d', /ב-30 הימים האחרונים/],
+      ['suspended', 'flight-notice-suspended', /החשבון מושהה כרגע/],
     ] as const) {
       jest.mocked(lookupFlight).mockResolvedValue({ kind });
       await show();
       await fireEvent.changeText(screen.getByTestId('flight-number'), 'LY81');
       await fireEvent.press(screen.getByTestId('flight-search'));
       await waitFor(() => expect(screen.getByTestId(id)).toBeOnTheScreen());
+      expect(screen.getByTestId(id)).toHaveTextContent(text);
       expect(screen.getByTestId('flight-origin')).toBeOnTheScreen();
       await screen.unmount();
     }

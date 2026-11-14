@@ -1,38 +1,37 @@
 /**
- * Flight search for the add-flight form (sprint 5 AC-1, AC-6ב), apart from
- * its I/O so it is tested with fakes. A flight already tracked and checked in
- * the last 30 minutes answers from our copy, free; otherwise one of the
- * user's 10 daily searches and 2 provider units are spent. Any failure is an
- * answer the form turns into manual entry, never a dead end.
+ * Flight search for the add-flight form (sprint 5 AC-1, AC-6ב; sprint 15
+ * AC-7, AC-8), apart from its I/O so it is tested with fakes. The database
+ * decides in one call (begin_flight_lookup): a copy answers for free, or the
+ * search takes one of the user's searches and its units, or it is stopped
+ * with the reason. Any stop is an answer the form turns into manual entry,
+ * never a dead end.
  */
 import type { FlightProvider, FlightSnapshot } from '../_shared/aerodatabox.ts';
 import { normalizeNumber, UNITS } from '../_shared/aerodatabox.ts';
 
 export const NUMBER = /^[A-Z0-9]{2}[1-9][0-9]{0,3}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const FRESH_MS = 30 * 60_000;
 const DAY_MS = 24 * 60 * 60_000;
+
+/** begin_flight_lookup's answer; 'error' when the database didn't answer. */
+export type Begin =
+  | { status: 'go' }
+  | { status: 'copy'; from: 'tracked' | 'cache'; legs: FlightSnapshot[] }
+  | { status: 'suspended' | 'off' | 'budget' | 'lookups_day' | 'lookups_30d' | 'error' };
 
 export type LookupDeps = {
   provider: FlightProvider;
-  /** A tracked copy of this flight and when it was checked, if any. */
-  tracked(
-    number: string,
-    date: string,
-  ): Promise<{
-    snapshot: FlightSnapshot;
-    legs?: FlightSnapshot[] | null;
-    checkedAt: string;
-  } | null>;
-  takeSearch(userId: string): Promise<boolean>;
-  spend(units: number): Promise<boolean>;
+  begin(userId: string, number: string, date: string, units: number): Promise<Begin>;
+  /** Keeps the answer for the next 24 hours; a failure here loses nothing. */
+  remember(number: string, date: string, legs: FlightSnapshot[]): Promise<void>;
   now(): Date;
 };
 
 export type LookupAnswer =
-  | { status: 200; body: { legs: FlightSnapshot[]; from: 'tracked' | 'provider' } }
+  | { status: 200; body: { legs: FlightSnapshot[]; from: 'tracked' | 'cache' | 'provider' } }
   | { status: 400; body: { error: 'bad_number' | 'bad_date' } }
-  | { status: 429; body: { error: 'daily_limit' } }
+  | { status: 403; body: { error: 'suspended' } }
+  | { status: 429; body: { error: 'rate_limited'; reason: 'lookups_day' | 'lookups_30d' } }
   | { status: 503; body: { error: 'budget' | 'provider' } };
 
 /** "ly 0081" → "LY81": no space, upper case, no leading zeros (AC-1). */
@@ -59,16 +58,26 @@ export async function lookup(
     return { status: 400, body: { error: 'bad_date' } };
   }
 
-  const copy = await deps.tracked(number, date!);
-  if (copy && now - Date.parse(copy.checkedAt) < FRESH_MS) {
-    // Sprint 14 AC-12 (Raz 9): every leg the watcher kept, not only the tracked one.
-    const legs = copy.legs?.length ? copy.legs : [copy.snapshot];
-    return { status: 200, body: { legs, from: 'tracked' } };
+  const begin = await deps.begin(userId, number, date!, UNITS.flight);
+  switch (begin.status) {
+    case 'copy':
+      return { status: 200, body: { legs: begin.legs, from: begin.from } };
+    case 'suspended':
+      return { status: 403, body: { error: 'suspended' } };
+    case 'lookups_day':
+    case 'lookups_30d':
+      return { status: 429, body: { error: 'rate_limited', reason: begin.status } };
+    case 'off':
+    case 'budget':
+      return { status: 503, body: { error: 'budget' } };
+    case 'error':
+      // AC-8: the database didn't answer; no quota or budget was spent.
+      return { status: 503, body: { error: 'provider' } };
   }
-  if (!(await deps.takeSearch(userId))) return { status: 429, body: { error: 'daily_limit' } };
-  if (!(await deps.spend(UNITS.flight))) return { status: 503, body: { error: 'budget' } };
+
   const answer = await deps.provider.flightsByNumber(number, date!);
   if (!answer.ok) return { status: 503, body: { error: 'provider' } };
   const legs = answer.value.filter((f) => !f.isCargo);
+  await deps.remember(number, date!, legs);
   return { status: 200, body: { legs, from: 'provider' } };
 }
