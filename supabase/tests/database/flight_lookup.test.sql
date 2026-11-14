@@ -1,5 +1,5 @@
 -- Sprint 15 PR-C (F-048 AC-7, AC-8, design 6.3; ADR-023): the flight search.
--- A copy (tracked in 30 minutes, any search in 24 hours, "not found" too)
+-- A copy (a tracked check or any search in 24 hours, the newer one; "not found" too)
 -- answers for free; 10 searches a day and 150 in 30 days; the units cap and
 -- the search's slice; cache only at 85%, off at 95%; a suspended account
 -- can't search. Run with: npx supabase test db
@@ -97,7 +97,7 @@ select throws_ok(
   $$select public.put_flight_lookup('LY3', current_date, (select jsonb_agg('{}'::jsonb) from generate_series(1, 9)))$$,
   '23514', null, 'the copy holds 8 legs at most');
 
--- A tracked flight checked in the last 30 minutes answers with every leg.
+-- A tracked flight checked in the last 24 hours answers with every leg.
 insert into public.flight_watch (flight_number, dep_date_local, sched_dep_utc, last_snapshot, last_legs, last_checked_at)
 values
   ('LY4', current_date + 10, now() + interval '10 days', '{"number": "LY4"}',
