@@ -1,4 +1,4 @@
-import '@/i18n';
+import i18n from '@/i18n';
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -17,11 +17,15 @@ jest.mock('./flightsStore', () => ({
   useTripFlights: () => mockState.value,
   refreshTripFlights: jest.fn(async () => {}),
 }));
+const mockSave: { extra: unknown[] } = { extra: [] };
 jest.mock('./FlightScreen', () => ({
   FlightScreen: ({ onSaved }: { onSaved: (...a: unknown[]) => void }) => {
     const { Pressable, Text } = jest.requireActual('react-native');
     return (
-      <Pressable testID="mock-save" onPress={() => onSaved('new', 'LY81', 'out', true)}>
+      <Pressable
+        testID="mock-save"
+        onPress={() => onSaved('new', 'LY81', 'out', true, ...mockSave.extra)}
+      >
         <Text>screen</Text>
       </Pressable>
     );
@@ -96,7 +100,7 @@ const trip = {
   startDate: '2026-12-20',
   endDate: '2027-01-05',
 };
-const show = (readOnly = false) =>
+const show = (readOnly = false, onToast = jest.fn()) =>
   render(
     <SafeAreaProvider
       initialMetrics={{
@@ -104,7 +108,7 @@ const show = (readOnly = false) =>
         insets: { top: 0, left: 0, right: 0, bottom: 0 },
       }}
     >
-      <FlightsSection trip={trip} colorScheme="light" readOnly={readOnly} onToast={jest.fn()} />
+      <FlightsSection trip={trip} colorScheme="light" readOnly={readOnly} onToast={onToast} />
     </SafeAreaProvider>,
   );
 
@@ -163,6 +167,23 @@ describe('FlightsSection (sprint 5 design 9–12)', () => {
     await fireEvent.press(screen.getByTestId('card-flight-add'));
     await fireEvent.press(screen.getByTestId('mock-save'));
     expect(screen.getByTestId('return-prompt-add')).toBeOnTheScreen();
+  });
+
+  // Sprint 15 QA 1: FlightScreen already announced it, so the long toast isn't live too.
+  it('saved past a cap: one long, announced toast, with a failed booking answer', async () => {
+    mockState.value = { flights: [], status: 'ready', fromCache: false, savedAt: null };
+    const onToast = jest.fn();
+    mockSave.extra = [true, 'past a cap'];
+    await show(false, onToast);
+    await fireEvent.press(screen.getByTestId('card-flight-add'));
+    await fireEvent.press(screen.getByTestId('mock-save'));
+    mockSave.extra = [];
+    expect(onToast).toHaveBeenCalledTimes(1);
+    expect(onToast).toHaveBeenCalledWith(
+      `past a cap ${i18n.t('flight.sameBookingFailed')}`,
+      true,
+      true,
+    );
   });
 
   it('"updated X ago" wording (design 9.5)', () => {

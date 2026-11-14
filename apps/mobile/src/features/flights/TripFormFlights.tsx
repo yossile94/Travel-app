@@ -44,7 +44,8 @@ export function TripFormFlights({
   const p = colors[colorScheme];
   const data = useTripFlights(saved ? trip.id : null);
   // Sprint 15 design 6.1: saved without tracking. The form has no toast, so it stays here.
-  const [untracked, setUntracked] = useState<string | null>(null);
+  // QA 2: or only the booking answer failed; that one isn't announced yet, so the notice is.
+  const [notice, setNotice] = useState<{ text: string; announced: boolean } | null>(null);
   const [screen, setScreen] = useState<{ flight: Flight | null; direction: Direction } | null>(
     null,
   );
@@ -140,12 +141,12 @@ export function TripFormFlights({
       <Text style={[styles.footnote, { color: p.textSecondary }]} testID="trip-form-flights-help">
         {t('flights.formHelp')}
       </Text>
-      {untracked ? (
+      {notice ? (
         <InlineNotice
-          text={untracked}
+          text={notice.text}
           colorScheme={colorScheme}
           testID="trip-form-flight-untracked"
-          announced
+          announced={notice.announced}
         />
       ) : null}
       {screen ? (
@@ -158,22 +159,24 @@ export function TripFormFlights({
           insetsTop={insetsTop}
           insetsBottom={insetsBottom}
           onClose={() => setScreen(null)}
-          onSaved={(id, _number, _direction, _isNew, bookingFailed, notice) => {
+          onSaved={(id, _number, _direction, _isNew, bookingFailed, untracked) => {
             setScreen(null);
-            // QA 2: a booking answer that failed too is in the same notice, as in the toast.
-            setUntracked(
-              notice
-                ? bookingFailed
-                  ? `${notice} ${t('flight.sameBookingFailed')}`
-                  : notice
-                : null,
+            // QA 2: a booking answer that failed is in the notice too, as in the card's toast.
+            // FlightScreen announced the untracked sentence, not a failed answer alone.
+            const failed = t('flight.sameBookingFailed');
+            setNotice(
+              untracked
+                ? { text: bookingFailed ? `${untracked} ${failed}` : untracked, announced: true }
+                : bookingFailed
+                  ? { text: failed, announced: false }
+                  : null,
             );
             void refreshTripFlights(trip.id);
             onFlightSaved?.(id);
           }}
           onDeleted={() => {
             setScreen(null);
-            setUntracked(null);
+            setNotice(null);
             void refreshTripFlights(trip.id);
           }}
         />

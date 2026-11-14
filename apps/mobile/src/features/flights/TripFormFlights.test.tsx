@@ -90,6 +90,18 @@ it('the notice is not a live region and carries a failed booking answer', async 
   expect(notice).toHaveTextContent(`past a cap ${i18n.t('flight.sameBookingFailed')}`);
 });
 
+it('only the booking answer failed: the notice says so, as a live region', async () => {
+  await show();
+  mockNotice.value = undefined;
+  mockNotice.bookingFailed = true;
+  await openScreen();
+  await fireEvent.press(screen.getByTestId('mock-save'));
+  mockNotice.bookingFailed = false;
+  const notice = screen.getByTestId('trip-form-flight-untracked');
+  expect(notice).toHaveTextContent(i18n.t('flight.sameBookingFailed'));
+  expect(notice.props.accessibilityLiveRegion).toBe('polite');
+});
+
 it('deleting the flight clears the reason', async () => {
   await show();
   mockNotice.value = 'past a cap';
