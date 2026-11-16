@@ -1,11 +1,11 @@
 -- Sprint 15 PR-C (F-048 AC-7, AC-8, design 6.3; ADR-023): the flight search.
 -- A copy (a tracked check or any search in 24 hours, the newer one; "not found" too)
 -- answers for free; 10 searches a day and 150 in 30 days; the units cap and
--- the search's slice; cache only at 85%, off at 95%; a suspended account
+-- the search's slice; cache only from 85%, at 95% too (Yossi, 16.11); a suspended account
 -- can't search. Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(44);
+select plan(45);
 -- The function's day is UTC; so is current_date here (Dudi 6).
 set local timezone = 'UTC';
 
@@ -150,7 +150,8 @@ update public.provider_usage set lookup_units = 0, units = 306;
 select is(pg_temp.go(1, 'IZ201'), 'off', 'at 85% of the units cap a search without a copy is off');
 select is(pg_temp.go(1, 'LY1'), 'copy', 'and a copy still answers');
 update public.provider_usage set units = 342;
-select is(pg_temp.go(1, 'LY1'), 'off', 'at 95% the search is off, the copy too');
+select is(pg_temp.go(1, 'LY1'), 'copy', 'at 95% a copy still answers (Yossi, 16.11)');
+select is(pg_temp.go(1, 'IZ203'), 'off', 'and a search without a copy is off');
 update public.provider_usage set units = 0;
 update public.provider_catalog set monthly_quota = 400, hard_cap = 1 where provider = 'aerodatabox' and metric = 'units';
 select is(pg_temp.go(1, 'IZ202'), 'budget', 'units past the units cap: budget');
