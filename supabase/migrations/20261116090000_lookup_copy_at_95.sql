@@ -3,7 +3,8 @@
 -- turning it off only hurts the user. A search without a copy stays off.
 -- 20261114090000's begin_flight_lookup without the 95% stop; nothing else changes.
 -- No deploy order: flight-lookup reads the same answers.
--- Rollback: restore begin_flight_lookup from 20261114090000.
+-- Rollback: create or replace begin_flight_lookup as in 20261114090000, that is,
+-- put back "if v_load >= 95 then return off" before the copies; grants survive.
 
 create or replace function public.begin_flight_lookup(p_user uuid, p_number text, p_date date, p_units integer)
   returns jsonb
